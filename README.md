@@ -10,8 +10,6 @@ A personal fork of [sbtlTV](https://github.com/thesubtleties/sbtlTV) with added 
 
 ## ✨ Added Features in ynoTV
 
-**ynoTV** extends sbtlTV with powerful new capabilities built for IPTV enthusiasts:
-
 - **MAC Stalker Support** - Full support for MAC-based Stalker portals
 - **Intelligent Subcategories** - Each source maintains its own main category instead of mixing all channels together
 - **Favorites System** - Quickly access your most-watched channels
