@@ -2,18 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.2] - 2026-02-04
-
-### Fixed
-- Linux: Black screen with audio on certain configurations - now uses separate window mode for video playback
-- Linux: Removed HDR flags that caused video rendering issues on some systems
-
-### Changed
-- Linux: Enabled verbose mpv logging for easier debugging of playback issues
-
-### Known Issues
-- Linux/macOS: Video plays in a separate window rather than embedded. Fully embedded playback works great on Windows, but Linux and macOS present non-trivial embedding challenges that are still being worked on.
-
 ## [0.2.1] - 2026-01-31
 
 ### Fixed

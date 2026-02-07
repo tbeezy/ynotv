@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { HeroSection } from './vod/HeroSection';
 import { HorizontalCarousel } from './vod/HorizontalCarousel';
-import { HorizontalCategoryStrip } from './vod/HorizontalCategoryStrip';
+import { VerticalSidebar } from './vod/VerticalSidebar';
 import { VodBrowse } from './vod/VodBrowse';
 import { MovieDetail } from './vod/MovieDetail';
 import { SeriesDetail } from './vod/SeriesDetail';
@@ -293,6 +293,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         year: movie.year || movie.release_date?.slice(0, 4),
         plot: movie.plot,
         type: 'movie',
+        source_id: movie.source_id,
       });
     } else {
       setSelectedItem(item);
@@ -356,8 +357,8 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   return (
     <div className="vod-page">
-      {/* Unified header: back + categories + search */}
-      <HorizontalCategoryStrip
+      {/* Sidebar: Categories + Search + Back */}
+      <VerticalSidebar
         categories={categories.map(c => ({ id: c.category_id, name: c.name }))}
         selectedId={selectedCategoryId}
         onSelect={handleCategorySelect}
@@ -418,6 +419,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
             year: movie.year || movie.release_date?.slice(0, 4),
             plot: plot || movie.plot,
             type: 'movie',
+            source_id: movie.source_id,
           })}
           apiKey={tmdbApiKey}
         />

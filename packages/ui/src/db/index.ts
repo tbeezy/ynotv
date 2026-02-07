@@ -3,13 +3,20 @@ import type { Channel, Category, Movie, Series, Episode } from '@sbtltv/core';
 
 // Extended channel with local metadata
 export interface StoredChannel extends Channel {
+  name: string;
+  channel_num?: number;
+  is_favorite?: boolean;    // For favorites feature
   // For quick lookups
   source_category_key?: string; // `${source_id}_${category_id}` for compound index
 }
 
 // Extended category with channel count
 export interface StoredCategory extends Category {
+  source_id: string;
+  category_name: string;
   channel_count?: number;
+  enabled?: boolean;        // For hiding/showing categories
+  display_order?: number;   // For manual ordering
 }
 
 // Source sync metadata
@@ -22,6 +29,9 @@ export interface SourceMeta {
   category_count: number;
   vod_movie_count?: number;
   vod_series_count?: number;
+  expiry_date?: string;         // Account expiry date (Stalker & Xtream)
+  active_cons?: string;          // Active connections (Xtream only)
+  max_connections?: string;      // Max connections (Xtream only)
   error?: string;
 }
 
@@ -43,6 +53,7 @@ export interface StoredSeries extends Series {
   backdrop_path?: string;
   popularity?: number;
   match_attempted?: Date; // When TMDB matching was last attempted (even if no match found)
+  _stalker_category?: string; // Stalker: store parent category for episode fetching
 }
 
 // VOD Episode
@@ -240,3 +251,80 @@ export async function getLastCategory(): Promise<string | null> {
 export async function setLastCategory(categoryId: string): Promise<void> {
   await db.prefs.put({ key: 'lastCategory', value: categoryId });
 }
+
+// ============================================================================
+// Category Management Functions
+// ============================================================================
+
+/** Update category enabled/disabled state */
+export async function updateCategoryEnabled(categoryId: string, enabled: boolean) {
+  await db.categories.update(categoryId, { enabled });
+}
+
+/** Update multiple categories' order */
+export async function updateCategoriesOrder(updates: { categoryId: string; displayOrder: number }[]) {
+  await db.transaction('rw', db.categories, async () => {
+    for (const { categoryId, displayOrder } of updates) {
+      await db.categories.update(categoryId, { display_order: displayOrder });
+    }
+  });
+}
+
+/** Batch update categories (enabled state and/or display order) */
+export async function updateCategoriesBatch(
+  updates: Array<{ categoryId: string; enabled?: boolean; displayOrder?: number }>
+) {
+  await db.transaction('rw', db.categories, async () => {
+    // Bulk update approach is much faster than individual awaits
+    const promises = updates.map(u => {
+      const changes: Partial<StoredCategory> = {};
+      if (u.enabled !== undefined) changes.enabled = u.enabled;
+      if (u.displayOrder !== undefined) changes.display_order = u.displayOrder;
+
+      if (Object.keys(changes).length > 0) {
+        return db.categories.update(u.categoryId, changes);
+      }
+      return Promise.resolve(0);
+    });
+
+    await Promise.all(promises);
+  });
+}
+
+/** Enable all categories for a source */
+export async function enableAllSourceCategories(sourceId: string) {
+  const categories = await db.categories.where('source_id').equals(sourceId).toArray();
+  await db.transaction('rw', db.categories, async () => {
+    for (const cat of categories) {
+      await db.categories.update(cat.category_id, { enabled: true });
+    }
+  });
+}
+
+/** Disable all categories for a source */
+export async function disableAllSourceCategories(sourceId: string) {
+  const categories = await db.categories.where('source_id').equals(sourceId).toArray();
+  await db.transaction('rw', db.categories, async () => {
+    for (const cat of categories) {
+      await db.categories.update(cat.category_id, { enabled: false });
+    }
+  });
+}
+
+// ============================================================================
+// Favorites Functions
+// ============================================================================
+
+/** Toggle channel favorite status */
+export async function toggleChannelFavorite(streamId: string) {
+  const channel = await db.channels.get(streamId);
+  if (channel) {
+    await db.channels.update(streamId, { is_favorite: !channel.is_favorite });
+  }
+}
+
+/** Get count of favorited channels */
+export async function getFavoriteChannelCount(): Promise<number> {
+  return await db.channels.filter(ch => ch.is_favorite === true).count();
+}
+

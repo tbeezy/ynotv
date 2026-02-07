@@ -1,5 +1,5 @@
 import { db, clearSourceData, clearVodData, type SourceMeta, type StoredProgram, type StoredMovie, type StoredSeries, type StoredEpisode, type VodCategory } from './index';
-import { fetchAndParseM3U, XtreamClient, type XmltvProgram } from '@sbtltv/local-adapter';
+import { fetchAndParseM3U, XtreamClient, StalkerClient, type XmltvProgram } from '@sbtltv/local-adapter';
 import type { Source, Channel, Category, Movie, Series } from '@sbtltv/core';
 import { getEnrichedMovieExports, getEnrichedTvExports, findBestMatch, extractMatchParams } from '../services/tmdb-exports';
 import { useUIStore } from '../stores/uiStore';
@@ -10,7 +10,7 @@ function debugLog(message: string, category = 'sync'): void {
   console.log(logMsg);
   // Also send to main process debug log if available
   if (window.debug?.logFromRenderer) {
-    window.debug.logFromRenderer(logMsg).catch(() => {});
+    window.debug.logFromRenderer(logMsg).catch(() => { });
   }
 }
 
@@ -413,6 +413,86 @@ async function syncEpgForSource(source: Source, channels: Channel[]): Promise<nu
   }
 }
 
+// Sync EPG for Stalker source using get_epg_info endpoint
+async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<number> {
+  if (!source.mac) {
+    debugLog('Stalker source missing MAC address, skipping EPG sync', 'epg');
+    return 0;
+  }
+
+  debugLog(`Starting EPG sync for Stalker source: ${source.name || source.id}`, 'epg');
+
+  const client = new StalkerClient(
+    { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
+    source.id
+  );
+
+  try {
+    // Fetch EPG data (72 hours by default)
+    debugLog('Fetching EPG data from Stalker portal...', 'epg');
+    const epgMap = await client.getEpg(72);
+    debugLog(`Received EPG for ${epgMap.size} channels`, 'epg');
+
+    if (epgMap.size === 0) {
+      debugLog('No EPG data returned from Stalker portal, keeping existing data', 'epg');
+      return 0;
+    }
+
+    // Convert Stalker EPG format to StoredProgram format
+    const storedPrograms: StoredProgram[] = [];
+
+    // Apply user-configured EPG timeshift (default to 0 if not set)
+    const timeshiftHours = source.epg_timeshift_hours || 0;
+    const timeshiftMs = timeshiftHours * 60 * 60 * 1000;
+
+    for (const [channelId, programList] of epgMap.entries()) {
+      for (const prog of programList) {
+        // Apply timeshift offset to timestamps
+        const startDate = new Date((prog.start_timestamp * 1000) + timeshiftMs);
+        const stopDate = new Date((prog.stop_timestamp * 1000) + timeshiftMs);
+
+        storedPrograms.push({
+          id: `${channelId}_${prog.start_timestamp}`,
+          stream_id: channelId,
+          title: prog.name || '',
+          description: prog.descr || '',
+          start: startDate,
+          end: stopDate,
+          source_id: source.id,
+        });
+      }
+    }
+
+    debugLog(`Converted ${storedPrograms.length} programs from ${epgMap.size} channels`, 'epg');
+
+    // SAFETY: Only clear old data if we have new data to replace it
+    if (storedPrograms.length === 0) {
+      debugLog('WARNING: No programs found! Keeping existing EPG data to avoid data loss', 'epg');
+      return 0;
+    }
+
+    // Clear old and store new
+    debugLog('Clearing old EPG data and storing new...', 'epg');
+    await db.programs.where('source_id').equals(source.id).delete();
+
+    // Store in batches
+    const BATCH_SIZE = 1000;
+    for (let i = 0; i < storedPrograms.length; i += BATCH_SIZE) {
+      const batch = storedPrograms.slice(i, i + BATCH_SIZE);
+      await db.programs.bulkPut(batch);
+    }
+
+    debugLog(`Stalker EPG sync complete: ${storedPrograms.length} programs stored`, 'epg');
+    return storedPrograms.length;
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    debugLog(`Stalker EPG fetch FAILED: ${errMsg}`, 'epg');
+    debugLog('Keeping existing EPG data', 'epg');
+    return 0;
+  }
+}
+
+
 // Check if EPG needs refresh
 // refreshHours: 0 = manual only (never auto-stale), default 6 hours
 export async function isEpgStale(sourceId: string, refreshHours: number = DEFAULT_EPG_STALE_HOURS): Promise<boolean> {
@@ -435,16 +515,39 @@ export async function isVodStale(sourceId: string, refreshHours: number = DEFAUL
   const meta = await db.sourcesMeta.get(sourceId);
   if (!meta?.vod_last_synced) return true;
 
+  // Force sync if counts are missing (indicates schema/sync corruption)
+  if (meta.vod_movie_count === undefined || meta.vod_series_count === undefined) {
+    debugLog(`Source ${sourceId} VOD counts missing, forcing sync`, 'vod');
+    return true;
+  }
+
   const staleMs = refreshHours * 60 * 60 * 1000;
   return Date.now() - meta.vod_last_synced.getTime() > staleMs;
 }
 
 // Sync a single source - fetches data and stores in Dexie
-export async function syncSource(source: Source): Promise<SyncResult> {
+export async function syncSource(source: Source, onProgress?: (msg: string) => void): Promise<SyncResult> {
   debugLog(`Starting sync for source: ${source.name} (${source.type})`, 'sync');
+  onProgress?.(`Starting sync for ${source.name}...`);
   try {
+    // Fetches used to happen here, but we now fetch earlier or let individual handlers do it
+    // Wait, we need to fetch settings BEFORE clearing data
+
+    // 1. Fetch existing settings to preserve
+    debugLog(`Fetching existing settings to preserve for source: ${source.id}`, 'sync');
+    onProgress?.('Preserving settings...');
+    const existingCategories = await db.categories.where('source_id').equals(source.id).toArray();
+    const categorySettingsMap = new Map(existingCategories.map(c => [
+      c.category_id,
+      { enabled: c.enabled, display_order: c.display_order }
+    ]));
+
+    const existingChannels = await db.channels.where('source_id').equals(source.id).filter(c => c.is_favorite === true).toArray();
+    const favoriteChannelsSet = new Set(existingChannels.map(c => c.stream_id));
+
     // Clear existing data for this source first
     debugLog(`Clearing existing data for source: ${source.id}`, 'sync');
+    onProgress?.('Clearing old data...');
     await clearSourceData(source.id);
 
     let channels: Channel[] = [];
@@ -454,7 +557,8 @@ export async function syncSource(source: Source): Promise<SyncResult> {
     if (source.type === 'm3u') {
       // M3U source - fetch and parse
       debugLog(`Fetching M3U from: ${source.url}`, 'sync');
-      const result = await fetchAndParseM3U(source.url, source.id);
+      onProgress?.('Fetching M3U playlist...');
+      const result = await fetchAndParseM3U(source.url, source.id, source.user_agent);
       channels = result.channels;
       categories = result.categories;
       epgUrl = result.epgUrl ?? undefined;
@@ -465,12 +569,14 @@ export async function syncSource(source: Source): Promise<SyncResult> {
         throw new Error('Xtream source requires username and password');
       }
 
-      debugLog(`Creating Xtream client for: ${source.url}`, 'sync');
+      debugLog(`Initializing Xtream client for: ${source.url} (UA: ${source.user_agent || 'none'})`, 'sync');
+      onProgress?.('Connecting to Xtream server...');
       const client = new XtreamClient(
         {
           baseUrl: source.url,
           username: source.username,
           password: source.password,
+          userAgent: source.user_agent,
         },
         source.id
       );
@@ -484,12 +590,29 @@ export async function syncSource(source: Source): Promise<SyncResult> {
       }
       debugLog('Connection test passed', 'sync');
 
+      // Fetch user info (expiry date, connections)
+      debugLog('Fetching Xtream user info...', 'sync');
+      const userInfo = await client.getUserInfo();
+      if (userInfo.expiry_date) {
+        debugLog(`Account expiry: ${userInfo.expiry_date}`, 'sync');
+      }
+      if (userInfo.active_cons && userInfo.max_connections) {
+        debugLog(`Connections: ${userInfo.active_cons}/${userInfo.max_connections}`, 'sync');
+      }
+
+      // Store user info temporarily on source object for later use in meta
+      (source as any)._xtream_expiry = userInfo.expiry_date;
+      (source as any)._xtream_active_cons = userInfo.active_cons;
+      (source as any)._xtream_max_connections = userInfo.max_connections;
+
       // Fetch categories and channels
       debugLog('Fetching live categories...', 'sync');
+      onProgress?.('Fetching categories...');
       categories = await client.getLiveCategories();
       debugLog(`Got ${categories.length} categories`, 'sync');
 
       debugLog('Fetching live streams...', 'sync');
+      onProgress?.('Fetching channels...');
       channels = await client.getLiveStreams();
       debugLog(`Got ${channels.length} channels`, 'sync');
 
@@ -499,6 +622,50 @@ export async function syncSource(source: Source): Promise<SyncResult> {
         // Xtream typically serves EPG at /xmltv.php
         epgUrl = `${url}:${port}/xmltv.php?username=${source.username}&password=${source.password}`;
       }
+    } else if (source.type === 'stalker') {
+      // Stalker Portal source
+      if (!source.mac) {
+        throw new Error('Stalker Portal requires a MAC address');
+      }
+
+      debugLog(`Initializing Stalker client for: ${source.url}`, 'sync');
+      onProgress?.('Connecting to Stalker portal...');
+      const client = new StalkerClient(
+        { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
+        source.id
+      );
+
+      debugLog('Testing Stalker connection...', 'sync');
+      const connTest = await client.testConnection();
+      if (!connTest.success) {
+        throw new Error(connTest.error ?? 'Connection failed');
+      }
+
+      // Fetch account info to get expiry date
+      debugLog('Fetching Stalker account info...', 'sync');
+      const accountInfo = await client.getAccountInfo();
+      const expiryDate = accountInfo.expiry;
+
+      debugLog('Fetching Stalker live categories...', 'sync');
+      onProgress?.('Fetching categories...');
+      categories = await client.getLiveCategories();
+      debugLog(`Got ${categories.length} categories`, 'sync');
+      if (categories.length > 0) {
+        debugLog(`First category: ${JSON.stringify(categories[0])}`, 'sync');
+      }
+
+      debugLog('Fetching Stalker live streams...', 'sync');
+      onProgress?.('Fetching channels...');
+      channels = await client.getLiveStreams();
+      debugLog(`Got ${channels.length} channels`, 'sync');
+      if (channels.length > 0) {
+        debugLog(`First channel: ${JSON.stringify(channels[0])}`, 'sync');
+      } else {
+        debugLog('WARNING: No channels returned from Stalker client!', 'sync');
+      }
+
+      // Store expiry date in a variable to use later when updating sourcesMeta
+      (source as any)._stalker_expiry = expiryDate;
     } else {
       throw new Error(`Unsupported source type: ${source.type}`);
     }
@@ -509,8 +676,36 @@ export async function syncSource(source: Source): Promise<SyncResult> {
       return { success: false, channelCount: 0, categoryCount: 0, programCount: 0, error: 'Source deleted' };
     }
 
+    // Apply preserved settings to new data
+    debugLog(`Applying preserved settings: ${favoriteChannelsSet.size} favorites, ${categorySettingsMap.size} category settings`, 'sync');
+    onProgress?.('Applying settings...');
+
+    // Apply channel settings
+    if (favoriteChannelsSet.size > 0) {
+      channels = channels.map(ch => ({
+        ...ch,
+        is_favorite: favoriteChannelsSet.has(ch.stream_id)
+      }));
+    }
+
+    // Apply category settings
+    if (categorySettingsMap.size > 0) {
+      categories = categories.map(cat => {
+        const settings = categorySettingsMap.get(cat.category_id);
+        if (settings) {
+          return {
+            ...cat,
+            enabled: settings.enabled,
+            display_order: settings.display_order
+          };
+        }
+        return cat;
+      });
+    }
+
     // Store channels and categories in Dexie
     debugLog(`Storing ${channels.length} channels and ${categories.length} categories in DB...`, 'sync');
+    onProgress?.('Saving to database...');
     await db.transaction('rw', [db.channels, db.categories, db.sourcesMeta], async () => {
       if (channels.length > 0) {
         await db.channels.bulkPut(channels);
@@ -527,6 +722,25 @@ export async function syncSource(source: Source): Promise<SyncResult> {
         channel_count: channels.length,
         category_count: categories.length,
       };
+
+      // Add Stalker-specific metadata
+      if (source.type === 'stalker' && (source as any)._stalker_expiry) {
+        meta.expiry_date = (source as any)._stalker_expiry;
+      }
+
+      // Add Xtream-specific metadata
+      if (source.type === 'xtream') {
+        if ((source as any)._xtream_expiry) {
+          meta.expiry_date = (source as any)._xtream_expiry;
+        }
+        if ((source as any)._xtream_active_cons) {
+          meta.active_cons = (source as any)._xtream_active_cons;
+        }
+        if ((source as any)._xtream_max_connections) {
+          meta.max_connections = (source as any)._xtream_max_connections;
+        }
+      }
+
       await db.sourcesMeta.put(meta);
     });
     debugLog('Channels and categories stored successfully', 'sync');
@@ -538,11 +752,19 @@ export async function syncSource(source: Source): Promise<SyncResult> {
     if (shouldLoadEpg && source.type === 'xtream' && source.username && source.password) {
       // Xtream: use built-in EPG endpoint (or override if provided)
       debugLog('Syncing EPG for Xtream source...', 'epg');
+      onProgress?.('Updating EPG...');
       programCount = await syncEpgForSource(source, channels);
       debugLog(`EPG sync complete: ${programCount} programs`, 'epg');
+    } else if (shouldLoadEpg && source.type === 'stalker' && source.mac) {
+      // Stalker: use get_epg_info endpoint
+      debugLog('Syncing EPG for Stalker source...', 'epg');
+      onProgress?.('Updating EPG...');
+      programCount = await syncEpgForStalker(source, channels);
+      debugLog(`Stalker EPG sync complete: ${programCount} programs`, 'epg');
     } else if (shouldLoadEpg && epgUrl) {
       // M3U with EPG URL: fetch XMLTV from the EPG URL
       debugLog('Syncing EPG for M3U source...', 'epg');
+      onProgress?.('Updating EPG...');
       programCount = await syncEpgFromUrl(source, epgUrl, channels);
       debugLog(`M3U EPG sync complete: ${programCount} programs`, 'epg');
     }
@@ -550,6 +772,7 @@ export async function syncSource(source: Source): Promise<SyncResult> {
     // If user provided a manual EPG URL override, use that
     if (source.epg_url && !shouldLoadEpg) {
       debugLog('Syncing EPG from manual URL override...', 'epg');
+      onProgress?.('Updating EPG (manual URL)...');
       programCount = await syncEpgFromUrl(source, source.epg_url, channels);
       debugLog(`Manual EPG sync complete: ${programCount} programs`, 'epg');
     }
@@ -595,9 +818,87 @@ export async function syncSource(source: Source): Promise<SyncResult> {
   }
 }
 
+// NEW: Lazy Load Stalker Category
+// Called when user clicks a category in VodBrowse
+export async function syncStalkerCategory(
+  sourceId: string,
+  categoryId: string,
+  type: 'movies' | 'series',
+  onProgress?: (percent: number, message: string) => void
+): Promise<number> {
+  debugLog(`[LazyLoad] Syncing Stalker category: ${categoryId} (${type})`, 'sync');
+
+  // Sources are in Electron store, not Dexie
+  if (!window.storage) {
+    throw new Error('Storage API not available');
+  }
+
+  const result = await window.storage.getSource(sourceId);
+  const source = result.data;
+
+  if (!source || source.type !== 'stalker' || !source.mac) {
+    throw new Error('Invalid Stalker source');
+  }
+
+  const client = new StalkerClient(
+    { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
+    source.id
+  );
+
+  try {
+    const fetchType = type === 'movies' ? 'vod' : 'series';
+    // Use the new getCategoryItems method with progress
+    const items = await client.getCategoryItems(categoryId, fetchType, onProgress);
+
+    if (items.length === 0) {
+      debugLog(`[LazyLoad] No items found in category ${categoryId}`, 'sync');
+      return 0;
+    }
+
+    debugLog(`[LazyLoad] Storing ${items.length} items for category ${categoryId}`, 'sync');
+    if (onProgress) onProgress(100, 'Saving to database...');
+
+    await db.transaction('rw', [db.vodMovies, db.vodSeries], async () => {
+      if (type === 'movies') {
+        // Cast to any to bypass strict type check for now, trusting the structure
+        await db.vodMovies.bulkPut(items as any[]);
+      } else {
+        // Map Channel items to StoredSeries
+        const seriesItems = items.map((item: any) => ({
+          ...item,
+          series_id: item.series_id || item.stream_id?.toString() || '',
+          cover: item.cover || item.stream_icon || '',
+          plot: item.plot || '',
+          cast: item.cast || '',
+          director: item.director || '',
+          genre: item.genre || '',
+          releaseDate: item.releaseDate || '',
+          last_modified: item.last_modified || '',
+          rating: item.rating || '',
+          rating_5based: item.rating_5based || 0,
+          backdrop_path: item.backdrop_path || [],
+          youtube_trailer: item.youtube_trailer || '',
+          episode_run_time: item.episode_run_time || '',
+          category_id: categoryId
+        }));
+        await db.vodSeries.bulkPut(seriesItems as any[]);
+      }
+    });
+
+    debugLog(`[LazyLoad] Sync complete`, 'sync');
+    return items.length;
+
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    debugLog(`[LazyLoad] Failed: ${msg}`, 'sync');
+    throw e;
+  }
+}
+
 // Sync all enabled sources
-export async function syncAllSources(): Promise<Map<string, SyncResult>> {
+export async function syncAllSources(onProgress?: (msg: string) => void): Promise<Map<string, SyncResult>> {
   debugLog('Starting syncAllSources...', 'sync');
+  onProgress?.('Initializing sync...');
   const results = new Map<string, SyncResult>();
 
   // Get sources from electron storage
@@ -618,9 +919,19 @@ export async function syncAllSources(): Promise<Map<string, SyncResult>> {
   const enabledSources = sourcesResult.data.filter(s => s.enabled);
   debugLog(`${enabledSources.length} sources enabled for sync`, 'sync');
 
-  for (const source of enabledSources) {
+  for (let i = 0; i < enabledSources.length; i++) {
+    const source = enabledSources[i];
+    const prefix = `[${i + 1}/${enabledSources.length}] ${source.name}`;
+
     debugLog(`Syncing source: ${source.name} (${source.type})`, 'sync');
-    const result = await syncSource(source);
+    onProgress?.(`${prefix}: Starting...`);
+
+    // Create a specific progress handler for this source
+    const sourceProgress = (msg: string) => {
+      onProgress?.(`${prefix}: ${msg}`);
+    };
+
+    const result = await syncSource(source, sourceProgress);
     results.set(source.id, result);
     debugLog(`Source ${source.name}: ${result.success ? 'OK' : 'FAILED'} - ${result.channelCount} channels, ${result.categoryCount} categories`, 'sync');
   }
@@ -638,24 +949,36 @@ export async function getSyncStatus(): Promise<SourceMeta[]> {
 // VOD Sync Functions
 // ===========================================================================
 
-// Sync VOD movies for a single Xtream source
+// Sync VOD movies for a single source (Xtream or Stalker)
 // Uses safe update pattern: fetch new data first, only update if successful
 export async function syncVodMovies(source: Source): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
-  if (source.type !== 'xtream' || !source.username || !source.password) {
+  if (!['xtream', 'stalker'].includes(source.type)) {
     return { count: 0, categoryCount: 0 };
   }
 
-  const client = new XtreamClient(
-    { baseUrl: source.url, username: source.username, password: source.password },
-    source.id
-  );
-
   // Fetch categories and movies FIRST (before any deletes)
-  let categories;
-  let movies;
+  let categories: any[] = [];
+  let movies: any[] = [];
+
   try {
-    categories = await client.getVodCategories();
-    movies = await client.getVodStreams();
+    if (source.type === 'xtream') {
+      if (!source.username || !source.password) return { count: 0, categoryCount: 0 };
+      const client = new XtreamClient(
+        { baseUrl: source.url, username: source.username, password: source.password, userAgent: source.user_agent },
+        source.id
+      );
+      categories = await client.getVodCategories();
+      movies = await client.getVodStreams();
+    } else if (source.type === 'stalker') {
+      if (!source.mac) return { count: 0, categoryCount: 0 };
+      const client = new StalkerClient(
+        { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
+        source.id
+      );
+      const result = await client.getVods();
+      categories = result.categories;
+      movies = result.streams;
+    }
   } catch (err) {
     console.warn('[VOD Movies] Fetch failed, keeping existing data:', err);
     return { count: 0, categoryCount: 0, skipped: true };
@@ -722,24 +1045,38 @@ export async function syncVodMovies(source: Source): Promise<{ count: number; ca
   return { count: storedMovies.length, categoryCount: vodCategories.length };
 }
 
-// Sync VOD series for a single Xtream source
+// Sync VOD series for a single source (Xtream or Stalker)
 // Uses safe update pattern: fetch new data first, only update if successful
 export async function syncVodSeries(source: Source): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
-  if (source.type !== 'xtream' || !source.username || !source.password) {
+  if (!['xtream', 'stalker'].includes(source.type)) {
     return { count: 0, categoryCount: 0 };
   }
 
-  const client = new XtreamClient(
-    { baseUrl: source.url, username: source.username, password: source.password },
-    source.id
-  );
-
   // Fetch categories and series FIRST (before any deletes)
-  let categories;
-  let series;
+  let categories: any[] = [];
+  let series: any[] = [];
+
   try {
-    categories = await client.getSeriesCategories();
-    series = await client.getSeries();
+    if (source.type === 'xtream') {
+      if (!source.username || !source.password) return { count: 0, categoryCount: 0 };
+      debugLog(`Initializing Xtream client (UA: ${source.user_agent || 'default'})`, 'sync');
+      const client = new XtreamClient(
+        { baseUrl: source.url, username: source.username, password: source.password, userAgent: source.user_agent },
+        source.id
+      );
+      categories = await client.getSeriesCategories();
+      series = await client.getSeries();
+    } else if (source.type === 'stalker') {
+      if (!source.mac) return { count: 0, categoryCount: 0 };
+      debugLog(`Initializing Stalker client (UA: ${source.user_agent || 'default'})`, 'sync');
+      const client = new StalkerClient(
+        { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
+        source.id
+      );
+      const result = await client.getSeries();
+      categories = result.categories;
+      series = result.streams;
+    }
   } catch (err) {
     console.warn('[VOD Series] Fetch failed, keeping existing data:', err);
     return { count: 0, categoryCount: 0, skipped: true };
@@ -810,16 +1147,36 @@ export async function syncVodSeries(source: Source): Promise<{ count: number; ca
 
 // Sync episodes for a specific series (on-demand when user views series details)
 export async function syncSeriesEpisodes(source: Source, seriesId: string): Promise<number> {
-  if (source.type !== 'xtream' || !source.username || !source.password) {
+  // Support both Xtream and Stalker
+  if (!['xtream', 'stalker'].includes(source.type)) {
     return 0;
   }
 
-  const client = new XtreamClient(
-    { baseUrl: source.url, username: source.username, password: source.password },
-    source.id
-  );
+  let seasons: any[] = [];
 
-  const seasons = await client.getSeriesInfo(seriesId);
+  try {
+    if (source.type === 'xtream') {
+      if (!source.username || !source.password) return 0;
+      const client = new XtreamClient(
+        { baseUrl: source.url, username: source.username, password: source.password },
+        source.id
+      );
+      seasons = await client.getSeriesInfo(seriesId);
+    } else if (source.type === 'stalker') {
+      if (!source.mac) return 0;
+      const client = new StalkerClient(
+        { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
+        source.id
+      );
+      // Fetch the series to get the stored category
+      const series = await db.vodSeries.get(seriesId);
+      const category = series?._stalker_category;
+      seasons = await client.getSeriesInfo(seriesId, category);
+    }
+  } catch (err) {
+    console.warn(`[Sync episodes] Failed to fetch episodes for ${seriesId}:`, err);
+    return 0;
+  }
 
   // Flatten episodes from all seasons
   const storedEpisodes: StoredEpisode[] = [];
@@ -848,12 +1205,28 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
 // Match movies against TMDB exports (no API calls!)
 // Uses enriched data with year info for more accurate matching
 // Only matches items that haven't been attempted yet (incremental)
-async function matchMoviesWithTmdb(sourceId: string): Promise<number> {
+// Only matches items that haven't been attempted yet (incremental)
+// Only matches items that haven't been attempted yet (incremental)
+async function matchMoviesWithTmdb(sourceId: string, force?: boolean): Promise<number> {
   try {
-    console.log('[TMDB Match] Starting movie matching with year-aware lookup...');
-    console.time('[TMDB Match] Download exports');
-    const exports = await getEnrichedMovieExports();
-    console.timeEnd('[TMDB Match] Download exports');
+    // Check if matching is enabled
+    if (window.storage) {
+      const settings = await window.storage.getSettings();
+      if (settings.data?.tmdbMatchingEnabled === false) {
+        // console.log('[TMDB Match] Matching disabled by user setting');
+        return 0;
+      }
+
+      // Check 24h timer (unless forced)
+      if (!force) {
+        const lastRun = settings.data?.lastTmdbMatch || 0;
+        const now = Date.now();
+        if (now - lastRun < 24 * 60 * 60 * 1000) {
+          console.log(`[TMDB Match] Skipping export (last run ${(now - lastRun) / 1000 / 60 / 60}h ago)`);
+          return 0;
+        }
+      }
+    }
 
     // Get only movies that haven't been matched AND haven't been attempted
     // Query by source_id, filter for unmatched (tmdb_id undefined means not in compound index)
@@ -869,6 +1242,11 @@ async function matchMoviesWithTmdb(sourceId: string): Promise<number> {
       console.log('[TMDB Match] No new movies to match');
       return 0;
     }
+
+    console.log('[TMDB Match] Starting movie matching with year-aware lookup...');
+    console.time('[TMDB Match] Download exports');
+    const exports = await getEnrichedMovieExports();
+    console.timeEnd('[TMDB Match] Download exports');
 
     console.log(`[TMDB Match] Matching ${movies.length} new movies...`);
     console.time('[TMDB Match] Matching loop');
@@ -918,6 +1296,12 @@ async function matchMoviesWithTmdb(sourceId: string): Promise<number> {
 
     console.timeEnd('[TMDB Match] Matching loop');
     console.log(`[TMDB Match] Matched ${matched}/${movies.length} movies (${yearMatched} with exact year match)`);
+
+    // Update last match timestamp
+    if (window.storage) {
+      await window.storage.updateSettings({ lastTmdbMatch: Date.now() });
+    }
+
     return matched;
   } catch (error) {
     console.error('[TMDB Match] Movie matching failed:', error);
@@ -928,12 +1312,27 @@ async function matchMoviesWithTmdb(sourceId: string): Promise<number> {
 // Match series against TMDB exports (no API calls!)
 // Uses enriched data with year info for more accurate matching
 // Only matches items that haven't been attempted yet (incremental)
-async function matchSeriesWithTmdb(sourceId: string): Promise<number> {
+// Only matches items that haven't been attempted yet (incremental)
+// Only matches items that haven't been attempted yet (incremental)
+async function matchSeriesWithTmdb(sourceId: string, force?: boolean): Promise<number> {
   try {
-    console.log('[TMDB Match] Starting series matching with year-aware lookup...');
-    console.time('[TMDB Match] Download TV exports');
-    const exports = await getEnrichedTvExports();
-    console.timeEnd('[TMDB Match] Download TV exports');
+    // Check if matching is enabled
+    if (window.storage) {
+      const settings = await window.storage.getSettings();
+      if (settings.data?.tmdbMatchingEnabled === false) {
+        return 0;
+      }
+
+      // Check 24h timer (unless forced)
+      if (!force) {
+        const lastRun = settings.data?.lastTmdbMatch || 0;
+        const now = Date.now();
+        if (now - lastRun < 24 * 60 * 60 * 1000) {
+          // Already logged by movie matcher usually, but good to check
+          return 0;
+        }
+      }
+    }
 
     // Get only series that haven't been matched AND haven't been attempted
     // Query by source_id, filter for unmatched
@@ -949,6 +1348,11 @@ async function matchSeriesWithTmdb(sourceId: string): Promise<number> {
       console.log('[TMDB Match] No new series to match');
       return 0;
     }
+
+    console.log('[TMDB Match] Starting series matching with year-aware lookup...');
+    console.time('[TMDB Match] Download TV exports');
+    const exports = await getEnrichedTvExports();
+    console.timeEnd('[TMDB Match] Download TV exports');
 
     console.log(`[TMDB Match] Matching ${series.length} new series...`);
     console.time('[TMDB Match] Series matching loop');
@@ -1034,17 +1438,8 @@ export async function syncVodForSource(source: Source): Promise<VodSyncResult> {
     }
 
     // Match against TMDB exports (runs in background, no API calls)
-    // This enriches movies/series with tmdb_id for the curated lists
-    // Uses reference counting to handle concurrent syncs correctly
-    startTmdbMatching();
-    Promise.all([
-      matchMoviesWithTmdb(source.id),
-      matchSeriesWithTmdb(source.id),
-    ])
-      .catch(console.error)
-      .finally(() => {
-        endTmdbMatching();
-      });
+    // Match against TMDB exports (runs in background, no API calls)
+    enrichSourceMetadata(source, true); // Force matching on manual sync
 
     return {
       success: true,
@@ -1081,9 +1476,9 @@ export async function syncAllVod(): Promise<Map<string, VodSyncResult>> {
     return results;
   }
 
-  // Sync VOD for each enabled Xtream source
+  // Sync VOD for each enabled source (Xtream or Stalker)
   for (const source of sourcesResult.data) {
-    if (source.enabled && source.type === 'xtream') {
+    if (source.enabled && (source.type === 'xtream' || source.type === 'stalker')) {
       console.log(`Syncing VOD for source: ${source.name}`);
       const result = await syncVodForSource(source);
       results.set(source.id, result);
@@ -1092,4 +1487,17 @@ export async function syncAllVod(): Promise<Map<string, VodSyncResult>> {
   }
 
   return results;
+}
+
+// Trigger TMDB matching for a source (runs in background)
+export function enrichSourceMetadata(source: Source, force?: boolean) {
+  startTmdbMatching();
+  Promise.all([
+    matchMoviesWithTmdb(source.id, force),
+    matchSeriesWithTmdb(source.id, force),
+  ])
+    .catch(console.error)
+    .finally(() => {
+      endTmdbMatching();
+    });
 }

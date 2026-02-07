@@ -9,13 +9,16 @@ export type SettingsTabId =
   | 'series'
   | 'posterdb'
   | 'security'
-  | 'debug';
+  | 'debug'
+  | 'shortcuts'
+  | 'export-import';
 
 interface SettingsCategory {
   label: string;
   tabs: {
     id: SettingsTabId;
     label: string;
+    icon?: string;
     hidden?: boolean;
   }[];
 }
@@ -43,6 +46,8 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
     tabs: [
       { id: 'security', label: 'Security' },
       { id: 'debug', label: 'Debug' },
+      { id: 'shortcuts', label: 'Shortcuts', icon: '⌨️' },
+      { id: 'export-import', label: 'Export / Import' },
     ],
   },
 ];
@@ -50,13 +55,13 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
 interface SettingsSidebarProps {
   activeTab: SettingsTabId;
   onTabChange: (tab: SettingsTabId) => void;
-  hasXtreamSource: boolean;
+  hasVodSource: boolean;
 }
 
 export function SettingsSidebar({
   activeTab,
   onTabChange,
-  hasXtreamSource,
+  hasVodSource,
 }: SettingsSidebarProps) {
   return (
     <nav className="settings-sidebar">
@@ -66,9 +71,9 @@ export function SettingsSidebar({
             <div className="settings-category-header">{category.label}</div>
           )}
           {category.tabs.map((tab) => {
-            // Hide Movies/Series tabs if no Xtream source
+            // Hide Movies/Series tabs if no VOD source (Xtream or Stalker)
             const isLibraryTab = tab.id === 'movies' || tab.id === 'series';
-            if (isLibraryTab && !hasXtreamSource) {
+            if (isLibraryTab && !hasVodSource) {
               return null;
             }
 
@@ -78,6 +83,7 @@ export function SettingsSidebar({
                 className={`settings-nav-item ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => onTabChange(tab.id)}
               >
+                {tab.icon && <span className="icon">{tab.icon}</span>}
                 {tab.label}
               </button>
             );

@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@sbtltv/core": "workspace:*",
+    "@types/crypto-js": "^4.2.2",
+    "crypto-js": "^4.2.0",
     "dexie": "^4.0.0"
   },
   "devDependencies": {

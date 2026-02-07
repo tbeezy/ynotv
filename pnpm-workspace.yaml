@@ -1,2 +1,7 @@
 packages:
-  - 'packages/*'
+  - packages/*
+
+ignoredBuiltDependencies:
+  - electron
+  - electron-winstaller
+  - esbuild

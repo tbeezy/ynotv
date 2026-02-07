@@ -21,10 +21,12 @@ interface UIState {
   vodSyncing: boolean;
   tmdbMatching: boolean;
   cacheClearing: boolean;
+  syncStatusMessage: string | null;
   setChannelSyncing: (value: boolean) => void;
   setVodSyncing: (value: boolean) => void;
   setTmdbMatching: (value: boolean) => void;
   setCacheClearing: (value: boolean) => void;
+  setSyncStatusMessage: (msg: string | null) => void;
 
   // Channel display settings
   channelSortOrder: 'alphabetical' | 'number';
@@ -45,10 +47,12 @@ export const useUIStore = create<UIState>((set) => ({
   vodSyncing: false,
   tmdbMatching: false,
   cacheClearing: false,
+  syncStatusMessage: null,
   setChannelSyncing: (value) => set({ channelSyncing: value }),
   setVodSyncing: (value) => set({ vodSyncing: value }),
   setTmdbMatching: (value) => set({ tmdbMatching: value }),
   setCacheClearing: (value) => set({ cacheClearing: value }),
+  setSyncStatusMessage: (msg) => set({ syncStatusMessage: msg }),
 
   // Channel display settings
   channelSortOrder: 'alphabetical',
@@ -58,6 +62,7 @@ export const useUIStore = create<UIState>((set) => ({
 // Selectors for cleaner component code
 export const useMoviesCategory = () => useUIStore((s) => s.moviesSelectedCategory);
 export const useSetMoviesCategory = () => useUIStore((s) => s.setMoviesSelectedCategory);
+
 
 export const useSeriesCategory = () => useUIStore((s) => s.seriesSelectedCategory);
 export const useSetSeriesCategory = () => useUIStore((s) => s.setSeriesSelectedCategory);
@@ -71,6 +76,8 @@ export const useTmdbMatching = () => useUIStore((s) => s.tmdbMatching);
 export const useSetTmdbMatching = () => useUIStore((s) => s.setTmdbMatching);
 export const useCacheClearing = () => useUIStore((s) => s.cacheClearing);
 export const useSetCacheClearing = () => useUIStore((s) => s.setCacheClearing);
+export const useSyncStatusMessage = () => useUIStore((s) => s.syncStatusMessage);
+export const useSetSyncStatusMessage = () => useUIStore((s) => s.setSyncStatusMessage);
 
 // Channel display settings selectors
 export const useChannelSortOrder = () => useUIStore((s) => s.channelSortOrder);

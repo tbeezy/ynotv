@@ -118,7 +118,8 @@
 
 /* Invisible placeholder to reserve space when sync status is hidden */
 .placeholder__spacer {
-  height: 52px; /* Same as sync-status margin-top + height */
+  height: 52px;
+  /* Same as sync-status margin-top + height */
 }
 
 .sync-status__spinner {
@@ -134,7 +135,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .sync-status__text {
@@ -173,6 +176,7 @@
     opacity: 0;
     transform: translateX(20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -249,4 +253,125 @@
 
 .resize-grip svg {
   display: block;
+}
+
+/* Stats Overlay */
+.stats-overlay {
+  position: fixed;
+  top: 80px;
+  right: 40px;
+  z-index: 200;
+  pointer-events: auto;
+  animation: slideIn 0.2s ease-out;
+}
+
+.stats-panel {
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 300px;
+}
+
+.stats-panel h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #00d4ff;
+}
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  font-family: 'Courier New', monospace;
+}
+
+.stats-hint {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  opacity: 0.5;
+  text-align: center;
+}
+
+/* Player Control Buttons */
+.player-controls-buttons {
+  position: fixed;
+  bottom: 100px;
+  right: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 150;
+  pointer-events: auto;
+  opacity: 0;
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.player-control-btn {
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.player-control-btn:hover {
+  background: rgba(0, 212, 255, 0.8);
+  border-color: #00d4ff;
+  transform: scale(1.1);
+}
+
+.player-control-btn:active {
+  transform: scale(0.95);
+}
+
+.player-control-btn svg {
+  width: 24px;
+  height: 24px;
 }

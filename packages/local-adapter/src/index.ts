@@ -14,3 +14,7 @@ export type {
   XtreamUserInfo,
   XtreamAuthResponse,
 } from './xtream-client';
+
+// Stalker Client
+export { StalkerClient } from './stalker-client';
+export type { StalkerConfig } from './stalker-client';

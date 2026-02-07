@@ -1,6 +1,6 @@
 {
   "name": "@sbtltv/electron",
-  "version": "0.2.2",
+  "version": "0.2.1",
   "description": "Desktop IPTV player with mpv",
   "homepage": "https://github.com/thesubtleties/sbtlTV",
   "author": {
@@ -12,7 +12,7 @@
   "main": "./dist/main.js",
   "scripts": {
     "build": "tsc",
-    "dev": "electron . --dev",
+    "dev": "tsc && electron . --dev",
     "start": "electron .",
     "typecheck": "tsc --noEmit",
     "pack": "electron-builder --dir",
@@ -26,7 +26,7 @@
     "electron-store": "^11.0.2"
   },
   "devDependencies": {
-    "electron": "^40.0.0",
+    "electron": "^40.1.0",
     "electron-builder": "^26.4.0",
     "typescript": "^5.3.0"
   }

@@ -21,7 +21,7 @@ export function SecurityTab({
         </div>
 
         <p className="section-description">
-          By default, sbtlTV blocks requests to local network addresses to prevent
+          By default, ynoTV blocks requests to local network addresses to prevent
           malicious playlists from probing your internal network (SSRF protection).
         </p>
 

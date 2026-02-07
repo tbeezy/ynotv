@@ -24,6 +24,9 @@ interface NowPlayingBarProps {
   onVolumeDragEnd?: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  onCycleSubtitle: () => void;
+  onCycleAudio: () => void;
+  onToggleStats: () => void;
 }
 
 // Format seconds to "H:MM:SS" or "M:SS"
@@ -58,6 +61,9 @@ export function NowPlayingBar({
   onVolumeDragEnd,
   onMouseEnter,
   onMouseLeave,
+  onCycleSubtitle,
+  onCycleAudio,
+  onToggleStats,
 }: NowPlayingBarProps) {
   const canControl = mpvReady && channel !== null;
   const currentProgram = useCurrentProgram(channel?.stream_id ?? null);
@@ -301,6 +307,34 @@ export function NowPlayingBar({
               </button>
             </div>
 
+            {/* Extra Controls (Subtitle, Audio, Stats) */}
+            <div className="npb-controls npb-extra-controls">
+              <button
+                className="npb-btn"
+                onClick={onCycleSubtitle}
+                disabled={!canControl}
+                title="Cycle Subtitles (J)"
+              >
+                <SubtitleIcon />
+              </button>
+              <button
+                className="npb-btn"
+                onClick={onCycleAudio}
+                disabled={!canControl}
+                title="Cycle Audio Track (A)"
+              >
+                <AudioIcon />
+              </button>
+              <button
+                className="npb-btn"
+                onClick={onToggleStats}
+                disabled={!canControl}
+                title="Toggle Stats (I)"
+              >
+                <StatsIcon />
+              </button>
+            </div>
+
             {/* Volume controls */}
             <div className="npb-volume">
               <button
@@ -360,6 +394,33 @@ function StopIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
       <rect x="6" y="6" width="12" height="12" rx="1" />
+    </svg>
+  );
+}
+
+function SubtitleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="2" y="15" width="20" height="4" rx="1" />
+      <rect x="2" y="9" width="20" height="4" rx="1" />
+    </svg>
+  );
+}
+
+function AudioIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M11 5L6 9H2V15H6L11 19V5Z" />
+      <path d="M15.54 8.46C16.4774 9.39764 17.0039 10.6692 17.0039 11.995C17.0039 13.3208 16.4774 14.5924 15.54 15.53" />
+      <path d="M18.13 5.87C19.7981 7.53809 20.744 9.79441 20.744 12.145C20.744 14.4956 19.7981 16.7519 18.13 18.42" />
+    </svg>
+  );
+}
+
+function StatsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
     </svg>
   );
 }

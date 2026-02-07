@@ -25,6 +25,7 @@ export interface SeriesDetailProps {
 }
 
 export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesDetailProps) {
+  // console.log('[SeriesDetail] Rendered for:', series.series_id, series);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
 
   // Fetch episodes
@@ -68,6 +69,7 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesD
         plot: lazyPlot || series.plot,
         type: 'series',
         episodeInfo: `S${episode.season_num} E${episode.episode_num}${episode.title ? ` · ${episode.title}` : ''}`,
+        source_id: series.source_id,
       });
     },
     [series, onPlayEpisode, lazyPlot]

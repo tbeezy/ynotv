@@ -76,15 +76,15 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeView, onViewChange, visible, categoriesOpen, onCategoriesToggle, onCategoriesClose, expanded, onExpandedToggle }: SidebarProps) {
-  const [hasXtream, setHasXtream] = useState(false);
+  const [hasVodSource, setHasVodSource] = useState(false);
 
-  // Check if user has Xtream sources (for showing Movies/Series)
+  // Check if user has VOD sources (Xtream or Stalker) for showing Movies/Series
   useEffect(() => {
     async function checkSources() {
       if (!window.storage) return;
       const result = await window.storage.getSources();
       if (result.data) {
-        setHasXtream(result.data.some((s: Source) => s.type === 'xtream'));
+        setHasVodSource(result.data.some((s: Source) => s.type === 'xtream' || s.type === 'stalker'));
       }
     }
     checkSources();
@@ -131,7 +131,7 @@ export function Sidebar({ activeView, onViewChange, visible, categoriesOpen, onC
           <span className="nav-label">Categories</span>
         </button>
 
-        {hasXtream && (
+        {hasVodSource && (
           <>
             <button
               className={`nav-item ${activeView === 'movies' ? 'active' : ''}`}

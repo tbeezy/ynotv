@@ -1,6 +1,6 @@
-appId: com.sbtltv.app
-productName: sbtlTV
-copyright: Copyright © 2026 sbtl
+appId: com.ynotv.app
+productName: ynoTV
+copyright: Copyright © 2026 yno
 
 directories:
   output: ../../release

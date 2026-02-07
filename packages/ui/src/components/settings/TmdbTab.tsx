@@ -6,6 +6,8 @@ interface TmdbTabProps {
   tmdbKeyValid: boolean | null;
   onApiKeyChange: (key: string) => void;
   onApiKeyValidChange: (valid: boolean | null) => void;
+  tmdbMatchingEnabled: boolean;
+  onTmdbMatchingEnabledChange: (enabled: boolean) => void;
 }
 
 export function TmdbTab({
@@ -13,8 +15,17 @@ export function TmdbTab({
   tmdbKeyValid,
   onApiKeyChange,
   onApiKeyValidChange,
+  tmdbMatchingEnabled,
+  onTmdbMatchingEnabledChange,
 }: TmdbTabProps) {
   const [tmdbValidating, setTmdbValidating] = useState(false);
+
+  async function handleToggleMatching(enabled: boolean) {
+    onTmdbMatchingEnabledChange(enabled);
+    if (window.storage) {
+      await window.storage.updateSettings({ tmdbMatchingEnabled: enabled });
+    }
+  }
 
   async function saveTmdbApiKey() {
     if (!window.storage) return;
@@ -75,6 +86,30 @@ export function TmdbTab({
               themoviedb.org
             </a>
           </p>
+        </div>
+
+        <div className="settings-section-divider"></div>
+
+        <div className="section-header">
+          <h3>Advanced Features</h3>
+        </div>
+
+        <div className="form-group inline-checkbox">
+          <label className="checkbox-container">
+            <input
+              type="checkbox"
+              checked={tmdbMatchingEnabled}
+              onChange={(e) => handleToggleMatching(e.target.checked)}
+            />
+            <span className="checkmark"></span>
+            <div className="checkbox-label">
+              <span>Enable Automatic Metadata Matching</span>
+              <p className="checkbox-description">
+                Automatically download enriched metadata and match unmatched content on startup.
+                Disable this if you want faster startup times or lower bandwidth usage.
+              </p>
+            </div>
+          </label>
         </div>
 
       </div>

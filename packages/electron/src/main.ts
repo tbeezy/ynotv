@@ -55,7 +55,7 @@ const DEBUG_LOG_MAX_SIZE = 10 * 1024 * 1024; // 10MB max log size
 
 function getDebugLogPath(): string {
   const logDir = app.getPath('logs');
-  return path.join(logDir, 'sbtltv-debug.log');
+  return path.join(logDir, 'ynoTV-debug.log');
 }
 
 function rotateLogIfNeeded(): boolean {
@@ -94,7 +94,7 @@ function initDebugLogging(enabled: boolean): void {
     // Open log file in append mode
     debugLogStream = fs.createWriteStream(logPath, { flags: 'a' });
     debugLog('='.repeat(60));
-    debugLog(`Debug logging started - sbtlTV v${app.getVersion()}`);
+    debugLog(`Debug logging started - ynoTV v${app.getVersion()}`);
     if (!rotationSucceeded) {
       debugLog('Warning: Log rotation failed, continuing with existing file', 'system');
     }
@@ -181,22 +181,49 @@ function killMpv(): void {
 }
 
 // Find mpv binary - checks bundled location first, then common locations
+let lastCheckedPaths: string[] = [];
+
 function findMpvBinary(): string | null {
+  lastCheckedPaths = [];
   // For packaged apps, check bundled mpv first
   const resourcesPath = app.isPackaged ? process.resourcesPath : __dirname;
 
   if (process.platform === 'win32') {
-    // Check bundled mpv first (in resources/mpv/)
-    const bundledPath = path.join(resourcesPath, 'mpv', 'mpv.exe');
-    if (fs.existsSync(bundledPath)) return bundledPath;
+    // List of paths to check
+    const potentialPaths: string[] = [];
 
-    // Fall back to system locations
-    const windowsPaths = [
+    // 1. Packaged/Resources path (resources/mpv/mpv.exe)
+    potentialPaths.push(path.join(resourcesPath, 'mpv', 'mpv.exe'));
+
+    // 2. Dev bundle path relative to dist (__dirname is dist) -> ../mpv-bundle/mpv.exe
+    // We check this regardless of isPackaged, to be safe
+    potentialPaths.push(path.join(__dirname, '..', 'mpv-bundle', 'mpv.exe'));
+
+    // 3. CWD relative path (useful if running from project root)
+    potentialPaths.push(path.resolve('mpv-bundle', 'mpv.exe'));
+
+    // 4. Try app.getAppPath() relative
+    try {
+      potentialPaths.push(path.join(app.getAppPath(), 'mpv-bundle', 'mpv.exe'));
+      // If appPath is dist, check parent
+      potentialPaths.push(path.join(app.getAppPath(), '..', 'mpv-bundle', 'mpv.exe'));
+    } catch {
+      // ignore
+    }
+
+    // System locations
+    potentialPaths.push(
       'C:\\Program Files\\mpv\\mpv.exe',
       'C:\\Program Files (x86)\\mpv\\mpv.exe',
-      `${process.env.LOCALAPPDATA}\\Programs\\mpv\\mpv.exe`,
-    ];
-    for (const p of windowsPaths) {
+      `${process.env.LOCALAPPDATA}\\Programs\\mpv\\mpv.exe`
+    );
+
+    // Filter duplicates
+    const uniquePaths = [...new Set(potentialPaths)];
+
+    for (const p of uniquePaths) {
+      lastCheckedPaths.push(p);
+      console.log('[mpv-debug] Checking:', p);
       try {
         if (fs.existsSync(p)) return p;
       } catch {
@@ -207,21 +234,34 @@ function findMpvBinary(): string | null {
   } else if (process.platform === 'darwin') {
     // Prefer system mpv (properly signed, has GPU access)
     // Bundled mpv has code signing issues that prevent GPU access on macOS
-    if (fs.existsSync('/opt/homebrew/bin/mpv')) return '/opt/homebrew/bin/mpv';
-    if (fs.existsSync('/usr/local/bin/mpv')) return '/usr/local/bin/mpv';
-    if (fs.existsSync('/usr/bin/mpv')) return '/usr/bin/mpv';
+    const macPaths = [
+      '/opt/homebrew/bin/mpv',
+      '/usr/local/bin/mpv',
+      '/usr/bin/mpv',
+      path.join(resourcesPath, 'mpv', 'MacOS', 'mpv')
+    ];
 
-    // Fall back to bundled (may have signing issues preventing video display)
-    const bundledPath = path.join(resourcesPath, 'mpv', 'MacOS', 'mpv');
-    if (fs.existsSync(bundledPath)) return bundledPath;
+    for (const p of macPaths) {
+      lastCheckedPaths.push(p);
+      if (fs.existsSync(p)) return p;
+    }
 
     return null;
   } else {
     // Linux - rely on system mpv
-    if (fs.existsSync('/usr/bin/mpv')) return '/usr/bin/mpv';
-    if (fs.existsSync('/usr/local/bin/mpv')) return '/usr/local/bin/mpv';
+    const linuxPaths = [
+      '/usr/bin/mpv',
+      '/usr/local/bin/mpv'
+    ];
+
+    for (const p of linuxPaths) {
+      lastCheckedPaths.push(p);
+      if (fs.existsSync(p)) return p;
+    }
+
     // Fallback: check PATH (catches snap, flatpak, custom installs)
     try {
+      lastCheckedPaths.push('PATH lookup: mpv');
       const whichResult = execFileSync('which', ['mpv'], { encoding: 'utf-8' }).trim();
       if (whichResult && fs.existsSync(whichResult)) return whichResult;
     } catch {
@@ -275,11 +315,12 @@ async function checkMpvAvailable(): Promise<boolean> {
       buttons: ['OK'],
     });
   } else {
+    // WIN32 or fallback
     await dialog.showMessageBox({
       type: 'error',
       title: 'mpv Not Found',
       message: 'mpv media player could not be found.',
-      detail: 'The bundled mpv appears to be missing. Please reinstall the application.',
+      detail: `The bundled mpv appears to be missing.\n\nSearched in:\n${lastCheckedPaths.join('\n')}\n\nPlease reinstall the application or ensure mpv is in one of these locations.`,
       buttons: ['OK'],
     });
   }
@@ -311,8 +352,9 @@ async function initMpv(): Promise<void> {
     console.log('[mpv] Using binary:', mpvBinary);
     debugLog(`Using binary: ${mpvBinary}`, 'mpv');
 
-    // Check mpv version for logging
+    // Check mpv version for feature compatibility
     const mpvVersion = getMpvVersion(mpvBinary);
+    const hasHdrOptions = mpvVersion && (mpvVersion[0] > 0 || (mpvVersion[0] === 0 && mpvVersion[1] >= 35));
     const versionStr = mpvVersion ? `${mpvVersion[0]}.${mpvVersion[1]}` : 'unknown';
     console.log('[mpv] Version:', versionStr);
     debugLog(`Version: ${versionStr}`, 'mpv');
@@ -329,9 +371,22 @@ async function initMpv(): Promise<void> {
       '--cursor-autohide=no',
       '--force-window=yes',
       '--no-terminal',
+      '--really-quiet',
       '--hwdec=auto',
       '--vo=gpu',
     ];
+
+    // HDR options require mpv 0.35+
+    if (hasHdrOptions) {
+      mpvArgs.push(
+        '--target-colorspace-hint=no',
+        '--tone-mapping=mobius',
+        '--hdr-compute-peak=no',
+      );
+      console.log('[mpv] HDR options enabled (mpv 0.35+)');
+    } else {
+      console.log('[mpv] HDR options skipped (requires mpv 0.35+)');
+    }
 
     // Get native window handle for --wid embedding
     const nativeHandle = mainWindow.getNativeWindowHandle();
@@ -353,14 +408,15 @@ async function initMpv(): Promise<void> {
 
     console.log('[mpv] Native window handle:', windowId);
 
-    // Linux and macOS use separate window mode (--wid embedding is unreliable)
-    const isLinux = process.platform === 'linux';
+    // Wayland and macOS don't support --wid embedding, use separate window mode
+    const isWayland = process.platform === 'linux' &&
+      (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
     const isMac = process.platform === 'darwin';
-    const useSeparateWindow = isLinux || isMac;
+    const useSeparateWindow = isWayland || isMac;
 
     if (useSeparateWindow) {
-      const reason = isMac ? 'macOS' : 'Linux';
-      console.log(`[mpv] ${reason} detected, using separate window mode`);
+      const reason = isMac ? 'macOS' : 'Wayland';
+      console.log(`[mpv] ${reason} detected, using separate window mode (--wid not supported)`);
     } else {
       console.log('[mpv] Using --wid embedding (single window mode)');
       mpvArgs = [...mpvArgs, `--wid=${windowId}`];
@@ -519,6 +575,20 @@ function handleMpvMessage(msg: MpvMessage): void {
     }
   }
 
+  // Handle end-file event (playback finished or failed)
+  if (msg.event === 'end-file') {
+    const reason = (msg as any).reason;
+    const error = (msg as any).file_error;
+
+    console.log(`[mpv] end-file event: reason=${reason}, error=${error}`);
+    debugLog(`end-file: reason=${reason}, error=${error}`, 'mpv');
+
+    if (reason === 'error') {
+      const errorMsg = error || 'Playback error';
+      sendToRenderer('mpv-error', errorMsg);
+    }
+  }
+
   // Handle request responses
   if (msg.request_id !== undefined) {
     const pending = pendingRequests.get(msg.request_id);
@@ -582,13 +652,21 @@ ipcMain.handle('window-set-size', (_event, width: number, height: number) => {
 });
 
 // IPC Handlers - mpv control
-ipcMain.handle('mpv-load', async (_event, url: string) => {
+ipcMain.handle('mpv-load', async (_event, url: string, options?: { userAgent?: string }) => {
   debugLog(`mpv-load called with URL: ${url}`, 'mpv');
+  if (options?.userAgent) {
+    debugLog(`  Setting User-Agent: ${options.userAgent}`, 'mpv');
+  }
+
   if (!mpvSocket) {
     debugLog('mpv-load FAILED: mpv not initialized (no socket)', 'mpv');
     return { error: 'mpv not initialized' };
   }
   try {
+    if (options?.userAgent) {
+      await sendMpvCommand('set_property', ['user-agent', options.userAgent]);
+    }
+
     debugLog('Sending loadfile command to mpv...', 'mpv');
     await sendMpvCommand('loadfile', [url]);
     debugLog('mpv-load SUCCESS', 'mpv');
@@ -676,6 +754,51 @@ ipcMain.handle('mpv-stop', async () => {
 
 ipcMain.handle('mpv-get-status', async () => mpvState);
 
+ipcMain.handle('mpv-set-property', async (_event, name: string, value: unknown) => {
+  if (!mpvSocket) return { error: 'mpv not initialized' };
+  try {
+    await sendMpvCommand('set_property', [name, value]);
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+});
+
+// New player controls
+ipcMain.handle('mpv-cycle-subtitle', async () => {
+  if (!mpvSocket) return { error: 'mpv not initialized' };
+  try {
+    await sendMpvCommand('cycle', ['sub']);
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+});
+
+ipcMain.handle('mpv-cycle-audio', async () => {
+  if (!mpvSocket) return { error: 'mpv not initialized' };
+  try {
+    await sendMpvCommand('cycle', ['audio']);
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+});
+
+ipcMain.handle('mpv-toggle-stats', async () => {
+  if (!mpvSocket) return { error: 'mpv not initialized' };
+  try {
+    // Use MPV's built-in stats overlay (from stats.lua script)
+    // This cycles through different stat pages on each press
+    await sendMpvCommand('script-binding', ['stats/display-stats-toggle']);
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+});
+
+
+
 // IPC Handlers - Storage
 ipcMain.handle('storage-get-sources', async () => {
   try {
@@ -755,29 +878,65 @@ ipcMain.handle('debug-open-log-folder', async () => {
 
 // IPC Handler - Import M3U file via file dialog
 ipcMain.handle('import-m3u-file', async () => {
-  if (!mainWindow) return { error: 'No window available' };
-
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Import M3U Playlist',
-    filters: [
-      { name: 'M3U Playlists', extensions: ['m3u', 'm3u8'] },
-      { name: 'All Files', extensions: ['*'] },
-    ],
+  const result = await dialog.showOpenDialog({
     properties: ['openFile'],
+    filters: [{ name: 'M3U Playlist', extensions: ['m3u', 'm3u8'] }],
   });
 
   if (result.canceled || result.filePaths.length === 0) {
-    return { success: false, canceled: true };
+    return { canceled: true };
   }
 
-  const filePath = result.filePaths[0];
+  try {
+    const filePath = result.filePaths[0];
+    const content = await fs.promises.readFile(filePath, 'utf-8');
+    return {
+      success: true,
+      data: {
+        content,
+        fileName: path.basename(filePath),
+      },
+    };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// Save JSON file dialog
+ipcMain.handle('dialog-save-json', async (_event, data: string, defaultName: string) => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [{ name: 'JSON Config', extensions: ['json'] }],
+  });
+
+  if (canceled || !filePath) {
+    return { canceled: true };
+  }
 
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const fileName = path.basename(filePath, path.extname(filePath));
-    return { success: true, data: { content, fileName } };
+    await fs.promises.writeFile(filePath, data, 'utf-8');
+    return { success: true, data: { filePath } };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Failed to read file' };
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// Open JSON file dialog
+ipcMain.handle('dialog-open-json', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'JSON Config', extensions: ['json'] }],
+  });
+
+  if (canceled || filePaths.length === 0) {
+    return { canceled: true };
+  }
+
+  try {
+    const content = await fs.promises.readFile(filePaths[0], 'utf-8');
+    return { success: true, data: content };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
   }
 });
 

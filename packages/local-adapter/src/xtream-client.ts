@@ -17,6 +17,7 @@ export interface XtreamConfig {
   baseUrl: string;
   username: string;
   password: string;
+  userAgent?: string;
 }
 
 export interface XtreamServerInfo {
@@ -75,9 +76,14 @@ export class XtreamClient {
   }
 
   private async fetchJson<T>(url: string): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (this.config.userAgent) {
+      headers['User-Agent'] = this.config.userAgent;
+    }
+
     // Use Electron's fetch proxy if available (bypasses CORS)
     if (typeof window !== 'undefined' && window.fetchProxy) {
-      const result = await window.fetchProxy.fetch(url);
+      const result = await window.fetchProxy.fetch(url, { headers });
       if (!result.success || !result.data) {
         throw new Error(result.error || 'Fetch failed');
       }
@@ -88,7 +94,7 @@ export class XtreamClient {
     }
 
     // Fallback to regular fetch (works in Node.js or when CORS is not an issue)
-    const response = await fetch(url);
+    const response = await fetch(url, { headers });
     if (!response.ok) {
       throw new Error(`Xtream API error: ${response.status} ${response.statusText}`);
     }
@@ -113,6 +119,41 @@ export class XtreamClient {
       return { success: true, info };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async getUserInfo(): Promise<{ expiry_date?: string; active_cons?: string; max_connections?: string }> {
+    try {
+      const authResponse = await this.authenticate();
+
+      // Format expiry date from Unix timestamp to readable format
+      let formattedExpiry: string | undefined;
+      if (authResponse.user_info.exp_date) {
+        const timestamp = parseInt(authResponse.user_info.exp_date, 10);
+        if (!isNaN(timestamp)) {
+          const date = new Date(timestamp * 1000); // Convert seconds to milliseconds
+
+          // Format to match Stalker style: "August 18, 2026, 12:00 am"
+          const options: Intl.DateTimeFormatOptions = {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          };
+          formattedExpiry = date.toLocaleString('en-US', options);
+        }
+      }
+
+      return {
+        expiry_date: formattedExpiry,
+        active_cons: authResponse.user_info.active_cons,
+        max_connections: authResponse.user_info.max_connections,
+      };
+    } catch (error) {
+      console.error('[Xtream] Failed to fetch user info:', error);
+      return {};
     }
   }
 

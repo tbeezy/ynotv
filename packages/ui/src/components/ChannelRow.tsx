@@ -1,9 +1,10 @@
 import { memo } from 'react';
 import { ProgramBlock, EmptyProgramBlock } from './ProgramBlock';
+import { FavoriteButton } from './FavoriteButton';
 import type { StoredChannel, StoredProgram } from '../db';
 
 // Width of the channel info column (must match ChannelPanel)
-const CHANNEL_COLUMN_WIDTH = 280;
+const CHANNEL_COLUMN_WIDTH = 220;
 
 interface ChannelRowProps {
   channel: StoredChannel;
@@ -38,10 +39,17 @@ export const ChannelRow = memo(function ChannelRow({
       {/* Channel info column */}
       <div
         className="guide-channel-info"
-        style={{ width: CHANNEL_COLUMN_WIDTH, minWidth: CHANNEL_COLUMN_WIDTH }}
+        style={{
+          width: CHANNEL_COLUMN_WIDTH,
+          minWidth: CHANNEL_COLUMN_WIDTH,
+          maxWidth: CHANNEL_COLUMN_WIDTH
+        }}
         onClick={onPlay}
       >
-        <span className="guide-channel-number">{displayNumber}</span>
+        <FavoriteButton
+          streamId={channel.stream_id}
+          isFavorite={channel.is_favorite || false}
+        />
         <div className="guide-channel-logo">
           {channel.stream_icon ? (
             <img
@@ -55,7 +63,9 @@ export const ChannelRow = memo(function ChannelRow({
             <span className="logo-placeholder">{channel.name.charAt(0)}</span>
           )}
         </div>
-        <span className="guide-channel-name">{channel.name}</span>
+        <div className="guide-channel-name-container">
+          <span className="guide-channel-name" title={channel.name}>{channel.name}</span>
+        </div>
       </div>
 
       {/* Program grid */}
@@ -75,6 +85,6 @@ export const ChannelRow = memo(function ChannelRow({
           <EmptyProgramBlock pixelsPerHour={pixelsPerHour} visibleHours={visibleHours} />
         )}
       </div>
-    </div>
+    </div >
   );
 });

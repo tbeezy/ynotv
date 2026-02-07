@@ -15,6 +15,7 @@ import {
   usePaginatedSeries,
   useAlphabetIndex,
   useCurrentLetter,
+  useLazyStalkerLoader, // Import the new hook
 } from '../../hooks/useVod';
 import './VodBrowse.css';
 
@@ -82,11 +83,21 @@ export function VodBrowse({
     }
   }, [categoryId]);
 
+  // LAZY LOAD: Trigger stalker sync if needed
+  const { syncing: lazyLoading, progress, message } = useLazyStalkerLoader(
+    type === 'movies' ? 'movies' : 'series',
+    categoryId
+  );
+
   // Get paginated data (using debounced search)
   const moviesData = usePaginatedMovies(type === 'movies' ? categoryId : null, debouncedSearch);
   const seriesData = usePaginatedSeries(type === 'series' ? categoryId : null, debouncedSearch);
 
-  const { items, loading, hasMore, loadMore } = type === 'movies' ? moviesData : seriesData;
+  const { items, loading: dataLoading, hasMore, loadMore } = type === 'movies' ? moviesData : seriesData;
+
+  // Combine loading states
+  const loading = dataLoading || lazyLoading;
+
 
   // Alphabet navigation
   const alphabetIndex = useAlphabetIndex(items);
@@ -148,6 +159,22 @@ export function VodBrowse({
     },
     [type, onItemClick]
   );
+
+  // Custom Loading Status Indicator for Stalker Sync
+  if (lazyLoading) {
+    return (
+      <div className="vod-browse vod-browse--loading-state">
+        <div className="vod-browse__spinner"></div>
+        <h3>Syncing Category...</h3>
+        <p>{message}</p>
+        {progress > 0 && (
+          <div className="vod-browse__progress-bar">
+            <div className="vod-browse__progress-fill" style={{ width: `${progress}%` }}></div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Empty state
   if (!loading && items.length === 0) {

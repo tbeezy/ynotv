@@ -14,7 +14,7 @@ export interface MpvResult {
 }
 
 export interface MpvApi {
-  load: (url: string) => Promise<MpvResult>;
+  load: (url: string, options?: { userAgent?: string }) => Promise<MpvResult>;
   play: () => Promise<MpvResult>;
   pause: () => Promise<MpvResult>;
   togglePause: () => Promise<MpvResult>;
@@ -23,6 +23,10 @@ export interface MpvApi {
   toggleMute: () => Promise<MpvResult>;
   seek: (seconds: number) => Promise<MpvResult>;
   getStatus: () => Promise<MpvStatus>;
+  cycleSubtitle: () => Promise<MpvResult>;
+  cycleAudio: () => Promise<MpvResult>;
+  toggleStats: () => Promise<MpvResult>;
+  setProperty: (name: string, value: unknown) => Promise<MpvResult>;
   onReady: (callback: (ready: boolean) => void) => void;
   onStatus: (callback: (status: MpvStatus) => void) => void;
   onError: (callback: (error: string) => void) => void;
@@ -56,18 +60,43 @@ export interface AppSettings {
   allowLanSources?: boolean;       // Allow requests to LAN IPs (SSRF bypass)
   debugLoggingEnabled?: boolean;   // Write verbose logs to file for debugging
   channelSortOrder?: 'alphabetical' | 'number';  // Channel list ordering
+  tmdbMatchingEnabled?: boolean;   // Enable automatic TMDB matching on startup
+  lastTmdbMatch?: number;          // Timestamp of last successful TMDB match
+  shortcuts?: ShortcutsMap;        // Custom keyboard shortcuts
 }
+
+export type ShortcutAction =
+  | 'togglePlay'
+  | 'toggleMute'
+  | 'cycleSubtitle'
+  | 'cycleAudio'
+  | 'toggleStats'
+  | 'toggleGuide'
+  | 'toggleCategories'
+  | 'close'
+  | 'seekForward'
+  | 'seekBackward';
+
+export type ShortcutsMap = Partial<Record<ShortcutAction, string>>;
 
 export interface Source {
   id: string;
   name: string;
-  type: 'xtream' | 'm3u' | 'epg';
+  type: 'xtream' | 'm3u' | 'stalker' | 'epg';
   url: string;
   enabled: boolean;
   epg_url?: string;
   auto_load_epg?: boolean;
   username?: string;
   password?: string;
+  mac?: string;
+  user_agent?: string;
+  epg_timeshift_hours?: number;
+  backup_macs?: string[];  // Stalker backup MAC addresses
+  backup_credentials?: Array<{  // Xtream backup credentials
+    username: string;
+    password: string;
+  }>;
 }
 
 export interface M3UImportResult {
@@ -84,6 +113,8 @@ export interface StorageApi {
   updateSettings: (settings: Partial<AppSettings>) => Promise<StorageResult>;
   isEncryptionAvailable: () => Promise<StorageResult<boolean>>;
   importM3UFile: () => Promise<StorageResult<M3UImportResult> & { canceled?: boolean }>;
+  saveJsonFile: (data: string, defaultName: string) => Promise<StorageResult<{ filePath: string }> & { canceled?: boolean }>;
+  openJsonFile: () => Promise<StorageResult<string> & { canceled?: boolean }>;
 }
 
 export interface FetchProxyResponse {
@@ -121,4 +152,4 @@ declare global {
   }
 }
 
-export {};
+export { };

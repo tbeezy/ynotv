@@ -10,13 +10,17 @@ import { SeriesTab } from './settings/SeriesTab';
 import { PosterDbTab } from './settings/PosterDbTab';
 import { SecurityTab } from './settings/SecurityTab';
 import { DebugTab } from './settings/DebugTab';
+import { ShortcutsTab } from './settings/ShortcutsTab';
+import { ImportExportTab } from './settings/ImportExportTab';
+import type { ShortcutsMap } from '../types/electron';
 import './Settings.css';
 
 interface SettingsProps {
   onClose: () => void;
+  onShortcutsChange?: (shortcuts: ShortcutsMap) => void;
 }
 
-export function Settings({ onClose }: SettingsProps) {
+export function Settings({ onClose, onShortcutsChange }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>('sources');
   const [sources, setSources] = useState<Source[]>([]);
   const [isEncryptionAvailable, setIsEncryptionAvailable] = useState(true);
@@ -24,6 +28,7 @@ export function Settings({ onClose }: SettingsProps) {
   // TMDB API key state
   const [tmdbApiKey, setTmdbApiKey] = useState('');
   const [tmdbKeyValid, setTmdbKeyValid] = useState<boolean | null>(null);
+  const [tmdbMatchingEnabled, setTmdbMatchingEnabled] = useState(true);
 
   // Refresh settings state
   const [vodRefreshHours, setVodRefreshHours] = useState(24);
@@ -46,6 +51,9 @@ export function Settings({ onClose }: SettingsProps) {
 
   // Channel display state
   const [channelSortOrder, setChannelSortOrder] = useState<'alphabetical' | 'number'>('alphabetical');
+
+  // Shortcuts state
+  const [shortcuts, setShortcuts] = useState<ShortcutsMap>({});
 
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -98,6 +106,8 @@ export function Settings({ onClose }: SettingsProps) {
         allowLanSources?: boolean;
         debugLoggingEnabled?: boolean;
         channelSortOrder?: 'alphabetical' | 'number';
+        tmdbMatchingEnabled?: boolean;
+        shortcuts?: ShortcutsMap;
       };
 
       // Load TMDB API key
@@ -106,6 +116,7 @@ export function Settings({ onClose }: SettingsProps) {
       if (key) {
         setTmdbKeyValid(true); // Assume valid if previously saved
       }
+      setTmdbMatchingEnabled(settings.tmdbMatchingEnabled ?? true);
 
       // Load refresh settings
       if (settings.vodRefreshHours !== undefined) {
@@ -134,21 +145,27 @@ export function Settings({ onClose }: SettingsProps) {
       setDebugLoggingEnabled(settings.debugLoggingEnabled ?? false);
 
       // Load channel display settings
+      // Load channel display settings
       setChannelSortOrder(settings.channelSortOrder ?? 'alphabetical');
+
+      // Load shortcuts
+      if (settings.shortcuts) {
+        setShortcuts(settings.shortcuts);
+      }
     }
     setSettingsLoaded(true);
   }
 
-  // Check if any Xtream source exists (for showing Movies/Series tabs)
-  const hasXtreamSource = sources.some(s => s.type === 'xtream');
+  // Check if any VOD source exists (Xtream or Stalker) for showing Movies/Series tabs
+  const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
 
   // Reset to sources tab if current tab becomes hidden
   useEffect(() => {
     const libraryTabs: SettingsTabId[] = ['movies', 'series'];
-    if (libraryTabs.includes(activeTab) && !hasXtreamSource) {
+    if (libraryTabs.includes(activeTab) && !hasVodSource) {
       setActiveTab('sources');
     }
-  }, [hasXtreamSource, activeTab]);
+  }, [hasVodSource, activeTab]);
 
   // Memoized callbacks for genre changes
   const handleMovieGenresChange = useCallback((genres: number[]) => {
@@ -158,6 +175,16 @@ export function Settings({ onClose }: SettingsProps) {
   const handleSeriesGenresChange = useCallback((genres: number[]) => {
     setSeriesGenresEnabled(genres);
   }, []);
+
+  const handleShortcutsChange = async (newShortcuts: ShortcutsMap) => {
+    setShortcuts(newShortcuts);
+    if (onShortcutsChange) {
+      onShortcutsChange(newShortcuts);
+    }
+    if (window.storage) {
+      await window.storage.updateSettings({ shortcuts: newShortcuts });
+    }
+  };
 
   function renderTabContent() {
     switch (activeTab) {
@@ -176,6 +203,8 @@ export function Settings({ onClose }: SettingsProps) {
             tmdbKeyValid={tmdbKeyValid}
             onApiKeyChange={setTmdbApiKey}
             onApiKeyValidChange={setTmdbKeyValid}
+            tmdbMatchingEnabled={tmdbMatchingEnabled}
+            onTmdbMatchingEnabledChange={setTmdbMatchingEnabled}
           />
         );
       case 'refresh':
@@ -237,6 +266,15 @@ export function Settings({ onClose }: SettingsProps) {
             onDebugLoggingChange={setDebugLoggingEnabled}
           />
         );
+      case 'shortcuts':
+        return (
+          <ShortcutsTab
+            shortcuts={shortcuts}
+            onShortcutsChange={handleShortcutsChange}
+          />
+        );
+      case 'export-import':
+        return <ImportExportTab />;
       default:
         return null;
     }
@@ -267,7 +305,7 @@ export function Settings({ onClose }: SettingsProps) {
           <SettingsSidebar
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            hasXtreamSource={hasXtreamSource}
+            hasVodSource={hasVodSource}
           />
 
           {/* Tab Content */}

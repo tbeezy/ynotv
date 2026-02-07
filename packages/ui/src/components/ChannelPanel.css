@@ -7,8 +7,9 @@
   bottom: 0;
   padding-left: 70px;
   box-sizing: border-box;
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(20px);
+  /* background: rgba(0, 0, 0, 0.95);  <-- REMOVED to allow hole-punch */
+  /* backdrop-filter: blur(20px);      <-- REMOVED */
+  background: transparent;
   display: flex;
   flex-direction: column;
   z-index: 80;
@@ -20,9 +21,9 @@
   -webkit-backface-visibility: hidden;
 
   opacity: 0;
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.25s ease,
-              padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  /* Removed transform and padding-left transitions for instant snapping */
+  transition: opacity 0.15s ease;
 }
 
 .guide-panel.visible {
@@ -30,10 +31,18 @@
   opacity: 1;
 }
 
-.guide-panel.hidden {
-  transform: translate3d(0, 100%, 0);
-  opacity: 0;
-  pointer-events: none;
+
+.guide-current-time-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background-color: #ff3b30;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255, 59, 48, 0.6);
 }
 
 .guide-panel.sidebar-expanded {
@@ -41,11 +50,104 @@
 }
 
 .guide-panel.with-categories {
-  padding-left: 230px;
+  padding-left: 300px;
 }
 
-.guide-panel.sidebar-expanded.with-categories {
-  padding-left: 320px;
+.guide-panel.with-categories.sidebar-expanded {
+  padding-left: 390px;
+}
+
+/* Split Layout Styles */
+.guide-top-section {
+  display: flex;
+  /* Height determined by children (aspect-ratio) */
+  width: 100%;
+}
+
+.guide-preview-pane {
+  flex: 0 0 32%;
+  /* Video width approx 32% */
+  aspect-ratio: 16 / 9;
+  /* Transparent background to show video */
+  background: rgba(0, 0, 0, 0.5);
+  /* Slight tint or fully transparent? */
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Optional: Indicate it is a preview area if no video is selected */
+.guide-preview-placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 1.2rem;
+}
+
+.guide-info-pane {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.guide-grid-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+  /* Ensure virtual list scrolls inside */
+}
+
+/* Program Details Styles */
+.guide-program-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: white;
+}
+
+.guide-program-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+}
+
+.guide-program-progress-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  width: 200px;
+  overflow: hidden;
+}
+
+.guide-program-progress-fill {
+  height: 100%;
+  background: #00d4ff;
+}
+
+.guide-program-description {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 800px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.guide-panel.sidebar-expanded {
+  padding-left: 150px;
 }
 
 /* Header */
@@ -174,6 +276,7 @@
 .guide-time-header-spacer {
   flex-shrink: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
+  box-sizing: border-box;
 }
 
 .guide-time-header-grid {
@@ -204,6 +307,8 @@
   flex: 1;
   overflow: hidden;
   display: flex;
+  position: relative;
+  /* Ensure absolute children position correctly */
 }
 
 .guide-channels {
@@ -255,6 +360,8 @@
   cursor: pointer;
   transition: background 0.15s ease;
   flex-shrink: 0;
+  box-sizing: border-box;
+  /* Critical for matching header width */
 }
 
 .guide-channel-info:hover {
@@ -297,12 +404,43 @@
   color: rgba(255, 255, 255, 0.3);
 }
 
+/* Marquee effect on hover */
+.guide-channel-name-container {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, black 85%, transparent 100%);
+}
+
 .guide-channel-name {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.9);
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.guide-channel-info:hover .guide-channel-name {
+  /* Only animate if we want a scrolling effect. */
+  overflow: visible;
+  display: inline-block;
+  animation: scroll-text 8s linear infinite;
+  padding-right: 20px;
+}
+
+@keyframes scroll-text {
+  0% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
 /* Program Grid (EPG area) */

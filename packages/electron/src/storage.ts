@@ -12,14 +12,20 @@ interface StoreSchema {
 interface StoredSource {
   id: string;
   name: string;
-  type: 'xtream' | 'm3u' | 'epg';
+  type: 'xtream' | 'm3u' | 'stalker' | 'epg';
   url: string;
   enabled: boolean;
   epg_url?: string;
   auto_load_epg?: boolean; // Auto-fetch EPG from source (default: true for xtream)
+  user_agent?: string;     // Custom User-Agent
+  epg_timeshift_hours?: number; // EPG time offset
   // Xtream-specific (encrypted)
   username?: string;
   encryptedPassword?: string; // Base64 encoded encrypted buffer
+  backup_credentials?: Array<{ username: string; encryptedPassword: string }>;
+  // Stalker-specific
+  mac?: string;
+  backup_macs?: string[];
 }
 
 interface AppSettings {
@@ -35,6 +41,9 @@ interface AppSettings {
   allowLanSources?: boolean;       // Allow requests to LAN IPs (SSRF protection bypass)
   debugLoggingEnabled?: boolean;   // Write verbose logs to file for debugging
   channelSortOrder?: 'alphabetical' | 'number';  // Channel list ordering (default: alphabetical)
+  tmdbMatchingEnabled?: boolean;   // Enable automatic TMDB export download and matching (default: true)
+  lastTmdbMatch?: number;          // Timestamp of last successful TMDB match
+  shortcuts?: Record<string, string>; // Custom keyboard shortcuts
 }
 
 // Internal storage format (encrypted)
@@ -51,6 +60,9 @@ interface StoredSettings {
   allowLanSources?: boolean;        // Allow requests to LAN IPs
   debugLoggingEnabled?: boolean;    // Write verbose logs to file
   channelSortOrder?: 'alphabetical' | 'number';  // Channel list ordering
+  tmdbMatchingEnabled?: boolean;    // Enable automatic TMDB matching
+  lastTmdbMatch?: number;           // Timestamp of last match
+  shortcuts?: Record<string, string>; // Custom keyboard shortcuts
 }
 
 const store = new Store<StoreSchema>({
@@ -61,6 +73,7 @@ const store = new Store<StoreSchema>({
       theme: 'dark',
       vodRefreshHours: 24,  // Default: refresh VOD every 24 hours
       epgRefreshHours: 6,   // Default: refresh EPG every 6 hours
+      tmdbMatchingEnabled: true, // Default: enabled
     },
   },
 });
@@ -104,12 +117,24 @@ export function getSources(): Source[] {
       enabled: s.enabled,
       epg_url: s.epg_url,
       auto_load_epg: s.auto_load_epg,
+      user_agent: s.user_agent,
+      epg_timeshift_hours: s.epg_timeshift_hours,
     };
     if (s.type === 'xtream' && s.username) {
       source.username = s.username;
       if (s.encryptedPassword) {
         source.password = decryptPassword(s.encryptedPassword);
       }
+      if (s.backup_credentials) {
+        source.backup_credentials = s.backup_credentials.map(c => ({
+          username: c.username,
+          password: decryptPassword(c.encryptedPassword)
+        }));
+      }
+    }
+    if (s.type === 'stalker') {
+      source.mac = s.mac;
+      if (s.backup_macs) source.backup_macs = s.backup_macs;
     }
     return source;
   });
@@ -127,6 +152,7 @@ export function getSource(id: string): Source | undefined {
  * Add or update a source
  */
 export function saveSource(source: Source): void {
+  console.log('[storage] saveSource called with:', source.name, 'UA:', source.user_agent);
   const sources = store.get('sources', []);
   const stored: StoredSource = {
     id: source.id,
@@ -134,25 +160,47 @@ export function saveSource(source: Source): void {
     type: source.type,
     url: source.url,
     enabled: source.enabled,
-    epg_url: source.epg_url,
     auto_load_epg: source.auto_load_epg,
+    user_agent: source.user_agent,
+    epg_timeshift_hours: source.epg_timeshift_hours,
   };
+
+  // Only assign epg_url if it's present in the source object
+  if (source.epg_url) {
+    stored.epg_url = source.epg_url;
+  }
+
+  console.log('[storage] Stored object prepared:', JSON.stringify(stored));
 
   if (source.type === 'xtream') {
     stored.username = source.username;
     if (source.password) {
       stored.encryptedPassword = encryptPassword(source.password);
     }
+    if (source.backup_credentials) {
+      stored.backup_credentials = source.backup_credentials.map(c => ({
+        username: c.username,
+        encryptedPassword: encryptPassword(c.password)
+      }));
+    }
+  }
+
+  if (source.type === 'stalker') {
+    stored.mac = source.mac;
+    stored.backup_macs = source.backup_macs;
   }
 
   const existingIndex = sources.findIndex((s) => s.id === source.id);
   if (existingIndex >= 0) {
+    console.log('[storage] Updating existing source at index:', existingIndex);
     sources[existingIndex] = stored;
   } else {
+    console.log('[storage] Adding new source');
     sources.push(stored);
   }
 
   store.set('sources', sources);
+  console.log('[storage] Store saved. New sources count:', sources.length);
 }
 
 /**
@@ -189,6 +237,9 @@ export function getSettings(): AppSettings {
   result.allowLanSources = stored.allowLanSources ?? false;
   result.debugLoggingEnabled = stored.debugLoggingEnabled ?? false;
   result.channelSortOrder = stored.channelSortOrder ?? 'alphabetical';
+  result.tmdbMatchingEnabled = stored.tmdbMatchingEnabled ?? true;
+  result.lastTmdbMatch = stored.lastTmdbMatch;
+  result.shortcuts = stored.shortcuts;
   return result;
 }
 
@@ -222,6 +273,18 @@ export function updateSettings(settings: Partial<AppSettings>): void {
   }
   if (settings.channelSortOrder !== undefined) {
     updated.channelSortOrder = settings.channelSortOrder;
+  }
+  if (settings.tmdbMatchingEnabled !== undefined) {
+    updated.tmdbMatchingEnabled = settings.tmdbMatchingEnabled;
+  }
+  if (settings.tmdbMatchingEnabled !== undefined) {
+    updated.tmdbMatchingEnabled = settings.tmdbMatchingEnabled;
+  }
+  if (settings.lastTmdbMatch !== undefined) {
+    updated.lastTmdbMatch = settings.lastTmdbMatch;
+  }
+  if (settings.shortcuts !== undefined) {
+    updated.shortcuts = settings.shortcuts;
   }
 
   store.set('settings', updated);

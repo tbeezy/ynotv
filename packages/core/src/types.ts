@@ -7,7 +7,7 @@
 // Source Types - How we connect to IPTV providers
 // =============================================================================
 
-export type SourceType = 'xtream' | 'm3u' | 'epg';
+export type SourceType = 'xtream' | 'm3u' | 'stalker' | 'epg';
 
 export interface Source {
   id: string;
@@ -16,8 +16,16 @@ export interface Source {
   url: string;
   username?: string;      // Xtream only
   password?: string;      // Xtream only
+  mac?: string;           // Stalker only
   epg_url?: string;       // Auto-detected or manual override
   auto_load_epg?: boolean; // Auto-fetch EPG from source (default: true for xtream)
+  user_agent?: string;    // Custom User-Agent for requests
+  epg_timeshift_hours?: number; // EPG time offset in hours (e.g., -1, 0, +1)
+  backup_macs?: string[];  // Stalker backup MAC addresses
+  backup_credentials?: Array<{  // Xtream backup credentials
+    username: string;
+    password: string;
+  }>;
   enabled: boolean;
 }
 

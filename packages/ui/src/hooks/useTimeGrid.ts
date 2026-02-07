@@ -98,9 +98,9 @@ export function useTimeGrid({
   useEffect(() => {
     if (!isAtNow) return;
 
-    // Update anchor to current time (now at left edge)
+    // Update anchor to current time (snapped to hour)
     const updateNow = () => {
-      setAnchor(getNow());
+      setAnchor(floorToHour(getNow()));
     };
 
     // Update immediately

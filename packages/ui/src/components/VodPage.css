@@ -1,57 +1,15 @@
 .vod-page {
   position: fixed;
-  top: 32px; /* Below frameless title bar */
+  top: 32px;
+  /* Below frameless title bar */
   left: 0;
   right: 0;
   bottom: 0;
   background: #0d0d0d;
   z-index: 100;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
-}
-
-/* Header */
-.vod-page__header {
-  flex-shrink: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 16px 48px;
-  background: #0d0d0d;
-}
-
-.vod-page__close {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.vod-page__close:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.vod-page__close svg {
-  width: 20px;
-  height: 20px;
-}
-
-.vod-page__title {
-  font-size: 1.375rem;
-  font-weight: 500;
-  color: #fff;
-  margin: 0;
-  letter-spacing: -0.01em;
 }
 
 /* Search - refined Apple-style */
@@ -116,53 +74,13 @@
   height: 14px;
 }
 
-/* Category strip */
-.vod-page__categories {
-  flex-shrink: 0;
-  display: flex;
-  gap: 8px;
-  padding: 8px 48px 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
-}
 
-.vod-page__categories::-webkit-scrollbar {
-  display: none;
-}
-
-.vod-page__category {
-  flex-shrink: 0;
-  padding: 7px 14px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.vod-page__category:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.vod-page__category.active {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.25);
-}
 
 /* Main content */
 .vod-page__content {
   flex: 1;
-  min-height: 0; /* Important: allows flex child to shrink below content size */
+  min-height: 0;
+  /* Important: allows flex child to shrink below content size */
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;

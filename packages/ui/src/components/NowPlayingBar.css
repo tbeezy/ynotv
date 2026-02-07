@@ -35,7 +35,8 @@
 
 /* Row 1: Info row */
 .npb-info-row {
-  align-items: stretch; /* Make children same height for divider */
+  align-items: stretch;
+  /* Make children same height for divider */
   min-height: 38px;
 }
 
@@ -102,13 +103,11 @@
   width: 1px;
   align-self: stretch;
   margin: 0 4px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(255, 255, 255, 0.2) 20%,
-    rgba(255, 255, 255, 0.2) 80%,
-    transparent 100%
-  );
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      rgba(255, 255, 255, 0.2) 20%,
+      rgba(255, 255, 255, 0.2) 80%,
+      transparent 100%);
 }
 
 /* Description section - fills remaining space, allows wrapping */
@@ -253,6 +252,14 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  flex-shrink: 0;
+}
+
+/* Extra controls group - add left margin to separate from play/stop */
+.npb-extra-controls {
+  margin-left: 8px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .npb-btn {

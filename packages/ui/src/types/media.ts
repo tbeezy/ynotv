@@ -46,4 +46,5 @@ export interface VodPlayInfo {
   plot?: string;          // Description/overview
   type: 'movie' | 'series';
   episodeInfo?: string;   // For series: "S1 E3" or "S1 E3 · Episode Title"
+  source_id?: string;
 }

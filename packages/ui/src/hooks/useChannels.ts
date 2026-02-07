@@ -1,13 +1,64 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, getLastCategory, setLastCategory } from '../db';
 import type { StoredChannel, StoredCategory, SourceMeta, StoredProgram } from '../db';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react'; 
+import { useSourceVersion } from '../contexts/SourceVersionContext';
 
-// Hook to get all categories across all sources
+// Hook to get enabled source IDs (for filtering data from disabled sources)
+// Returns null during loading to avoid hiding all data
+export function useEnabledSources(): Set<string> | null {
+  const { version } = useSourceVersion(); // Track source changes
+
+  const sources = useLiveQuery(async () => {
+    if (!window.storage) return null;
+    const result = await window.storage.getSources();
+    if (!result.data) return null;
+    return result.data.filter(s => s.enabled !== false);
+  }, [version]); // Re-run when version changes
+
+  // Return null if still loading sources
+  if (sources === undefined || sources === null) return null;
+
+  return new Set(sources.map(s => s.id));
+}
+
+// Hook to get all categories across all sources (filtered by enabled sources and categories)
+// Includes virtual "Favorites" category if any channels are favorited
 export function useCategories() {
-  const categories = useLiveQuery(() => db.categories.orderBy('category_name').toArray());
+  const enabledSourceIds = useEnabledSources();
+  const categories = useLiveQuery(
+    async () => {
+      // Don't filter if sources haven't loaded yet
+      if (!enabledSourceIds) return db.categories.orderBy('category_name').toArray();
+
+      const allCategories = await db.categories.filter(cat => enabledSourceIds.has(cat.source_id)).sortBy('category_name');
+
+      // Filter out disabled categories (enabled defaults to true if not set)
+      const enabledCategories = allCategories.filter(cat => cat.enabled !== false);
+
+      // Check if we have any favorited channels
+      const allChannels = await db.channels.toArray();
+      const favoriteCount = allChannels.filter(ch => ch.is_favorite === true).length;
+
+      // Add virtual "Favorites" category at the beginning if there are favorites
+      if (favoriteCount > 0) {
+        const favoritesCategory: StoredCategory = {
+          category_id: '__favorites__',
+          category_name: '⭐ Favorites',
+          source_id: '__virtual__',
+          channel_count: favoriteCount,
+          enabled: true,
+        };
+        return [favoritesCategory, ...enabledCategories];
+      }
+
+      return enabledCategories;
+    },
+    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+  );
   return categories ?? [];
 }
+
 
 // Hook to get categories for a specific source
 export function useCategoriesForSource(sourceId: string | null) {
@@ -20,15 +71,27 @@ export function useCategoriesForSource(sourceId: string | null) {
 
 // Hook to get channels for a category (or all if categoryId is null)
 // sortOrder: 'alphabetical' (default) or 'number' (by channel_num from provider)
+// Filters out channels from disabled sources
 export function useChannels(categoryId: string | null, sortOrder: 'alphabetical' | 'number' = 'alphabetical') {
+  const enabledSourceIds = useEnabledSources();
   const channels = useLiveQuery(
     async () => {
       let results: StoredChannel[];
-      if (!categoryId) {
+
+      // Handle virtual Favorites category
+      if (categoryId === '__favorites__') {
+        results = await db.channels.toArray();
+        results = results.filter(ch => ch.is_favorite === true);
+      } else if (!categoryId) {
         results = await db.channels.toArray();
       } else {
         // Channels in this category
         results = await db.channels.where('category_ids').equals(categoryId).toArray();
+      }
+
+      // Filter out channels from disabled sources (only if sources have loaded)
+      if (enabledSourceIds) {
+        results = results.filter(ch => enabledSourceIds.has(ch.source_id));
       }
 
       // Sort based on preference
@@ -48,7 +111,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
       // Default: alphabetical
       return results.sort((a, b) => a.name.localeCompare(b.name));
     },
-    [categoryId, sortOrder]
+    [categoryId, sortOrder, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
   );
   return channels ?? [];
 }
@@ -118,18 +181,84 @@ export interface CategoryWithCount extends StoredCategory {
   channelCount: number;
 }
 
-// Hook to get categories with their channel counts
+// Grouped categories by source
+export interface SourceWithCategories {
+  sourceId: string;
+  categories: CategoryWithCount[];
+}
+
+// Hook to get categories grouped by source (filtered by enabled sources)
+export function useCategoriesBySource(): SourceWithCategories[] {
+  const enabledSourceIds = useEnabledSources();
+  const data = useLiveQuery(
+    async () => {
+      // Don't filter if sources haven't loaded yet
+      const allCategories = await db.categories.orderBy('category_name').toArray();
+      const categories = enabledSourceIds
+        ? allCategories.filter(cat => enabledSourceIds.has(cat.source_id) && cat.enabled !== false)
+        : allCategories.filter(cat => cat.enabled !== false);
+
+      const withCounts: CategoryWithCount[] = await Promise.all(
+        categories.map(async (cat) => {
+          const count = await db.channels.where('category_ids').equals(cat.category_id).count();
+          return { ...cat, channelCount: count };
+        })
+      );
+
+      // Group by source_id
+      const grouped = withCounts.reduce((acc, cat) => {
+        const sourceId = cat.source_id;
+        if (!acc[sourceId]) {
+          acc[sourceId] = [];
+        }
+        acc[sourceId].push(cat);
+        return acc;
+      }, {} as Record<string, CategoryWithCount[]>);
+
+      // Sort categories within each source by display_order, then category_name
+      Object.values(grouped).forEach(cats => {
+        cats.sort((a, b) => {
+          if (a.display_order !== undefined && b.display_order !== undefined) {
+            return a.display_order - b.display_order;
+          }
+          if (a.display_order !== undefined) return -1;
+          if (b.display_order !== undefined) return 1;
+          return a.category_name.localeCompare(b.category_name);
+        });
+      });
+
+      return Object.entries(grouped).map(([sourceId, categories]) => ({
+        sourceId,
+        categories,
+      }));
+    },
+    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+  );
+
+  return data ?? [];
+}
+
+// Hook to get categories with their channel counts (filtered by enabled sources)
 export function useCategoriesWithCounts(): CategoryWithCount[] {
-  const data = useLiveQuery(async () => {
-    const categories = await db.categories.orderBy('category_name').toArray();
-    const withCounts: CategoryWithCount[] = await Promise.all(
-      categories.map(async (cat) => {
-        const count = await db.channels.where('category_ids').equals(cat.category_id).count();
-        return { ...cat, channelCount: count };
-      })
-    );
-    return withCounts;
-  });
+  const enabledSourceIds = useEnabledSources();
+  const data = useLiveQuery(
+    async () => {
+      // Don't filter if sources haven't loaded yet
+      const allCategories = await db.categories.orderBy('category_name').toArray();
+      const categories = enabledSourceIds
+        ? allCategories.filter(cat => enabledSourceIds.has(cat.source_id))
+        : allCategories;
+
+      const withCounts: CategoryWithCount[] = await Promise.all(
+        categories.map(async (cat) => {
+          const count = await db.channels.where('category_ids').equals(cat.category_id).count();
+          return { ...cat, channelCount: count };
+        })
+      );
+      return withCounts;
+    },
+    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+  );
   return data ?? [];
 }
 

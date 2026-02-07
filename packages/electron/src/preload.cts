@@ -16,7 +16,7 @@ export interface MpvResult {
 }
 
 export interface MpvApi {
-  load: (url: string) => Promise<MpvResult>;
+  load: (url: string, options?: { userAgent?: string }) => Promise<MpvResult>;
   play: () => Promise<MpvResult>;
   pause: () => Promise<MpvResult>;
   togglePause: () => Promise<MpvResult>;
@@ -25,6 +25,10 @@ export interface MpvApi {
   toggleMute: () => Promise<MpvResult>;
   seek: (seconds: number) => Promise<MpvResult>;
   getStatus: () => Promise<MpvStatus>;
+  cycleSubtitle: () => Promise<MpvResult>;
+  cycleAudio: () => Promise<MpvResult>;
+  toggleStats: () => Promise<MpvResult>;
+  setProperty: (name: string, value: unknown) => Promise<MpvResult>;
   onReady: (callback: (ready: boolean) => void) => void;
   onStatus: (callback: (status: MpvStatus) => void) => void;
   onError: (callback: (error: string) => void) => void;
@@ -64,6 +68,8 @@ export interface StorageApi {
   updateSettings: (settings: Partial<AppSettings>) => Promise<StorageResult>;
   isEncryptionAvailable: () => Promise<StorageResult<boolean>>;
   importM3UFile: () => Promise<StorageResult<M3UImportResult> & { canceled?: boolean }>;
+  saveJsonFile: (data: string, defaultName: string) => Promise<StorageResult<{ filePath: string }> & { canceled?: boolean }>;
+  openJsonFile: () => Promise<StorageResult<{ data: string }> & { canceled?: boolean }>;
 }
 
 // Fetch proxy response
@@ -97,7 +103,7 @@ contextBridge.exposeInMainWorld('electronWindow', {
 // Expose mpv API to the renderer process
 contextBridge.exposeInMainWorld('mpv', {
   // Control functions
-  load: (url: string) => ipcRenderer.invoke('mpv-load', url),
+  load: (url: string, options?: { userAgent?: string }) => ipcRenderer.invoke('mpv-load', url, options),
   play: () => ipcRenderer.invoke('mpv-play'),
   pause: () => ipcRenderer.invoke('mpv-pause'),
   togglePause: () => ipcRenderer.invoke('mpv-toggle-pause'),
@@ -106,6 +112,10 @@ contextBridge.exposeInMainWorld('mpv', {
   toggleMute: () => ipcRenderer.invoke('mpv-toggle-mute'),
   seek: (seconds: number) => ipcRenderer.invoke('mpv-seek', seconds),
   getStatus: () => ipcRenderer.invoke('mpv-get-status'),
+  cycleSubtitle: () => ipcRenderer.invoke('mpv-cycle-subtitle'),
+  cycleAudio: () => ipcRenderer.invoke('mpv-cycle-audio'),
+  toggleStats: () => ipcRenderer.invoke('mpv-toggle-stats'),
+  setProperty: (name: string, value: unknown) => ipcRenderer.invoke('mpv-set-property', name, value),
 
   // Event listeners
   onReady: (callback: (ready: boolean) => void) => {
@@ -136,6 +146,8 @@ contextBridge.exposeInMainWorld('storage', {
   updateSettings: (settings: Partial<AppSettings>) => ipcRenderer.invoke('storage-update-settings', settings),
   isEncryptionAvailable: () => ipcRenderer.invoke('storage-is-encryption-available'),
   importM3UFile: () => ipcRenderer.invoke('import-m3u-file'),
+  saveJsonFile: (data: string, defaultName: string) => ipcRenderer.invoke('dialog-save-json', data, defaultName),
+  openJsonFile: () => ipcRenderer.invoke('dialog-open-json'),
 } satisfies StorageApi);
 
 // Expose fetch proxy API - bypasses CORS for API calls
