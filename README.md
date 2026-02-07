@@ -4,8 +4,9 @@
 
 A personal fork of [sbtlTV](https://github.com/thesubtleties/sbtlTV) with added features I wanted in an IPTV player for my personal use.
 
-<div align="center">![ynoTV Screenshot](assets/ss1.png)</div>
-
+<div align="center">
+<img width="2560" height="1392" alt="ss1" src="https://github.com/user-attachments/assets/85f6ab17-59a6-4ead-b535-9518568733ca" />
+</div>
 
 ## ✨ Added Features in ynoTV
 
