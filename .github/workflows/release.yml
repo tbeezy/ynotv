@@ -18,6 +18,12 @@ jobs:
           - os: ubuntu-latest
             platform: linux
 
+      # Allow one platform to fail without stopping others
+      fail-fast: false
+    
+    # Don't fail the workflow if one job fails (optional, but requested)
+    continue-on-error: true
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -58,7 +64,7 @@ jobs:
             release/*.dmg
             release/*.AppImage
             release/*.deb
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   release:
     needs: build

@@ -56,14 +56,25 @@ mkdir -p "$BUNDLE_DIR"
 
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
-    echo "Downloading mpv for Windows..."
-    # SourceForge mpv-player-windows - official community builds
-    # https://sourceforge.net/projects/mpv-player-windows/files/
-    MPV_URL="https://downloads.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20250119-git-ab78d7b.7z"
+    echo "Downloading mpv for Windows (latest from shinchiro/mpv-winbuild-cmake)..."
+    
+    # Fetch latest release download URL
+    MPV_URL=$(curl -s https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest \
+      | grep "browser_download_url.*mpv-x86_64.*.7z" \
+      | head -n 1 \
+      | cut -d '"' -f 4)
+    
+    if [ -z "$MPV_URL" ]; then
+      echo "Failed to find MPV download URL from GitHub API"
+      exit 1
+    fi
+    
+    echo "URL: $MPV_URL"
     TEMP_DIR=$(mktemp -d)
     curl -L -o "$TEMP_DIR/mpv.7z" "$MPV_URL"
 
-    verify_checksum "$TEMP_DIR/mpv.7z" "$MPV_SHA256_WINDOWS"
+    # Skip checksum for rolling release
+    verify_checksum "$TEMP_DIR/mpv.7z" "SKIP"
 
     # Extract with 7z (available in GitHub Actions Windows runners)
     7z x "$TEMP_DIR/mpv.7z" -o"$TEMP_DIR/mpv-extract" -y

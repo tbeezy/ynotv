@@ -14,7 +14,7 @@ A personal fork of [sbtlTV](https://github.com/thesubtleties/sbtlTV) with added 
 - **MAC Stalker Support** - Full support for MAC-based Stalker portals
 - **Intelligent Subcategories** - Each source maintains its own main category instead of mixing all channels together
 - **Favorites System** - Quickly access your most-watched channels
-- **Custom User Agent** - Set custom user agents per source
+- **Custom User Agent** - Set custom user agents per source for compatibility
 - **Stream Stats** - View detailed stream information and diagnostics
 - **Advanced Playback Control** - Swap subtitles and audio tracks on the fly
 - **Playlist Management** - Enable/disable individual playlists seamlessly
