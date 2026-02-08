@@ -18,9 +18,6 @@ jobs:
           - os: ubuntu-latest
             platform: linux
 
-      # Allow one platform to fail without stopping others
-      fail-fast: false
-    
     # Don't fail the workflow if one job fails (optional, but requested)
     continue-on-error: true
 
