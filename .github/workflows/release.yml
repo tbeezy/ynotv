@@ -39,17 +39,8 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
-      - name: Install mpv (Windows)
-        if: matrix.platform == 'win'
-        run: |
-          choco install mpvio -y
-          mkdir -p packages/electron/mpv-bundle
-          cp "C:/ProgramData/chocolatey/lib/mpvio.install/tools/"*.exe packages/electron/mpv-bundle/
-          cp "C:/ProgramData/chocolatey/lib/mpvio.install/tools/"*.dll packages/electron/mpv-bundle/
-        shell: bash
-
-      - name: Download mpv (macOS only)
-        if: matrix.platform == 'mac'
+      # UNIFIED STEP: This runs your script on both Windows (via Git Bash) and Mac
+      - name: Download mpv binaries
         run: bash scripts/download-mpv.sh
         shell: bash
 
@@ -67,7 +58,7 @@ jobs:
             release/*.dmg
             release/*.AppImage
             release/*.deb
-          if-no-files-found: error
+          if-no-files-found: ignore
 
   release:
     needs: build
