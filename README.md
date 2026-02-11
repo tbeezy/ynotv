@@ -2,7 +2,7 @@
 
 > A desktop IPTV player built with Electron and mpv
 
-A personal fork of [sbtlTV](https://github.com/thesubtleties/sbtlTV) with added features I wanted in an IPTV player for my personal use.
+A personal fork of [sbtlTV](https://github.com/thesubtleties/sbtlTV) with added features I wanted in an IPTV player for my personal use with the help of AI.
 
 <div align="center"><img width="2560" height="1392" alt="ss1" src="https://github.com/user-attachments/assets/bfaed9ac-86d7-4394-b0cb-22ac7d6d059e" />
 </div>
