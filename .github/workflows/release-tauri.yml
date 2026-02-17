@@ -20,7 +20,6 @@ jobs:
           - platform: 'ubuntu-22.04'
             args: ''
 
-
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -32,14 +31,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-          sudo apt-get install -y mpv ffmpeg  # System mpv and ffmpeg for sidecar wrappers
+          sudo apt-get install -y mpv ffmpeg
         # webkitgtk 4.0 is for tauri v1 - webkitgtk 4.1 is for tauri v2
 
-      - name: Install FFmpeg (macOS only)
+      - name: Install dependencies (macOS)
         if: matrix.platform == 'macos-latest'
         run: |
           brew install ffmpeg
-        # FFmpeg is needed for DVR functionality
+          # mpv will be downloaded by the script
+
+      - name: Install 7z (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: choco install 7zip -y
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -47,9 +50,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -60,15 +61,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Download MPV and FFmpeg (Tauri Sidecars)
+      - name: Download MPV (Tauri Sidecar)
         run: |
-          # Download MPV
           bash scripts/download-mpv-tauri.sh
-          # Download FFmpeg using the Node.js script
+          echo "Checking if mpv binary was created:"
+          ls -la packages/app/src-tauri/bin/ || echo "bin directory not found or empty"
+        shell: bash
+        continue-on-error: true
+
+      - name: Download FFmpeg (Tauri Sidecar)
+        run: |
           cd packages/app
           node scripts/download-ffmpeg.js
           cd ../..
-          echo "Checking if binaries were created:"
+          echo "Checking if FFmpeg binary was created:"
           ls -la packages/app/src-tauri/bin/ || echo "bin directory not found or empty"
         shell: bash
         continue-on-error: true
@@ -79,12 +85,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          tagName: app-v__VERSION__
           releaseName: 'App v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           prerelease: false
           args: ${{ matrix.args }}
-        continue-on-error: true
 
       - name: Check build status
         if: steps.tauri-build.outcome == 'failure'
