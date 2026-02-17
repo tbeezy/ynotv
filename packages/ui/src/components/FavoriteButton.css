@@ -1,0 +1,24 @@
+.favorite-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 6px;
+    margin: 0;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.favorite-btn:hover {
+    color: #ffd700;
+    transform: scale(1.1);
+}
+
+.favorite-btn.favorited {
+    color: #ffd700;
+}
+
+.favorite-btn.favorited:hover {
+    color: #ffed4e;
+}

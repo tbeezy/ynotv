@@ -1,0 +1,87 @@
+.recording-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 3px;
+    padding: 2px 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
+/* Recording variant (red) */
+.recording-indicator.recording {
+    background: rgba(204, 34, 34, 0.9);
+}
+
+/* Scheduled variant (dark/black) */
+.recording-indicator.scheduled {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.recording-indicator.small {
+    padding: 1px 4px;
+    gap: 2px;
+}
+
+.recording-indicator.medium {
+    padding: 3px 8px;
+    gap: 5px;
+}
+
+.recording-dot {
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+}
+
+.recording-dot.pulse {
+    animation: recordingPulse 1s ease-in-out infinite;
+}
+
+/* Scheduled variant dot - dark gray */
+.recording-indicator.scheduled .recording-dot {
+    background: #888;
+}
+
+.recording-indicator.small .recording-dot {
+    width: 6px;
+    height: 6px;
+}
+
+.recording-indicator.medium .recording-dot {
+    width: 10px;
+    height: 10px;
+}
+
+.recording-text {
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.recording-indicator.small .recording-text {
+    font-size: 8px;
+}
+
+.recording-indicator.medium .recording-text {
+    font-size: 12px;
+}
+
+/* Scheduled variant text - lighter gray */
+.recording-indicator.scheduled .recording-text {
+    color: #aaa;
+}
+
+@keyframes recordingPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(0.85);
+    }
+}

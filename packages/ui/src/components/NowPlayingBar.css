@@ -1,0 +1,568 @@
+/* Now Playing Bar - cable box style, two-row layout */
+.now-playing-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 50;
+}
+
+.now-playing-bar.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.now-playing-bar.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Row container */
+.npb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Row 1: Info row */
+.npb-info-row {
+  align-items: stretch;
+  /* Make children same height for divider */
+  min-height: 38px;
+}
+
+/* Channel section - fixed width, left side */
+.npb-channel-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-width: 180px;
+  max-width: 280px;
+}
+
+.npb-channel-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.npb-channel-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Metadata badge in NowPlayingBar */
+.npb-channel-text .metadata-badge {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.npb-channel-text .metadata-badge.detailed {
+  font-size: 0.7rem;
+  gap: 6px;
+}
+
+.npb-channel-text .metadata-badge .quality,
+.npb-channel-text .metadata-badge .fps,
+.npb-channel-text .metadata-badge .audio {
+  padding: 1px 5px;
+  font-size: 0.65rem;
+}
+
+.npb-channel-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.npb-program-title {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.npb-no-program {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}
+
+.npb-vod-year {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Soft vertical divider with faded top/bottom */
+.npb-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 4px;
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      rgba(255, 255, 255, 0.2) 20%,
+      rgba(255, 255, 255, 0.2) 80%,
+      transparent 100%);
+}
+
+/* Description section - fills remaining space, allows wrapping */
+.npb-description-section {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.npb-program-desc {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: default;
+}
+
+/* Row 2: Controls row */
+.npb-controls-row {
+  gap: 16px;
+}
+
+/* Progress section - takes remaining space */
+.npb-progress-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.npb-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.npb-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d4ff, #00a8cc);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* VOD progress section */
+.npb-progress-vod {
+  gap: 12px;
+}
+
+.npb-time-elapsed {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  min-width: 50px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Interactive progress bar for VOD */
+.npb-progress-interactive {
+  cursor: pointer;
+  position: relative;
+  height: 3px;
+  transition: height 0.15s ease;
+}
+
+.npb-progress-interactive.active {
+  height: 6px;
+}
+
+.npb-progress-interactive .npb-progress-fill {
+  transition: width 0.1s ease;
+}
+
+/* Scrubber handle */
+.npb-scrubber-handle {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+  pointer-events: none;
+}
+
+.npb-progress-interactive:hover .npb-scrubber-handle,
+.npb-progress-interactive.active .npb-scrubber-handle {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.npb-scrubber-handle.dragging {
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* Time tooltip */
+.npb-time-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  background: rgba(20, 20, 20, 0.95);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.npb-time-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(20, 20, 20, 0.95);
+}
+
+.npb-time-remaining {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  min-width: 65px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Playback controls */
+.npb-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-shrink: 0;
+}
+
+/* Extra controls group - add left margin to separate from play/stop */
+.npb-extra-controls {
+  margin-left: 8px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.npb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.npb-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.npb-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.npb-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Volume controls */
+.npb-volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.npb-volume-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.npb-volume-slider {
+  width: 70px;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.npb-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.npb-volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.npb-volume-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.npb-volume-slider:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.npb-volume-value {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  min-width: 22px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Empty state */
+.npb-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.npb-empty-state span {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 700px) {
+  .now-playing-bar {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .npb-channel-section {
+    min-width: 140px;
+    max-width: 200px;
+  }
+
+  .npb-channel-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .npb-description-section {
+    display: none;
+  }
+
+  .npb-divider {
+    display: none;
+  }
+
+  .npb-volume-slider {
+    width: 50px;
+  }
+
+  .npb-volume-value {
+    display: none;
+  }
+}
+
+@media (max-width: 450px) {
+  .npb-channel-logo {
+    display: none;
+  }
+
+  .npb-channel-section {
+    min-width: 100px;
+    max-width: 150px;
+  }
+
+  .npb-time-remaining {
+    display: none;
+  }
+}
+.npb-empty-state-container { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; }
+.npb-empty-state-text { display: flex; align-items: center; }
+.npb-empty-state-text span { font-size: 0.85rem; color: rgba(255, 255, 255, 0.35); font-style: italic; }
+.npb-right-controls { display: flex; align-items: center; gap: 16px; }
+
+/* Quick Record Modal */
+.npb-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.npb-modal {
+  background: var(--surface-color, #1a1a1a);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.npb-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.npb-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.npb-modal-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.npb-modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.npb-modal-body {
+  padding: 20px;
+}
+
+.npb-modal-body p {
+  margin: 0 0 12px 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.npb-modal-body p strong {
+  color: var(--text-primary, #fff);
+  font-weight: 600;
+}
+
+.npb-form-group {
+  margin-top: 16px;
+}
+
+.npb-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.npb-form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-primary, #fff);
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.npb-form-group input:focus {
+  outline: none;
+  border-color: var(--accent-color, #007acc);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.npb-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.npb-modal-footer .npb-btn {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
+
+.npb-modal-footer .npb-btn.secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.npb-modal-footer .npb-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.npb-modal-footer .npb-btn.primary {
+  background: var(--accent-color, #007acc);
+  border: 1px solid var(--accent-color, #007acc);
+}
+
+.npb-modal-footer .npb-btn.primary:hover {
+  background: var(--accent-hover, #005fa3);
+  border-color: var(--accent-hover, #005fa3);
+}

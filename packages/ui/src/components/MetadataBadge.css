@@ -1,0 +1,57 @@
+.metadata-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.6);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metadata-badge.compact {
+    padding: 3px 8px;
+    background: linear-gradient(135deg, rgba(0, 150, 255, 0.8), rgba(0, 100, 200, 0.9));
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.metadata-badge.detailed {
+    gap: 8px;
+}
+
+.metadata-badge .quality {
+    color: #00d4ff;
+    font-weight: 700;
+}
+
+.metadata-badge.compact .quality {
+    color: white;
+}
+
+.metadata-badge .fps {
+    color: #ff9500;
+}
+
+.metadata-badge .audio {
+    color: #50e3c2;
+}
+
+/* Optional: Different quality label colors */
+.metadata-badge .quality.uhd {
+    color: #ff3b30;
+}
+
+.metadata-badge .quality.fhd {
+    color: #00d4ff;
+}
+
+.metadata-badge .quality.hd {
+    color: #ffcc00;
+}
+
+.metadata-badge .quality.sd {
+    color: #8e8e93;
+}

@@ -1,0 +1,93 @@
+name: Release Tauri App
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            args: ''
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y mpv ffmpeg  # System mpv and ffmpeg for sidecar wrappers
+        # webkitgtk 4.0 is for tauri v1 - webkitgtk 4.1 is for tauri v2
+
+      - name: Install FFmpeg (macOS only)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          brew install ffmpeg
+        # FFmpeg is needed for DVR functionality
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download MPV and FFmpeg (Tauri Sidecars)
+        run: |
+          # Download MPV
+          bash scripts/download-mpv-tauri.sh
+          # Download FFmpeg using the Node.js script
+          cd packages/app
+          node scripts/download-ffmpeg.js
+          cd ../..
+          echo "Checking if binaries were created:"
+          ls -la packages/app/src-tauri/bin/ || echo "bin directory not found or empty"
+        shell: bash
+        continue-on-error: true
+
+      - name: Build Tauri App
+        id: tauri-build
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: 'App v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          prerelease: false
+          args: ${{ matrix.args }}
+        continue-on-error: true
+
+      - name: Check build status
+        if: steps.tauri-build.outcome == 'failure'
+        run: |
+          echo "::warning::Tauri build failed for ${{ matrix.platform }}"
+          echo "Build failed but workflow will continue for other platforms"

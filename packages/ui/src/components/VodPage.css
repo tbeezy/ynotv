@@ -1,0 +1,143 @@
+.vod-page {
+  position: fixed;
+  top: 32px;
+  /* Below frameless title bar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-primary, #0d0d0d);
+  z-index: 100;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+/* Search - refined Apple-style */
+.vod-page__search {
+  flex: 1;
+  max-width: 320px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.vod-page__search:focus-within {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.vod-page__search svg {
+  width: 16px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.vod-page__search input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 400;
+  outline: none;
+}
+
+.vod-page__search input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.vod-page__search button {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.vod-page__search button:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.vod-page__search button svg {
+  width: 14px;
+  height: 14px;
+}
+
+
+
+/* Main content */
+.vod-page__content {
+  flex: 1;
+  min-height: 0;
+  /* Important: allows flex child to shrink below content size */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.vod-page__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vod-page__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vod-page__content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.vod-page__content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.vod-page__carousels {
+  padding-top: 24px;
+}
+
+/* Virtualized home view - must fill container for Virtuoso */
+.vod-page__home {
+  height: 100%;
+}
+
+/* Wrapper for genre carousels in virtualized list */
+.vod-page__carousel-slot {
+  /* No min-height - let content determine size */
+  /* Empty carousels will collapse, which is fine */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .vod-page__header {
+    padding: 12px 24px;
+    gap: 16px;
+  }
+
+  .vod-page__title {
+    font-size: 1.25rem;
+  }
+
+  .vod-page__search {
+    max-width: none;
+    margin-left: 0;
+    order: 3;
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .vod-page__categories {
+    padding: 8px 24px 16px;
+  }
+}

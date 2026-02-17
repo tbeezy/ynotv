@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+out/
+*.tsbuildinfo
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Electron
+release/
+packages/electron/mpv-bundle/
+*.dmg
+*.exe
+*.AppImage
+
+# Test
+coverage/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Local tooling
+.tldr/
+.tldrignore
+.claude/
+documents/
+
+# Development notes
+thoughts/
+
+
+# FFmpeg binaries (auto-downloaded during build)
+**/bin/ffmpeg*
+**/bin/*.7z
+**/bin/*.tar.xz
+nul

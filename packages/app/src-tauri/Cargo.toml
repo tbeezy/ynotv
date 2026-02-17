@@ -1,0 +1,61 @@
+[package]
+name = "ynotv"
+version = "1.0.0"
+description = "A Tauri App"
+authors = ["tbeezy"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "packagesapp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-log = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-store = "2"
+tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
+raw-window-handle = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
+
+# DVR dependencies
+rusqlite = { version = "0.32", features = ["bundled", "chrono", "serde_json"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.25"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-appender = "0.2"
+walkdir = "2.5"
+sysinfo = "0.31"
+camino = "1.1"
+tokio-cron-scheduler = "0.13"
+once_cell = "1.20"
+parking_lot = "0.12"
+which = "7"
+dirs = "6"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Streaming EPG parser dependencies
+quick-xml = { version = "0.36", features = ["serialize"] }
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = "0.3"
+
+# HTTP client for TMDB caching and EPG streaming
+reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }

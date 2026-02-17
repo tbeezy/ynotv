@@ -1,0 +1,156 @@
+.alphabet-rail {
+  position: fixed;
+  right: 10px; /* Breathing room from edge */
+  top: calc(50% + 50px); /* Offset down to account for header area */
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  background: transparent;
+  border-radius: 0;
+  z-index: 100;
+  user-select: none;
+  touch-action: none;
+}
+
+.alphabet-rail--dragging {
+  cursor: grabbing;
+}
+
+.alphabet-rail__letter {
+  width: 28px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 100ms ease;
+  border-radius: 4px;
+}
+
+.alphabet-rail__letter:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.alphabet-rail__letter--current {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.alphabet-rail__letter--active {
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transform: scale(1.3);
+}
+
+.alphabet-rail__letter--unavailable {
+  color: rgba(255, 255, 255, 0.2);
+  cursor: default;
+}
+
+/* Magnified indicator bubble */
+.alphabet-rail__magnifier {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 12px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  animation: magnifier-pop 100ms ease-out;
+}
+
+@keyframes magnifier-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+/* Count indicator above letters */
+.alphabet-rail__count {
+  padding: 4px 6px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Separator line between count and letters */
+.alphabet-rail__separator {
+  width: 20px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 4px 0 6px;
+}
+
+/* Responsive - compact on narrow width */
+@media (max-width: 768px) {
+  .alphabet-rail {
+    padding: 4px 2px;
+    right: 6px;
+  }
+
+  .alphabet-rail__letter {
+    width: 24px;
+    height: 16px;
+    font-size: 0.65rem;
+  }
+
+  .alphabet-rail__letter--active {
+    font-size: 0.8rem;
+  }
+
+  .alphabet-rail__magnifier {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+}
+
+/* Responsive - compact on short height */
+@media (max-height: 710px) {
+  .alphabet-rail {
+    padding: 4px 2px;
+    right: 6px;
+  }
+
+  .alphabet-rail__letter {
+    width: 24px;
+    height: 16px;
+    font-size: 0.65rem;
+  }
+
+  .alphabet-rail__letter--active {
+    font-size: 0.8rem;
+  }
+
+  .alphabet-rail__magnifier {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+}

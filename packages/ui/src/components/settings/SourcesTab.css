@@ -1,0 +1,258 @@
+/* SourcesTab.css */
+/* Minimal overrides to ensure scrolling works within the Settings structure */
+
+.settings-tab-content {
+    /* Ensure it takes full height and flexes */
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    /* CRITICAL for scrolling */
+    overflow: hidden;
+}
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    /* CRITICAL for scrolling */
+    padding-bottom: 0 !important;
+    /* Remove bottom padding to let list scroll to edge */
+}
+
+.sources-list {
+    flex: 1;
+    overflow-y: auto;
+    /* The actual scrollbar */
+    min-height: 0;
+    padding-right: 8px;
+    /* Space for scrollbar */
+    margin-bottom: 10px;
+}
+
+/* Scrollbar Styling matching the app theme */
+.sources-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sources-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sources-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.sources-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Fix "random 0" rendering issue overrides if needed */
+
+/* Backup Credentials UI */
+.backup-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.backup-list {
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.backup-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.backup-val {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.backup-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.swap-btn,
+.delete-btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.swap-btn {
+    border: 1px solid var(--accent-primary, rgba(0, 212, 255, 0.4));
+    background: var(--surface-glow, rgba(0, 212, 255, 0.15));
+    color: var(--accent-primary, #00d4ff);
+}
+
+.swap-btn:hover {
+    background: var(--surface-hover, rgba(0, 212, 255, 0.25));
+    border-color: var(--accent-primary, rgba(0, 212, 255, 0.6));
+}
+
+.delete-btn {
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff3b30;
+}
+
+.delete-btn:hover {
+    background: rgba(255, 59, 48, 0.25);
+    border-color: rgba(255, 59, 48, 0.5);
+    color: #ff6b64;
+}
+
+.add-backup-btn {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    margin-top: 8px;
+}
+
+.add-backup-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Inline Backup Form */
+.backup-input-row,
+.backup-input-col {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.backup-input-col {
+    flex-direction: column;
+}
+
+.backup-input {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.backup-input:focus {
+    border-color: var(--accent-primary, #00d4ff);
+    outline: none;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 1px var(--accent-primary, #00d4ff),
+                0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
+}
+
+.backup-input-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.confirm-btn,
+.cancel-btn {
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+}
+
+.confirm-btn {
+    background: var(--accent-primary, #00d4ff);
+    color: var(--bg-primary, #000);
+}
+
+.confirm-btn:hover {
+    background: var(--accent-secondary, #50e3ff);
+}
+
+.cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Password input with toggle button */
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper input {
+    width: 100%;
+    padding-right: 40px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+}
+
+.password-toggle-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.password-toggle-btn svg {
+    display: block;
+}
+
+/* Backup password wrapper specific styles */
+.backup-password-wrapper {
+    width: 100%;
+}
+
+.backup-password-wrapper input {
+    width: 100%;
+}
+
+.backup-toggle-btn {
+    right: 6px;
+}

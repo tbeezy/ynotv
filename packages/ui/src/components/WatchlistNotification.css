@@ -1,0 +1,178 @@
+.watchlist-notification-container {
+  position: fixed;
+  top: 35px;
+  right: 00px;
+  z-index: 20000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.watchlist-notification {
+  position: relative;
+  background: var(--surface-color, rgba(30, 30, 30, 0.95));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 300px;
+  max-width: 380px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.watchlist-notification.hiding {
+  animation: slideOut 0.3s ease-in forwards;
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.watchlist-notification-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.watchlist-notification-icon {
+  font-size: 1.2rem;
+}
+
+.watchlist-notification-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-primary, #00d4ff);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.watchlist-notification-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.watchlist-notification-close:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.watchlist-notification-body {
+  margin-bottom: 12px;
+}
+
+.watchlist-notification-program {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.watchlist-notification-channel {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 4px;
+}
+
+.watchlist-notification-time {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.watchlist-notification-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.watchlist-notification-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.watchlist-notification-btn.switch {
+  background: var(--accent-primary, #00d4ff);
+  color: #000;
+}
+
+.watchlist-notification-btn.switch:hover {
+  background: var(--accent-secondary, #0099cc);
+  transform: translateY(-1px);
+}
+
+.watchlist-notification-btn.dismiss {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.watchlist-notification-btn.dismiss:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Progress bar for auto-dismiss */
+.watchlist-notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+
+.watchlist-notification-progress-bar {
+  height: 100%;
+  background: var(--accent-primary, #00d4ff);
+  animation: progress 10s linear forwards;
+}
+
+@keyframes progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

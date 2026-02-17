@@ -1,0 +1,143 @@
+name: Build macOS Debug (with DevTools)
+
+# This workflow builds a macOS debug version with devtools enabled
+# for troubleshooting purposes. Use this when users report issues
+# you can't reproduce on Windows.
+
+on:
+  # Manual trigger only
+  workflow_dispatch:
+    inputs:
+      upload_artifact:
+        description: 'Upload build artifact for download'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build-macos-debug:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install FFmpeg (required for DVR)
+        run: |
+          brew install ffmpeg
+          echo "FFmpeg version:"
+          ffmpeg -version | head -1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download MPV (Tauri Sidecar)
+        run: |
+          bash scripts/download-mpv-tauri.sh
+          echo "MPV download complete"
+        shell: bash
+        continue-on-error: true
+
+      - name: Download FFmpeg (Tauri Sidecar)
+        run: |
+          cd packages/app
+          node scripts/download-ffmpeg.js
+          cd ../..
+          echo "FFmpeg download complete"
+        shell: bash
+        continue-on-error: true
+
+      - name: Check binaries
+        run: |
+          echo "Binaries in src-tauri/bin:"
+          ls -la packages/app/src-tauri/bin/ || echo "No binaries found"
+
+      - name: Build Debug Version (with devtools)
+        run: |
+          cd packages/app
+          # Build debug version - devtools are enabled by default in debug mode
+          pnpm tauri build --debug
+        env:
+          CI: false
+          NODE_ENV: development
+
+      - name: Find build output
+        run: |
+          echo "=== Build Output ==="
+          find packages/app/src-tauri/target -name "*.dmg" -o -name "ynoTV*.app" 2>/dev/null | head -20
+
+          echo ""
+          echo "=== Target Directory Structure ==="
+          ls -la packages/app/src-tauri/target/*/bundle/ 2>/dev/null || echo "Bundle directory not found"
+
+      - name: Package for distribution
+        run: |
+          # Create a debug build package
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+
+          # Find the built app
+          APP_PATH=$(find packages/app/src-tauri/target -name "ynoTV.app" -type d 2>/dev/null | head -1)
+
+          if [ -n "$APP_PATH" ]; then
+            echo "Found app at: $APP_PATH"
+
+            # Create a zip of the .app bundle (easier for users to extract)
+            DEBUG_ZIP="ynoTV-debug-macos-${TIMESTAMP}.zip"
+            zip -r "$DEBUG_ZIP" "$APP_PATH"
+            echo "Created: $DEBUG_ZIP"
+
+            # Also try to find and copy the DMG if it exists
+            DMG_PATH=$(find packages/app/src-tauri/target -name "*.dmg" 2>/dev/null | head -1)
+            if [ -n "$DMG_PATH" ]; then
+              echo "Found DMG at: $DMG_PATH"
+              cp "$DMG_PATH" "ynoTV-debug-macos-${TIMESTAMP}.dmg"
+            fi
+          else
+            echo "Warning: Could not find built app"
+            exit 1
+          fi
+
+      - name: Upload Debug Build Artifact
+        if: github.event.inputs.upload_artifact != 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ynoTV-macos-debug-build-${{ env.TIMESTAMP }}
+          path: |
+            ynoTV-debug-macos-*.zip
+            ynoTV-debug-macos-*.dmg
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Build Summary
+        run: |
+          echo "=========================================="
+          echo "  macOS Debug Build Complete"
+          echo "=========================================="
+          echo ""
+          echo "Timestamp: ${{ env.TIMESTAMP }}"
+          echo ""
+          echo "To download:"
+          echo "1. Go to the 'Actions' tab in GitHub"
+          echo "2. Click this workflow run"
+          echo "3. Scroll down to 'Artifacts'"
+          echo "4. Download 'ynoTV-macos-debug-build-...'"
+          echo ""
+          echo "Users can open DevTools with: Cmd+Option+I"
+          echo "or right-click > Inspect Element"
+          echo ""
+          echo "=========================================="

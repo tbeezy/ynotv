@@ -1,0 +1,189 @@
+.program-context-menu {
+    position: fixed;
+    background: var(--bg-secondary, #2a2a2a);
+    border: 1px solid var(--border-color, #444);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    min-width: 180px;
+    padding: 6px 0;
+    z-index: 10000;
+    animation: contextMenuFadeIn 0.15s ease-out;
+    font-size: 0.9rem;
+}
+
+@keyframes contextMenuFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.context-menu-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--text-primary, #e0e0e0);
+    transition: all 0.15s ease;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.context-menu-item:hover {
+    background: var(--accent-primary-transparent, rgba(0, 212, 255, 0.1));
+    color: var(--accent-primary, #00d4ff);
+}
+
+.context-menu-item:active {
+    background: var(--accent-primary-transparent, rgba(0, 212, 255, 0.2));
+}
+
+.context-menu-item-secondary {
+    color: var(--text-secondary, #888);
+    font-size: 0.85rem;
+}
+
+.context-menu-separator {
+    height: 1px;
+    background: var(--border-color, #444);
+    margin: 6px 8px;
+}
+
+/* Channel Context Menu - Duration Picker */
+.context-menu-header {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    border-bottom: 1px solid var(--border-color, #444);
+    margin-bottom: 6px;
+}
+
+.duration-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding: 10px;
+}
+
+.duration-option {
+    padding: 8px 12px;
+    background: var(--bg-tertiary, #333);
+    border: 1px solid var(--border-color, #444);
+    border-radius: 6px;
+    color: var(--text-secondary, #ccc);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+}
+
+.duration-option:hover {
+    background: var(--accent-primary-transparent, rgba(0, 212, 255, 0.1));
+    border-color: var(--accent-primary, #00d4ff);
+    color: var(--accent-primary, #00d4ff);
+}
+
+.duration-option.selected {
+    background: var(--accent-primary, #00d4ff);
+    border-color: var(--accent-primary, #00d4ff);
+    color: var(--text-primary, #fff);
+}
+
+.context-menu-actions {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+}
+
+.context-menu-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.context-menu-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.context-menu-btn-primary {
+    background: var(--accent-primary, #00d4ff);
+    color: var(--text-primary, #fff);
+}
+
+.context-menu-btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover, #00b8d4);
+}
+
+.context-menu-btn-secondary {
+    background: var(--bg-tertiary, #444);
+    color: var(--text-secondary, #ccc);
+}
+
+.context-menu-btn-secondary:hover:not(:disabled) {
+    background: var(--bg-hover, #555);
+}
+
+/* Date/Time inputs for custom recording */
+.datetime-section {
+    padding: 10px 14px;
+}
+
+.datetime-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #888);
+    margin-bottom: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.datetime-inputs {
+    display: flex;
+    gap: 8px;
+}
+
+.datetime-input {
+    flex: 1;
+    padding: 8px 10px;
+    background: var(--bg-tertiary, #333);
+    border: 1px solid var(--border-color, #444);
+    border-radius: 6px;
+    color: var(--text-primary, #fff);
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.datetime-input:hover {
+    border-color: var(--border-hover, #555);
+}
+
+.datetime-input:focus {
+    outline: none;
+    border-color: var(--accent-primary, #00d4ff);
+}
+
+/* Webkit date/time picker styling */
+.datetime-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+}
+
+/* Recording status indicator in menu */
+.context-menu-item .recording-status {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--accent-primary, #00d4ff);
+}

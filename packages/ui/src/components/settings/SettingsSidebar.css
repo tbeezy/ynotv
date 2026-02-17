@@ -1,0 +1,73 @@
+.settings-sidebar {
+  width: 140px;
+  min-width: 140px;
+  background: rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Scrollbar Styling matching the Sources/Categories list */
+.settings-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.settings-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.settings-category {
+  margin-bottom: 0.5rem;
+}
+
+.settings-category:last-child {
+  margin-bottom: 0;
+}
+
+.settings-category-header {
+  padding: 0.75rem 0.875rem 0.375rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.settings-nav-item {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.875rem;
+  background: none;
+  border: none;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.settings-nav-item.active {
+  background: var(--accent-glow, rgba(0, 212, 255, 0.15));
+  color: var(--accent-primary, #00d4ff);
+  font-weight: 500;
+  border-left: 2px solid var(--accent-primary, #00d4ff);
+  padding-left: calc(0.875rem - 2px);
+}

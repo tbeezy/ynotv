@@ -1,0 +1,12 @@
+﻿
+> @sbtltv/ui@0.1.0 typecheck C:\sbtlTV\packages\ui
+> tsc --noEmit
+
+../local-adapter/src/fetch-utils.ts(70,21): error TS2339: Property 'success' does not exist on type '{ data?: { ok: boolean; status: number; statusText: string; text: string; json: () => Promise<any>; } | undefined; error?: string | undefined; }'.
+../local-adapter/src/m3u-parser.ts(234,17): error TS2339: Property 'success' does not exist on type '{ data?: { ok: boolean; status: number; statusText: string; text: string; json: () => Promise<any>; } | undefined; error?: string | undefined; }'.
+../local-adapter/src/xtream-client.ts(111,19): error TS2339: Property 'success' does not exist on type '{ data?: { ok: boolean; status: number; statusText: string; text: string; json: () => Promise<any>; } | undefined; error?: string | undefined; }'.
+../local-adapter/src/xtream-client.ts(137,19): error TS2339: Property 'success' does not exist on type '{ data?: { ok: boolean; status: number; statusText: string; text: string; json: () => Promise<any>; } | undefined; error?: string | undefined; }'.
+src/components/settings/DebugTab.tsx(17,20): error TS2339: Property 'getLogPath' does not exist on type '{ logFromRenderer: (msg: string) => Promise<void>; }'.
+src/components/settings/DebugTab.tsx(17,39): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/components/settings/DebugTab.tsx(33,26): error TS2339: Property 'openLogFolder' does not exist on type '{ logFromRenderer: (msg: string) => Promise<void>; }'.
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 2.

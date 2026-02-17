@@ -1,0 +1,111 @@
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.sidebar.hidden {
+  opacity: 0;
+  transform: translateY(-50%) translateX(-10px);
+  pointer-events: none;
+}
+
+.sidebar.visible {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 0 12px 12px 0;
+  padding: 8px;
+  gap: 4px;
+  overflow: hidden; /* Prevent highlight from bleeding out */
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.nav-item.active {
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, transparent);
+  color: var(--accent-primary, #00d4ff);
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.nav-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+/* Expanded state - show labels */
+.sidebar.expanded .nav-label {
+  opacity: 1;
+  width: auto;
+  margin-left: 10px;
+  padding-right: 8px;
+}
+
+.nav-spacer {
+  flex: 1;
+  min-height: 20px;
+}
+
+/* Ensure icons stay crisp */
+.nav-icon svg {
+  display: block;
+}
+
+/* Toggle button - aligned with nav icons, subtle hover effect */
+.nav-toggle {
+  margin-top: 4px;
+  padding: 12px; /* Match nav-item padding for alignment */
+}
+
+.nav-toggle:hover {
+  background: transparent; /* Override nav-item hover background */
+}
+
+.nav-toggle .nav-icon {
+  width: 24px; /* Match nav-icon size for alignment */
+  height: 24px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav-toggle:hover .nav-icon {
+  transform: scale(1.3);
+  color: var(--accent-primary, #00d4ff);
+}

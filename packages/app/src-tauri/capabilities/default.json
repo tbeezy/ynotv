@@ -1,0 +1,57 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "shell:default",
+    "dialog:default",
+    "fs:default",
+    "store:default",
+    "opener:default",
+    "fs:allow-write-text-file",
+    "fs:allow-read-text-file",
+    "fs:allow-home-read-recursive",
+    "fs:allow-home-write-recursive",
+    "opener:allow-open-path",
+    "opener:allow-reveal-item-in-dir",
+    "log:default",
+    "log:allow-log",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "http://*"
+        },
+        {
+          "url": "https://*"
+        },
+        {
+          "url": "http://*:*"
+        },
+        {
+          "url": "https://*:*"
+        }
+      ],
+      "deny": []
+    },
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-close",
+    "core:window:allow-set-size",
+    "core:window:allow-center",
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-select"
+  ],
+  "commands": {
+    "allow": [
+      "bulk_insert"
+    ]
+  }
+}

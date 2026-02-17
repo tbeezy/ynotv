@@ -1,0 +1,26 @@
+{
+  "name": "ynotv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop IPTV player with mpv",
+  "homepage": "https://github.com/tbeezy/ynotv",
+  "author": {
+    "name": "tbeezy",
+    "email": "tbeezy@users.noreply.github.com"
+  },
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @ynotv/ui dev\" \"wait-on http://localhost:5173 && pnpm --filter @ynotv/app tauri dev\"",
+    "dev:clean": "node scripts/kill-dev.js && pnpm dev",
+    "kill-port": "node scripts/kill-dev.js",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "tauri": "pnpm --filter @ynotv/app tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.3.0",
+    "wait-on": "^9.0.3"
+  },
+  "packageManager": "pnpm@9.1.0"
+}

@@ -1,0 +1,16 @@
+.vod-home {
+  background: #0d0d0d;
+  min-height: 100%;
+}
+
+.vod-home__carousels {
+  padding-top: 24px;
+  padding-bottom: 48px;
+}
+
+/* Overlap the first carousel slightly with hero gradient */
+.vod-home__carousels > .carousel:first-child {
+  margin-top: -24px;
+  position: relative;
+  z-index: 2;
+}

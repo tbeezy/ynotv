@@ -1,0 +1,118 @@
+.video-error-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-overlay, rgba(0, 0, 0, 0.85));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(var(--glass-blur, 8px));
+    -webkit-backdrop-filter: blur(var(--glass-blur, 8px));
+    padding: 2rem;
+    pointer-events: auto;
+}
+
+.video-error-content {
+    text-align: center;
+    max-width: 500px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.video-error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.video-error-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #ff4444;
+    margin: 0 0 0.5rem 0;
+}
+
+.video-error-message {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.video-error-advice {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+}
+
+.video-error-raw {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+    word-break: break-all;
+}
+
+.video-error-dismiss {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.video-error-dismiss:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Small variant for preview pane */
+.video-error-overlay.small {
+    padding: 1rem;
+}
+
+.video-error-overlay.small .video-error-content {
+    padding: 1rem;
+    background: transparent;
+    box-shadow: none;
+    border: none;
+}
+
+.video-error-overlay.small .video-error-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.video-error-overlay.small .video-error-title {
+    font-size: 1.1rem;
+}
+
+.video-error-overlay.small .video-error-message {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.video-error-overlay.small .video-error-advice {
+    display: none;
+}
+
+.video-error-overlay.small .video-error-raw {
+    display: none;
+}
+
+.video-error-overlay.small .video-error-dismiss {
+    display: none;
+}

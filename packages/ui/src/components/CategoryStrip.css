@@ -1,0 +1,289 @@
+.category-strip {
+  position: fixed;
+  left: 0;
+  /* Full bleed to left edge */
+  top: 32px;
+  /* Below title bar */
+  bottom: 0;
+  width: 240px;
+  /* Just content width when no sidebar */
+  padding-left: 0;
+  /* No sidebar space by default */
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  z-index: 90;
+  /* Below sidebar (100), above guide (80) */
+
+  /* Smooth slide animation */
+  transform: translateX(-100%);
+  opacity: 0;
+  /* Removed transform/width/padding transitions for instant snapping */
+  transition: opacity 0.15s ease;
+}
+
+/* When sidebar is visible - add padding and adjust width */
+.category-strip.with-sidebar {
+  width: 300px;
+  /* 60px sidebar + 240px content */
+  padding-left: 60px;
+  /* Space for collapsed sidebar */
+}
+
+/* Shift right when sidebar is expanded */
+.category-strip.with-sidebar.sidebar-expanded {
+  width: 400px;
+  /* 160px expanded sidebar + 240px content */
+  padding-left: 160px;
+}
+
+.category-strip.visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.category-strip.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.category-strip-header {
+  padding: 16px 12px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.category-strip-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Search Input Styles */
+.category-search-container {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.category-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.category-search-input-wrapper:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.category-search-input-wrapper.focused {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary, #00d4ff) 10%, transparent);
+}
+
+.search-icon {
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.category-search-input-wrapper.focused .search-icon {
+  color: color-mix(in srgb, var(--accent-primary, #00d4ff) 80%, transparent);
+}
+
+.category-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: 0.9rem;
+  font-family: inherit;
+  padding: 0;
+}
+
+.category-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.search-clear-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.search-clear-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.category-strip-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+
+  /* iOS-style smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* Hide scrollbar but keep functionality */
+.category-strip-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.category-strip-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.category-strip-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.category-strip-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.category-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.category-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.category-item.nested {
+  padding-left: 28px;
+  /* Indent nested categories */
+  font-size: 0.8rem;
+}
+
+.category-item.selected {
+  background: var(--accent-glow, rgba(0, 212, 255, 0.15));
+  color: var(--accent-primary, #00d4ff);
+}
+
+.category-item.selected .category-count {
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent);
+  color: var(--accent-primary, #00d4ff);
+}
+
+.category-source-group {
+  margin-top: 4px;
+}
+
+.category-source-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.category-source-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.source-header-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+}
+
+.source-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source-count {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 8px;
+}
+
+.category-source-content {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.category-name {
+  font-size: var(--category-font-size, 14px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.category-count {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.category-empty {
+  padding: 20px 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.category-empty p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.category-empty .hint {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
