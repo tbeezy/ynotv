@@ -28,7 +28,11 @@
     "active": true,
     "targets": [
       "nsis",
-      "msi"
+      "msi",
+      "deb",
+      "rpm",
+      "appimage",
+      "dmg"
     ],
     "licenseFile": "../../../LICENSE",
     "externalBin": [
