@@ -26,8 +26,8 @@ const DOWNLOAD_URLS = {
         outputName: 'ffmpeg.exe'
     },
     darwin: {
-        url: 'https://evermeet.cx/ffmpeg/getrelease/ffmpeg/7z',
-        fileName: 'ffmpeg.7z',
+        url: 'https://evermeet.cx/ffmpeg/getrelease/ffmpeg/link',
+        fileName: 'ffmpeg.zip',
         extractPath: 'ffmpeg',
         outputName: 'ffmpeg'
     },
@@ -144,7 +144,8 @@ function extractFFmpeg() {
                 process.exit(1);
             }
         } else if (platform === 'darwin') {
-            execSync(`7z x "${downloadPath}" -o"${binDir}" -y`, { stdio: 'inherit' });
+            // macOS has unzip built-in
+            execSync(`unzip -o "${downloadPath}" -d "${binDir}"`, { stdio: 'inherit' });
             const extractedPath = path.join(binDir, config.extractPath);
             if (fs.existsSync(extractedPath)) {
                 fs.renameSync(extractedPath, targetPath);
