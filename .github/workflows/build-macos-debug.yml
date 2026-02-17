@@ -90,25 +90,36 @@ jobs:
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-          # Find the built app
-          APP_PATH=$(find packages/app/src-tauri/target -name "ynoTV.app" -type d 2>/dev/null | head -1)
+          # Debug: Show what we have
+          echo "=== Looking for build artifacts ==="
+          find packages/app/src-tauri/target/debug -name "*.dmg" -o -name "*.app" 2>/dev/null
+
+          # Find the DMG (primary artifact for macOS)
+          DMG_PATH=$(find packages/app/src-tauri/target/debug -name "*.dmg" 2>/dev/null | head -1)
+
+          if [ -n "$DMG_PATH" ]; then
+            echo "Found DMG at: $DMG_PATH"
+            cp "$DMG_PATH" "ynoTV-debug-macos-${TIMESTAMP}.dmg"
+            echo "Created: ynoTV-debug-macos-${TIMESTAMP}.dmg"
+          else
+            echo "Warning: Could not find DMG"
+          fi
+
+          # Also try to find and zip the .app bundle as a fallback
+          APP_PATH=$(find packages/app/src-tauri/target/debug -name "*.app" -type d 2>/dev/null | head -1)
 
           if [ -n "$APP_PATH" ]; then
             echo "Found app at: $APP_PATH"
-
-            # Create a zip of the .app bundle (easier for users to extract)
             DEBUG_ZIP="ynoTV-debug-macos-${TIMESTAMP}.zip"
             zip -r "$DEBUG_ZIP" "$APP_PATH"
             echo "Created: $DEBUG_ZIP"
-
-            # Also try to find and copy the DMG if it exists
-            DMG_PATH=$(find packages/app/src-tauri/target -name "*.dmg" 2>/dev/null | head -1)
-            if [ -n "$DMG_PATH" ]; then
-              echo "Found DMG at: $DMG_PATH"
-              cp "$DMG_PATH" "ynoTV-debug-macos-${TIMESTAMP}.dmg"
-            fi
           else
-            echo "Warning: Could not find built app"
+            echo "Note: Could not find .app bundle (DMG should be sufficient)"
+          fi
+
+          # Verify we have at least one artifact
+          if [ ! -f "ynoTV-debug-macos-${TIMESTAMP}.dmg" ] && [ ! -f "ynoTV-debug-macos-${TIMESTAMP}.zip" ]; then
+            echo "Error: No artifacts found!"
             exit 1
           fi
 
