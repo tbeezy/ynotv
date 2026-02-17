@@ -20,15 +20,18 @@ const FFMPEG_VERSION = '7.0.2';
 // Platform-specific download URLs
 const DOWNLOAD_URLS = {
     win32: {
-        url: 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.7z',
-        fileName: 'ffmpeg-essentials.7z',
-        extractPath: 'ffmpeg-7.0.2-essentials_build/bin/ffmpeg.exe',
+        // Use GitHub release for Windows static builds (more reliable)
+        url: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip',
+        fileName: 'ffmpeg-win64.zip',
+        extractPath: null,  // Will be detected dynamically
         outputName: 'ffmpeg.exe'
     },
     darwin: {
-        url: 'https://evermeet.cx/ffmpeg/getrelease/ffmpeg/link',
-        fileName: 'ffmpeg.zip',
-        extractPath: 'ffmpeg',
+        // macOS: Use local/system FFmpeg (installed via Homebrew in CI)
+        // No download needed - we'll copy from system
+        url: null,
+        fileName: null,
+        extractPath: null,
         outputName: 'ffmpeg'
     },
     linux: {
@@ -97,41 +100,100 @@ if (!config) {
     process.exit(1);
 }
 
+// macOS: Copy from system instead of downloading
+if (platform === 'darwin') {
+    console.log('[FFmpeg Downloader] Using system FFmpeg for macOS');
+
+    // Common FFmpeg locations on macOS
+    const ffmpegPaths = [
+        '/opt/homebrew/bin/ffmpeg',      // Apple Silicon Homebrew
+        '/usr/local/bin/ffmpeg',         // Intel Homebrew
+        '/usr/bin/ffmpeg',               // System (rare)
+    ];
+
+    let ffmpegPath = null;
+    for (const testPath of ffmpegPaths) {
+        if (fs.existsSync(testPath)) {
+            ffmpegPath = testPath;
+            console.log('[FFmpeg Downloader] Found FFmpeg at:', ffmpegPath);
+            break;
+        }
+    }
+
+    if (!ffmpegPath) {
+        console.error('[FFmpeg Downloader] ❌ FFmpeg not found on system.');
+        console.error('[FFmpeg Downloader] Please install FFmpeg: brew install ffmpeg');
+        console.error('[FFmpeg Downloader] Or download manually and place at:', targetPath);
+        process.exit(1);
+    }
+
+    // Copy to bin directory with correct name
+    fs.copyFileSync(ffmpegPath, targetPath);
+    fs.chmodSync(targetPath, 0o755);
+    console.log('[FFmpeg Downloader] ✓ FFmpeg copied to:', targetPath);
+    console.log('[FFmpeg Downloader] ✅ FFmpeg ready for bundling!');
+    process.exit(0);
+}
+
 const downloadPath = path.join(binDir, config.fileName);
 
 console.log('[FFmpeg Downloader] Downloading from:', config.url);
 console.log('[FFmpeg Downloader] This may take a few minutes (~50MB)...');
 
-// Download file
-const file = fs.createWriteStream(downloadPath);
-https.get(config.url, (response) => {
-    // Handle redirects
-    if (response.statusCode === 301 || response.statusCode === 302) {
-        console.log('[FFmpeg Downloader] Following redirect to:', response.headers.location);
-        https.get(response.headers.location, (redirectResponse) => {
-            redirectResponse.pipe(file);
-            file.on('finish', () => {
-                file.close();
-                console.log('[FFmpeg Downloader] Download complete, size:', fs.statSync(downloadPath).size, 'bytes');
-                extractFFmpeg();
+// Download file with redirect handling
+function downloadFile(url, dest, callback) {
+    const file = fs.createWriteStream(dest);
+
+    https.get(url, (response) => {
+        // Handle redirects
+        if (response.statusCode === 301 || response.statusCode === 302) {
+            const redirectUrl = response.headers.location;
+            console.log('[FFmpeg Downloader] Following redirect...');
+            file.close();
+            fs.unlinkSync(dest);
+            downloadFile(redirectUrl, dest, callback);
+            return;
+        }
+
+        if (response.statusCode !== 200) {
+            file.close();
+            console.error('[FFmpeg Downloader] ❌ Download failed with status:', response.statusCode);
+            process.exit(1);
+            return;
+        }
+
+        response.pipe(file);
+
+        file.on('finish', () => {
+            file.close(() => {
+                const fileSize = fs.statSync(downloadPath).size;
+                console.log('[FFmpeg Downloader] Download complete, size:', fileSize, 'bytes');
+
+                // Validate file size (should be at least 1MB for FFmpeg)
+                if (fileSize < 1000000) {
+                    console.error('[FFmpeg Downloader] ❌ Downloaded file is too small - likely an error page');
+                    console.error('[FFmpeg Downloader] URL:', url);
+                    fs.unlinkSync(downloadPath);
+                    process.exit(1);
+                }
+
+                callback();
             });
-        }).on('error', (err) => {
-            console.error('[FFmpeg Downloader] ❌ Redirect download failed:', err.message);
+        });
+
+        file.on('error', (err) => {
+            fs.unlinkSync(dest);
+            console.error('[FFmpeg Downloader] ❌ File write error:', err.message);
             process.exit(1);
         });
-    } else {
-        response.pipe(file);
-        file.on('finish', () => {
-            file.close();
-            console.log('[FFmpeg Downloader] Download complete, size:', fs.statSync(downloadPath).size, 'bytes');
-            extractFFmpeg();
-        });
-    }
-}).on('error', (err) => {
-    fs.unlinkSync(downloadPath);
-    console.error('[FFmpeg Downloader] ❌ Download failed:', err.message);
-    process.exit(1);
-});
+    }).on('error', (err) => {
+        fs.unlinkSync(dest);
+        console.error('[FFmpeg Downloader] ❌ Download failed:', err.message);
+        process.exit(1);
+    });
+}
+
+downloadFile(config.url, downloadPath, extractFFmpeg);
 
 function extractFFmpeg() {
     console.log('[FFmpeg Downloader] Extracting...');
@@ -153,9 +215,47 @@ function extractFFmpeg() {
 }
 
 function extractWindows() {
-    // Try to find 7z in common locations
+    // Use PowerShell Expand-Archive (built into Windows)
+    console.log('[FFmpeg Downloader] Extracting with PowerShell...');
+
+    const extractDir = path.join(binDir, 'ffmpeg-extract');
+
+    try {
+        // Extract using PowerShell
+        execSync(`powershell -Command "Expand-Archive -Path '${downloadPath}' -DestinationPath '${extractDir}' -Force"`, { stdio: 'inherit' });
+
+        // Find extracted ffmpeg directory
+        const files = fs.readdirSync(extractDir);
+        const ffmpegDir = files.find(f => f.startsWith('ffmpeg-master') && f.includes('win64'));
+
+        if (ffmpegDir) {
+            const extractedPath = path.join(extractDir, ffmpegDir, 'bin', 'ffmpeg.exe');
+            if (fs.existsSync(extractedPath)) {
+                fs.copyFileSync(extractedPath, targetPath);
+                console.log('[FFmpeg Downloader] ✓ FFmpeg extracted to:', targetPath);
+
+                // Cleanup extracted directory
+                fs.rmSync(extractDir, { recursive: true, force: true });
+                cleanup();
+            } else {
+                throw new Error(`FFmpeg not found at ${extractedPath}`);
+            }
+        } else {
+            // List what we found
+            console.error('[FFmpeg Downloader] Contents of extract dir:', files);
+            throw new Error('Could not find extracted ffmpeg directory');
+        }
+    } catch (e) {
+        console.error('[FFmpeg Downloader] ❌ Extraction failed:', e.message);
+        console.error('[FFmpeg Downloader] Trying with 7z as fallback...');
+        extractWindowsWith7z();
+    }
+}
+
+function extractWindowsWith7z() {
+    // Fallback to 7z if PowerShell fails
     const sevenZipPaths = [
-        '7z',  // In PATH
+        '7z',
         'C:\\Program Files\\7-Zip\\7z.exe',
         'C:\\ProgramData\\chocolatey\\bin\\7z.exe',
         'C:\\tools\\7z\\7z.exe'
@@ -174,28 +274,25 @@ function extractWindows() {
     }
 
     if (!sevenZip) {
-        console.error('[FFmpeg Downloader] ❌ 7z not found. Tried:', sevenZipPaths);
-        console.error('[FFmpeg Downloader] Please install 7-Zip or extract manually:');
+        console.error('[FFmpeg Downloader] ❌ Neither PowerShell nor 7z worked');
+        console.error('[FFmpeg Downloader] Please extract manually:');
         console.error(`  1. Extract ${downloadPath}`);
         console.error(`  2. Copy ffmpeg.exe to ${targetPath}`);
         process.exit(1);
     }
 
-    // Extract
-    execSync(`"${sevenZip}" x "${downloadPath}" -o"${binDir}" -y`, { stdio: 'inherit' });
+    const extractDir = path.join(binDir, 'ffmpeg-extract');
+    execSync(`"${sevenZip}" x "${downloadPath}" -o"${extractDir}" -y`, { stdio: 'inherit' });
 
-    // Find extracted ffmpeg directory (version may vary)
-    const files = fs.readdirSync(binDir);
-    const ffmpegDir = files.find(f => f.startsWith('ffmpeg-') && f.includes('-essentials_build'));
+    const files = fs.readdirSync(extractDir);
+    const ffmpegDir = files.find(f => f.startsWith('ffmpeg-master') && f.includes('win64'));
 
     if (ffmpegDir) {
-        const extractedPath = path.join(binDir, ffmpegDir, 'bin', 'ffmpeg.exe');
+        const extractedPath = path.join(extractDir, ffmpegDir, 'bin', 'ffmpeg.exe');
         if (fs.existsSync(extractedPath)) {
-            fs.renameSync(extractedPath, targetPath);
+            fs.copyFileSync(extractedPath, targetPath);
             console.log('[FFmpeg Downloader] ✓ FFmpeg extracted to:', targetPath);
-
-            // Cleanup extracted directory
-            fs.rmSync(path.join(binDir, ffmpegDir), { recursive: true, force: true });
+            fs.rmSync(extractDir, { recursive: true, force: true });
             cleanup();
         } else {
             throw new Error(`FFmpeg not found at ${extractedPath}`);
@@ -206,18 +303,9 @@ function extractWindows() {
 }
 
 function extractMacOS() {
-    // macOS has unzip built-in
-    execSync(`unzip -o "${downloadPath}" -d "${binDir}"`, { stdio: 'inherit' });
-
-    const extractedPath = path.join(binDir, config.extractPath);
-    if (fs.existsSync(extractedPath)) {
-        fs.renameSync(extractedPath, targetPath);
-        fs.chmodSync(targetPath, 0o755);
-        console.log('[FFmpeg Downloader] ✓ FFmpeg extracted to:', targetPath);
-        cleanup();
-    } else {
-        throw new Error(`FFmpeg not found at ${extractedPath}`);
-    }
+    // macOS now copies from system - this function is not used
+    // Kept for backwards compatibility if needed in future
+    throw new Error('macOS now uses system FFmpeg - this function should not be called');
 }
 
 function extractLinux() {
