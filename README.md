@@ -98,8 +98,8 @@ Get the latest release from the [Releases](../../releases) page.
 
 **Prerequisites:**
 ```bash
-# Install mpv via Homebrew
-brew install mpv
+# Install mpv and FFmpeg via Homebrew
+brew install mpv ffmpeg
 ```
 
 **Installation:**
@@ -112,7 +112,7 @@ xattr -dr com.apple.quarantine /Applications/ynoTV.app
 
 ### Linux
 
-**Install mpv first:**
+**Install mpv and FFmpeg:**
 ```bash
 # Ubuntu/Debian
 sudo apt install mpv ffmpeg
