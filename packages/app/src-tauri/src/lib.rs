@@ -129,7 +129,7 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     println!("Embedding MPV into HWND: {:?}", hwnd);
 
     // Prepare arguments
-    let args = vec![
+    let mut args = vec![
         format!("--input-ipc-server={}", socket_path),
         format!("--wid={}", hwnd), // Embed into main window
         "--force-window=immediate".into(),
