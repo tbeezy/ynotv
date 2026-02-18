@@ -13,6 +13,7 @@
 import { db } from '../db';
 import type { StoredMovie, StoredSeries } from '../db';
 import type { TmdbMovieResult, TmdbTvResult } from './tmdb';
+import { dbEvents } from '../db/sqlite-adapter';
 
 // ===========================================================================
 // Title Normalization
@@ -247,6 +248,10 @@ async function bulkUpdateMovieMetadata(
       [update.tmdb_id, update.popularity, update.backdrop_path, update.stream_id]
     );
   }
+
+  if (updates.length > 0) {
+    dbEvents.notify('vodMovies', 'update');
+  }
 }
 
 async function bulkUpdateSeriesMetadata(
@@ -259,6 +264,10 @@ async function bulkUpdateSeriesMetadata(
       `UPDATE vodSeries SET tmdb_id = ?, popularity = ?, backdrop_path = ? WHERE series_id = ?`,
       [update.tmdb_id, update.popularity, update.backdrop_path, update.series_id]
     );
+  }
+
+  if (updates.length > 0) {
+    dbEvents.notify('vodSeries', 'update');
   }
 }
 
