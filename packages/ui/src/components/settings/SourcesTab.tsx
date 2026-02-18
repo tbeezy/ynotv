@@ -431,6 +431,8 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
     try {
       const results = await syncAllSources(setSyncStatusMsg);
       setSyncResults(results);
+      // Trigger category refresh after sync completes
+      incrementVersion();
     } catch (err) {
       console.error('Sync error:', err);
       setSyncError(err instanceof Error ? err.message : 'Channel sync failed');
@@ -476,6 +478,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
         console.error(`Source ${source.name} sync failed:`, result.error);
       }
       onSourcesChange(); // Refresh to show updated counts
+      incrementVersion(); // Trigger category refresh
     } catch (err) {
       console.error('Per-source sync error:', err);
     } finally {
