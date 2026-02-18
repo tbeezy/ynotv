@@ -406,6 +406,7 @@ export async function deleteCategories(categoryIds: string[]): Promise<number> {
  */
 export async function updateSourceMeta(meta: SourceMetaUpdate): Promise<void> {
   await invoke('update_source_meta', { meta });
+  dbEvents.notify('sourcesMeta', 'update');
 }
 
 // ============================================================================
