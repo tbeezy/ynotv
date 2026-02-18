@@ -60,13 +60,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Setup libmpv for macOS
+      - name: Setup libmpv wrapper for macOS
         if: matrix.platform == 'macos-latest'
         run: |
+          mkdir -p packages/app/src-tauri/lib
           cd packages/app
-          pnpm add tauri-plugin-libmpv-api
           npx tauri-plugin-libmpv-api setup-lib
-          echo "libmpv wrapper library installed:"
+          echo "libmpv wrapper library:"
           ls -la src-tauri/lib/ || echo "lib directory not found"
 
       - name: Create MPV placeholder for macOS

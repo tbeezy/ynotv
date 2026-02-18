@@ -40,9 +40,9 @@
       "bin/mpv",
       "bin/ffmpeg"
     ],
-    "resources": {
-      "lib/**/*": "./"
-    },
+"resources": [
+      "lib/**/*"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser"

@@ -9,7 +9,7 @@
     "email": "tbeezy@users.noreply.github.com"
   },
   "scripts": {
-    "prebuild": "node scripts/download-ffmpeg.js",
+    "prebuild": "node scripts/download-ffmpeg.js && node scripts/setup-libmpv.js",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
@@ -26,7 +26,8 @@
     "@tauri-apps/plugin-shell": "^2.2.0",
     "@tauri-apps/plugin-store": "^2.2.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "tauri-plugin-libmpv-api": "^0.3.2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
