@@ -20,8 +20,8 @@ if (os.platform() !== 'darwin') {
   process.exit(0);
 }
 
-const libDir = path.join(__dirname, '..', 'src-tauri', 'lib');
-const wrapperPath = path.join(libDir, 'libmpv-wrapper.dylib');
+const srcTauriDir = path.join(__dirname, '..', 'src-tauri');
+const wrapperPath = path.join(srcTauriDir, 'libmpv-wrapper.dylib');
 
 // Check if already exists
 if (fs.existsSync(wrapperPath)) {
@@ -29,24 +29,28 @@ if (fs.existsSync(wrapperPath)) {
   process.exit(0);
 }
 
-// Ensure lib directory exists
-if (!fs.existsSync(libDir)) {
-  console.log('[libmpv setup] Creating lib directory...');
-  fs.mkdirSync(libDir, { recursive: true });
-}
-
 console.log('[libmpv setup] Downloading libmpv-wrapper for macOS...');
 
 try {
-  // Run the setup-lib command from tauri-plugin-libmpv-api
-  execSync('npx tauri-plugin-libmpv-api setup-lib', {
+  // Download directly from GitHub releases
+  const downloadUrl = 'https://github.com/nini22P/libmpv-wrapper/releases/download/v0.1.1/libmpv-wrapper-macos-aarch64.zip';
+  
+  execSync(`curl -L -o libmpv-wrapper.zip "${downloadUrl}"`, {
     stdio: 'inherit',
-    cwd: path.join(__dirname, '..')
+    cwd: srcTauriDir
   });
   
-  console.log('[libmpv setup] ✓ libmpv-wrapper downloaded successfully');
+  execSync('unzip libmpv-wrapper.zip && rm libmpv-wrapper.zip', {
+    stdio: 'inherit',
+    cwd: srcTauriDir
+  });
+  
+  if (fs.existsSync(wrapperPath)) {
+    console.log('[libmpv setup] ✓ libmpv-wrapper downloaded successfully');
+  } else {
+    throw new Error('dylib not found after extraction');
+  }
 } catch (error) {
   console.error('[libmpv setup] ❌ Failed to download libmpv-wrapper:', error.message);
-  console.error('[libmpv setup] Please ensure you have tauri-plugin-libmpv-api installed');
   process.exit(1);
 }

@@ -42,14 +42,20 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup libmpv wrapper for macOS
+        if: matrix.platform == 'macos-latest'
         run: |
-          # Ensure lib directory exists
-          mkdir -p packages/app/src-tauri/lib
-          # Run setup-lib to download libmpv-wrapper.dylib
-          cd packages/app
-          npx tauri-plugin-libmpv-api setup-lib
+          cd packages/app/src-tauri
+          # Download libmpv-wrapper for Apple Silicon (latest v0.1.1)
+          curl -L -o libmpv-wrapper.zip "https://github.com/nini22P/libmpv-wrapper/releases/download/v0.1.1/libmpv-wrapper-macos-aarch64.zip"
+          unzip libmpv-wrapper.zip
+          rm libmpv-wrapper.zip
           echo "libmpv wrapper library:"
-          ls -la src-tauri/lib/ || echo "lib directory not found"
+          ls -la *.dylib
+          # Verify the dylib exists
+          if [ ! -f "libmpv-wrapper.dylib" ]; then
+            echo "ERROR: libmpv-wrapper.dylib not found after download!"
+            exit 1
+          fi
 
       - name: Create MPV placeholder for macOS
         run: |

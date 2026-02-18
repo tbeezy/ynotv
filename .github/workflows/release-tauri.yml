@@ -63,11 +63,16 @@ jobs:
       - name: Setup libmpv wrapper for macOS
         if: matrix.platform == 'macos-latest'
         run: |
-          mkdir -p packages/app/src-tauri/lib
-          cd packages/app
-          npx tauri-plugin-libmpv-api setup-lib
+          cd packages/app/src-tauri
+          curl -L -o libmpv-wrapper.zip "https://github.com/nini22P/libmpv-wrapper/releases/download/v0.1.1/libmpv-wrapper-macos-aarch64.zip"
+          unzip libmpv-wrapper.zip
+          rm libmpv-wrapper.zip
           echo "libmpv wrapper library:"
-          ls -la src-tauri/lib/ || echo "lib directory not found"
+          ls -la *.dylib
+          if [ ! -f "libmpv-wrapper.dylib" ]; then
+            echo "ERROR: libmpv-wrapper.dylib not found after download!"
+            exit 1
+          fi
 
       - name: Create MPV placeholder for macOS
         if: matrix.platform == 'macos-latest'

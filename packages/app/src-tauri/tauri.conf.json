@@ -41,7 +41,7 @@
       "bin/ffmpeg"
     ],
 "resources": [
-      "lib/**/*"
+      "libmpv-wrapper.dylib"
     ],
     "windows": {
       "nsis": {
