@@ -1,11 +1,6 @@
 name: Build macOS Debug (with DevTools)
 
-# This workflow builds a macOS debug version with devtools enabled
-# for troubleshooting purposes. Use this when users report issues
-# you can't reproduce on Windows.
-
 on:
-  # Manual trigger only
   workflow_dispatch:
     inputs:
       upload_artifact:
@@ -25,6 +20,7 @@ jobs:
       - name: Install FFmpeg (required for DVR)
         run: |
           brew install ffmpeg
+          brew install mpv
           echo "FFmpeg version:"
           ffmpeg -version | head -1
 
@@ -45,12 +41,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Download MPV (Tauri Sidecar)
+      - name: Setup libmpv for macOS
         run: |
-          bash scripts/download-mpv-tauri.sh
-          echo "MPV download complete"
-        shell: bash
-        continue-on-error: true
+          cd packages/app
+          pnpm add tauri-plugin-libmpv-api
+          npx tauri-plugin-libmpv-api setup-lib
+          echo "libmpv wrapper library installed:"
+          ls -la src-tauri/lib/ || echo "lib directory not found"
 
       - name: Download FFmpeg (Tauri Sidecar)
         run: |
@@ -65,11 +62,12 @@ jobs:
         run: |
           echo "Binaries in src-tauri/bin:"
           ls -la packages/app/src-tauri/bin/ || echo "No binaries found"
+          echo "Libraries in src-tauri/lib:"
+          ls -la packages/app/src-tauri/lib/ || echo "No libraries found"
 
       - name: Build Debug Version (with devtools)
         run: |
           cd packages/app
-          # Build debug version - devtools are enabled by default in debug mode
           pnpm tauri build --debug
         env:
           CI: false
@@ -86,15 +84,12 @@ jobs:
 
       - name: Package for distribution
         run: |
-          # Create a debug build package
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-          # Debug: Show what we have
           echo "=== Looking for build artifacts ==="
           find packages/app/src-tauri/target/debug -name "*.dmg" -o -name "*.app" 2>/dev/null
 
-          # Find the DMG (primary artifact for macOS)
           DMG_PATH=$(find packages/app/src-tauri/target/debug -name "*.dmg" 2>/dev/null | head -1)
 
           if [ -n "$DMG_PATH" ]; then
@@ -105,7 +100,6 @@ jobs:
             echo "Warning: Could not find DMG"
           fi
 
-          # Also try to find and zip the .app bundle as a fallback
           APP_PATH=$(find packages/app/src-tauri/target/debug -name "*.app" -type d 2>/dev/null | head -1)
 
           if [ -n "$APP_PATH" ]; then
@@ -117,7 +111,6 @@ jobs:
             echo "Note: Could not find .app bundle (DMG should be sufficient)"
           fi
 
-          # Verify we have at least one artifact
           if [ ! -f "ynoTV-debug-macos-${TIMESTAMP}.dmg" ] && [ ! -f "ynoTV-debug-macos-${TIMESTAMP}.zip" ]; then
             echo "Error: No artifacts found!"
             exit 1

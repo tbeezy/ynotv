@@ -317,46 +317,56 @@ export function useProgramSearch(query: string, limit = 50) {
         return [];
       }
 
-      // If no enabled sources, return empty results
       if (!enabledSourceIds || enabledSourceIds.size === 0) {
         return [];
       }
 
-      // Get enabled category IDs (only from enabled sources)
-      const allCategories = await db.categories.toArray();
-      const enabledCategoryIds = new Set<string>();
-      for (const cat of allCategories) {
-        if (cat.enabled !== false && cat.category_id && enabledSourceIds.has(cat.source_id)) {
-          enabledCategoryIds.add(cat.category_id);
-        }
+      const dbInstance = await (db as any).dbPromise;
+      const sourceIdsList = Array.from(enabledSourceIds);
+      const sourcePlaceholders = sourceIdsList.map(() => '?').join(',');
+
+      // Step 1: Get enabled category IDs (single query)
+      const enabledCategoriesQuery = `
+        SELECT category_id FROM categories 
+        WHERE source_id IN (${sourcePlaceholders})
+        AND (enabled IS NULL OR enabled != 0)
+      `;
+      const enabledCategoryRows = await dbInstance.select(enabledCategoriesQuery, sourceIdsList);
+      const enabledCategoryIds = enabledCategoryRows.map((row: any) => row.category_id);
+
+      if (enabledCategoryIds.length === 0) {
+        return [];
       }
 
-      // Get channels in enabled sources, enabled categories that are also enabled themselves
-      const allChannels = await db.channels.toArray();
-      const enabledChannelIds = new Set<string>();
-      for (const channel of allChannels) {
-        // Skip disabled channels
-        if (channel.enabled === false) continue;
+      // Step 2: Get enabled channel IDs using json_each for efficient category matching
+      // This filters channels that belong to at least one enabled category
+      const categoryPlaceholders = enabledCategoryIds.map(() => '?').join(',');
+      const enabledChannelsQuery = `
+        SELECT DISTINCT c.stream_id 
+        FROM channels c, json_each(c.category_ids) AS cat
+        WHERE c.source_id IN (${sourcePlaceholders})
+        AND (c.enabled IS NULL OR c.enabled != 0)
+        AND cat.value IN (${categoryPlaceholders})
+      `;
+      const enabledChannelRows = await dbInstance.select(
+        enabledChannelsQuery, 
+        [...sourceIdsList, ...enabledCategoryIds]
+      );
+      const enabledChannelIds = new Set(enabledChannelRows.map((row: any) => row.stream_id));
 
-        // Skip channels from disabled sources
-        if (!enabledSourceIds.has(channel.source_id)) continue;
-
-        const channelCategories = parseCategoryIds(channel.category_ids);
-        const isInEnabledCategory = channelCategories.some(catId => enabledCategoryIds.has(catId));
-        if (isInEnabledCategory) {
-          enabledChannelIds.add(channel.stream_id);
-        }
+      if (enabledChannelIds.size === 0) {
+        return [];
       }
 
-      // Search programs and filter by enabled channels
-      const results = await db.programs
-        .whereRaw('title LIKE ?', [`%${query}%`])
-        .limit(limit * 2)
-        .toArray();
+      // Step 3: Search programs by title with LIKE
+      const programResults = await dbInstance.select(
+        `SELECT * FROM programs WHERE title LIKE ? LIMIT ?`,
+        [`%${query}%`, limit * 2]
+      );
 
-      // Filter programs belonging to enabled channels
+      // Step 4: Filter programs by enabled channels and decompress descriptions
       const filteredPrograms: StoredProgram[] = [];
-      for (const prog of results) {
+      for (const prog of programResults) {
         if (enabledChannelIds.has(prog.stream_id)) {
           filteredPrograms.push({
             ...prog,

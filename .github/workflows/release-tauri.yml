@@ -32,13 +32,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
           sudo apt-get install -y mpv ffmpeg
-        # webkitgtk 4.0 is for tauri v1 - webkitgtk 4.1 is for tauri v2
 
       - name: Install dependencies (macOS)
         if: matrix.platform == 'macos-latest'
         run: |
           brew install ffmpeg
-          # mpv will be downloaded by the script
+          brew install mpv
 
       - name: Install 7z (Windows)
         if: matrix.platform == 'windows-latest'
@@ -61,7 +60,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup libmpv for macOS
+        if: matrix.platform == 'macos-latest'
+        run: |
+          cd packages/app
+          pnpm add tauri-plugin-libmpv-api
+          npx tauri-plugin-libmpv-api setup-lib
+          echo "libmpv wrapper library installed:"
+          ls -la src-tauri/lib/ || echo "lib directory not found"
+
       - name: Download MPV (Tauri Sidecar)
+        if: matrix.platform != 'macos-latest'
         run: |
           bash scripts/download-mpv-tauri.sh
           echo "Checking if mpv binary was created:"
