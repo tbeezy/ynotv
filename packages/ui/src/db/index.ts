@@ -703,6 +703,12 @@ export async function clearAllCachedData(): Promise<void> {
     await db.vodEpisodes.clear();
     await db.vodCategories.clear();
   });
+
+  // VACUUM to reclaim disk space (SQLite doesn't shrink file on DELETE)
+  console.log('[DB] Running VACUUM to reclaim disk space...');
+  const dbInstance = await (db as any).dbPromise;
+  await dbInstance.execute('VACUUM');
+  console.log('[DB] VACUUM complete - disk space reclaimed');
 }
 
 // Helper to get last selected category
