@@ -112,16 +112,6 @@ export function useRecentMovies(limit = 20) {
 export function useSeries(categoryId?: string | null, search?: string, limit = 200) {
   const enabledSourceIds = useEnabledSources();
   const series = useLiveQuery(async () => {
-    // Debug: Check vodSeries table schema
-    try {
-      const dbInstance = await (db as any).dbPromise;
-      const tableInfo = await dbInstance.select('PRAGMA table_info(vodSeries)', []);
-      const coverColumn = tableInfo.find((col: any) => col.name === 'cover');
-      console.log('[useSeries] vodSeries table cover column:', coverColumn);
-    } catch (e) {
-      console.error('[useSeries] Failed to get schema:', e);
-    }
-
     if (categoryId) {
       // Filter by category - uses index with limit to prevent memory issues
       const allSeries = await db.vodSeries.where('category_ids').equals(categoryId).limit(limit).toArray();

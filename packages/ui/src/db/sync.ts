@@ -175,9 +175,37 @@ const MAX_COMPRESSED_BYTES = MAX_COMPRESSED_SIZE_MB * 1024 * 1024;
 // EPG Parser Web Worker - handles decompression and parsing off main thread
 let epgWorker: Worker | null = null;
 let epgWorkerIdCounter = 0;
+let epgWorkerIdleTimeout: ReturnType<typeof setTimeout> | null = null;
 const epgWorkerCallbacks = new Map<number, { resolve: (programs: XmltvProgram[]) => void; reject: (err: Error) => void }>();
 
+const EPG_WORKER_IDLE_MS = 5 * 60 * 1000; // 5 minutes
+
+function terminateEpgWorker() {
+  if (epgWorker) {
+    epgWorker.terminate();
+    epgWorker = null;
+  }
+  if (epgWorkerIdleTimeout) {
+    clearTimeout(epgWorkerIdleTimeout);
+    epgWorkerIdleTimeout = null;
+  }
+}
+
+function resetEpgWorkerIdleTimer() {
+  if (epgWorkerIdleTimeout) {
+    clearTimeout(epgWorkerIdleTimeout);
+  }
+  epgWorkerIdleTimeout = setTimeout(() => {
+    if (epgWorkerCallbacks.size === 0) {
+      debugLog('Terminating idle EPG worker', 'epg');
+      terminateEpgWorker();
+    }
+  }, EPG_WORKER_IDLE_MS);
+}
+
 function getEpgWorker(): Worker {
+  resetEpgWorkerIdleTimer();
+
   if (!epgWorker) {
     epgWorker = new Worker(new URL('../workers/epg-parser.worker.ts', import.meta.url), { type: 'module' });
     epgWorker.onmessage = (event) => {
@@ -191,15 +219,15 @@ function getEpgWorker(): Worker {
           callback.reject(new Error(error || 'Worker error'));
         }
       }
+      resetEpgWorkerIdleTimer();
     };
     epgWorker.onerror = (err) => {
       debugLog(`EPG Worker error: ${err.message}`, 'epg');
-      // Reject all pending callbacks - worker is dead
       for (const [, callback] of epgWorkerCallbacks) {
         callback.reject(new Error(`EPG Worker crashed: ${err.message}`));
       }
       epgWorkerCallbacks.clear();
-      epgWorker = null; // Force recreation on next use
+      terminateEpgWorker();
     };
   }
   return epgWorker;

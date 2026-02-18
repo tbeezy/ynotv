@@ -240,35 +240,51 @@ export async function matchSeriesByTitle(
 async function bulkUpdateMovieMetadata(
   updates: Array<{ stream_id: string; tmdb_id: number; popularity: number; backdrop_path: string | null }>
 ): Promise<void> {
+  if (updates.length === 0) return;
+
   const dbInstance = await (db as any).dbPromise;
 
-  for (const update of updates) {
-    await dbInstance.execute(
-      `UPDATE vodMovies SET tmdb_id = ?, popularity = ?, backdrop_path = ? WHERE stream_id = ?`,
-      [update.tmdb_id, update.popularity, update.backdrop_path, update.stream_id]
-    );
+  await dbInstance.execute('BEGIN TRANSACTION');
+
+  try {
+    for (const update of updates) {
+      await dbInstance.execute(
+        `UPDATE vodMovies SET tmdb_id = ?, popularity = ?, backdrop_path = ? WHERE stream_id = ?`,
+        [update.tmdb_id, update.popularity, update.backdrop_path, update.stream_id]
+      );
+    }
+    await dbInstance.execute('COMMIT');
+  } catch (err) {
+    await dbInstance.execute('ROLLBACK');
+    throw err;
   }
 
-  if (updates.length > 0) {
-    dbEvents.notify('vodMovies', 'update');
-  }
+  dbEvents.notify('vodMovies', 'update');
 }
 
 async function bulkUpdateSeriesMetadata(
   updates: Array<{ series_id: string; tmdb_id: number; popularity: number; backdrop_path: string | null }>
 ): Promise<void> {
+  if (updates.length === 0) return;
+
   const dbInstance = await (db as any).dbPromise;
 
-  for (const update of updates) {
-    await dbInstance.execute(
-      `UPDATE vodSeries SET tmdb_id = ?, popularity = ?, backdrop_path = ? WHERE series_id = ?`,
-      [update.tmdb_id, update.popularity, update.backdrop_path, update.series_id]
-    );
+  await dbInstance.execute('BEGIN TRANSACTION');
+
+  try {
+    for (const update of updates) {
+      await dbInstance.execute(
+        `UPDATE vodSeries SET tmdb_id = ?, popularity = ?, backdrop_path = ? WHERE series_id = ?`,
+        [update.tmdb_id, update.popularity, update.backdrop_path, update.series_id]
+      );
+    }
+    await dbInstance.execute('COMMIT');
+  } catch (err) {
+    await dbInstance.execute('ROLLBACK');
+    throw err;
   }
 
-  if (updates.length > 0) {
-    dbEvents.notify('vodSeries', 'update');
-  }
+  dbEvents.notify('vodSeries', 'update');
 }
 
 // ===========================================================================

@@ -824,22 +824,22 @@ export async function updateCategoriesBatch(
 
 /** Enable all categories for a source */
 export async function enableAllSourceCategories(sourceId: string) {
-  const categories = await db.categories.where('source_id').equals(sourceId).toArray();
-  await db.transaction('rw', [db.categories], async () => {
-    for (const cat of categories) {
-      await db.categories.update(cat.category_id, { enabled: true });
-    }
-  });
+  const dbInstance = await (db as any).dbPromise;
+  await dbInstance.execute(
+    'UPDATE categories SET enabled = 1 WHERE source_id = ?',
+    [sourceId]
+  );
+  dbEvents.notify('categories', 'update');
 }
 
 /** Disable all categories for a source */
 export async function disableAllSourceCategories(sourceId: string) {
-  const categories = await db.categories.where('source_id').equals(sourceId).toArray();
-  await db.transaction('rw', [db.categories], async () => {
-    for (const cat of categories) {
-      await db.categories.update(cat.category_id, { enabled: false });
-    }
-  });
+  const dbInstance = await (db as any).dbPromise;
+  await dbInstance.execute(
+    'UPDATE categories SET enabled = 0 WHERE source_id = ?',
+    [sourceId]
+  );
+  dbEvents.notify('categories', 'update');
 }
 
 // ============================================================================

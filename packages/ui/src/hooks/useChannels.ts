@@ -263,41 +263,45 @@ export function useChannelSearch(query: string, limit = 50) {
         return [];
       }
 
-      // If no enabled sources, return empty results
       if (!enabledSourceIds || enabledSourceIds.size === 0) {
         return [];
       }
 
-      // Get enabled category IDs (only from enabled sources)
-      const allCategories = await db.categories.toArray();
-      const enabledCategoryIds = new Set<string>();
-      for (const cat of allCategories) {
-        if (cat.enabled !== false && cat.category_id && enabledSourceIds.has(cat.source_id)) {
-          enabledCategoryIds.add(cat.category_id);
-        }
-      }
+      const sourceIdsList = Array.from(enabledSourceIds);
+      const sourcePlaceholders = sourceIdsList.map(() => '?').join(',');
 
-      // Search channels and filter by enabled sources, categories, AND enabled channels
-      const allChannels = await db.channels
-        .whereRaw('name LIKE ?', [`%${query}%`])
-        .limit(limit * 2)
-        .toArray();
+      const dbInstance = await (db as any).dbPromise;
 
-      // Filter channels that belong to enabled sources, enabled categories AND are enabled themselves
+      const allCategories = await dbInstance.select(
+        `SELECT category_id FROM categories 
+         WHERE source_id IN (${sourcePlaceholders}) 
+         AND (enabled IS NULL OR enabled != 0)`,
+        sourceIdsList
+      );
+
+      const enabledCategoryIds = new Set(
+        allCategories.map((cat: any) => cat.category_id)
+      );
+
+      const allChannels = await dbInstance.select(
+        `SELECT * FROM channels 
+         WHERE name LIKE ? 
+         AND source_id IN (${sourcePlaceholders})
+         AND (enabled IS NULL OR enabled != 0)
+         LIMIT ?`,
+        [`%${query}%`, ...sourceIdsList, limit * 2]
+      );
+
       const filteredChannels: StoredChannel[] = [];
       for (const channel of allChannels) {
-        // Skip disabled channels
-        if (channel.enabled === false) continue;
-
-        // Skip channels from disabled sources
-        if (!enabledSourceIds.has(channel.source_id)) continue;
-
-        const channelCategories = parseCategoryIds(channel.category_ids);
-        const isInEnabledCategory = channelCategories.some(catId => enabledCategoryIds.has(catId));
-        if (isInEnabledCategory) {
-          filteredChannels.push(channel);
-          if (filteredChannels.length >= limit) break;
-        }
+        try {
+          const catIds = JSON.parse(channel.category_ids || '[]');
+          const isInEnabledCategory = catIds.some((id: string) => enabledCategoryIds.has(id));
+          if (isInEnabledCategory) {
+            filteredChannels.push(channel);
+            if (filteredChannels.length >= limit) break;
+          }
+        } catch {}
       }
 
       return filteredChannels;
@@ -317,56 +321,64 @@ export function useProgramSearch(query: string, limit = 50) {
         return [];
       }
 
-      // If no enabled sources, return empty results
       if (!enabledSourceIds || enabledSourceIds.size === 0) {
         return [];
       }
 
-      // Get enabled category IDs (only from enabled sources)
-      const allCategories = await db.categories.toArray();
-      const enabledCategoryIds = new Set<string>();
-      for (const cat of allCategories) {
-        if (cat.enabled !== false && cat.category_id && enabledSourceIds.has(cat.source_id)) {
-          enabledCategoryIds.add(cat.category_id);
-        }
-      }
+      const sourceIdsList = Array.from(enabledSourceIds);
+      const sourcePlaceholders = sourceIdsList.map(() => '?').join(',');
 
-      // Get channels in enabled sources, enabled categories that are also enabled themselves
-      const allChannels = await db.channels.toArray();
+      const dbInstance = await (db as any).dbPromise;
+
       const enabledChannelIds = new Set<string>();
-      for (const channel of allChannels) {
-        // Skip disabled channels
-        if (channel.enabled === false) continue;
 
-        // Skip channels from disabled sources
-        if (!enabledSourceIds.has(channel.source_id)) continue;
+      const channels = await dbInstance.select(
+        `SELECT stream_id, category_ids FROM channels 
+         WHERE source_id IN (${sourcePlaceholders}) 
+         AND (enabled IS NULL OR enabled != 0)
+         AND category_ids IS NOT NULL`,
+        sourceIdsList
+      );
 
-        const channelCategories = parseCategoryIds(channel.category_ids);
-        const isInEnabledCategory = channelCategories.some(catId => enabledCategoryIds.has(catId));
-        if (isInEnabledCategory) {
-          enabledChannelIds.add(channel.stream_id);
-        }
+      const allCategories = await dbInstance.select(
+        `SELECT category_id FROM categories 
+         WHERE source_id IN (${sourcePlaceholders}) 
+         AND (enabled IS NULL OR enabled != 0)`,
+        sourceIdsList
+      );
+
+      const enabledCategoryIds = new Set(
+        allCategories.map((cat: any) => cat.category_id)
+      );
+
+      for (const channel of channels) {
+        try {
+          const catIds = JSON.parse(channel.category_ids || '[]');
+          if (catIds.some((id: string) => enabledCategoryIds.has(id))) {
+            enabledChannelIds.add(channel.stream_id);
+          }
+        } catch {}
       }
 
-      // Search programs and filter by enabled channels
-      const results = await db.programs
-        .whereRaw('title LIKE ?', [`%${query}%`])
-        .limit(limit * 2)
-        .toArray();
-
-      // Filter programs belonging to enabled channels
-      const filteredPrograms: StoredProgram[] = [];
-      for (const prog of results) {
-        if (enabledChannelIds.has(prog.stream_id)) {
-          filteredPrograms.push({
-            ...prog,
-            description: decompressEpgDescription(prog.description) ?? prog.description,
-          });
-          if (filteredPrograms.length >= limit) break;
-        }
+      if (enabledChannelIds.size === 0) {
+        return [];
       }
 
-      return filteredPrograms;
+      const channelIdsList = Array.from(enabledChannelIds);
+      const channelPlaceholders = channelIdsList.map(() => '?').join(',');
+
+      const results = await dbInstance.select(
+        `SELECT * FROM programs 
+         WHERE title LIKE ? 
+         AND stream_id IN (${channelPlaceholders})
+         LIMIT ?`,
+        [`%${query}%`, ...channelIdsList, limit]
+      );
+
+      return results.map((prog: StoredProgram) => ({
+        ...prog,
+        description: decompressEpgDescription(prog.description) ?? prog.description,
+      }));
     },
     [query, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
   );
