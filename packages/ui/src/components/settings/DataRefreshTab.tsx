@@ -35,7 +35,7 @@ export function DataRefreshTab({
       // Trigger fresh sync (no page reload needed)
       setCacheClearing(false);
       setChannelSyncing(true);
-      setSyncStatusMessage('Initializing...');
+      setSyncStatusMessage('Re-syncing sources...');
       await syncAllSources(setSyncStatusMessage);
       setSyncStatusMessage(null);
       setChannelSyncing(false);
@@ -103,8 +103,8 @@ export function DataRefreshTab({
           <h3>Clear Cache</h3>
         </div>
         <p className="section-description">
-          Clear all cached channel, EPG, and VOD data. Use this if you're experiencing
-          issues like duplicate entries, stale EPG, or data not updating properly.
+          Clear all cached channel, EPG, and VOD data, then compact the database to reclaim disk space.
+          Use this if you're experiencing issues like duplicate entries, stale EPG, or data not updating properly.
           Your sources and settings will be preserved.
         </p>
 
