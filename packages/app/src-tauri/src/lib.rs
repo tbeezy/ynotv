@@ -1,16 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tauri::{AppHandle, Emitter, Runtime, Manager};
-use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-use tauri_plugin_shell::process::CommandEvent;
-use tauri_plugin_shell::ShellExt;
-#[cfg(target_os = "windows")]
-use tokio::net::windows::named_pipe::ClientOptions;
-#[cfg(not(target_os = "windows"))]
-use tokio::net::UnixStream;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tauri::path::BaseDirectory;
 
 // DVR Module (Rust native implementation)
@@ -27,6 +16,10 @@ mod epg_streaming;
 mod tmdb_cache;
 use tmdb_cache::{TmdbCache, MatchResult, CacheStats};
 
+// MPV Player module (platform-specific implementations)
+mod mpv;
+use mpv::MpvState;
+
 
 // Bulk insert structures
 #[derive(Debug, Deserialize)]
@@ -37,31 +30,7 @@ struct BulkInsertRequest {
     operation: String, // "insert" or "replace"
 }
 
-// Global state for MPV
-struct MpvState {
-    process: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
-    socket_connected: Mutex<bool>,
-    ipc_tx: Mutex<Option<tokio::sync::mpsc::Sender<String>>>,
-    pending_requests: Arc<Mutex<HashMap<u64, tokio::sync::oneshot::Sender<Result<serde_json::Value, String>>>>>,
-    request_id_counter: Mutex<u64>,
-    initializing: Mutex<bool>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct MpvStatus {
-    playing: bool,
-    volume: f64,
-    muted: bool,
-    position: f64,
-    duration: f64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-enum MpvResponse {
-    Event { event: String, name: Option<String>, data: Option<serde_json::Value> },
-    Response { request_id: u64, error: Option<String>, data: Option<serde_json::Value> },
-}
+// Note: MpvState, MpvStatus, MpvResponse are now defined in the mpv module
 
 // Helper to get socket path
 fn get_socket_path() -> String {
@@ -75,402 +44,112 @@ fn get_socket_path() -> String {
     }
 }
 
-// Helper to spawn MPV (extracted from init_mpv)
-async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>) -> Result<(), String> {
-    // Prevent concurrent inits
-    {
-        let mut init = state.initializing.lock().unwrap();
-        if *init {
-            println!("MPV initialization already in progress");
-            return Ok(());
-        }
+// Note: get_socket_path, spawn_mpv, connect_ipc, send_command functions
+// are now in the mpv module (sidecar.rs for Windows/Linux, macos.rs for macOS)
 
-        let proc = state.process.lock().unwrap();
-        if proc.is_some() {
-             return Ok(());
-        }
-        *init = true;
-    }
+// ============================================================================
+// MPV Commands - Delegates to platform-specific implementation
+// ============================================================================
 
-    let socket_path = get_socket_path();
-    println!("Initializing MPV on socket: {}", socket_path);
-
-    // Clean up existing socket/pipe if needed (Unix only)
-    #[cfg(not(target_os = "windows"))]
-    let _ = std::fs::remove_file(&socket_path);
-
-    // Get the main window handle for embedding
-    let window = match app.get_webview_window("main") {
-        Some(w) => w,
-        None => {
-            *state.initializing.lock().unwrap() = false;
-            return Err("Main window not found".to_string());
-        }
-    };
-
-    let hwnd = match window.window_handle() {
-        Ok(h) => match h.as_raw() {
-            #[cfg(target_os = "windows")]
-            RawWindowHandle::Win32(h) => h.hwnd.get(),
-            #[cfg(target_os = "macos")]
-            RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
-            #[cfg(target_os = "linux")]
-            RawWindowHandle::Xlib(h) => h.window as usize,
-            _ => {
-                *state.initializing.lock().unwrap() = false;
-                return Err("Unsupported platform/backend for window embedding".to_string());
-            }
-        },
-        Err(e) => {
-            *state.initializing.lock().unwrap() = false;
-            return Err(e.to_string());
-        }
-    };
-    println!("Embedding MPV into HWND: {:?}", hwnd);
-
-    // Prepare arguments
-    let mut args = vec![
-        format!("--input-ipc-server={}", socket_path),
-        format!("--wid={}", hwnd), // Embed into main window
-        "--force-window=immediate".into(),
-        "--idle=yes".into(),
-        "--keep-open=yes".into(),
-        "--no-osc".into(),
-        "--no-osd-bar".into(),
-        "--osd-level=0".into(),
-        "--input-default-bindings=no".into(),
-        "--no-input-cursor".into(),
-        "--cursor-autohide=no".into(),
-        "--no-terminal".into(),
-    ];
-
-    #[cfg(target_os = "macos")]
-    {
-        // MacOS/CoreAudio specific fixes for embedding/crashes
-        args.push("--vo=libmpv".into()); // Force libmpv VO
-        args.push("--hwdec=no".into()); // Disable hardware decoding
-        args.push("--coreaudio-change-physical-format=no".into()); // Prevent audio switch crashes
-    }
-
-    // Launch MPV using shell plugin
-    let sidecar = app.shell().sidecar("mpv");
-    if let Err(e) = sidecar {
-        *state.initializing.lock().unwrap() = false;
-        return Err(format!("Failed to create sidecar: {}", e));
-    }
-
-    let cmd = sidecar.unwrap().args(&args);
-    let spawned = cmd.spawn();
-
-    if let Err(e) = spawned {
-        *state.initializing.lock().unwrap() = false;
-        return Err(format!("Failed to spawn mpv: {}", e));
-    }
-
-    let (mut rx, _) = spawned.unwrap();
-    println!("MPV spawned successfully");
-
-    // Spawn a thread to monitor the process
-    {
-        let mut proc_handle = state.process.lock().unwrap();
-        *proc_handle = Some(tauri::async_runtime::spawn(async move {
-            while let Some(event) = rx.recv().await {
-                match event {
-                     CommandEvent::Stdout(line) => println!("MPV STDOUT: {}", String::from_utf8_lossy(&line)),
-                     CommandEvent::Stderr(line) => println!("MPV STDERR: {}", String::from_utf8_lossy(&line)),
-                     CommandEvent::Error(e) => println!("MPV ERROR: {}", e),
-                     CommandEvent::Terminated(s) => println!("MPV TERMINATED: {:?}", s),
-                     _ => {}
-                }
-            }
-        }));
-    }
-
-    // Wait for internal startup
-    tokio::time::sleep(Duration::from_millis(1000)).await;
-
-    // Connect to IPC
-    println!("Connecting execution IPC...");
-    let connect_res = connect_ipc(app, state, &socket_path).await;
-
-    // Reset initializing flag
-    *state.initializing.lock().unwrap() = false;
-
-    match connect_res {
-        Ok(_) => {
-            println!("MPV Init Complete");
-            Ok(())
-        },
-        Err(e) => Err(e)
-    }
-}
-
-// Initialize MPV process
 #[tauri::command]
-async fn init_mpv<R: Runtime>(app: AppHandle<R>, _args: Vec<String>, state: tauri::State<'_, MpvState>) -> Result<(), String> {
-
-    // Check if running
-    let is_running = {
-        let proc = state.process.lock().unwrap();
-        proc.is_some()
-    };
-
-    if is_running {
-         println!("MPV already running, connecting IPC only");
-         let socket_path = get_socket_path();
-         let _ = connect_ipc(&app, &state, &socket_path).await;
-         return Ok(());
-    }
-
-    // If not running, try to spawn
-    spawn_mpv(&app, &state).await
-}
-
-async fn connect_ipc<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>, socket_path: &str) -> Result<(), String> {
-    let stream = {
-        #[cfg(target_os = "windows")]
-        {
-            let mut retries = 5;
-            loop {
-                 match ClientOptions::new().open(socket_path) {
-                     Ok(s) => break Ok(s),
-                     Err(_) if retries > 0 => {
-                         tokio::time::sleep(Duration::from_millis(500)).await;
-                         retries -= 1;
-                     }
-                     Err(e) => break Err(format!("Failed to connect to named pipe: {}", e)),
-                 }
-            }
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-             let mut retries = 5;
-             loop {
-                  match UnixStream::connect(socket_path).await {
-                      Ok(s) => break Ok(s),
-                      Err(_) if retries > 0 => {
-                          tokio::time::sleep(Duration::from_millis(500)).await;
-                          retries -= 1;
-                      }
-                      Err(e) => break Err(format!("Failed to connect to unix socket: {}", e)),
-                  }
-             }
-        }
-    }?;
-
-
-    let (reader, mut writer) = tokio::io::split(stream);
-    let mut buf_reader = BufReader::new(reader);
-
-    // Channel for sending commands to the writer task
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(32);
-    *state.ipc_tx.lock().unwrap() = Some(tx);
-    *state.socket_connected.lock().unwrap() = true;
-
-    // Spawn writer task
-    tauri::async_runtime::spawn(async move {
-        while let Some(msg) = rx.recv().await {
-            let _ = writer.write_all(msg.as_bytes()).await;
-            let _ = writer.write_all(b"\n").await;
-            let _ = writer.flush().await;
-        }
-    });
-
-    // Spawn reader task
-    let app_handle = app.clone();
-    let pending_requests = state.pending_requests.clone();
-
-    tauri::async_runtime::spawn(async move {
-        let mut line = String::new();
-        let mut status = MpvStatus {
-            playing: false,
-            volume: 100.0,
-            muted: false,
-            position: 0.0,
-            duration: 0.0,
-        };
-
-        loop {
-            line.clear();
-            match buf_reader.read_line(&mut line).await {
-                Ok(0) => break, // EOF
-                Ok(_) => {
-                    if let Ok(msg) = serde_json::from_str::<MpvResponse>(&line) {
-                        match msg {
-                            MpvResponse::Event { event, name, data } => {
-                                if event == "property-change" {
-                                    if let (Some(name), Some(data)) = (name, data) {
-                                        match name.as_str() {
-                                            "pause" => status.playing = !data.as_bool().unwrap_or(false),
-                                            "volume" => status.volume = data.as_f64().unwrap_or(100.0),
-                                            "mute" => status.muted = data.as_bool().unwrap_or(false),
-                                            "time-pos" => status.position = data.as_f64().unwrap_or(0.0),
-                                            "duration" => status.duration = data.as_f64().unwrap_or(0.0),
-                                            _ => {}
-                                        }
-                                        let _ = app_handle.emit("mpv-status", status.clone());
-                                    }
-                                }
-                            },
-                            MpvResponse::Response { request_id, error, data } => {
-                                let mut pending = pending_requests.lock().unwrap();
-                                if let Some(sender) = pending.remove(&request_id) {
-                                    if let Some(err) = error {
-                                        if err != "success" {
-                                            let _ = sender.send(Err(err));
-                                            continue;
-                                        }
-                                    }
-                                    let _ = sender.send(Ok(data.unwrap_or(serde_json::Value::Null)));
-                                }
-                            }
-                        }
-                    }
-                }
-                Err(_) => break,
-            }
-        }
-        let _ = app_handle.emit("mpv-error", "IPC connection lost");
-    });
-
-    // Observe properties
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(1), serde_json::json!("pause")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(2), serde_json::json!("volume")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(3), serde_json::json!("mute")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(4), serde_json::json!("time-pos")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(5), serde_json::json!("duration")]).await;
-
-    let _ = app.emit("mpv-ready", true);
-    Ok(())
-}
-
-async fn send_command(state: &tauri::State<'_, MpvState>, command: &str, args: Vec<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let request_id = {
-        let mut counter = state.request_id_counter.lock().unwrap();
-        *counter += 1;
-        *counter
-    };
-
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    {
-        state.pending_requests.lock().unwrap().insert(request_id, tx);
-    }
-
-    let mut cmd_args = vec![serde_json::Value::String(command.to_string())];
-    cmd_args.extend(args);
-
-    let cmd_json = serde_json::json!({
-        "command": cmd_args,
-        "request_id": request_id
-    });
-
-    let tx_channel = state.ipc_tx.lock().unwrap().clone();
-    if let Some(sender) = tx_channel {
-        sender.send(cmd_json.to_string()).await.map_err(|e| e.to_string())?;
-    } else {
-        println!("Warning: IPC not connected for command {}", command);
-        return Err("IPC not connected".to_string());
-    }
-
-    match tokio::time::timeout(Duration::from_secs(5), rx).await {
-        Ok(Ok(res)) => res.map_err(|e| e),
-        Ok(Err(_)) => Err("Channel closed".to_string()),
-        Err(_) => {
-            state.pending_requests.lock().unwrap().remove(&request_id);
-            Err("Timeout".to_string())
-        }
-    }
+async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>, state: tauri::State<'_, MpvState>) -> Result<(), String> {
+    mpv::init_mpv(app, args, state).await
 }
 
 #[tauri::command]
-async fn mpv_load(state: tauri::State<'_, MpvState>, url: String) -> Result<(), String> {
-    send_command(&state, "loadfile", vec![serde_json::Value::String(url)]).await.map(|_| ())
+async fn mpv_load<R: Runtime>(app: AppHandle<R>, url: String) -> Result<(), String> {
+    mpv::mpv_load(app, url).await
 }
 
 #[tauri::command]
-async fn mpv_play(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("pause"), serde_json::json!(false)]).await.map(|_| ())
+async fn mpv_play<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_play(app).await
 }
 
 #[tauri::command]
-async fn mpv_pause(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("pause"), serde_json::json!(true)]).await.map(|_| ())
+async fn mpv_pause<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_pause(app).await
 }
 
 #[tauri::command]
-async fn mpv_resume(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("pause"), serde_json::json!(false)]).await.map(|_| ())
+async fn mpv_resume<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_resume(app).await
 }
 
 #[tauri::command]
-async fn mpv_stop(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "stop", vec![]).await.map(|_| ())
+async fn mpv_stop<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_stop(app).await
 }
 
 #[tauri::command]
-async fn mpv_set_volume(state: tauri::State<'_, MpvState>, volume: f64) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("volume"), serde_json::json!(volume)]).await.map(|_| ())
+async fn mpv_set_volume<R: Runtime>(app: AppHandle<R>, volume: f64) -> Result<(), String> {
+    mpv::mpv_set_volume(app, volume).await
 }
 
 #[tauri::command]
-async fn mpv_seek(state: tauri::State<'_, MpvState>, seconds: f64) -> Result<(), String> {
-    send_command(&state, "seek", vec![serde_json::json!(seconds), serde_json::json!("absolute")]).await.map(|_| ())
+async fn mpv_seek<R: Runtime>(app: AppHandle<R>, seconds: f64) -> Result<(), String> {
+    mpv::mpv_seek(app, seconds).await
 }
 
 #[tauri::command]
-async fn mpv_cycle_audio(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "cycle", vec![serde_json::json!("audio")]).await.map(|_| ())
+async fn mpv_cycle_audio<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_cycle_audio(app).await
 }
 
 #[tauri::command]
-async fn mpv_cycle_sub(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "cycle", vec![serde_json::json!("sub")]).await.map(|_| ())
+async fn mpv_cycle_sub<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_cycle_sub(app).await
 }
 
 #[tauri::command]
-async fn mpv_toggle_mute(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "cycle", vec![serde_json::json!("mute")]).await.map(|_| ())
+async fn mpv_toggle_mute<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_toggle_mute(app).await
 }
 
 #[tauri::command]
-async fn mpv_toggle_stats(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "script-binding", vec![serde_json::json!("stats/display-stats-toggle")]).await.map(|_| ())
+async fn mpv_toggle_stats<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_toggle_stats(app).await
 }
 
 #[tauri::command]
-async fn mpv_toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        let is_fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
-        window.set_fullscreen(!is_fullscreen).map_err(|e| e.to_string())?;
-        Ok(())
-    } else {
-        Err("Main window not found".to_string())
-    }
+fn mpv_toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    mpv::mpv_toggle_fullscreen(app)
 }
 
 #[tauri::command]
-async fn mpv_get_track_list(state: tauri::State<'_, MpvState>) -> Result<serde_json::Value, String> {
-    send_command(&state, "get_property", vec![serde_json::json!("track-list")]).await
+async fn mpv_get_track_list<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    mpv::mpv_get_track_list(app).await
 }
 
 #[tauri::command]
-async fn mpv_set_audio(state: tauri::State<'_, MpvState>, id: i64) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("aid"), serde_json::json!(id)]).await.map(|_| ())
+async fn mpv_set_audio<R: Runtime>(app: AppHandle<R>, id: i64) -> Result<(), String> {
+    mpv::mpv_set_audio(app, id).await
 }
 
 #[tauri::command]
-async fn mpv_set_subtitle(state: tauri::State<'_, MpvState>, id: i64) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("sid"), serde_json::json!(id)]).await.map(|_| ())
+async fn mpv_set_subtitle<R: Runtime>(app: AppHandle<R>, id: i64) -> Result<(), String> {
+    mpv::mpv_set_subtitle(app, id).await
 }
 
 #[tauri::command]
-async fn mpv_set_property(state: tauri::State<'_, MpvState>, name: String, value: serde_json::Value) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!(name), value]).await.map(|_| ())
+async fn mpv_set_property<R: Runtime>(app: AppHandle<R>, name: String, value: serde_json::Value) -> Result<(), String> {
+    mpv::mpv_set_property(app, name, value).await
 }
 
 #[tauri::command]
-async fn mpv_get_property(state: tauri::State<'_, MpvState>, name: String) -> Result<serde_json::Value, String> {
-    send_command(&state, "get_property", vec![serde_json::json!(name)]).await
+async fn mpv_get_property<R: Runtime>(app: AppHandle<R>, name: String) -> Result<serde_json::Value, String> {
+    mpv::mpv_get_property(app, name).await
+}
+
+#[tauri::command]
+async fn mpv_set_video_margins<R: Runtime>(
+    app: AppHandle<R>,
+    left: Option<f64>,
+    right: Option<f64>,
+    top: Option<f64>,
+    bottom: Option<f64>,
+) -> Result<(), String> {
+    mpv::mpv_set_video_margins(app, left, right, top, bottom).await
 }
 
 // Native bulk insert command
@@ -1147,14 +826,7 @@ pub fn run() {
                 file_name: Some("ynotv".into()) 
             }))
             .build())
-        .manage(MpvState {
-            process: Mutex::new(None),
-            socket_connected: Mutex::new(false),
-            ipc_tx: Mutex::new(None),
-            pending_requests: Arc::new(Mutex::new(HashMap::new())),
-            request_id_counter: Mutex::new(0),
-            initializing: Mutex::new(false),
-        })
+.manage(mpv::MpvState::new())
         .setup(|app| {
             // Initialize DVR system FIRST before anything else
             let app_handle = app.handle().clone();
@@ -1199,8 +871,9 @@ pub fn run() {
             mpv_get_track_list,
             mpv_set_audio,
             mpv_set_subtitle,
-            mpv_set_property,
+mpv_set_property,
             mpv_get_property,
+            mpv_set_video_margins,
             bulk_insert,
             // Optimized bulk sync commands (new)
             bulk_upsert_channels,
