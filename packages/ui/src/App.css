@@ -4,6 +4,12 @@
   --category-font-size: 14px;
 }
 
+/* Required for transparent window on macOS */
+html,
+body {
+  background: transparent;
+}
+
 /* Main container - full screen, TRANSPARENT so mpv video shows through */
 .app {
   width: 100vw;
@@ -26,6 +32,7 @@
   display: flex;
   align-items: center;
   -webkit-app-region: drag;
+  pointer-events: auto;
   z-index: 1000;
   opacity: 0;
   transition: opacity 0.2s;
