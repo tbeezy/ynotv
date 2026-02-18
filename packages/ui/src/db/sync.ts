@@ -1,11 +1,11 @@
 import { db, clearSourceData, clearVodData, type SourceMeta, type StoredProgram, type StoredMovie, type StoredSeries, type StoredEpisode, type VodCategory } from './index';
 import { fetchAndParseM3U, XtreamClient, StalkerClient, type XmltvProgram } from '@ynotv/local-adapter';
 import type { Source, Channel, Category, Movie, Series } from '@ynotv/core';
-import { getEnrichedMovieExports, getEnrichedTvExports, findBestMatch, extractMatchParams } from '../services/tmdb-exports';
 import { useUIStore } from '../stores/uiStore';
 import { bulkOps, type BulkChannel, type BulkCategory } from '../services/bulk-ops';
 import { epgStreaming, type EpgProgressCallback } from '../services/epg-streaming';
 import { dbEvents } from './sqlite-adapter';
+import { matchAllMoviesLazy, matchAllSeriesLazy } from '../services/title-match';
 
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { compressEpgDescription, decompressEpgDescription } from '../utils/compression';
@@ -1704,152 +1704,6 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
   return storedEpisodes.length;
 }
 
-// Generic TMDB matching function for both movies and series
-// Eliminates ~120 lines of duplicate code
-async function matchVodWithTmdb<T extends (StoredMovie | StoredSeries)>(
-  sourceId: string,
-  config: {
-    table: typeof db.vodMovies | typeof db.vodSeries;
-    getExports: () => ReturnType<typeof getEnrichedMovieExports>;
-    contentType: 'movie' | 'series';
-  },
-  force?: boolean
-): Promise<number> {
-  try {
-    // Check if matching is enabled
-    if (window.storage) {
-      const settings = await window.storage.getSettings();
-      if (settings.data?.tmdbMatchingEnabled === false) {
-        return 0;
-      }
-
-      // Check 24h timer (unless forced)
-      if (!force) {
-        const lastRun = settings.data?.lastTmdbMatch || 0;
-        const now = Date.now();
-        if (now - lastRun < 24 * 60 * 60 * 1000) {
-          if (config.contentType === 'movie') {
-            console.log(`[TMDB Match] Skipping export (last run ${(now - lastRun) / 1000 / 60 / 60}h ago)`);
-          }
-          return 0;
-        }
-      }
-    }
-
-    const contentLabel = config.contentType === 'movie' ? 'movies' : 'series';
-    const contentLabelCap = config.contentType === 'movie' ? 'Movie' : 'Series';
-
-    // Get only items that haven't been matched AND haven't been attempted
-    console.time(`[TMDB Match] Query unmatched ${contentLabel}`);
-    const items = await config.table
-      .whereRaw(
-        "source_id = ? AND (tmdb_id IS NULL OR tmdb_id = 0) AND (match_attempted IS NULL OR match_attempted = '')",
-        [sourceId]
-      )
-      .toArray();
-    console.timeEnd(`[TMDB Match] Query unmatched ${contentLabel}`);
-
-    if (items.length === 0) {
-      console.log(`[TMDB Match] No new ${contentLabel} to match`);
-      return 0;
-    }
-
-    console.log(`[TMDB Match] Starting ${contentLabel} matching with year-aware lookup...`);
-    console.time(`[TMDB Match] Download ${config.contentType === 'movie' ? 'exports' : 'TV exports'}`);
-    const exportsData = await config.getExports();
-    console.timeEnd(`[TMDB Match] Download ${config.contentType === 'movie' ? 'exports' : 'TV exports'}`);
-
-    console.log(`[TMDB Match] Matching ${items.length} new ${contentLabel}...`);
-    console.time(`[TMDB Match] ${contentLabelCap} matching loop`);
-
-    let matched = 0;
-    let yearMatched = 0;
-    const BATCH_SIZE = 500;
-    const now = new Date();
-
-    for (let i = 0; i < items.length; i += BATCH_SIZE) {
-      const batch = items.slice(i, i + BATCH_SIZE);
-      const toUpdate: T[] = [];
-
-      for (const item of batch) {
-        // Extract title and year from item data
-        const { title, year } = extractMatchParams(item);
-        const match = findBestMatch(exportsData, title, year);
-
-        if (match) {
-          // Track if we matched on year specifically
-          if (year && match.year === year) {
-            yearMatched++;
-          }
-          toUpdate.push({
-            ...item,
-            tmdb_id: match.id,
-            popularity: match.popularity,
-            match_attempted: now,
-          } as T);
-          matched++;
-        } else {
-          // Mark as attempted even if no match found (prevents re-trying)
-          toUpdate.push({
-            ...item,
-            match_attempted: now,
-          } as T);
-        }
-      }
-
-      // Bulk update - much faster than individual updates
-      if (toUpdate.length > 0) {
-        // Type assertion needed because T is a union type
-        await config.table.bulkPut(toUpdate as any);
-      }
-
-      console.log(`[TMDB Match] Progress: ${Math.min(i + BATCH_SIZE, items.length)}/${items.length}`);
-
-      // Yield to event loop to keep UI responsive
-      await new Promise(resolve => requestAnimationFrame(resolve));
-    }
-
-    console.timeEnd(`[TMDB Match] ${contentLabelCap} matching loop`);
-    console.log(`[TMDB Match] Matched ${matched}/${items.length} ${contentLabel} (${yearMatched} with exact year match)`);
-
-    // Update last match timestamp
-    if (window.storage) {
-      await window.storage.updateSettings({ lastTmdbMatch: Date.now() });
-    }
-
-    return matched;
-  } catch (error) {
-    console.error(`[TMDB Match] ${config.contentType === 'movie' ? 'Movie' : 'Series'} matching failed:`, error);
-    return 0;
-  }
-}
-
-// Match movies against TMDB exports (no API calls!)
-async function matchMoviesWithTmdb(sourceId: string, force?: boolean): Promise<number> {
-  return matchVodWithTmdb<StoredMovie>(
-    sourceId,
-    {
-      table: db.vodMovies,
-      getExports: getEnrichedMovieExports,
-      contentType: 'movie',
-    },
-    force
-  );
-}
-
-// Match series against TMDB exports (no API calls!)
-async function matchSeriesWithTmdb(sourceId: string, force?: boolean): Promise<number> {
-  return matchVodWithTmdb<StoredSeries>(
-    sourceId,
-    {
-      table: db.vodSeries,
-      getExports: getEnrichedTvExports,
-      contentType: 'series',
-    },
-    force
-  );
-}
-
 // Sync all VOD content for a source
 export async function syncVodForSource(source: Source): Promise<VodSyncResult> {
   try {
@@ -1858,17 +1712,12 @@ export async function syncVodForSource(source: Source): Promise<VodSyncResult> {
       syncVodSeries(source),
     ]);
 
-    // Update source meta with VOD counts and sync timestamp
-    // Use bulkOps.updateSourceMeta to preserve existing fields (expiry_date, connections, etc.)
     await bulkOps.updateSourceMeta({
       source_id: source.id,
       vod_movie_count: moviesResult.count,
       vod_series_count: seriesResult.count,
       vod_last_synced: new Date().toISOString(),
     });
-
-    // Match against TMDB exports (runs in background, no API calls)
-    enrichSourceMetadata(source, true); // Force matching on manual sync
 
     return {
       success: true,
@@ -1941,15 +1790,17 @@ export async function syncAllVod(): Promise<Map<string, VodSyncResult>> {
   return results;
 }
 
-// Trigger TMDB matching for a source (runs in background)
-export function enrichSourceMetadata(source: Source, force?: boolean) {
+export async function enrichSourceMetadata(source?: Source, _force?: boolean) {
   startTmdbMatching();
-  Promise.all([
-    matchMoviesWithTmdb(source.id, force),
-    matchSeriesWithTmdb(source.id, force),
-  ])
-    .catch(console.error)
-    .finally(() => {
-      endTmdbMatching();
-    });
+  try {
+    const [movieCount, seriesCount] = await Promise.all([
+      matchAllMoviesLazy(),
+      matchAllSeriesLazy(),
+    ]);
+    console.log(`[Lazy Match] Matched ${movieCount} movies, ${seriesCount} series`);
+  } catch (error) {
+    console.error('[Lazy Match] Error:', error);
+  } finally {
+    endTmdbMatching();
+  }
 }

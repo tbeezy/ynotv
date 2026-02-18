@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { validateAccessToken } from '../../services/tmdb';
-import { clearExportCache } from '../../services/tmdb-exports';
 import { enrichSourceMetadata } from '../../db/sync';
 
 interface TmdbTabProps {
@@ -170,23 +169,6 @@ export function TmdbTab({
           <p className="form-hint">
             Manually trigger TMDB matching for all enabled sources. This will match your VOD content 
             with TMDB data to enable Trending/Popular lists. Check the browser console for progress.
-          </p>
-        </div>
-
-        <div className="form-group">
-          <button
-            type="button"
-            onClick={() => {
-              clearExportCache();
-              alert('TMDB export cache cleared! Next sync will download fresh data.');
-            }}
-            className="sync-btn"
-          >
-            Clear TMDB Export Cache
-          </button>
-          <p className="form-hint">
-            Clear cached TMDB export data and force a fresh download. Use this if matching rates are 
-            unexpectedly low or if you suspect the cached data is outdated.
           </p>
         </div>
 

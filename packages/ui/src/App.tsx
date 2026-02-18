@@ -27,7 +27,7 @@ import {
   useSyncStatusMessage,
   useSetSyncStatusMessage
 } from './stores/uiStore';
-import { syncVodForSource, isVodStale, isEpgStale, syncSource, enrichSourceMetadata } from './db/sync';
+import { syncVodForSource, isVodStale, isEpgStale, syncSource } from './db/sync';
 import { bulkOps } from './services/bulk-ops';
 import type { StoredChannel, WatchlistItem } from './db';
 import { getWatchlist, db } from './db';
@@ -1112,9 +1112,7 @@ function App() {
               if (stale) {
                 staleVodSources.push(source);
               } else {
-                debugLog(`Source ${source.name} is fresh, skipping VOD sync but triggering TMDB match`, 'vod');
-                // Even if fresh, we might have new exports available or unmatched content
-                enrichSourceMetadata(source);
+                debugLog(`Source ${source.name} is fresh, skipping VOD sync`, 'vod');
               }
             }
 
