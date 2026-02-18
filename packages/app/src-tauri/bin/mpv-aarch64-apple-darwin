@@ -1,0 +1,3 @@
+#!/bin/bash
+# Placeholder - macOS uses libmpv embedding instead of sidecar
+exit 0

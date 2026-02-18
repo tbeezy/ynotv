@@ -49,6 +49,16 @@ jobs:
           echo "libmpv wrapper library installed:"
           ls -la src-tauri/lib/ || echo "lib directory not found"
 
+      - name: Create MPV placeholder for macOS
+        run: |
+          mkdir -p packages/app/src-tauri/bin
+          echo '#!/bin/bash' > packages/app/src-tauri/bin/mpv-aarch64-apple-darwin
+          echo '# Placeholder - macOS uses libmpv embedding instead of sidecar' >> packages/app/src-tauri/bin/mpv-aarch64-apple-darwin
+          echo 'exit 0' >> packages/app/src-tauri/bin/mpv-aarch64-apple-darwin
+          chmod +x packages/app/src-tauri/bin/mpv-aarch64-apple-darwin
+          echo "Created MPV placeholder:"
+          ls -la packages/app/src-tauri/bin/
+
       - name: Download FFmpeg (Tauri Sidecar)
         run: |
           cd packages/app
