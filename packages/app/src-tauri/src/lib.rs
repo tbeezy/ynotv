@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Runtime, Manager};
 use tauri::path::BaseDirectory;
 

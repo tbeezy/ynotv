@@ -3,8 +3,8 @@
 // Uses tauri-plugin-libmpv for proper NSView embedding on macOS.
 // Video is embedded directly into the window using the native libmpv API.
 
-use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use serde::Deserialize;
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Runtime, Manager};
 use tauri_plugin_libmpv::{MpvConfig, MpvExt};
 
@@ -23,7 +23,7 @@ impl MpvState {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, Deserialize, Clone, Debug)]
 pub struct MpvStatus {
     pub playing: bool,
     pub volume: f64,
@@ -131,6 +131,7 @@ pub async fn init_mpv<R: Runtime>(app: AppHandle<R>, _args: Vec<String>, state: 
 
     // Set up event listener to translate libmpv events to our format
     let app_handle = app.clone();
+    let app_handle_for_closure = app.clone();
     
     // The plugin emits events as `mpv-event-{window_label}`
     // We need to listen and translate to `mpv-status` format
@@ -147,7 +148,7 @@ pub async fn init_mpv<R: Runtime>(app: AppHandle<R>, _args: Vec<String>, state: 
                             payload.get("name").and_then(|n| n.as_str()),
                             payload.get("data")
                         ) {
-                            emit_status_from_property(&app_handle, name, data);
+                            emit_status_from_property(&app_handle_for_closure, name, data);
                         }
                     }
                 }
@@ -161,7 +162,8 @@ pub async fn init_mpv<R: Runtime>(app: AppHandle<R>, _args: Vec<String>, state: 
 
 pub async fn mpv_load<R: Runtime>(app: AppHandle<R>, url: String) -> Result<(), String> {
     let window_label = "main";
-    app.mpv().command("loadfile", &[serde_json::json!(url)], window_label)
+    let args: Vec<serde_json::Value> = vec![serde_json::json!(url)];
+    app.mpv().command("loadfile", &args, window_label)
         .map_err(|e| format!("Failed to load file: {}", e))
 }
 
@@ -185,7 +187,8 @@ pub async fn mpv_resume<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 
 pub async fn mpv_stop<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let window_label = "main";
-    app.mpv().command("stop", &[], window_label)
+    let args: Vec<serde_json::Value> = vec![];
+    app.mpv().command("stop", &args, window_label)
         .map_err(|e| format!("Failed to stop: {}", e))
 }
 
@@ -197,31 +200,36 @@ pub async fn mpv_set_volume<R: Runtime>(app: AppHandle<R>, volume: f64) -> Resul
 
 pub async fn mpv_seek<R: Runtime>(app: AppHandle<R>, seconds: f64) -> Result<(), String> {
     let window_label = "main";
-    app.mpv().command("seek", &[serde_json::json!(seconds), serde_json::json!("absolute")], window_label)
+    let args: Vec<serde_json::Value> = vec![serde_json::json!(seconds), serde_json::json!("absolute")];
+    app.mpv().command("seek", &args, window_label)
         .map_err(|e| format!("Failed to seek: {}", e))
 }
 
 pub async fn mpv_cycle_audio<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let window_label = "main";
-    app.mpv().command("cycle", &[serde_json::json!("audio")], window_label)
+    let args: Vec<serde_json::Value> = vec![serde_json::json!("audio")];
+    app.mpv().command("cycle", &args, window_label)
         .map_err(|e| format!("Failed to cycle audio: {}", e))
 }
 
 pub async fn mpv_cycle_sub<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let window_label = "main";
-    app.mpv().command("cycle", &[serde_json::json!("sub")], window_label)
+    let args: Vec<serde_json::Value> = vec![serde_json::json!("sub")];
+    app.mpv().command("cycle", &args, window_label)
         .map_err(|e| format!("Failed to cycle subtitles: {}", e))
 }
 
 pub async fn mpv_toggle_mute<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let window_label = "main";
-    app.mpv().command("cycle", &[serde_json::json!("mute")], window_label)
+    let args: Vec<serde_json::Value> = vec![serde_json::json!("mute")];
+    app.mpv().command("cycle", &args, window_label)
         .map_err(|e| format!("Failed to toggle mute: {}", e))
 }
 
 pub async fn mpv_toggle_stats<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let window_label = "main";
-    app.mpv().command("script-binding", &[serde_json::json!("stats/display-stats-toggle")], window_label)
+    let args: Vec<serde_json::Value> = vec![serde_json::json!("stats/display-stats-toggle")];
+    app.mpv().command("script-binding", &args, window_label)
         .map_err(|e| format!("Failed to toggle stats: {}", e))
 }
 
