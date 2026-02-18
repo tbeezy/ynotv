@@ -820,13 +820,15 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_log::Builder::new()
+.plugin(tauri_plugin_log::Builder::new()
             .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
             .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { 
                 file_name: Some("ynotv".into()) 
             }))
             .build())
-.manage(mpv::MpvState::new())
+        #[cfg(target_os = "macos")]
+        .plugin(tauri_plugin_libmpv::init())
+        .manage(mpv::MpvState::new())
         .setup(|app| {
             // Initialize DVR system FIRST before anything else
             let app_handle = app.handle().clone();

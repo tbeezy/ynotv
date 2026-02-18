@@ -9,8 +9,9 @@
     "beforeBuildCommand": "pnpm --filter @ynotv/ui build",
     "frontendDist": "../../ui/dist"
   },
-  "app": {
+"app": {
     "withGlobalTauri": true,
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "ynoTV",
