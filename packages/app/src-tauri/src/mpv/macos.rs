@@ -91,6 +91,41 @@ pub async fn init_mpv<R: Runtime>(app: AppHandle<R>, _args: Vec<String>, state: 
 
     println!("[MPV macOS] Initializing libmpv...");
 
+    // On macOS, we need to ensure libmpv-wrapper.dylib can be found
+    // Tauri bundles resources to Contents/Resources/, but the plugin looks in executable dir
+    // We need to copy or symlink the library to the right location
+    #[cfg(target_os = "macos")]
+    {
+        use std::fs;
+        use tauri::path::BaseDirectory;
+        
+        // Get resource directory path
+        let resource_dir = app.path().resolve("libmpv-wrapper.dylib", BaseDirectory::Resource)
+            .map_err(|e| format!("Failed to resolve resource path: {}", e))?;
+        
+        println!("[MPV macOS] Resource path: {:?}", resource_dir);
+        
+        // Get executable directory
+        let exe_path = std::env::current_exe()
+            .map_err(|e| format!("Failed to get executable path: {}", e))?;
+        let exe_dir = exe_path.parent()
+            .ok_or("Failed to get executable directory")?;
+        let target_path = exe_dir.join("libmpv-wrapper.dylib");
+        
+        println!("[MPV macOS] Target path: {:?}", target_path);
+        
+        // Copy library to executable directory if not already there
+        if resource_dir.exists() && !target_path.exists() {
+            fs::copy(&resource_dir, &target_path)
+                .map_err(|e| format!("Failed to copy libmpv-wrapper: {}", e))?;
+            println!("[MPV macOS] Copied libmpv-wrapper to executable directory");
+        } else if target_path.exists() {
+            println!("[MPV macOS] libmpv-wrapper already in executable directory");
+        } else {
+            println!("[MPV macOS] WARNING: libmpv-wrapper.dylib not found in resources!");
+        }
+    }
+
     // Configure MPV with observed properties for status updates
     let mpv_config = MpvConfig {
         initial_options: [

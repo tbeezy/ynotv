@@ -836,6 +836,37 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            // macOS: Copy libmpv-wrapper.dylib to executable directory BEFORE any libmpv operations
+            // The plugin loads the library relative to the executable, but Tauri bundles it to Resources/
+            #[cfg(target_os = "macos")]
+            {
+                use std::fs;
+                use tauri::path::BaseDirectory;
+                
+                let resource_dir = app.path().resolve("libmpv-wrapper.dylib", BaseDirectory::Resource);
+                if let Ok(resource_path) = resource_dir {
+                    println!("[Setup macOS] libmpv resource path: {:?}", resource_path);
+                    
+                    if let Ok(exe_path) = std::env::current_exe() {
+                        if let Some(exe_dir) = exe_path.parent() {
+                            let target_path = exe_dir.join("libmpv-wrapper.dylib");
+                            println!("[Setup macOS] libmpv target path: {:?}", target_path);
+                            
+                            if resource_path.exists() && !target_path.exists() {
+                                match fs::copy(&resource_path, &target_path) {
+                                    Ok(_) => println!("[Setup macOS] Copied libmpv-wrapper.dylib to executable directory"),
+                                    Err(e) => eprintln!("[Setup macOS] Failed to copy libmpv-wrapper: {}", e),
+                                }
+                            } else if target_path.exists() {
+                                println!("[Setup macOS] libmpv-wrapper.dylib already in executable directory");
+                            } else {
+                                eprintln!("[Setup macOS] WARNING: libmpv-wrapper.dylib not found in resources!");
+                            }
+                        }
+                    }
+                }
+            }
+
             // Initialize DVR system FIRST before anything else
             let app_handle = app.handle().clone();
 

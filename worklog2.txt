@@ -1,0 +1,755 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Last login: Wed Feb 18 18:13:22 on ttys006\
+\
+The default interactive shell is now zsh.\
+To update your account to use zsh, please run `chsh -s /bin/zsh`.\
+For more details, please visit https://support.apple.com/kb/HT208050.\
+macmini:~ skamene$ sudo xattr -dr com.apple.quarantine /Applications/ynoTV.app\
+Password:\
+macmini:~ skamene$ /Applications/ynoTV.app/Contents/MacOS/ynotv\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][INFO] Plugin registered.\
+[2026-02-19][02:25:06][tao::platform_impl::platform::app_delegate][TRACE] Triggered `applicationDidFinishLaunching`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window][TRACE] Creating new window\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `viewDidMoveToWindow`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `viewDidMoveToWindow`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window][TRACE] Locked shared state in `set_fullscreen`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window][TRACE] Unlocked shared state in `set_fullscreen`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `validAttributesForMarkedText`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Triggered `viewDidMoveToWindow`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::view][TRACE] Completed `viewDidMoveToWindow`\
+[DVR Setup] Starting DVR initialization...\
+[DVR State] Initializing DVR system...\
+2026-02-19T02:25:06.625703Z  INFO ThreadId(01) packagesapp_lib::dvr: src/dvr/mod.rs:55: Initializing DVR system...\
+[DVR State] Creating DvrDatabase...\
+2026-02-19T02:25:06.625736Z  INFO ThreadId(01) packagesapp_lib::dvr::database: src/dvr/database.rs:31: Initializing DVR database at: "/Users/skamene/Library/Application Support/com.ynotv.app/ynotv.db"\
+[DVR DB] initialize_schema starting...\
+[DVR DB] Got connection, creating tables...\
+[DVR DB] Creating dvr_schedules table...\
+[DVR DB] Checking for stream_url column migration...\
+[DVR DB] Migration check complete\
+[DVR DB] Checking for thumbnail_path column migration...\
+[DVR DB] thumbnail_path migration check complete\
+[DVR DB] Schema initialized successfully\
+[DVR DB] configure_wal_mode starting...\
+[DVR DB] Got connection for WAL mode...\
+[DVR DB] Setting journal_mode to WAL...\
+[DVR DB] journal_mode = wal\
+2026-02-19T02:25:06.629154Z  INFO ThreadId(01) packagesapp_lib::dvr::database: src/dvr/database.rs:183: Database journal mode: wal\
+[DVR DB] WAL mode configured successfully: wal\
+2026-02-19T02:25:06.629168Z  INFO ThreadId(01) packagesapp_lib::dvr::database: src/dvr/database.rs:53: DVR database initialized successfully\
+[DVR State] DVR database created successfully\
+2026-02-19T02:25:06.629174Z  INFO ThreadId(01) packagesapp_lib::dvr: src/dvr/mod.rs:69: DVR database initialized\
+[DVR State] Creating RecordingManager...\
+[FFmpeg] Found sidecar at: "/Applications/ynoTV.app/Contents/MacOS/ffmpeg"\
+2026-02-19T02:25:06.629207Z  INFO ThreadId(01) packagesapp_lib::dvr::recorder: src/dvr/recorder.rs:66: Using FFmpeg: "/Applications/ynoTV.app/Contents/MacOS/ffmpeg"\
+2026-02-19T02:25:06.629224Z  INFO ThreadId(01) packagesapp_lib::dvr::recorder: src/dvr/recorder.rs:70: Default storage: "/Users/skamene/Videos/IPTV-Recordings"\
+[DVR State] RecordingManager created successfully\
+2026-02-19T02:25:06.629441Z  INFO ThreadId(01) packagesapp_lib::dvr: src/dvr/mod.rs:83: Recording manager initialized\
+[DVR State] Creating CleanupManager...\
+[DVR State] CleanupManager created successfully\
+2026-02-19T02:25:06.629456Z  INFO ThreadId(01) packagesapp_lib::dvr: src/dvr/mod.rs:89: Cleanup manager initialized\
+[DVR State] Creating Scheduler...\
+[DVR State] Scheduler created successfully\
+2026-02-19T02:25:06.629476Z  INFO ThreadId(01) packagesapp_lib::dvr: src/dvr/mod.rs:95: Scheduler initialized\
+2026-02-19T02:25:06.629479Z  INFO ThreadId(01) packagesapp_lib::dvr: src/dvr/mod.rs:105: DVR system initialized successfully\
+[DVR Setup] System initialized successfully, managing state...\
+[DVR Setup] State managed successfully\
+[2026-02-19][02:25:06][tao::platform_impl::platform::app_delegate][TRACE] Completed `applicationDidFinishLaunching`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidBecomeKey:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidBecomeKey:`\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[DVR Command] init_dvr called\
+2026-02-19T02:25:06.871774Z  INFO ThreadId(04) packagesapp_lib::dvr: src/dvr/mod.rs:111: Starting DVR background tasks...\
+2026-02-19T02:25:06.871797Z  INFO ThreadId(04) packagesapp_lib::dvr::scheduler: src/dvr/scheduler.rs:55: Starting DVR scheduler (polling every 30 seconds)\
+2026-02-19T02:25:06.873149Z  INFO ThreadId(04) tokio_cron_scheduler::job_scheduler: /Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-cron-scheduler-0.13.0/src/job_scheduler.rs:270: Uninited\
+2026-02-19T02:25:06.873480Z  INFO ThreadId(07) tokio_cron_scheduler::job_scheduler: /Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-cron-scheduler-0.13.0/src/job_scheduler.rs:277: Job creator created\
+[DVR Scheduler] Polling at timestamp: 1771467906 (Thu, 19 Feb 2026 02:25:06 +0000)\
+[DVR Scheduler] Found 0 scheduled recordings\
+2026-02-19T02:25:06.873970Z  INFO ThreadId(07) packagesapp_lib::dvr::scheduler: src/dvr/scheduler.rs:90: DVR scheduler started successfully\
+2026-02-19T02:25:06.874017Z  INFO ThreadId(07) packagesapp_lib::dvr: src/dvr/mod.rs:118: Scheduler started\
+2026-02-19T02:25:06.874103Z  INFO ThreadId(07) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:53: Periodic cleanup task started (every 1 hours)\
+2026-02-19T02:25:06.874115Z  INFO ThreadId(07) packagesapp_lib::dvr: src/dvr/mod.rs:122: Cleanup task started\
+2026-02-19T02:25:06.874123Z  INFO ThreadId(07) packagesapp_lib::dvr: src/dvr/mod.rs:124: All DVR background tasks started\
+[DVR Command] init_dvr completed successfully\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[health_check] DVR state is active\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[health_check] DVR state is active\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:06][tao::platform_impl::platform::util::r#async][TRACE] Locked shared state in `set_maximized`\
+[DVR Command] init_dvr called\
+[2026-02-19][02:25:06][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+2026-02-19T02:25:06.944989Z  INFO ThreadId(03) packagesapp_lib::dvr: src/dvr/mod.rs:111: Starting DVR background tasks...\
+2026-02-19T02:25:06.945035Z  WARN ThreadId(03) packagesapp_lib::dvr::scheduler: src/dvr/scheduler.rs:51: Scheduler already running\
+2026-02-19T02:25:06.945047Z  INFO ThreadId(03) packagesapp_lib::dvr: src/dvr/mod.rs:118: Scheduler started\
+2026-02-19T02:25:06.945044Z  INFO ThreadId(08) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:66: Running storage cleanup...\
+2026-02-19T02:25:06.945103Z  INFO ThreadId(03) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:53: Periodic cleanup task started (every 1 hours)\
+2026-02-19T02:25:06.945116Z  INFO ThreadId(03) packagesapp_lib::dvr: src/dvr/mod.rs:122: Cleanup task started\
+2026-02-19T02:25:06.945124Z  INFO ThreadId(03) packagesapp_lib::dvr: src/dvr/mod.rs:124: All DVR background tasks started\
+[DVR Command] init_dvr completed successfully\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+2026-02-19T02:25:06.972271Z  INFO ThreadId(08) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:81: Disk usage: 83.7% (80 GB free of 494 GB)\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+2026-02-19T02:25:06.986165Z  INFO ThreadId(08) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:117: Storage cleanup completed\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:06][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::util::r#async][TRACE] Unlocked shared state in `set_maximized`\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+2026-02-19T02:25:07.303795Z  INFO ThreadId(09) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:66: Running storage cleanup...\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidMove:`\
+[MPV macOS] Initializing libmpv...\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidMove:`\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][INFO] libmpv-wrapper not initialized. Trying to load libmpv-wrapper now...\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][INFO] Attempting to load libmpv-wrapper from: libmpv-wrapper.dylib\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidResize:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidResize:`\
+[MPV macOS] Initializing libmpv...\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][INFO] libmpv-wrapper not initialized. Trying to load libmpv-wrapper now...\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][INFO] Attempting to load libmpv-wrapper from: libmpv-wrapper.dylib\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowDidMove:`\
+[2026-02-19][02:25:07][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowDidMove:`\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+2026-02-19T02:25:07.348253Z  INFO ThreadId(09) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:81: Disk usage: 83.7% (80 GB free of 494 GB)\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+2026-02-19T02:25:07.367965Z  INFO ThreadId(09) packagesapp_lib::dvr::cleanup: src/dvr/cleanup.rs:117: Storage cleanup completed\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(0)'\
+[2026-02-19][02:25:07][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(0)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:11][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:12][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] COMMAND 'loadfile' '[String("http://kstv.us:8080/live/rcb7REGn1R/5343836544/47473.ts")]'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] COMMAND 'loadfile' '[String("http://kstv.us:8080/live/rcb7REGn1R/5343836544/47473.m3u8")]'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] COMMAND 'loadfile' '[String("http://kstv.us:8080/live/rcb7REGn1R/5343836544/47473.m3u")]'\
+[2026-02-19][02:25:14][reqwest::connect][DEBUG] starting new connection: http://kstv.us:8080/\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:14][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:14][reqwest::retry][TRACE] shouldn't retry!\
+[2026-02-19][02:25:14][reqwest::connect][DEBUG] starting new connection: http://206.212.244.182:25461/\
+[2026-02-19][02:25:14][reqwest::retry][TRACE] shouldn't retry!\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:20][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:21][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] COMMAND 'loadfile' '[String("http://kstv.us:8080/live/rcb7REGn1R/5343836544/22561.ts")]'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] COMMAND 'loadfile' '[String("http://kstv.us:8080/live/rcb7REGn1R/5343836544/22561.m3u8")]'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] COMMAND 'loadfile' '[String("http://kstv.us:8080/live/rcb7REGn1R/5343836544/22561.m3u")]'\
+[2026-02-19][02:25:22][reqwest::connect][DEBUG] starting new connection: http://kstv.us:8080/\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][reqwest::retry][TRACE] shouldn't retry!\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][reqwest::connect][DEBUG] starting new connection: http://206.212.244.185:25461/\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][reqwest::retry][TRACE] shouldn't retry!\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:22][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-zoom' 'Number(-1.4421534175504358)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-x' 'Number(-0.6044193772695665)'\
+[2026-02-19][02:25:23][tauri_plugin_libmpv::desktop][TRACE] SET PROPERTY 'video-align-y' 'Number(-0.9063107573366272)'\
+[2026-02-19][02:25:26][tao::platform_impl::platform::app_delegate][TRACE] Triggered `applicationWillTerminate`\
+[2026-02-19][02:25:26][tao::platform_impl::platform::app_delegate][TRACE] Completed `applicationWillTerminate`\
+[2026-02-19][02:25:26][tao::platform_impl::platform::window_delegate][TRACE] Triggered `windowWillClose:`\
+[2026-02-19][02:25:26][tao::platform_impl::platform::window_delegate][TRACE] Completed `windowWillClose:`\
+macmini:~ skamene$}
