@@ -7,9 +7,15 @@ import {
   getLeagueStandings,
   getLeagueStandingsGrouped,
   getUFCRankings,
+  getGolfRankings,
+  getTennisRankings,
+  getRacingStandings,
   type StandingTeam,
   type StandingGroup,
   type UFCWeightClassRanking,
+  type GolfRanking,
+  type TennisRanking,
+  type RacingStanding,
   formatEventTime,
 } from '../../services/sports';
 import { TeamDetail } from './TeamDetail';
@@ -32,12 +38,18 @@ export function LeaguesTab({ onSearchChannels }: LeaguesTabProps) {
   const [leagueStandings, setLeagueStandings] = useState<StandingTeam[]>([]);
   const [leagueStandingsGroups, setLeagueStandingsGroups] = useState<StandingGroup[]>([]);
   const [ufcRankings, setUfcRankings] = useState<UFCWeightClassRanking[]>([]);
+  const [golfRankings, setGolfRankings] = useState<GolfRanking[]>([]);
+  const [tennisRankings, setTennisRankings] = useState<TennisRanking[]>([]);
+  const [racingStandings, setRacingStandings] = useState<RacingStanding[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeView, setActiveView] = useState<LeagueView>('teams');
   const [selectedTeam, setSelectedTeam] = useState<SportsTeam | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<SportsEvent | null>(null);
 
   const isUFC = selectedLeague?.id === 'ufc';
+  const isGolf = selectedLeague?.id === 'pga' || selectedLeague?.id === 'lpga';
+  const isTennis = selectedLeague?.id === 'atp' || selectedLeague?.id === 'wta';
+  const isRacing = selectedLeague?.id === 'f1' || selectedLeague?.id === 'nascar' || selectedLeague?.id === 'indycar';
   const isIndividualSport = selectedLeague ? INDIVIDUAL_SPORTS.includes(selectedLeague.id) : false;
 
   useEffect(() => {
@@ -75,11 +87,24 @@ export function LeaguesTab({ onSearchChannels }: LeaguesTabProps) {
         const events = await getLeagueEvents(selectedLeague.id);
         setLeagueEvents(events);
       } else if (view === 'standings') {
-        if (isIndividualSport) {
-          // For individual sports, load rankings instead of standings
+        if (isUFC) {
+          // UFC Rankings - weight classes
           const rankings = await getUFCRankings();
           setUfcRankings(rankings);
+        } else if (isGolf) {
+          // Golf Rankings - World Golf Rankings
+          const rankings = await getGolfRankings(selectedLeague.id as 'pga' | 'lpga');
+          setGolfRankings(rankings);
+        } else if (isTennis) {
+          // Tennis Rankings - ATP/WTA
+          const rankings = await getTennisRankings(selectedLeague.id as 'atp' | 'wta');
+          setTennisRankings(rankings);
+        } else if (isRacing) {
+          // Racing Standings - Driver standings
+          const standings = await getRacingStandings(selectedLeague.id as 'f1' | 'nascar' | 'indycar');
+          setRacingStandings(standings);
         } else {
+          // Team sports standings
           const groups = await getLeagueStandingsGrouped(selectedLeague.id);
           setLeagueStandingsGroups(groups);
           setLeagueStandings(groups.flatMap(g => g.teams));
@@ -88,12 +113,24 @@ export function LeaguesTab({ onSearchChannels }: LeaguesTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [selectedLeague, isIndividualSport]);
+  }, [selectedLeague, isIndividualSport, isUFC, isGolf, isTennis, isRacing]);
 
   const handleChannelClick = (channelName: string) => {
     if (onSearchChannels) {
       onSearchChannels(channelName);
     }
+  };
+
+  const handleClose = () => {
+    setSelectedLeague(null);
+    setLeagueTeams([]);
+    setLeagueEvents([]);
+    setLeagueStandings([]);
+    setLeagueStandingsGroups([]);
+    setUfcRankings([]);
+    setGolfRankings([]);
+    setTennisRankings([]);
+    setRacingStandings([]);
   };
 
   if (selectedTeam) {
@@ -116,17 +153,13 @@ export function LeaguesTab({ onSearchChannels }: LeaguesTabProps) {
           standings={leagueStandings}
           standingsGroups={leagueStandingsGroups}
           ufcRankings={ufcRankings}
+          golfRankings={golfRankings}
+          tennisRankings={tennisRankings}
+          racingStandings={racingStandings}
           loading={loading}
           activeView={activeView}
           onViewChange={handleViewChange}
-          onClose={() => {
-            setSelectedLeague(null);
-            setLeagueTeams([]);
-            setLeagueEvents([]);
-            setLeagueStandings([]);
-            setLeagueStandingsGroups([]);
-            setUfcRankings([]);
-          }}
+          onClose={handleClose}
           onTeamSelect={setSelectedTeam}
           onChannelClick={handleChannelClick}
           onEventSelect={setSelectedEvent}
@@ -149,17 +182,13 @@ export function LeaguesTab({ onSearchChannels }: LeaguesTabProps) {
         standings={leagueStandings}
         standingsGroups={leagueStandingsGroups}
         ufcRankings={ufcRankings}
+        golfRankings={golfRankings}
+        tennisRankings={tennisRankings}
+        racingStandings={racingStandings}
         loading={loading}
         activeView={activeView}
         onViewChange={handleViewChange}
-        onClose={() => {
-          setSelectedLeague(null);
-          setLeagueTeams([]);
-          setLeagueEvents([]);
-          setLeagueStandings([]);
-          setLeagueStandingsGroups([]);
-          setUfcRankings([]);
-        }}
+        onClose={handleClose}
         onTeamSelect={setSelectedTeam}
         onChannelClick={handleChannelClick}
         onEventSelect={setSelectedEvent}
@@ -215,6 +244,9 @@ interface LeagueDetailProps {
   standings: StandingTeam[];
   standingsGroups: StandingGroup[];
   ufcRankings: UFCWeightClassRanking[];
+  golfRankings: GolfRanking[];
+  tennisRankings: TennisRanking[];
+  racingStandings: RacingStanding[];
   loading: boolean;
   activeView: LeagueView;
   onViewChange: (view: LeagueView) => void;
@@ -231,6 +263,9 @@ function LeagueDetail({
   standings,
   standingsGroups,
   ufcRankings,
+  golfRankings,
+  tennisRankings,
+  racingStandings,
   loading,
   activeView,
   onViewChange,
@@ -240,6 +275,9 @@ function LeagueDetail({
   onEventSelect,
 }: LeagueDetailProps) {
   const isUFC = league.id === 'ufc';
+  const isGolf = league.id === 'pga' || league.id === 'lpga';
+  const isTennis = league.id === 'atp' || league.id === 'wta';
+  const isRacing = league.id === 'f1' || league.id === 'nascar' || league.id === 'indycar';
   const isIndividualSport = INDIVIDUAL_SPORTS.includes(league.id);
 
   return (
@@ -345,6 +383,7 @@ function LeagueDetail({
                     <LeagueEventRow
                       key={event.id}
                       event={event}
+                      isIndividualSport={isIndividualSport}
                       onChannelClick={onChannelClick}
                       onClick={() => onEventSelect?.(event)}
                     />
@@ -426,11 +465,10 @@ function LeagueDetail({
             </section>
           )}
 
-          {activeView === 'standings' && isIndividualSport && (
+          {/* Individual Sports Rankings */}
+          {activeView === 'standings' && isUFC && (
             <section className="sports-section">
-              <h3 className="sports-section-title">
-                {isUFC ? 'Weight Class Rankings' : 'Rankings'}
-              </h3>
+              <h3 className="sports-section-title">Weight Class Rankings</h3>
               {ufcRankings.length > 0 ? (
                 <div className="ufc-rankings-grid">
                   {ufcRankings.map((division) => (
@@ -483,6 +521,111 @@ function LeagueDetail({
               )}
             </section>
           )}
+
+          {activeView === 'standings' && isGolf && (
+            <section className="sports-section">
+              <h3 className="sports-section-title">World Golf Rankings</h3>
+              {golfRankings.length > 0 ? (
+                <div className="sports-rankings-table">
+                  <div className="sports-rankings-header">
+                    <span>Rank</span>
+                    <span>Player</span>
+                    <span>Points</span>
+                    <span>Avg</span>
+                    <span>Events</span>
+                  </div>
+                  {golfRankings.slice(0, 50).map((ranking) => (
+                    <div key={ranking.athlete.id} className="sports-rankings-row">
+                      <span className="sports-rankings-rank">{ranking.rank}</span>
+                      <span className="sports-rankings-athlete">
+                        {ranking.athlete.flag && (
+                          <img src={ranking.athlete.flag} alt="" className="sports-rankings-flag" />
+                        )}
+                        {ranking.athlete.name}
+                      </span>
+                      <span>{ranking.totalPoints.toLocaleString()}</span>
+                      <span>{ranking.avgPoints.toFixed(2)}</span>
+                      <span>{ranking.numEvents}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="sports-empty">
+                  <p>Rankings not available</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeView === 'standings' && isTennis && (
+            <section className="sports-section">
+              <h3 className="sports-section-title">{league.name} Rankings</h3>
+              {tennisRankings.length > 0 ? (
+                <div className="sports-rankings-table">
+                  <div className="sports-rankings-header">
+                    <span>Rank</span>
+                    <span>Player</span>
+                    <span>Points</span>
+                    <span>Trend</span>
+                  </div>
+                  {tennisRankings.slice(0, 50).map((ranking) => (
+                    <div key={ranking.athlete.id} className="sports-rankings-row">
+                      <span className="sports-rankings-rank">{ranking.rank}</span>
+                      <span className="sports-rankings-athlete">
+                        {ranking.athlete.flag && (
+                          <img src={ranking.athlete.flag} alt="" className="sports-rankings-flag" />
+                        )}
+                        {ranking.athlete.name}
+                      </span>
+                      <span>{ranking.points.toLocaleString()}</span>
+                      <span className={`sports-rankings-trend ${ranking.previousRank && ranking.rank < ranking.previousRank ? 'up' : ranking.previousRank && ranking.rank > ranking.previousRank ? 'down' : 'same'}`}>
+                        {ranking.previousRank ? (ranking.rank < ranking.previousRank ? '▲' : ranking.rank > ranking.previousRank ? '▼' : '-') : 'NEW'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="sports-empty">
+                  <p>Rankings not available</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeView === 'standings' && isRacing && (
+            <section className="sports-section">
+              <h3 className="sports-section-title">Driver Standings</h3>
+              {racingStandings.length > 0 ? (
+                <div className="sports-rankings-table">
+                  <div className="sports-rankings-header">
+                    <span>Rank</span>
+                    <span>Driver</span>
+                    <span>Team</span>
+                    <span>Wins</span>
+                    <span>Points</span>
+                  </div>
+                  {racingStandings.map((standing) => (
+                    <div key={standing.driver.id} className="sports-rankings-row">
+                      <span className="sports-rankings-rank">{standing.rank}</span>
+                      <span className="sports-rankings-driver">
+                        {standing.driver.headshot && (
+                          <img src={standing.driver.headshot} alt="" className="sports-rankings-headshot" />
+                        )}
+                        {standing.driver.name}
+                      </span>
+                      <span className="sports-rankings-team">{standing.driver.team}</span>
+                      <span>{standing.wins}</span>
+                      <span className="sports-rankings-points">{standing.points}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="sports-empty">
+                  <p>Standings not available</p>
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>
@@ -491,13 +634,64 @@ function LeagueDetail({
 
 interface LeagueEventRowProps {
   event: SportsEvent;
+  isIndividualSport: boolean;
   onChannelClick?: (channelName: string) => void;
   onClick?: () => void;
 }
 
-function LeagueEventRow({ event, onChannelClick, onClick }: LeagueEventRowProps) {
+function LeagueEventRow({ event, isIndividualSport, onChannelClick, onClick }: LeagueEventRowProps) {
   const isLive = event.status === 'live';
   const isFinished = event.status === 'finished';
+  
+  // For individual sports, show event differently
+  if (isIndividualSport) {
+    return (
+      <div className="sports-event-row" onClick={onClick}>
+        <div className="sports-event-row-time">
+          <span className="sports-event-date">
+            {event.startTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+          </span>
+          <span className="sports-event-time">
+            {event.startTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+
+        <div className="sports-event-row-match individual-sport">
+          <span className="sports-event-name">{event.title}</span>
+          {event.venue && (
+            <span className="sports-event-venue">{event.venue}</span>
+          )}
+        </div>
+
+        <div className="sports-event-row-status">
+          {isLive && (
+            <span className="sports-event-status-live">Live</span>
+          )}
+          {isFinished && (
+            <span className="sports-event-status-final">Final</span>
+          )}
+        </div>
+
+        <div className="sports-event-row-channels">
+          {event.channels.length > 0 ? (
+            <button
+              className="sports-channel-btn-small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChannelClick?.(event.channels[0].name);
+              }}
+            >
+              {event.channels[0].name}
+            </button>
+          ) : (
+            <span className="sports-no-channel">-</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Team sports display
   const homeWinning = (event.homeScore ?? 0) > (event.awayScore ?? 0);
   const awayWinning = (event.awayScore ?? 0) > (event.homeScore ?? 0);
 

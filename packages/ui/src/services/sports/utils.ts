@@ -84,4 +84,76 @@ export function getAvailableSports(): string[] {
   return ['Football', 'Basketball', 'Baseball', 'Hockey', 'Soccer', 'MMA', 'Golf', 'Tennis', 'Racing'];
 }
 
-// Note: getAvailableCategories is now in config.ts to avoid circular dependencies
+import { SPORT_CONFIG } from './config';
+import type { SportsLeague } from './types';
+
+export function getAvailableLeagues(): { id: string; name: string; sport: string; }[] {
+  return Object.entries(SPORT_CONFIG).map(([key, config]) => ({
+    id: key,
+    name: config.name,
+    sport: config.sport,
+  }));
+}
+
+export function getAvailableCategories(): { id: string; name: string; leagues: string[]; }[] {
+  const categories: Record<string, string[]> = {};
+  
+  for (const [leagueId, config] of Object.entries(SPORT_CONFIG)) {
+    if (!categories[config.category]) {
+      categories[config.category] = [];
+    }
+    categories[config.category].push(leagueId);
+  }
+  
+  const categoryNames: Record<string, string> = {
+    football: 'Football',
+    basketball: 'Basketball',
+    baseball: 'Baseball',
+    hockey: 'Hockey',
+    soccer: 'Soccer',
+    mma: 'MMA & Combat',
+    golf: 'Golf',
+    tennis: 'Tennis',
+    racing: 'Racing',
+  };
+  
+  return Object.entries(categories).map(([id, leagues]) => ({
+    id,
+    name: categoryNames[id] || id,
+    leagues,
+  }));
+}
+
+export function getLeaguesByCategory(category: string): { id: string; name: string; sport: string; }[] {
+  return Object.entries(SPORT_CONFIG)
+    .filter(([_, config]) => config.category === category)
+    .map(([key, config]) => ({
+      id: key,
+      name: config.name,
+      sport: config.sport,
+    }));
+}
+
+export async function getLeaguesBySport(sport: string): Promise<SportsLeague[]> {
+  const sportLower = sport.toLowerCase();
+  
+  const mapping: Record<string, string[]> = {
+    'football': ['nfl', 'college-football'],
+    'basketball': ['nba', 'mens-college-basketball', 'wnba'],
+    'baseball': ['mlb'],
+    'hockey': ['nhl'],
+    'soccer': ['soccer-eng.1', 'soccer-esp.1', 'soccer-ger.1', 'soccer-ita.1', 'soccer-usa.1'],
+    'american football': ['nfl', 'college-football'],
+  };
+
+  const keys = mapping[sportLower] || [];
+  
+  return keys.map(key => {
+    const config = SPORT_CONFIG[key];
+    return {
+      id: key,
+      name: config.name,
+      sport: config.sport,
+    };
+  });
+}

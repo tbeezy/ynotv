@@ -7,6 +7,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    cssMinify: true,
+    // Ensure CSS is properly extracted and not inlined
+    cssCodeSplit: false,
+    rollupOptions: {
+      output: {
+        // Ensure proper asset naming
+        assetFileNames: 'assets/[name]-[hash][extname]',
+      },
+    },
   },
   esbuild: {
     // Strip console.* and debugger in production builds
@@ -15,5 +24,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+  },
+  // Optimize CSS handling
+  css: {
+    devSourcemap: true,
   },
 });

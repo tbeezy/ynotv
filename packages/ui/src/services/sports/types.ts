@@ -344,3 +344,45 @@ export interface LeadersCategory {
   shortDisplayName?: string;
   leaders: LeagueLeader[];
 }
+
+// Individual Sports Rankings Types
+
+// Golf - World Golf Rankings
+export interface GolfRanking {
+  rank: number;
+  athlete: {
+    id: string;
+    name: string;
+    flag?: string;
+  };
+  totalPoints: number;
+  numEvents: number;
+  avgPoints: number;
+}
+
+// Tennis - ATP/WTA Rankings
+export interface TennisRanking {
+  rank: number;
+  athlete: {
+    id: string;
+    name: string;
+    flag?: string;
+  };
+  points: number;
+  previousRank?: number;
+}
+
+// Racing - Driver Standings
+export interface RacingStanding {
+  rank: number;
+  driver: {
+    id: string;
+    name: string;
+    team: string;
+    flag?: string;
+    headshot?: string;
+  };
+  points: number;
+  wins: number;
+  podiums: number;
+}

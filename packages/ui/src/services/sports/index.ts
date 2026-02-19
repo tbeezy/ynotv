@@ -60,6 +60,11 @@ export type {
   // Leaders types
   LeagueLeader,
   LeadersCategory,
+  
+  // Individual sports rankings
+  GolfRanking,
+  TennisRanking,
+  RacingStanding,
 } from './types';
 
 // Configuration
@@ -135,6 +140,9 @@ export {
 export {
   getLeagueRankings,
   getUFCRankings,
+  getGolfRankings,
+  getTennisRankings,
+  getRacingStandings,
 } from './rankings';
 
 // Leaders API
@@ -153,4 +161,8 @@ export {
   isEventUpcoming,
   isEventFinished,
   getAvailableSports,
+  getAvailableLeagues,
+  getAvailableCategories,
+  getLeaguesByCategory,
+  getLeaguesBySport,
 } from './utils';

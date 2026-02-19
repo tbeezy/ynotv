@@ -67,7 +67,8 @@ export function buildRankingsUrl(sport: string, league: string): string {
 }
 
 export function buildLeadersUrl(sport: string, league: string): string {
-  return `${ESPN_API_BASE}/${sport}/${league}/leaders`;
+  // Leaders endpoint requires v3 API
+  return `https://site.api.espn.com/apis/site/v3/sports/${sport}/${league}/leaders`;
 }
 
 export function buildGameSummaryUrl(sport: string, league: string, eventId: string): string {

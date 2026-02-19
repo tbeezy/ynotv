@@ -4,8 +4,8 @@
  * Functions for fetching college sports rankings and UFC rankings
  */
 
-import type { Ranking, RankingsList, UFCWeightClassRanking } from './types';
-import { SPORT_CONFIG } from './config';
+import type { Ranking, RankingsList, UFCWeightClassRanking, GolfRanking, TennisRanking, RacingStanding } from './types';
+import { SPORT_CONFIG, ESPN_API_BASE } from './config';
 import { fetchJson, buildRankingsUrl, buildUFCRankingsUrl } from './client';
 
 export async function getLeagueRankings(leagueId: string): Promise<RankingsList[]> {
@@ -142,4 +142,140 @@ export async function getUFCRankings(): Promise<UFCWeightClassRanking[]> {
 
   console.log('[ESPN API] UFC Rankings:', rankings.length, 'weight classes');
   return rankings;
+}
+
+// Golf Rankings (World Golf Rankings)
+export async function getGolfRankings(leagueId: 'pga' | 'lpga'): Promise<GolfRanking[]> {
+  const config = SPORT_CONFIG[leagueId];
+  if (!config) return [];
+
+  const url = `${ESPN_API_BASE}/${config.sport}/${config.league}/rankings`;
+  
+  const data = await fetchJson<{
+    rankings?: Array<{
+      ranks?: Array<{
+        current: number;
+        previous?: number;
+        athlete?: {
+          id: string;
+          displayName: string;
+          flag?: { href: string; alt: string };
+        };
+        totalPoints?: number;
+        numEvents?: number;
+        averagePoints?: number;
+      }>;
+    }>;
+  }>(url);
+
+  if (!data?.rankings?.[0]?.ranks) return [];
+
+  return data.rankings[0].ranks.map(rank => ({
+    rank: rank.current,
+    athlete: {
+      id: rank.athlete?.id || '',
+      name: rank.athlete?.displayName || 'Unknown',
+      flag: rank.athlete?.flag?.href,
+    },
+    totalPoints: rank.totalPoints || 0,
+    numEvents: rank.numEvents || 0,
+    avgPoints: rank.averagePoints || 0,
+  }));
+}
+
+// Tennis Rankings (ATP/WTA)
+export async function getTennisRankings(leagueId: 'atp' | 'wta'): Promise<TennisRanking[]> {
+  const config = SPORT_CONFIG[leagueId];
+  if (!config) return [];
+
+  const url = `${ESPN_API_BASE}/${config.sport}/${config.league}/rankings`;
+  
+  const data = await fetchJson<{
+    rankings?: Array<{
+      ranks?: Array<{
+        current: number;
+        previous?: number;
+        points?: number;
+        athlete?: {
+          id: string;
+          displayName: string;
+          flag?: { href: string; alt: string };
+        };
+      }>;
+    }>;
+  }>(url);
+
+  if (!data?.rankings?.[0]?.ranks) return [];
+
+  return data.rankings[0].ranks.map(rank => ({
+    rank: rank.current,
+    athlete: {
+      id: rank.athlete?.id || '',
+      name: rank.athlete?.displayName || 'Unknown',
+      flag: rank.athlete?.flag?.href,
+    },
+    points: rank.points || 0,
+    previousRank: rank.previous,
+  }));
+}
+
+// Racing Standings (F1/NASCAR/IndyCar)
+export async function getRacingStandings(leagueId: 'f1' | 'nascar' | 'indycar'): Promise<RacingStanding[]> {
+  const config = SPORT_CONFIG[leagueId];
+  if (!config) return [];
+
+  // For racing, use the standings endpoint
+  const url = `https://site.web.api.espn.com/apis/v2/sports/${config.sport}/${config.league}/standings`;
+  
+  const data = await fetchJson<{
+    children?: Array<{
+      name: string;
+      standings?: {
+        entries?: Array<{
+          athlete?: {
+            id: string;
+            displayName: string;
+            headshot?: { href: string };
+            flag?: { href: string };
+          };
+          team?: {
+            displayName: string;
+          };
+          stats?: Array<{
+            name: string;
+            value: number;
+          }>;
+        }>;
+      };
+    }>;
+  }>(url);
+
+  const standings: RacingStanding[] = [];
+
+  if (data?.children) {
+    for (const group of data.children) {
+      const entries = group.standings?.entries || [];
+      for (const entry of entries) {
+        const stats = entry.stats || [];
+        const getStat = (name: string) => stats.find(s => s.name === name)?.value || 0;
+
+        standings.push({
+          rank: getStat('rank'),
+          driver: {
+            id: entry.athlete?.id || '',
+            name: entry.athlete?.displayName || 'Unknown',
+            team: entry.team?.displayName || '',
+            flag: entry.athlete?.flag?.href,
+            headshot: entry.athlete?.headshot?.href,
+          },
+          points: getStat('points'),
+          wins: getStat('wins'),
+          podiums: getStat('podiums') || getStat('top5s') || 0,
+        });
+      }
+    }
+  }
+
+  // Sort by points (highest first)
+  return standings.sort((a, b) => b.points - a.points).map((s, idx) => ({ ...s, rank: idx + 1 }));
 }
