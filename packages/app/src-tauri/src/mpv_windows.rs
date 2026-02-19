@@ -9,10 +9,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Runtime, Manager};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_shell::{ShellExt, process::CommandEvent};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::windows::named_pipe::ClientOptions;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 pub struct MpvState {
     pub process: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
@@ -21,6 +21,19 @@ pub struct MpvState {
     pub pending_requests: Arc<Mutex<HashMap<u64, tokio::sync::oneshot::Sender<Result<Value, String>>>>>,
     pub request_id_counter: Mutex<u64>,
     pub initializing: Mutex<bool>,
+}
+
+impl MpvState {
+    pub fn new() -> Self {
+        MpvState {
+            process: Mutex::new(None),
+            socket_connected: Mutex::new(false),
+            ipc_tx: Mutex::new(None),
+            pending_requests: Arc::new(Mutex::new(HashMap::new())),
+            request_id_counter: Mutex::new(0),
+            initializing: Mutex::new(false),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -118,6 +131,7 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         let mut proc_handle = state.process.lock().unwrap();
         *proc_handle = Some(tauri::async_runtime::spawn(async move {
             while let Some(event) = rx.recv().await {
+                let event: CommandEvent = event;
                 match event {
                     CommandEvent::Stdout(line) => println!("[MPV] {}", String::from_utf8_lossy(&line)),
                     CommandEvent::Stderr(line) => println!("[MPV stderr] {}", String::from_utf8_lossy(&line)),

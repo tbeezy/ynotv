@@ -64,7 +64,7 @@ async fn init_mpv<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         let state = app.state::<MpvState>();
-        mpv_windows::init_mpv(app, state).await
+        mpv_windows::init_mpv(app.clone(), state).await
     }
 }
 

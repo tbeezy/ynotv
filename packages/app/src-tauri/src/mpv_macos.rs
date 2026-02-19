@@ -8,18 +8,17 @@
 
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
-use std::process::Child;
 use std::sync::Mutex;
 use std::time::Duration;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 
 const IPC_SOCKET: &str = "/tmp/ynotv-mpv.sock";
 
 pub struct MpvState {
-    pub process: Mutex<Option<Child>>,
+    pub process: Mutex<Option<CommandChild>>,
     pub socket: Mutex<Option<UnixStream>>,
     pub current_url: Mutex<Option<String>>,
 }
@@ -84,6 +83,7 @@ pub async fn launch_mpv<R: Runtime>(
     // Spawn a task to monitor MPV output
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
+            let event: CommandEvent = event;
             match event {
                 CommandEvent::Stdout(line) => println!("[MPV] {}", String::from_utf8_lossy(&line)),
                 CommandEvent::Stderr(line) => println!("[MPV stderr] {}", String::from_utf8_lossy(&line)),
