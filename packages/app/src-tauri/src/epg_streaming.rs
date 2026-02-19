@@ -166,9 +166,16 @@ async fn parse_and_insert_chunks<R: tauri::Runtime>(
         estimated_remaining_seconds: None,
     }).await;
     
+    // Delete old programs for this source FIRST (before parsing)
+    info!("[EPG] Deleting old programs for source {}", source_id);
+    let deleted_count = delete_programs_for_source(db, source_id)?;
+    info!("[EPG] Deleted {} old programs for source {}", deleted_count, source_id);
+    
     // Parse all programs at once (memory efficient for moderate files)
     let programs = parse_xmltv_data(xml_data)?;
     let total_programs = programs.len();
+    info!("[EPG] Parsed {} total programs from XMLTV", total_programs);
+    info!("[EPG] Channel map has {} entries for matching", channel_map.len());
     
     // Match channels and insert in batches
     let mut total_matched = 0;
@@ -176,9 +183,11 @@ async fn parse_and_insert_chunks<R: tauri::Runtime>(
     let mut unmatched_channels = std::collections::HashSet::new();
     let mut batch = Vec::with_capacity(BATCH_SIZE);
     
-    for (idx, program) in programs.into_iter().enumerate() {
+    for (idx, mut program) in programs.into_iter().enumerate() {
         if let Some(stream_id) = channel_map.get(&program.channel_id) {
             total_matched += 1;
+            // FIX: Replace EPG channel_id with actual stream_id for database storage
+            program.channel_id = stream_id.clone();
             batch.push(program);
             
             // Insert batch when full
@@ -333,6 +342,16 @@ fn parse_xmltv_data(buffer: &[u8]) -> Result<Vec<EpgProgram>> {
     Ok(programs)
 }
 
+/// Delete all programs for a source (called before inserting new programs)
+fn delete_programs_for_source(db: &DvrDatabase, source_id: &str) -> Result<usize> {
+    let mut conn = db.get_conn()?;
+    let deleted = conn.execute(
+        "DELETE FROM programs WHERE source_id = ?1",
+        rusqlite::params![source_id],
+    )?;
+    Ok(deleted)
+}
+
 /// Insert a batch of programs into database
 async fn insert_programs_batch(
     db: &DvrDatabase,
@@ -345,7 +364,7 @@ async fn insert_programs_batch(
     let tx = conn.transaction()?;
     
     let mut stmt = tx.prepare(
-        "INSERT OR IGNORE INTO programs (
+        "INSERT INTO programs (
             id, stream_id, title, description, start, end, source_id
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
     )?;
@@ -353,7 +372,8 @@ async fn insert_programs_batch(
     let mut inserted = 0;
     
     for program in programs {
-        let stream_id = program.channel_id.clone(); // Already mapped
+        // channel_id was already replaced with stream_id during matching
+        let stream_id = &program.channel_id;
         let id = format!("{}_{}", stream_id, &program.start);
         
         match stmt.execute(params![
@@ -366,8 +386,8 @@ async fn insert_programs_batch(
             source_id,
         ]) {
             Ok(1) => inserted += 1,
-            Ok(_) => {} // Duplicate ignored
-            Err(e) => warn!("Failed to insert program: {}", e),
+            Ok(_) => {} // Should not happen anymore since we delete first
+            Err(e) => warn!("Failed to insert program for stream {}: {}", stream_id, e),
         }
     }
     

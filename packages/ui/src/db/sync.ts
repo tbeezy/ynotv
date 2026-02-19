@@ -395,6 +395,9 @@ async function syncEpgFromUrl(
   channels: Channel[],
   onProgress?: EpgProgressCallback
 ): Promise<number> {
+  console.log(`[EPG] Starting M3U EPG sync for source: ${source.name}`);
+  console.log(`[EPG] EPG URL: ${epgUrl}`);
+  console.log(`[EPG] Total channels: ${channels.length}`);
   debugLog(`Starting M3U EPG sync with streaming parser`, 'epg');
 
   try {
@@ -406,12 +409,23 @@ async function syncEpgFromUrl(
         stream_id: ch.stream_id,
       }));
 
+    console.log(`[EPG] Channels with epg_channel_id: ${channelMappings.length}/${channels.length}`);
+    
+    // Log sample mappings for debugging
+    if (channelMappings.length > 0) {
+      console.log(`[EPG] Sample mappings:`, channelMappings.slice(0, 3).map(m => 
+        `${m.epg_channel_id} -> ${m.stream_id}`
+      ).join(', '));
+    }
+
     debugLog(
       `${channelMappings.length}/${channels.length} channels have epg_channel_id`,
       'epg'
     );
 
     if (channelMappings.length === 0) {
+      console.warn(`[EPG] WARNING: No channels have epg_channel_id - EPG sync skipped!`);
+      console.warn(`[EPG] This means your M3U playlist doesn't have tvg-id attributes for channels.`);
       debugLog('No channels with EPG IDs, skipping EPG sync', 'epg');
       return 0;
     }
@@ -434,7 +448,12 @@ async function syncEpgFromUrl(
       'epg'
     );
 
+    console.log(`[EPG] Streaming parser result: ${result.matched_programs}/${result.total_programs} programs matched`);
+    console.log(`[EPG] ${result.inserted_programs} programs inserted, ${result.unmatched_channels} unmatched EPG channels`);
+    console.log(`[EPG] Duration: ${result.duration_ms}ms`);
+
     if (result.inserted_programs === 0) {
+      console.warn(`[EPG] WARNING: No programs inserted! Check if EPG channel IDs match M3U tvg-id values.`);
       debugLog(
         'WARNING: No programs inserted! Keeping existing EPG data',
         'epg'
@@ -448,6 +467,7 @@ async function syncEpgFromUrl(
       dbEvents.notify('programs', 'add');
     }
 
+    console.log(`[EPG] M3U EPG sync COMPLETE: ${result.inserted_programs} programs stored`);
     debugLog(
       `M3U EPG sync complete: ${result.inserted_programs} programs stored in ${result.duration_ms}ms`,
       'epg'
@@ -455,6 +475,7 @@ async function syncEpgFromUrl(
     return result.inserted_programs;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[EPG] M3U EPG sync FAILED: ${errMsg}`);
     debugLog(`M3U EPG sync FAILED: ${errMsg}`, 'epg');
     // Fallback to legacy method if streaming fails
     debugLog('Falling back to legacy EPG sync method', 'epg');
@@ -558,6 +579,9 @@ async function syncEpgFromUrlLegacy(
 async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: string): Promise<number> {
   if (!source.username || !source.password) return 0;
 
+  console.log(`[EPG] Starting Xtream EPG sync for source: ${source.name || source.id}`);
+  console.log(`[EPG] Total channels: ${channels.length}`);
+  
   debugLog(`Starting EPG sync for source: ${source.name || source.id}`, 'epg');
   if (epgUrl) {
     debugLog(`Using EPG URL: ${epgUrl}`, 'epg');
@@ -565,14 +589,17 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
 
   // Use the provided EPG URL or construct from source.url
   const xmltvUrl = epgUrl || `${source.url}/xmltv.php?username=${encodeURIComponent(source.username)}&password=${encodeURIComponent(source.password)}`;
+  console.log(`[EPG] Fetching XMLTV from: ${xmltvUrl.substring(0, 80)}...`);
   debugLog(`Fetching XMLTV from: ${xmltvUrl}`, 'epg');
 
   try {
     // Fetch full XMLTV data using the same method as M3U sources
     const xmltvPrograms = await fetchXmltvFromUrls(xmltvUrl);
+    console.log(`[EPG] Received ${xmltvPrograms.length} programs from XMLTV`);
     debugLog(`Received ${xmltvPrograms.length} programs from XMLTV`, 'epg');
 
     if (xmltvPrograms.length === 0) {
+      console.warn(`[EPG] No programs found in XMLTV - keeping existing data`);
       debugLog('No programs found in XMLTV, keeping existing data', 'epg');
       return 0;
     }
@@ -586,6 +613,21 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
         channelsWithEpgId++;
       }
     }
+    
+    console.log(`[EPG] Channels with epg_channel_id: ${channelsWithEpgId}/${channels.length}`);
+    
+    // Log sample channel IDs for debugging
+    if (channelsWithEpgId > 0) {
+      const samples = channels.filter(c => c.epg_channel_id).slice(0, 3);
+      console.log(`[EPG] Sample channel EPG IDs:`, samples.map(c => 
+        `${c.name}: ${c.epg_channel_id}`
+      ).join(', '));
+    }
+    
+    // Log sample XMLTV channel IDs for comparison
+    const xmltvSamples = xmltvPrograms.slice(0, 3);
+    console.log(`[EPG] Sample XMLTV channel IDs:`, xmltvSamples.map(p => p.channel_id).join(', '));
+    
     debugLog(`${channelsWithEpgId}/${channels.length} channels have epg_channel_id`, 'epg');
 
     // Convert XMLTV programs to stored format
@@ -609,10 +651,19 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
       }
     }
 
+    console.log(`[EPG] Matched ${storedPrograms.length}/${xmltvPrograms.length} programs`);
+    console.log(`[EPG] Unmatched EPG channels: ${unmatchedChannels.size}`);
+    
+    if (unmatchedChannels.size > 0 && unmatchedChannels.size <= 10) {
+      console.log(`[EPG] Unmatched channel IDs:`, Array.from(unmatchedChannels).join(', '));
+    }
+    
     debugLog(`Matched ${storedPrograms.length}/${xmltvPrograms.length} programs (${unmatchedChannels.size} unmatched EPG channels)`, 'epg');
 
     // SAFETY: Only clear old data if we have new data to replace it
     if (storedPrograms.length === 0) {
+      console.warn(`[EPG] WARNING: No programs matched! EPG channel IDs don't match channel epg_channel_id values`);
+      console.warn(`[EPG] Keeping existing EPG data to avoid data loss`);
       debugLog('WARNING: No programs matched! Keeping existing EPG data to avoid data loss', 'epg');
       return 0;
     }
@@ -630,12 +681,14 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
       source_id: p.source_id
     }));
 
-    await bulkOps.replacePrograms(source.id, bulkPrograms);
+    const result = await bulkOps.replacePrograms(source.id, bulkPrograms);
 
+    console.log(`[EPG] Xtream EPG sync COMPLETE: ${result.inserted} programs inserted, ${result.deleted} old programs deleted`);
     debugLog(`EPG sync complete: ${storedPrograms.length} programs stored`, 'epg');
     return storedPrograms.length;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[EPG] Xtream EPG fetch FAILED: ${errMsg}`);
     debugLog(`EPG fetch FAILED: ${errMsg}`, 'epg');
     debugLog('Keeping existing EPG data', 'epg');
     return 0;
@@ -649,6 +702,10 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
     return 0;
   }
 
+  console.log(`[EPG] Starting Stalker EPG sync for source: ${source.name || source.id}`);
+  console.log(`[EPG] Total channels: ${channels.length}`);
+  console.log(`[EPG] EPG timeshift: ${source.epg_timeshift_hours || 0} hours`);
+  
   debugLog(`Starting EPG sync for Stalker source: ${source.name || source.id}`, 'epg');
 
   const client = new StalkerClient(
@@ -658,11 +715,15 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
 
   try {
     // Fetch EPG data (72 hours by default)
+    console.log(`[EPG] Fetching EPG data from Stalker portal (72 hours)...`);
     debugLog('Fetching EPG data from Stalker portal...', 'epg');
     const epgMap = await client.getEpg(72);
+    
+    console.log(`[EPG] Received EPG for ${epgMap.size} channels from Stalker`);
     debugLog(`Received EPG for ${epgMap.size} channels`, 'epg');
 
     if (epgMap.size === 0) {
+      console.warn(`[EPG] No EPG data returned from Stalker portal - keeping existing data`);
       debugLog('No EPG data returned from Stalker portal, keeping existing data', 'epg');
       return 0;
     }
@@ -692,10 +753,12 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
       }
     }
 
+    console.log(`[EPG] Converted ${storedPrograms.length} programs from ${epgMap.size} channels`);
     debugLog(`Converted ${storedPrograms.length} programs from ${epgMap.size} channels`, 'epg');
 
     // SAFETY: Only clear old data if we have new data to replace it
     if (storedPrograms.length === 0) {
+      console.warn(`[EPG] WARNING: No programs found! Keeping existing EPG data to avoid data loss`);
       debugLog('WARNING: No programs found! Keeping existing EPG data to avoid data loss', 'epg');
       return 0;
     }
@@ -714,12 +777,14 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
       source_id: p.source_id
     }));
 
-    await bulkOps.replacePrograms(source.id, bulkPrograms);
+    const result = await bulkOps.replacePrograms(source.id, bulkPrograms);
 
+    console.log(`[EPG] Stalker EPG sync COMPLETE: ${result.inserted} programs inserted, ${result.deleted} old programs deleted`);
     debugLog(`Stalker EPG sync complete: ${storedPrograms.length} programs stored`, 'epg');
     return storedPrograms.length;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[EPG] Stalker EPG fetch FAILED: ${errMsg}`);
     debugLog(`Stalker EPG fetch FAILED: ${errMsg}`, 'epg');
     debugLog('Keeping existing EPG data', 'epg');
     return 0;
@@ -1129,9 +1194,12 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     // Fetch EPG if enabled
     let programCount = 0;
     const shouldLoadEpg = source.auto_load_epg ?? (source.type === 'xtream');
+    
+    console.log(`[EPG] EPG sync decision for ${source.name}: auto_load_epg=${source.auto_load_epg}, shouldLoadEpg=${shouldLoadEpg}`);
 
     if (shouldLoadEpg && source.type === 'xtream' && source.username && source.password) {
       // Xtream: use built-in EPG endpoint (or override if provided)
+      console.log(`[EPG] Starting Xtream EPG sync...`);
       debugLog('Syncing EPG for Xtream source...', 'epg');
       onProgress?.('Updating EPG...');
       console.time('sync-epg-insert');

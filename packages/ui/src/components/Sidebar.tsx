@@ -66,9 +66,20 @@ const Icons = {
       <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z" />
     </svg>
   ),
+  // Trophy for Sports
+  sports: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 21h8" />
+      <path d="M12 17v4" />
+      <path d="M7 4h10" />
+      <path d="M17 4v8a5 5 0 0 1-10 0V4" />
+      <path d="M5 9c-1.5 0-3 .6-3 2 0 1.4 1.5 2 3 2" />
+      <path d="M19 9c1.5 0 3 .6 3 2 0 1.4-1.5 2-3 2" />
+    </svg>
+  ),
 };
 
-type View = 'none' | 'guide' | 'movies' | 'series' | 'dvr' | 'settings';
+type View = 'none' | 'guide' | 'movies' | 'series' | 'dvr' | 'sports' | 'settings';
 
 interface SidebarProps {
   activeView: View;
@@ -144,6 +155,15 @@ export function Sidebar({ activeView, onViewChange, visible, categoriesOpen, onC
         >
           <span className="nav-icon">{Icons.dvr}</span>
           <span className="nav-label">DVR</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeView === 'sports' ? 'active' : ''}`}
+          onClick={() => handleVodClick('sports')}
+          title="Sports Hub"
+        >
+          <span className="nav-icon">{Icons.sports}</span>
+          <span className="nav-label">Sports</span>
         </button>
 
         {hasVodSource && (

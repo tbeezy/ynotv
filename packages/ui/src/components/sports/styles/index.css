@@ -1,0 +1,12 @@
+/**
+ * Sports Hub Styles
+ * 
+ * This file imports all component-specific stylesheets.
+ * Each major component has its own CSS file for better maintainability.
+ */
+
+/* Original comprehensive styles */
+@import '../SportsHub.css';
+
+/* Additional modular styles for new components */
+@import './shared.css';

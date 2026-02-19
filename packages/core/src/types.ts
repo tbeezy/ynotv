@@ -213,6 +213,51 @@ export interface AppState {
 }
 
 // =============================================================================
+// Sports Hub Types
+// =============================================================================
+
+export interface SportsEvent {
+  id: string;
+  title: string;
+  homeTeam: SportsTeam;
+  awayTeam: SportsTeam;
+  league: SportsLeague;
+  startTime: Date;
+  status: 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
+  homeScore?: number;
+  awayScore?: number;
+  period?: string;
+  timeElapsed?: string;
+  channels: SportsBroadcastChannel[];
+  venue?: string;
+}
+
+export interface SportsTeam {
+  id: string;
+  name: string;
+  shortName?: string;
+  logo?: string;
+  country?: string;
+  leagueId?: string;
+}
+
+export interface SportsLeague {
+  id: string;
+  name: string;
+  sport: string;
+  country?: string;
+  logo?: string;
+}
+
+export interface SportsBroadcastChannel {
+  name: string;
+  country?: string;
+  logo?: string;
+}
+
+export type SportsTabId = 'live' | 'upcoming' | 'leagues' | 'favorites' | 'news' | 'leaders' | 'settings';
+
+// =============================================================================
 // Connection Mode (standalone vs server)
 // =============================================================================
 

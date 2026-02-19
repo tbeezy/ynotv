@@ -1,0 +1,167 @@
+/* LiveScoresTab Component Styles */
+
+.live-header {
+  margin-bottom: 24px;
+}
+
+.live-header-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.live-header-title h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.live-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.live-count-dot {
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.live-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.live-last-updated {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+}
+
+.live-polling-indicator {
+  width: 6px;
+  height: 6px;
+  background: var(--success-color, #22c55e);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.live-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  background: transparent;
+  color: var(--text-secondary, #888);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.live-refresh-btn:hover:not(:disabled) {
+  background: var(--bg-hover, #2a2a2a);
+  color: var(--text-primary, #fff);
+}
+
+.live-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.live-refresh-btn svg.spinning {
+  animation: spin 1s linear infinite;
+}
+
+.live-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-category-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background: transparent;
+  color: var(--text-secondary, #888);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.live-category-btn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #fff);
+}
+
+.live-category-btn.active {
+  background: var(--accent-color, #3b82f6);
+  border-color: var(--accent-color, #3b82f6);
+  color: white;
+}
+
+.live-category-count {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+/* Sports Section */
+.sports-section {
+  margin-bottom: 32px;
+}
+
+.sports-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: var(--text-primary, #fff);
+}
+
+.sports-section-dot {
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.sports-section-dot.live {
+  background: #ef4444;
+}
+
+.sports-section-count {
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  font-weight: 400;
+}
+
+.sports-events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}

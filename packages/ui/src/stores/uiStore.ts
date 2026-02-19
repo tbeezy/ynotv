@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import type { SportsTabId } from '@ynotv/core';
 
 interface UIState {
   // Movies page
@@ -15,6 +16,12 @@ interface UIState {
   // Series page
   seriesSelectedCategory: string | null;
   setSeriesSelectedCategory: (id: string | null) => void;
+
+  // Sports Hub
+  sportsSelectedTab: SportsTabId;
+  setSportsSelectedTab: (tab: SportsTabId) => void;
+  sportsSelectedLeague: string | null;
+  setSportsSelectedLeague: (id: string | null) => void;
 
   // Sync state - persists across Settings open/close
   channelSyncing: boolean;
@@ -41,6 +48,12 @@ export const useUIStore = create<UIState>((set) => ({
   // Series
   seriesSelectedCategory: null,
   setSeriesSelectedCategory: (id) => set({ seriesSelectedCategory: id }),
+
+  // Sports Hub
+  sportsSelectedTab: 'live',
+  setSportsSelectedTab: (tab) => set({ sportsSelectedTab: tab }),
+  sportsSelectedLeague: null,
+  setSportsSelectedLeague: (id) => set({ sportsSelectedLeague: id }),
 
   // Sync state
   channelSyncing: false,
@@ -82,3 +95,9 @@ export const useSetSyncStatusMessage = () => useUIStore((s) => s.setSyncStatusMe
 // Channel display settings selectors
 export const useChannelSortOrder = () => useUIStore((s) => s.channelSortOrder);
 export const useSetChannelSortOrder = () => useUIStore((s) => s.setChannelSortOrder);
+
+// Sports Hub selectors
+export const useSportsSelectedTab = () => useUIStore((s) => s.sportsSelectedTab);
+export const useSetSportsSelectedTab = () => useUIStore((s) => s.setSportsSelectedTab);
+export const useSportsSelectedLeague = () => useUIStore((s) => s.sportsSelectedLeague);
+export const useSetSportsSelectedLeague = () => useUIStore((s) => s.setSportsSelectedLeague);

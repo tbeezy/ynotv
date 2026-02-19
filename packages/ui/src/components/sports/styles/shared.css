@@ -1,0 +1,124 @@
+/* Shared UI Components Styles */
+
+/* Loading State */
+.sports-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 16px;
+}
+
+.sports-loading-text {
+  font-size: 14px;
+  color: var(--text-secondary, #888);
+}
+
+/* Error State */
+.sports-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 16px;
+}
+
+.sports-error-icon {
+  color: var(--error-color, #ef4444);
+}
+
+.sports-error-text {
+  font-size: 14px;
+  color: var(--text-secondary, #888);
+  margin: 0;
+}
+
+.sports-retry-btn {
+  padding: 10px 20px;
+  border: none;
+  background: var(--accent-color, #3b82f6);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.sports-retry-btn:hover {
+  background: var(--accent-hover, #2563eb);
+}
+
+/* Empty State */
+.sports-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 12px;
+}
+
+.sports-empty-icon {
+  color: var(--text-muted, #666);
+  margin-bottom: 4px;
+}
+
+.sports-empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0;
+}
+
+.sports-empty-message {
+  font-size: 14px;
+  color: var(--text-secondary, #888);
+  margin: 0;
+}
+
+/* Tab Header */
+.sports-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.sports-tab-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sports-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Grid */
+.sports-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.sports-grid-cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.sports-grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.sports-grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.sports-grid-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}

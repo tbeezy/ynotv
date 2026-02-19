@@ -13,6 +13,7 @@ import { ChannelPanel } from './components/ChannelPanel';
 import { MoviesPage } from './components/MoviesPage';
 import { SeriesPage } from './components/SeriesPage';
 import { DvrDashboard } from './components/DvrDashboard';
+import { SportsHub } from './components/sports/SportsHub';
 import { useActiveRecordings } from './hooks/useActiveRecordings';
 import { RecordingIndicator } from './components/RecordingIndicator';
 import { Logo } from './components/Logo';
@@ -1360,6 +1361,25 @@ function App() {
                 </svg>
                 <span>DVR</span>
               </button>
+
+              <button
+                className={`segmented-btn ${activeView === 'sports' ? 'active' : ''}`}
+                onClick={() => {
+                  setCategoriesOpen(false);
+                  setActiveView(activeView === 'sports' ? 'none' : 'sports');
+                }}
+                title="Sports Hub"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 21h8"></path>
+                  <path d="M12 17v4"></path>
+                  <path d="M7 4h10"></path>
+                  <path d="M17 4v8a5 5 0 0 1-10 0V4"></path>
+                  <path d="M5 9c-1.5 0-3 .6-3 2 0 1.4 1.5 2 3 2"></path>
+                  <path d="M19 9c1.5 0 3 .6 3 2 0 1.4-1.5 2-3 2"></path>
+                </svg>
+                <span>Sports</span>
+              </button>
             </div>
 
             {/* Divider between segmented buttons and search */}
@@ -1612,6 +1632,17 @@ function App() {
         <DvrDashboard
           onPlay={handlePlayRecording}
           onClose={() => setActiveView('none')}
+        />
+      )}
+
+      {/* Sports Hub */}
+      {activeView === 'sports' && (
+        <SportsHub
+          onClose={() => setActiveView('none')}
+          onSearchChannels={(query) => {
+            setSearchQuery(query);
+            setActiveView('guide');
+          }}
         />
       )}
 
