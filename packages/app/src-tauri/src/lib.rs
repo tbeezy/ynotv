@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Runtime, Manager};
-use tauri::path::BaseDirectory;
 
 // macOS-specific imports for window configuration
 #[cfg(target_os = "macos")]

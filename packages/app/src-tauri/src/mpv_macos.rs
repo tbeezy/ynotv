@@ -8,11 +8,13 @@
 
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
-use std::process::{Child, Command};
+use std::process::Child;
 use std::sync::Mutex;
 use std::time::Duration;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::CommandEvent;
 
 const IPC_SOCKET: &str = "/tmp/ynotv-mpv.sock";
 
@@ -81,7 +83,6 @@ pub async fn launch_mpv<R: Runtime>(
 
     // Spawn a task to monitor MPV output
     tauri::async_runtime::spawn(async move {
-        use tauri_plugin_shell::process::CommandEvent;
         while let Some(event) = rx.recv().await {
             match event {
                 CommandEvent::Stdout(line) => println!("[MPV] {}", String::from_utf8_lossy(&line)),
@@ -168,7 +169,7 @@ fn start_status_monitor<R: Runtime>(app: AppHandle<R>) {
             let properties = ["pause", "volume", "mute", "time-pos", "duration"];
             for prop in &properties {
                 let result = get_property_internal(&app, prop).await;
-                match (prop, result) {
+                match (*prop, result) {
                     ("pause", Ok(Value::Bool(p))) => last_status.playing = !p,
                     ("volume", Ok(Value::Number(v))) => last_status.volume = v.as_f64().unwrap_or(100.0),
                     ("mute", Ok(Value::Bool(m))) => last_status.muted = m,
@@ -330,7 +331,8 @@ pub async fn sync_window<R: Runtime>(
     // This is more reliable than trying to move an existing window cross-process
     let current_url = {
         let state = app.state::<MpvState>();
-        state.current_url.lock().unwrap().clone()
+        let url_guard = state.current_url.lock().unwrap();
+        url_guard.clone()
     };
 
     // Kill and relaunch
