@@ -11,9 +11,12 @@ interface ModalProps {
     type?: ModalType;
     confirmText?: string;
     cancelText?: string;
-    onConfirm?: () => void;
+    onConfirm?: (value?: string) => void;
     onCancel?: () => void;
     onClose?: () => void;
+    showInput?: boolean;
+    inputPlaceholder?: string;
+    initialValue?: string;
 }
 
 export function Modal({
@@ -26,16 +29,26 @@ export function Modal({
     onConfirm,
     onCancel,
     onClose,
+    showInput = false,
+    inputPlaceholder = '',
+    initialValue = '',
 }: ModalProps) {
+    const [inputValue, setInputValue] = useState(initialValue);
+
+    // Reset input value when modal opens/closes or initialValue changes
+    useEffect(() => {
+        setInputValue(initialValue);
+    }, [isOpen, initialValue]);
+
     const handleClose = useCallback(() => {
         onClose?.();
         onCancel?.();
     }, [onClose, onCancel]);
 
     const handleConfirm = useCallback(() => {
-        onConfirm?.();
+        onConfirm?.(showInput ? inputValue : undefined);
         onClose?.();
-    }, [onConfirm, onClose]);
+    }, [onConfirm, onClose, showInput, inputValue]);
 
     // Handle escape key
     useEffect(() => {
@@ -87,6 +100,17 @@ export function Modal({
 
                 <div className="modal-body">
                     <p className="modal-message">{message}</p>
+                    {showInput && (
+                        <input
+                            type="text"
+                            className="modal-input"
+                            placeholder={inputPlaceholder}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            // Auto-focus logic handles 'confirm' enter, let's keep it simple
+                            autoFocus
+                        />
+                    )}
                 </div>
 
                 <div className="modal-footer">
@@ -166,7 +190,10 @@ interface ModalState {
     type: ModalType;
     confirmText: string;
     cancelText: string;
-    onConfirm?: () => void;
+    showInput?: boolean;
+    inputPlaceholder?: string;
+    initialValue?: string;
+    onConfirm?: (value?: string) => void;
     onCancel?: () => void;
 }
 
@@ -240,6 +267,32 @@ export function useModal() {
         });
     }, []);
 
+    const showPrompt = useCallback((
+        title: string,
+        message: string,
+        onConfirm: (value: string) => void,
+        onCancel?: () => void,
+        inputPlaceholder = '',
+        initialValue = '',
+        confirmText = 'OK',
+        cancelText = 'Cancel'
+    ) => {
+        setState({
+            ...initialState,
+            isOpen: true,
+            title,
+            message,
+            type: 'confirm', // Use confirm style for prompts
+            showInput: true,
+            inputPlaceholder,
+            initialValue,
+            confirmText,
+            cancelText,
+            onConfirm: (val) => onConfirm(val || ''),
+            onCancel,
+        });
+    }, []);
+
     const closeModal = useCallback(() => {
         setState(prev => ({ ...prev, isOpen: false }));
     }, []);
@@ -252,6 +305,9 @@ export function useModal() {
             type={state.type}
             confirmText={state.confirmText}
             cancelText={state.cancelText}
+            showInput={state.showInput}
+            inputPlaceholder={state.inputPlaceholder}
+            initialValue={state.initialValue}
             onConfirm={state.onConfirm}
             onCancel={state.onCancel}
             onClose={closeModal}
@@ -264,6 +320,7 @@ export function useModal() {
         showSuccess,
         showError,
         showConfirm,
+        showPrompt,
         closeModal,
         ModalComponent,
         isOpen: state.isOpen,

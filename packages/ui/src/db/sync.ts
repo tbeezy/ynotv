@@ -410,10 +410,10 @@ async function syncEpgFromUrl(
       }));
 
     console.log(`[EPG] Channels with epg_channel_id: ${channelMappings.length}/${channels.length}`);
-    
+
     // Log sample mappings for debugging
     if (channelMappings.length > 0) {
-      console.log(`[EPG] Sample mappings:`, channelMappings.slice(0, 3).map(m => 
+      console.log(`[EPG] Sample mappings:`, channelMappings.slice(0, 3).map(m =>
         `${m.epg_channel_id} -> ${m.stream_id}`
       ).join(', '));
     }
@@ -581,7 +581,7 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
 
   console.log(`[EPG] Starting Xtream EPG sync for source: ${source.name || source.id}`);
   console.log(`[EPG] Total channels: ${channels.length}`);
-  
+
   debugLog(`Starting EPG sync for source: ${source.name || source.id}`, 'epg');
   if (epgUrl) {
     debugLog(`Using EPG URL: ${epgUrl}`, 'epg');
@@ -613,21 +613,21 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
         channelsWithEpgId++;
       }
     }
-    
+
     console.log(`[EPG] Channels with epg_channel_id: ${channelsWithEpgId}/${channels.length}`);
-    
+
     // Log sample channel IDs for debugging
     if (channelsWithEpgId > 0) {
       const samples = channels.filter(c => c.epg_channel_id).slice(0, 3);
-      console.log(`[EPG] Sample channel EPG IDs:`, samples.map(c => 
+      console.log(`[EPG] Sample channel EPG IDs:`, samples.map(c =>
         `${c.name}: ${c.epg_channel_id}`
       ).join(', '));
     }
-    
+
     // Log sample XMLTV channel IDs for comparison
     const xmltvSamples = xmltvPrograms.slice(0, 3);
     console.log(`[EPG] Sample XMLTV channel IDs:`, xmltvSamples.map(p => p.channel_id).join(', '));
-    
+
     debugLog(`${channelsWithEpgId}/${channels.length} channels have epg_channel_id`, 'epg');
 
     // Convert XMLTV programs to stored format
@@ -653,11 +653,11 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
 
     console.log(`[EPG] Matched ${storedPrograms.length}/${xmltvPrograms.length} programs`);
     console.log(`[EPG] Unmatched EPG channels: ${unmatchedChannels.size}`);
-    
+
     if (unmatchedChannels.size > 0 && unmatchedChannels.size <= 10) {
       console.log(`[EPG] Unmatched channel IDs:`, Array.from(unmatchedChannels).join(', '));
     }
-    
+
     debugLog(`Matched ${storedPrograms.length}/${xmltvPrograms.length} programs (${unmatchedChannels.size} unmatched EPG channels)`, 'epg');
 
     // SAFETY: Only clear old data if we have new data to replace it
@@ -705,7 +705,7 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
   console.log(`[EPG] Starting Stalker EPG sync for source: ${source.name || source.id}`);
   console.log(`[EPG] Total channels: ${channels.length}`);
   console.log(`[EPG] EPG timeshift: ${source.epg_timeshift_hours || 0} hours`);
-  
+
   debugLog(`Starting EPG sync for Stalker source: ${source.name || source.id}`, 'epg');
 
   const client = new StalkerClient(
@@ -718,7 +718,7 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
     console.log(`[EPG] Fetching EPG data from Stalker portal (72 hours)...`);
     debugLog('Fetching EPG data from Stalker portal...', 'epg');
     const epgMap = await client.getEpg(72);
-    
+
     console.log(`[EPG] Received EPG for ${epgMap.size} channels from Stalker`);
     debugLog(`Received EPG for ${epgMap.size} channels`, 'epg');
 
@@ -1194,7 +1194,7 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     // Fetch EPG if enabled
     let programCount = 0;
     const shouldLoadEpg = source.auto_load_epg ?? (source.type === 'xtream');
-    
+
     console.log(`[EPG] EPG sync decision for ${source.name}: auto_load_epg=${source.auto_load_epg}, shouldLoadEpg=${shouldLoadEpg}`);
 
     if (shouldLoadEpg && source.type === 'xtream' && source.username && source.password) {
@@ -1319,7 +1319,8 @@ export async function syncStalkerCategory(
     debugLog(`[LazyLoad] Storing ${items.length} items for category ${categoryId}`, 'sync');
     if (onProgress) onProgress(100, 'Saving to database...');
 
-    await db.transaction('rw', [db.vodMovies, db.vodSeries], async () => {
+    // Removed db.transaction mock wrapper to prevent inner lock deadlocks
+    if (true) {
       if (type === 'movies') {
         // Sanitize items to ensure they match StoredMovie schema
         const movieItems = items.map((item: any) => sanitizeMovie(item));
@@ -1360,7 +1361,7 @@ export async function syncStalkerCategory(
 
         await db.vodSeries.bulkPut(seriesItems as any[]);
       }
-    });
+    } // End removed transaction block
 
     debugLog(`[LazyLoad] Sync complete`, 'sync');
     return items.length;
@@ -1788,14 +1789,13 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
   }
 
   // Store episodes
-  await db.transaction('rw', [db.vodEpisodes], async () => {
-    // Clear existing episodes for this series
-    await db.vodEpisodes.where('series_id').equals(seriesId).delete();
+  // Removed db.transaction wrapper to allow sqlite string queue mutex
+  // Clear existing episodes for this series
+  await db.vodEpisodes.where('series_id').equals(seriesId).delete();
 
-    if (storedEpisodes.length > 0) {
-      await db.vodEpisodes.bulkPut(storedEpisodes);
-    }
-  });
+  if (storedEpisodes.length > 0) {
+    await db.vodEpisodes.bulkPut(storedEpisodes);
+  }
 
   return storedEpisodes.length;
 }

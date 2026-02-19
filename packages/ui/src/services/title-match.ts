@@ -244,8 +244,6 @@ async function bulkUpdateMovieMetadata(
 
   const dbInstance = await (db as any).dbPromise;
 
-  await dbInstance.execute('BEGIN TRANSACTION');
-
   try {
     for (const update of updates) {
       await dbInstance.execute(
@@ -253,9 +251,7 @@ async function bulkUpdateMovieMetadata(
         [update.tmdb_id, update.popularity, update.backdrop_path, update.stream_id]
       );
     }
-    await dbInstance.execute('COMMIT');
   } catch (err) {
-    await dbInstance.execute('ROLLBACK');
     throw err;
   }
 
@@ -269,8 +265,6 @@ async function bulkUpdateSeriesMetadata(
 
   const dbInstance = await (db as any).dbPromise;
 
-  await dbInstance.execute('BEGIN TRANSACTION');
-
   try {
     for (const update of updates) {
       await dbInstance.execute(
@@ -278,9 +272,7 @@ async function bulkUpdateSeriesMetadata(
         [update.tmdb_id, update.popularity, update.backdrop_path, update.series_id]
       );
     }
-    await dbInstance.execute('COMMIT');
   } catch (err) {
-    await dbInstance.execute('ROLLBACK');
     throw err;
   }
 
@@ -400,7 +392,7 @@ import {
  */
 export async function matchAllMoviesLazy(): Promise<number> {
   console.log('[Lazy Match] Starting movie matching...');
-  
+
   const lists = await Promise.all([
     getTrendingMoviesWithCache(null, 'week'),
     getPopularMoviesWithCache(null),
@@ -415,7 +407,7 @@ export async function matchAllMoviesLazy(): Promise<number> {
   console.log(`[Lazy Match] Found ${uniqueResults.length} unique TMDB movies to match against`);
 
   const { newlyMatched } = await getOrMatchMoviesByTmdbList(uniqueResults);
-  
+
   console.log(`[Lazy Match] Matched ${newlyMatched} movies`);
   return newlyMatched;
 }
@@ -426,7 +418,7 @@ export async function matchAllMoviesLazy(): Promise<number> {
  */
 export async function matchAllSeriesLazy(): Promise<number> {
   console.log('[Lazy Match] Starting series matching...');
-  
+
   const lists = await Promise.all([
     getTrendingTvShowsWithCache(null, 'week'),
     getPopularTvShowsWithCache(null),
@@ -441,7 +433,7 @@ export async function matchAllSeriesLazy(): Promise<number> {
   console.log(`[Lazy Match] Found ${uniqueResults.length} unique TMDB series to match against`);
 
   const { newlyMatched } = await getOrMatchSeriesByTmdbList(uniqueResults);
-  
+
   console.log(`[Lazy Match] Matched ${newlyMatched} series`);
   return newlyMatched;
 }

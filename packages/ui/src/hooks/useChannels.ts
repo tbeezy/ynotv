@@ -60,7 +60,22 @@ export function useCategories() {
         channel_count: recentChannels.length,
         enabled: true,
       };
+
+      // Fetch Custom Groups
+      const customGroups = await db.customGroups.orderBy('display_order').toArray();
+      const customGroupCategories = await Promise.all(customGroups.map(async (g) => {
+        const count = await db.customGroupChannels.where('group_id').equals(g.group_id).count();
+        return {
+          category_id: g.group_id,
+          category_name: `📂 ${g.name}`,
+          source_id: '__custom_group__',
+          channel_count: count,
+          enabled: true
+        } as StoredCategory;
+      }));
+
       virtualCategories.push(recentCategory);
+      virtualCategories.push(...customGroupCategories);
 
       // Check if we have any favorited channels
       const favoriteCount = await db.channels.countWhere('(is_favorite = 1 OR is_favorite = true)');
@@ -146,11 +161,30 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
           results = await db.channels.toArray();
         }
       } else {
-        // Channels in this category - uses index
-        results = await db.channels.where('category_ids').equals(categoryId).toArray();
-        // Still need to filter by enabled source if result contains mixed sources (unlikely for category)
-        if (enabledSourceIds) {
-          results = results.filter(ch => enabledSourceIds.has(ch.source_id));
+        // Check if it is a Custom Group
+        const customGroup = await db.customGroups.get(categoryId);
+        if (customGroup) {
+          const mappings = await db.customGroupChannels
+            .where('group_id').equals(categoryId)
+            .sortBy('display_order');
+
+          const streamIds = mappings.map(m => m.stream_id);
+          if (streamIds.length === 0) {
+            results = [];
+          } else {
+            const channels = await db.channels.where('stream_id').anyOf(streamIds).toArray();
+            const channelMap = new Map(channels.map(ch => [ch.stream_id, ch]));
+            results = mappings
+              .map(m => channelMap.get(m.stream_id))
+              .filter((ch): ch is StoredChannel => ch !== undefined);
+          }
+        } else {
+          // Channels in this category - uses index
+          results = await db.channels.where('category_ids').equals(categoryId).toArray();
+          // Still need to filter by enabled source if result contains mixed sources (unlikely for category)
+          if (enabledSourceIds) {
+            results = results.filter(ch => enabledSourceIds.has(ch.source_id));
+          }
         }
       }
 
@@ -159,10 +193,16 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
 
       // Get filter words for this category and apply to channel names
       // This ensures filtered names are applied at the data level, preventing UI flicker
+      // This ensures filtered names are applied at the data level, preventing UI flicker
       let filterWords: string[] = [];
-      if (categoryId && categoryId !== '__recent__' && categoryId !== '__favorites__') {
+      // Apply filter words only for standard categories (not virtual or custom groups)
+      if (categoryId && !categoryId.startsWith('__')) {
+        // Optimize: avoid DB call if we know it's a custom group (UUID like) or just accept the miss
+        // Custom groups don't have filter words yet, so we can check db.categories
         const category = await db.categories.get(categoryId);
-        filterWords = category?.filter_words || [];
+        if (category) {
+          filterWords = category.filter_words || [];
+        }
       }
 
       // Apply filter words to channel names
@@ -238,15 +278,16 @@ export function useSelectedCategory() {
 }
 
 // Helper to parse category IDs from JSON string or array
-function parseCategoryIds(categoryIdsJson: string | string[] | undefined): string[] {
+function parseCategoryIds(categoryIdsJson: string | string[] | number[] | undefined): string[] {
   if (!categoryIdsJson) return [];
   if (Array.isArray(categoryIdsJson)) {
-    return categoryIdsJson.filter((id): id is string => typeof id === 'string');
+    return categoryIdsJson.map(String);
   }
   try {
     const parsed = JSON.parse(categoryIdsJson);
     if (Array.isArray(parsed)) {
-      return parsed.filter((id): id is string => typeof id === 'string');
+      // Map all to strings to support numeric category IDs from Xtream/Stalker
+      return parsed.map(String);
     }
   } catch {
     // Invalid JSON
@@ -269,7 +310,23 @@ export function useChannelSearch(query: string, limit = 50) {
         return [];
       }
 
-      // Get enabled category IDs (only from enabled sources)
+      const dbInstance = await (db as any).dbPromise;
+      const sourceIdsList = Array.from(enabledSourceIds);
+      const sourcePlaceholders = sourceIdsList.map(() => '?').join(',');
+
+      // Search channels with SQL filtering
+      const queryParams = [`%${query}%`, ...sourceIdsList, limit * 2];
+      const allChannels = await dbInstance.select(
+        `SELECT * FROM channels 
+         WHERE name LIKE ? 
+         AND source_id IN (${sourcePlaceholders})
+         AND (enabled IS NULL OR enabled != 0)
+         LIMIT ?`,
+        queryParams
+      );
+
+      // We still need to filter by enabled categories, since categories can be individually disabled
+      // Let's get enabled categories
       const allCategories = await db.categories.toArray();
       const enabledCategoryIds = new Set<string>();
       for (const cat of allCategories) {
@@ -278,25 +335,13 @@ export function useChannelSearch(query: string, limit = 50) {
         }
       }
 
-      // Search channels and filter by enabled sources, categories, AND enabled channels
-      const allChannels = await db.channels
-        .whereRaw('name LIKE ?', [`%${query}%`])
-        .limit(limit * 2)
-        .toArray();
-
-      // Filter channels that belong to enabled sources, enabled categories AND are enabled themselves
       const filteredChannels: StoredChannel[] = [];
       for (const channel of allChannels) {
-        // Skip disabled channels
-        if (channel.enabled === false) continue;
-
-        // Skip channels from disabled sources
-        if (!enabledSourceIds.has(channel.source_id)) continue;
-
         const channelCategories = parseCategoryIds(channel.category_ids);
         const isInEnabledCategory = channelCategories.some(catId => enabledCategoryIds.has(catId));
         if (isInEnabledCategory) {
           filteredChannels.push(channel);
+          // Standard limit applied here after memory filtering
           if (filteredChannels.length >= limit) break;
         }
       }
@@ -359,22 +404,32 @@ export function useProgramSearch(query: string, limit = 50) {
         return [];
       }
 
-      // Step 3: Search programs by title with LIKE
+      // Step 3: Search programs natively through an INNER JOIN on enabled channels
+      // Also filter out any past programs (p.end <= now) so limits are accurate
+      const nowIso = new Date().toISOString();
       const programResults = await dbInstance.select(
-        `SELECT * FROM programs WHERE title LIKE ? LIMIT ?`,
-        [`%${query}%`, limit * 2]
+        `SELECT p.* 
+         FROM programs p
+         INNER JOIN (
+           SELECT DISTINCT c.stream_id 
+           FROM channels c, json_each(c.category_ids) AS cat
+           WHERE c.source_id IN (${sourcePlaceholders})
+           AND (c.enabled IS NULL OR c.enabled != 0)
+           AND cat.value IN (${categoryPlaceholders})
+         ) ec ON p.stream_id = ec.stream_id
+         WHERE p.title LIKE ? AND p.end > ?
+         LIMIT ?`,
+        [...sourceIdsList, ...enabledCategoryIds, `%${query}%`, nowIso, limit * 2]
       );
 
-      // Step 4: Filter programs by enabled channels and decompress descriptions
+      // Step 4: Decompress descriptions for exactly the valid programs
       const filteredPrograms: StoredProgram[] = [];
       for (const prog of programResults) {
-        if (enabledChannelIds.has(prog.stream_id)) {
-          filteredPrograms.push({
-            ...prog,
-            description: decompressEpgDescription(prog.description) ?? prog.description,
-          });
-          if (filteredPrograms.length >= limit) break;
-        }
+        filteredPrograms.push({
+          ...prog,
+          description: decompressEpgDescription(prog.description) ?? prog.description,
+        });
+        if (filteredPrograms.length >= limit) break;
       }
 
       return filteredPrograms;
@@ -420,22 +475,21 @@ export function useCategoriesBySource(): SourceWithCategories[] {
       let channelCounts: Record<string, number> = {};
 
       if (categoryIds.length > 0) {
-        // SQLite has a limit on UNION ALL terms (~500), so chunk into batches of 100
-        const CHUNK_SIZE = 100;
+        // Use an optimized grouping query via json_each rather than looping 100 UNION ALLs
+        // We filter to enabled sources implicitly if required
+        const countQuery = `
+          SELECT cat.value as cat_id, COUNT(*) as cnt
+          FROM channels c, json_each(c.category_ids) AS cat
+          GROUP BY cat.value
+        `;
 
-        for (let i = 0; i < categoryIds.length; i += CHUNK_SIZE) {
-          const chunk = categoryIds.slice(i, i + CHUNK_SIZE);
-
-          // Build UNION ALL query for this chunk
-          // Use JSON-style matching with quotes to avoid substring matches (e.g., "cat1" matching "cat10")
-          const countsQuery = chunk.map((id) =>
-            `SELECT '${id}' as cat_id, COUNT(*) as cnt FROM channels WHERE category_ids LIKE '%"${id}"%'`
-          ).join(' UNION ALL ');
-
-          const countResults = await dbInstance.select(countsQuery);
+        try {
+          const countResults = await dbInstance.select(countQuery);
           countResults.forEach((row: any) => {
             channelCounts[row.cat_id] = row.cnt;
           });
+        } catch (e) {
+          console.warn("Failed to fetch categorized channel counts with JSON approach:", e);
         }
       }
 
@@ -495,22 +549,19 @@ export function useCategoriesWithCounts(): CategoryWithCount[] {
       let channelCounts: Record<string, number> = {};
 
       if (categoryIds.length > 0) {
-        // SQLite has a limit on UNION ALL terms (~500), so chunk into batches of 100
-        const CHUNK_SIZE = 100;
+        const countQuery = `
+          SELECT cat.value as cat_id, COUNT(*) as cnt
+          FROM channels c, json_each(c.category_ids) AS cat
+          GROUP BY cat.value
+        `;
 
-        for (let i = 0; i < categoryIds.length; i += CHUNK_SIZE) {
-          const chunk = categoryIds.slice(i, i + CHUNK_SIZE);
-
-          // Build UNION ALL query for this chunk
-          // Use JSON-style matching with quotes to avoid substring matches (e.g., "cat1" matching "cat10")
-          const countsQuery = chunk.map((id) =>
-            `SELECT '${id}' as cat_id, COUNT(*) as cnt FROM channels WHERE category_ids LIKE '%"${id}"%'`
-          ).join(' UNION ALL ');
-
-          const countResults = await dbInstance.select(countsQuery);
+        try {
+          const countResults = await dbInstance.select(countQuery);
           countResults.forEach((row: any) => {
             channelCounts[row.cat_id] = row.cnt;
           });
+        } catch (e) {
+          console.warn("Failed to fetch categorized channel counts with JSON approach:", e);
         }
       }
 

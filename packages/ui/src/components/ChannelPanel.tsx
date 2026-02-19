@@ -74,6 +74,16 @@ export function ChannelPanel({
   const [searchChannelPrograms, setSearchChannelPrograms] = useState<Map<string, StoredProgram[]>>(new Map());
   const [searchProgramChannels, setSearchProgramChannels] = useState<Map<string, StoredChannel>>(new Map());
 
+  // Pre-filter active programs for search results count and rendering
+  const activePrograms = useMemo(() => {
+    if (!isSearchMode || !searchPrograms) return [];
+    const now = new Date();
+    return searchPrograms.filter(p => {
+      const endTime = p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime();
+      return endTime > now.getTime();
+    });
+  }, [isSearchMode, searchPrograms]);
+
   // State for watchlist data
   const [watchlistPrograms, setWatchlistPrograms] = useState<Map<string, StoredProgram[]>>(new Map());
   const [watchlistChannels, setWatchlistChannels] = useState<Map<string, StoredChannel>>(new Map());
@@ -631,7 +641,7 @@ export function ChannelPanel({
                 <span className="guide-search-title">🔍 Search Results</span>
                 <span className="guide-search-query">"{searchQuery}"</span>
                 <span className="guide-channel-count">
-                  {(searchChannels?.length || 0) + (searchPrograms?.length || 0)} results
+                  {(searchChannels?.length || 0) + activePrograms.length} results
                 </span>
               </>
             ) : (
@@ -804,12 +814,6 @@ export function ChannelPanel({
               {(() => {
                 const now = new Date();
 
-                // Filter out ended programs - only keep live or upcoming
-                const activePrograms = searchPrograms?.filter(p => {
-                  const endTime = p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime();
-                  return endTime > now.getTime();
-                }) ?? [];
-
                 if (activePrograms.length === 0) return null;
 
                 return (
@@ -902,7 +906,7 @@ export function ChannelPanel({
               })()}
 
               {/* No Results */}
-              {(!searchChannels || searchChannels.length === 0) && (!searchPrograms || searchPrograms.length === 0) && (
+              {(!searchChannels || searchChannels.length === 0) && activePrograms.length === 0 && (
                 <div className="guide-empty">
                   <h3>No results found</h3>
                   <p>Try a different search term</p>

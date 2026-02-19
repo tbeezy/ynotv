@@ -197,6 +197,23 @@ export interface WatchlistItem {
   autoswitch_triggered: boolean; // Whether autoswitch has been triggered
 }
 
+// Custom Group
+export interface CustomGroup {
+  group_id: string; // UUID
+  name: string;
+  display_order: number;
+  created_at: number;
+}
+
+// Custom Group Channel Mapping
+export interface CustomGroupChannel {
+  id?: number; // Auto-increment
+  group_id: string;
+  stream_id: string;
+  display_order: number;
+  added_at: number;
+}
+
 
 class YnotvDatabase extends SqliteDatabase {
   channels: SqliteTable<StoredChannel, string>;
@@ -213,6 +230,8 @@ class YnotvDatabase extends SqliteDatabase {
   dvrRecordings: SqliteTable<DvrRecording, number>;
   dvrSettings: SqliteTable<DvrSettings, string>;
   watchlist: SqliteTable<WatchlistItem, number>;
+  customGroups: SqliteTable<CustomGroup, string>;
+  customGroupChannels: SqliteTable<CustomGroupChannel, number>;
 
 
   constructor() {
@@ -234,6 +253,8 @@ class YnotvDatabase extends SqliteDatabase {
     this.dvrRecordings = new SqliteTable('dvr_recordings', 'id', this.dbPromise);
     this.dvrSettings = new SqliteTable('dvr_settings', 'key', this.dbPromise);
     this.watchlist = new SqliteTable('watchlist', 'id', this.dbPromise);
+    this.customGroups = new SqliteTable('custom_groups', 'group_id', this.dbPromise);
+    this.customGroupChannels = new SqliteTable('custom_group_channels', 'id', this.dbPromise);
 
     // Initialize Schema (Async) - Chain to DB promise to ensure tables exist before usage
     const rawPromise = this.dbPromise;
@@ -257,6 +278,8 @@ class YnotvDatabase extends SqliteDatabase {
     this.dvrRecordings.updateDbPromise(this.dbPromise);
     this.dvrSettings.updateDbPromise(this.dbPromise);
     this.watchlist.updateDbPromise(this.dbPromise);
+    this.customGroups.updateDbPromise(this.dbPromise);
+    this.customGroupChannels.updateDbPromise(this.dbPromise);
   }
 
   async initSchema(dbInstance?: Database) {
@@ -615,6 +638,29 @@ class YnotvDatabase extends SqliteDatabase {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_watchlist_channel ON watchlist(channel_id)`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_watchlist_time ON watchlist(start_time, end_time)`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_watchlist_source ON watchlist(source_id)`);
+
+    // Custom Groups
+    await db.execute(`CREATE TABLE IF NOT EXISTS custom_groups (
+        group_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        display_order INTEGER,
+        created_at INTEGER
+      )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_custom_groups_order ON custom_groups(display_order)`);
+
+    // Custom Group Channels
+    await db.execute(`CREATE TABLE IF NOT EXISTS custom_group_channels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id TEXT NOT NULL,
+        stream_id TEXT NOT NULL,
+        display_order INTEGER,
+        added_at INTEGER,
+        FOREIGN KEY (group_id) REFERENCES custom_groups(group_id) ON DELETE CASCADE,
+        FOREIGN KEY (stream_id) REFERENCES channels(stream_id) ON DELETE CASCADE
+      )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_custom_group_channels_group ON custom_group_channels(group_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_custom_group_channels_stream ON custom_group_channels(stream_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_custom_group_channels_order ON custom_group_channels(group_id, display_order)`);
 
     console.log('[DB] Schema initialization complete');
   }

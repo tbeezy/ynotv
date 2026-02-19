@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from '../hooks/useSqliteLiveQuery';
 import { useCategoriesBySource, type CategoryWithCount, type SourceWithCategories } from '../hooks/useChannels';
-import { db, getWatchlistCount } from '../db';
+import { db, getWatchlistCount, type CustomGroup } from '../db';
 import type { Source } from '@ynotv/core';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { normalizeBoolean } from '../utils/db-helpers';
+import { useModal } from './Modal';
+import { createCustomGroup, deleteCustomGroup } from '../services/custom-groups';
+import { CustomGroupManager } from './CustomGroupManager';
 import './CategoryStrip.css';
 
 interface CategoryStripProps {
@@ -100,6 +103,47 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
   const { version } = useSourceVersion(); // Listen for source changes
 
+  // Custom Groups additions
+  const { showModal, showConfirm, showPrompt, ModalComponent } = useModal();
+  const [managingGroup, setManagingGroup] = useState<{ id: string, name: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, groupId: string } | null>(null);
+
+  const customGroups = useLiveQuery(
+    () => db.customGroups.orderBy('display_order').toArray()
+  );
+
+  const handleCreateGroup = () => {
+    showPrompt(
+      'Create Custom Group',
+      'Enter a name for the new group:',
+      async (name) => {
+        if (name.trim()) {
+          await createCustomGroup(name.trim());
+        }
+      },
+      undefined, // cancel handler
+      'Group name...',
+      '', // initial value
+      'Create',
+      'Cancel'
+    );
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    showConfirm(
+      'Delete Group',
+      'Are you sure you want to delete this custom group?',
+      async () => {
+        await deleteCustomGroup(groupId);
+      }
+    );
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, groupId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, groupId });
+  };
+
   // Fetch source names to resolve IDs
   useEffect(() => {
     async function fetchSources() {
@@ -147,6 +191,21 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
     <div className={`category-strip ${visible ? 'visible' : 'hidden'} ${sidebarExpanded ? 'sidebar-expanded' : ''} ${showSidebar ? 'with-sidebar' : 'no-sidebar'}`}>
       <div className="category-strip-header">
         <span className="category-strip-title">Categories</span>
+        <button
+          className="add-group-btn"
+          onClick={handleCreateGroup}
+          title="Create Custom Group"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: '1.2rem',
+            padding: '0 4px'
+          }}
+        >
+          +
+        </button>
       </div>
 
       <div className="category-strip-list">
@@ -176,6 +235,26 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={onSelectCategory}
         />
+
+        {/* Custom Groups Section */}
+        {customGroups && customGroups.length > 0 && (
+          <div className="custom-groups-section">
+            <div className="section-divider"></div>
+            {customGroups.map(group => (
+              <button
+                key={group.group_id}
+                className={`category-item ${selectedCategoryId === group.group_id ? 'selected' : ''}`}
+                onClick={() => onSelectCategory(group.group_id)}
+                onContextMenu={(e) => handleContextMenu(e, group.group_id)}
+              >
+                <span className="category-name">📂 {group.name}</span>
+                {/* We could calc count here too but might be expensive in loop */}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="section-divider" style={{ height: 1, background: 'var(--surface-border)', margin: '8px 0' }}></div>
 
         {/* Grouped Category list */}
         {groupedCategories.map((group) => (
@@ -217,6 +296,59 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           </div>
         )}
       </div>
+
+      <ModalComponent />
+
+      {managingGroup && (
+        <CustomGroupManager
+          groupId={managingGroup.id}
+          groupName={managingGroup.name}
+          onClose={() => setManagingGroup(null)}
+        />
+      )}
+
+      {contextMenu && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 2000,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--surface-border)',
+            borderRadius: '6px',
+            padding: '4px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+          }}
+        >
+          <div
+            onClick={() => {
+              const grp = customGroups?.find(g => g.group_id === contextMenu.groupId);
+              if (grp) setManagingGroup({ id: grp.group_id, name: grp.name });
+              setContextMenu(null);
+            }}
+            style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--text-primary)' }}
+          >
+            Manage
+          </div>
+          <div
+            onClick={() => {
+              handleDeleteGroup(contextMenu.groupId);
+              setContextMenu(null);
+            }}
+            style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--status-live)' }}
+          >
+            Delete
+          </div>
+
+          {/* Overlay to close menu on click outside */}
+          <div
+            style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1 }}
+            onClick={() => setContextMenu(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }

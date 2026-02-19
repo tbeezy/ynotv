@@ -320,8 +320,8 @@ function App() {
   }, [searchQuery]);
 
   // Fetch search results
-  const searchChannels = useChannelSearch(debouncedSearchQuery, 100);
-  const searchPrograms = useProgramSearch(debouncedSearchQuery, 100);
+  const searchChannels = useChannelSearch(debouncedSearchQuery, 200);
+  const searchPrograms = useProgramSearch(debouncedSearchQuery, 200);
 
   // Fetch watchlist when in watchlist mode or when refresh is triggered
   useEffect(() => {

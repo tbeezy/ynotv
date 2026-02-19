@@ -253,7 +253,7 @@ export function useSeriesDetails(seriesId: string | null) {
 
       console.log('[useSeriesDetails] Found series in DB, looking for source:', series.source_id);
       const sourcesResult = await window.storage.getSources();
-      const source = sourcesResult.data?.find(s => s.id === series.source_id);
+      const source = sourcesResult.data?.find(s => String(s.id) === String(series.source_id));
 
       if (!source) {
         console.error('[useSeriesDetails] Source not found:', series.source_id);
