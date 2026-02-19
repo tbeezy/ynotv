@@ -11,13 +11,15 @@
   },
   "app": {
     "withGlobalTauri": true,
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "ynoTV",
         "width": 1920,
         "height": 1080,
         "decorations": false,
-        "transparent": true
+        "transparent": true,
+        "acceptFirstMouse": true
       }
     ],
     "security": {

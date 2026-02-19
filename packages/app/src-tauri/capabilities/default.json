@@ -45,6 +45,10 @@
     "core:window:allow-close",
     "core:window:allow-set-size",
     "core:window:allow-center",
+    "core:window:allow-set-position",
+    "core:window:allow-outer-position",
+    "core:window:allow-outer-size",
+    "core:window:allow-start-dragging",
     "sql:default",
     "sql:allow-execute",
     "sql:allow-select"

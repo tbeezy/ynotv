@@ -1,17 +1,23 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tauri::{AppHandle, Emitter, Runtime, Manager};
-use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-use tauri_plugin_shell::process::CommandEvent;
-use tauri_plugin_shell::ShellExt;
-#[cfg(target_os = "windows")]
-use tokio::net::windows::named_pipe::ClientOptions;
-#[cfg(not(target_os = "windows"))]
-use tokio::net::UnixStream;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tauri::path::BaseDirectory;
+
+// macOS-specific imports for window configuration
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
+
+// Platform-specific MPV modules
+#[cfg(target_os = "macos")]
+mod mpv_macos;
+#[cfg(target_os = "windows")]
+mod mpv_windows;
+
+// Re-export the MPV state and functions based on platform
+#[cfg(target_os = "macos")]
+use mpv_macos::MpvState;
+#[cfg(target_os = "windows")]
+use mpv_windows::MpvState;
 
 // DVR Module (Rust native implementation)
 mod dvr;
@@ -37,16 +43,7 @@ struct BulkInsertRequest {
     operation: String, // "insert" or "replace"
 }
 
-// Global state for MPV
-struct MpvState {
-    process: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
-    socket_connected: Mutex<bool>,
-    ipc_tx: Mutex<Option<tokio::sync::mpsc::Sender<String>>>,
-    pending_requests: Arc<Mutex<HashMap<u64, tokio::sync::oneshot::Sender<Result<serde_json::Value, String>>>>>,
-    request_id_counter: Mutex<u64>,
-    initializing: Mutex<bool>,
-}
-
+// MPV Status structure (used by both platforms)
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct MpvStatus {
     playing: bool,
@@ -56,385 +53,233 @@ struct MpvStatus {
     duration: f64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-enum MpvResponse {
-    Event { event: String, name: Option<String>, data: Option<serde_json::Value> },
-    Response { request_id: u64, error: Option<String>, data: Option<serde_json::Value> },
-}
+// ============================================================================
+// MPV Commands - Unified API
+// ============================================================================
 
-// Helper to get socket path
-fn get_socket_path() -> String {
-    #[cfg(target_os = "windows")]
-    {
-        format!(r"\\.\pipe\mpv-socket-{}", std::process::id())
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        format!("/tmp/mpv-socket-{}", std::process::id())
-    }
-}
-
-// Helper to spawn MPV (extracted from init_mpv)
-async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>) -> Result<(), String> {
-    // Prevent concurrent inits
-    {
-        let mut init = state.initializing.lock().unwrap();
-        if *init {
-            println!("MPV initialization already in progress");
-            return Ok(());
-        }
-
-        let proc = state.process.lock().unwrap();
-        if proc.is_some() {
-             return Ok(());
-        }
-        *init = true;
-    }
-
-    let socket_path = get_socket_path();
-    println!("Initializing MPV on socket: {}", socket_path);
-
-    // Clean up existing socket/pipe if needed (Unix only)
-    #[cfg(not(target_os = "windows"))]
-    let _ = std::fs::remove_file(&socket_path);
-
-    // Get the main window handle for embedding
-    let window = match app.get_webview_window("main") {
-        Some(w) => w,
-        None => {
-            *state.initializing.lock().unwrap() = false;
-            return Err("Main window not found".to_string());
-        }
-    };
-
-    let hwnd = match window.window_handle() {
-        Ok(h) => match h.as_raw() {
-            #[cfg(target_os = "windows")]
-            RawWindowHandle::Win32(h) => h.hwnd.get(),
-            #[cfg(target_os = "macos")]
-            RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
-            #[cfg(target_os = "linux")]
-            RawWindowHandle::Xlib(h) => h.window as usize,
-            _ => {
-                *state.initializing.lock().unwrap() = false;
-                return Err("Unsupported platform/backend for window embedding".to_string());
-            }
-        },
-        Err(e) => {
-            *state.initializing.lock().unwrap() = false;
-            return Err(e.to_string());
-        }
-    };
-    println!("Embedding MPV into HWND: {:?}", hwnd);
-
-    // Prepare arguments
-    let mut args = vec![
-        format!("--input-ipc-server={}", socket_path),
-        format!("--wid={}", hwnd), // Embed into main window
-        "--force-window=immediate".into(),
-        "--idle=yes".into(),
-        "--keep-open=yes".into(),
-        "--no-osc".into(),
-        "--no-osd-bar".into(),
-        "--osd-level=0".into(),
-        "--input-default-bindings=no".into(),
-        "--no-input-cursor".into(),
-        "--cursor-autohide=no".into(),
-        "--no-terminal".into(),
-    ];
-
+#[tauri::command]
+async fn init_mpv<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        // MacOS/CoreAudio specific fixes for embedding/crashes
-        args.push("--vo=libmpv".into()); // Force libmpv VO
-        args.push("--hwdec=no".into()); // Disable hardware decoding
-        args.push("--coreaudio-change-physical-format=no".into()); // Prevent audio switch crashes
+        mpv_macos::init_mpv(app).await
     }
-
-    // Launch MPV using shell plugin
-    let sidecar = app.shell().sidecar("mpv");
-    if let Err(e) = sidecar {
-        *state.initializing.lock().unwrap() = false;
-        return Err(format!("Failed to create sidecar: {}", e));
-    }
-
-    let cmd = sidecar.unwrap().args(&args);
-    let spawned = cmd.spawn();
-
-    if let Err(e) = spawned {
-        *state.initializing.lock().unwrap() = false;
-        return Err(format!("Failed to spawn mpv: {}", e));
-    }
-
-    let (mut rx, _) = spawned.unwrap();
-    println!("MPV spawned successfully");
-
-    // Spawn a thread to monitor the process
+    #[cfg(target_os = "windows")]
     {
-        let mut proc_handle = state.process.lock().unwrap();
-        *proc_handle = Some(tauri::async_runtime::spawn(async move {
-            while let Some(event) = rx.recv().await {
-                match event {
-                     CommandEvent::Stdout(line) => println!("MPV STDOUT: {}", String::from_utf8_lossy(&line)),
-                     CommandEvent::Stderr(line) => println!("MPV STDERR: {}", String::from_utf8_lossy(&line)),
-                     CommandEvent::Error(e) => println!("MPV ERROR: {}", e),
-                     CommandEvent::Terminated(s) => println!("MPV TERMINATED: {:?}", s),
-                     _ => {}
-                }
-            }
-        }));
-    }
-
-    // Wait for internal startup
-    tokio::time::sleep(Duration::from_millis(1000)).await;
-
-    // Connect to IPC
-    println!("Connecting execution IPC...");
-    let connect_res = connect_ipc(app, state, &socket_path).await;
-
-    // Reset initializing flag
-    *state.initializing.lock().unwrap() = false;
-
-    match connect_res {
-        Ok(_) => {
-            println!("MPV Init Complete");
-            Ok(())
-        },
-        Err(e) => Err(e)
+        let state = app.state::<MpvState>();
+        mpv_windows::init_mpv(app, state).await
     }
 }
 
-// Initialize MPV process
 #[tauri::command]
-async fn init_mpv<R: Runtime>(app: AppHandle<R>, _args: Vec<String>, state: tauri::State<'_, MpvState>) -> Result<(), String> {
-
-    // Check if running
-    let is_running = {
-        let proc = state.process.lock().unwrap();
-        proc.is_some()
-    };
-
-    if is_running {
-         println!("MPV already running, connecting IPC only");
-         let socket_path = get_socket_path();
-         let _ = connect_ipc(&app, &state, &socket_path).await;
-         return Ok(());
-    }
-
-    // If not running, try to spawn
-    spawn_mpv(&app, &state).await
-}
-
-async fn connect_ipc<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>, socket_path: &str) -> Result<(), String> {
-    let stream = {
-        #[cfg(target_os = "windows")]
-        {
-            let mut retries = 5;
-            loop {
-                 match ClientOptions::new().open(socket_path) {
-                     Ok(s) => break Ok(s),
-                     Err(_) if retries > 0 => {
-                         tokio::time::sleep(Duration::from_millis(500)).await;
-                         retries -= 1;
-                     }
-                     Err(e) => break Err(format!("Failed to connect to named pipe: {}", e)),
-                 }
-            }
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-             let mut retries = 5;
-             loop {
-                  match UnixStream::connect(socket_path).await {
-                      Ok(s) => break Ok(s),
-                      Err(_) if retries > 0 => {
-                          tokio::time::sleep(Duration::from_millis(500)).await;
-                          retries -= 1;
-                      }
-                      Err(e) => break Err(format!("Failed to connect to unix socket: {}", e)),
-                  }
-             }
-        }
-    }?;
-
-
-    let (reader, mut writer) = tokio::io::split(stream);
-    let mut buf_reader = BufReader::new(reader);
-
-    // Channel for sending commands to the writer task
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(32);
-    *state.ipc_tx.lock().unwrap() = Some(tx);
-    *state.socket_connected.lock().unwrap() = true;
-
-    // Spawn writer task
-    tauri::async_runtime::spawn(async move {
-        while let Some(msg) = rx.recv().await {
-            let _ = writer.write_all(msg.as_bytes()).await;
-            let _ = writer.write_all(b"\n").await;
-            let _ = writer.flush().await;
-        }
-    });
-
-    // Spawn reader task
-    let app_handle = app.clone();
-    let pending_requests = state.pending_requests.clone();
-
-    tauri::async_runtime::spawn(async move {
-        let mut line = String::new();
-        let mut status = MpvStatus {
-            playing: false,
-            volume: 100.0,
-            muted: false,
-            position: 0.0,
-            duration: 0.0,
-        };
-
-        loop {
-            line.clear();
-            match buf_reader.read_line(&mut line).await {
-                Ok(0) => break, // EOF
-                Ok(_) => {
-                    if let Ok(msg) = serde_json::from_str::<MpvResponse>(&line) {
-                        match msg {
-                            MpvResponse::Event { event, name, data } => {
-                                if event == "property-change" {
-                                    if let (Some(name), Some(data)) = (name, data) {
-                                        match name.as_str() {
-                                            "pause" => status.playing = !data.as_bool().unwrap_or(false),
-                                            "volume" => status.volume = data.as_f64().unwrap_or(100.0),
-                                            "mute" => status.muted = data.as_bool().unwrap_or(false),
-                                            "time-pos" => status.position = data.as_f64().unwrap_or(0.0),
-                                            "duration" => status.duration = data.as_f64().unwrap_or(0.0),
-                                            _ => {}
-                                        }
-                                        let _ = app_handle.emit("mpv-status", status.clone());
-                                    }
-                                }
-                            },
-                            MpvResponse::Response { request_id, error, data } => {
-                                let mut pending = pending_requests.lock().unwrap();
-                                if let Some(sender) = pending.remove(&request_id) {
-                                    if let Some(err) = error {
-                                        if err != "success" {
-                                            let _ = sender.send(Err(err));
-                                            continue;
-                                        }
-                                    }
-                                    let _ = sender.send(Ok(data.unwrap_or(serde_json::Value::Null)));
-                                }
-                            }
-                        }
-                    }
-                }
-                Err(_) => break,
-            }
-        }
-        let _ = app_handle.emit("mpv-error", "IPC connection lost");
-    });
-
-    // Observe properties
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(1), serde_json::json!("pause")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(2), serde_json::json!("volume")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(3), serde_json::json!("mute")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(4), serde_json::json!("time-pos")]).await;
-    let _ = send_command(state, "observe_property", vec![serde_json::json!(5), serde_json::json!("duration")]).await;
-
-    let _ = app.emit("mpv-ready", true);
-    Ok(())
-}
-
-async fn send_command(state: &tauri::State<'_, MpvState>, command: &str, args: Vec<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let request_id = {
-        let mut counter = state.request_id_counter.lock().unwrap();
-        *counter += 1;
-        *counter
-    };
-
-    let (tx, rx) = tokio::sync::oneshot::channel();
+async fn mpv_load<R: Runtime>(app: AppHandle<R>, url: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
     {
-        state.pending_requests.lock().unwrap().insert(request_id, tx);
+        mpv_macos::load_file(&app, url).await
     }
-
-    let mut cmd_args = vec![serde_json::Value::String(command.to_string())];
-    cmd_args.extend(args);
-
-    let cmd_json = serde_json::json!({
-        "command": cmd_args,
-        "request_id": request_id
-    });
-
-    let tx_channel = state.ipc_tx.lock().unwrap().clone();
-    if let Some(sender) = tx_channel {
-        sender.send(cmd_json.to_string()).await.map_err(|e| e.to_string())?;
-    } else {
-        println!("Warning: IPC not connected for command {}", command);
-        return Err("IPC not connected".to_string());
-    }
-
-    match tokio::time::timeout(Duration::from_secs(5), rx).await {
-        Ok(Ok(res)) => res.map_err(|e| e),
-        Ok(Err(_)) => Err("Channel closed".to_string()),
-        Err(_) => {
-            state.pending_requests.lock().unwrap().remove(&request_id);
-            Err("Timeout".to_string())
-        }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::load_file(&app, url).await
     }
 }
 
 #[tauri::command]
-async fn mpv_load(state: tauri::State<'_, MpvState>, url: String) -> Result<(), String> {
-    send_command(&state, "loadfile", vec![serde_json::Value::String(url)]).await.map(|_| ())
+async fn mpv_play<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::play(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::play(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_play(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("pause"), serde_json::json!(false)]).await.map(|_| ())
+async fn mpv_pause<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::pause(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::pause(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_pause(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("pause"), serde_json::json!(true)]).await.map(|_| ())
+async fn mpv_resume<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::play(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::resume(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_resume(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("pause"), serde_json::json!(false)]).await.map(|_| ())
+async fn mpv_stop<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::stop(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::stop(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_stop(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "stop", vec![]).await.map(|_| ())
+async fn mpv_set_volume<R: Runtime>(app: AppHandle<R>, volume: f64) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::set_volume(&app, volume).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::set_volume(&app, volume).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_set_volume(state: tauri::State<'_, MpvState>, volume: f64) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("volume"), serde_json::json!(volume)]).await.map(|_| ())
+async fn mpv_seek<R: Runtime>(app: AppHandle<R>, seconds: f64) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::seek(&app, seconds).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::seek(&app, seconds).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_seek(state: tauri::State<'_, MpvState>, seconds: f64) -> Result<(), String> {
-    send_command(&state, "seek", vec![serde_json::json!(seconds), serde_json::json!("absolute")]).await.map(|_| ())
+async fn mpv_toggle_mute<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::toggle_mute(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::toggle_mute(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_cycle_audio(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "cycle", vec![serde_json::json!("audio")]).await.map(|_| ())
+async fn mpv_cycle_audio<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::cycle_audio(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::cycle_audio(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_cycle_sub(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "cycle", vec![serde_json::json!("sub")]).await.map(|_| ())
+async fn mpv_cycle_sub<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::cycle_sub(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::cycle_sub(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_toggle_mute(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "cycle", vec![serde_json::json!("mute")]).await.map(|_| ())
+async fn mpv_get_track_list<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::get_track_list(&app).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::get_track_list(&app).await
+    }
 }
 
 #[tauri::command]
-async fn mpv_toggle_stats(state: tauri::State<'_, MpvState>) -> Result<(), String> {
-    send_command(&state, "script-binding", vec![serde_json::json!("stats/display-stats-toggle")]).await.map(|_| ())
+async fn mpv_set_audio<R: Runtime>(app: AppHandle<R>, id: i64) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::set_audio_track(&app, id).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::set_audio_track(&app, id).await
+    }
+}
+
+#[tauri::command]
+async fn mpv_set_subtitle<R: Runtime>(app: AppHandle<R>, id: i64) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::set_subtitle_track(&app, id).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::set_subtitle_track(&app, id).await
+    }
+}
+
+#[tauri::command]
+async fn mpv_set_property<R: Runtime>(
+    app: AppHandle<R>,
+    name: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::set_property(&app, name, value).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::set_property(&app, name, value).await
+    }
+}
+
+#[tauri::command]
+async fn mpv_get_property<R: Runtime>(app: AppHandle<R>, name: String) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::get_property(&app, &name).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::get_property(&app, name).await
+    }
+}
+
+#[tauri::command]
+async fn mpv_sync_window<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let window = app.get_webview_window("main").ok_or("Main window not found")?;
+    let pos = window.outer_position().map_err(|e| e.to_string())?;
+    let size = window.outer_size().map_err(|e| e.to_string())?;
+    
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::sync_window(&app, pos.x, pos.y, size.width, size.height).await
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::sync_window(&app, pos.x, pos.y, size.width, size.height).await
+    }
+}
+
+#[tauri::command]
+async fn mpv_kill<R: Runtime>(app: AppHandle<R>) {
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::kill_mpv(&app).await;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::kill_mpv(&app).await;
+    }
 }
 
 #[tauri::command]
@@ -442,6 +287,16 @@ async fn mpv_toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), Stri
     if let Some(window) = app.get_webview_window("main") {
         let is_fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
         window.set_fullscreen(!is_fullscreen).map_err(|e| e.to_string())?;
+        
+        // On macOS, we need to sync the window after fullscreen change
+        #[cfg(target_os = "macos")]
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            let pos = window.outer_position().map_err(|e| e.to_string())?;
+            let size = window.outer_size().map_err(|e| e.to_string())?;
+            mpv_macos::sync_window(&app, pos.x, pos.y, size.width, size.height).await?;
+        }
+        
         Ok(())
     } else {
         Err("Main window not found".to_string())
@@ -449,233 +304,25 @@ async fn mpv_toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), Stri
 }
 
 #[tauri::command]
-async fn mpv_get_track_list(state: tauri::State<'_, MpvState>) -> Result<serde_json::Value, String> {
-    send_command(&state, "get_property", vec![serde_json::json!("track-list")]).await
-}
-
-#[tauri::command]
-async fn mpv_set_audio(state: tauri::State<'_, MpvState>, id: i64) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("aid"), serde_json::json!(id)]).await.map(|_| ())
-}
-
-#[tauri::command]
-async fn mpv_set_subtitle(state: tauri::State<'_, MpvState>, id: i64) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!("sid"), serde_json::json!(id)]).await.map(|_| ())
-}
-
-#[tauri::command]
-async fn mpv_set_property(state: tauri::State<'_, MpvState>, name: String, value: serde_json::Value) -> Result<(), String> {
-    send_command(&state, "set_property", vec![serde_json::json!(name), value]).await.map(|_| ())
-}
-
-#[tauri::command]
-async fn mpv_get_property(state: tauri::State<'_, MpvState>, name: String) -> Result<serde_json::Value, String> {
-    send_command(&state, "get_property", vec![serde_json::json!(name)]).await
-}
-
-// Native bulk insert command
-#[tauri::command]
-async fn bulk_insert(
-    app: AppHandle,
-    request: BulkInsertRequest,
-) -> Result<u64, String> {
-    let db_path = app
-        .path()
-        .resolve(format!("{}.db", "ynotv"), BaseDirectory::AppConfig)
-        .map_err(|e| format!("Failed to resolve db path: {}", e))?;
-
-    let db_path_str = db_path.to_string_lossy().to_string();
-
-    let pool = sqlx::sqlite::SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect(&format!("sqlite:{}", db_path_str))
-        .await
-        .map_err(|e| format!("Failed to connect to database: {}", e))?;
-
-    let columns = request.columns.join(", ");
-    let placeholders: Vec<String> = (0..request.columns.len())
-        .map(|i| format!("?{}", i + 1))
-        .collect();
-    let placeholders_str = placeholders.join(", ");
-
-    let sql = format!(
-        "INSERT {} INTO {} ({}) VALUES ({})",
-        if request.operation == "replace" { "OR REPLACE" } else { "" },
-        request.table,
-        columns,
-        placeholders_str
-    );
-
-    let mut total_inserted: u64 = 0;
-    let mut tx = pool.begin().await.map_err(|e| format!("Failed to begin transaction: {}", e))?;
-
-    for row in request.rows {
-        let mut query = sqlx::query(&sql);
-
-        for value in row {
-            query = match value {
-                serde_json::Value::Null => query.bind(None::<String>),
-                serde_json::Value::Bool(b) => query.bind(b),
-                serde_json::Value::Number(n) => {
-                    if let Some(i) = n.as_i64() {
-                        query.bind(i)
-                    } else if let Some(f) = n.as_f64() {
-                        query.bind(f)
-                    } else {
-                        query.bind(n.to_string())
-                    }
-                }
-                serde_json::Value::String(s) => query.bind(s),
-                _ => query.bind(value.to_string()),
-            };
-        }
-
-        match query.execute(&mut *tx).await {
-            Ok(result) => total_inserted += result.rows_affected(),
-            Err(e) => {
-                let _ = tx.rollback().await;
-                return Err(format!("Insert error: {}", e));
-            }
-        }
+async fn mpv_toggle_stats<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    // Send script-binding command for stats display
+    #[cfg(target_os = "macos")]
+    {
+        mpv_macos::send_command(&app, serde_json::json!({ 
+            "command": ["script-binding", "stats/display-stats-toggle"] 
+        })).await?;
     }
-
-    tx.commit().await.map_err(|e| format!("Failed to commit transaction: {}", e))?;
-    pool.close().await;
-
-    Ok(total_inserted)
+    #[cfg(target_os = "windows")]
+    {
+        use serde_json::json;
+        mpv_windows::send_command(&app, "script-binding", vec![json!("stats/display-stats-toggle")]).await?;
+    }
+    Ok(())
 }
 
-// =============================================================================
-// Optimized Bulk Sync Commands (New Implementation)
-// =============================================================================
-
-/// Bulk upsert channels - optimized for sync operations
-#[tauri::command]
-async fn bulk_upsert_channels(
-    state: tauri::State<'_, DvrState>,
-    channels: Vec<db_bulk_ops::BulkChannel>,
-) -> Result<db_bulk_ops::BulkResult, String> {
-    println!("[bulk_upsert_channels] Called with {} channels", channels.len());
-    db_bulk_ops::bulk_upsert_channels(&state.db, channels)
-        .map_err(|e| {
-            println!("[bulk_upsert_channels] ERROR: {}", e);
-            format!("Bulk upsert channels failed: {}", e)
-        })
-}
-
-/// Bulk upsert categories - optimized for sync operations
-#[tauri::command]
-async fn bulk_upsert_categories(
-    state: tauri::State<'_, DvrState>,
-    categories: Vec<db_bulk_ops::BulkCategory>,
-) -> Result<db_bulk_ops::BulkResult, String> {
-    db_bulk_ops::bulk_upsert_categories(&state.db, categories)
-        .map_err(|e| format!("Bulk upsert categories failed: {}", e))
-}
-
-/// Bulk replace EPG programs for a source
-#[tauri::command]
-async fn bulk_replace_programs(
-    state: tauri::State<'_, DvrState>,
-    source_id: String,
-    programs: Vec<db_bulk_ops::BulkProgram>,
-) -> Result<db_bulk_ops::BulkResult, String> {
-    db_bulk_ops::bulk_replace_programs(&state.db, &source_id, programs)
-        .map_err(|e| format!("Bulk replace programs failed: {}", e))
-}
-
-/// Bulk upsert VOD movies
-#[tauri::command]
-async fn bulk_upsert_movies(
-    state: tauri::State<'_, DvrState>,
-    movies: Vec<db_bulk_ops::BulkMovie>,
-) -> Result<db_bulk_ops::BulkResult, String> {
-    db_bulk_ops::bulk_upsert_movies(&state.db, movies)
-        .map_err(|e| format!("Bulk upsert movies failed: {}", e))
-}
-
-/// Bulk upsert VOD series
-#[tauri::command]
-async fn bulk_upsert_series(
-    state: tauri::State<'_, DvrState>,
-    series: Vec<db_bulk_ops::BulkSeries>,
-) -> Result<db_bulk_ops::BulkResult, String> {
-    db_bulk_ops::bulk_upsert_series(&state.db, series)
-        .map_err(|e| format!("Bulk upsert series failed: {}", e))
-}
-
-/// Bulk delete channels
-#[tauri::command]
-async fn bulk_delete_channels(
-    state: tauri::State<'_, DvrState>,
-    stream_ids: Vec<String>,
-) -> Result<usize, String> {
-    db_bulk_ops::bulk_delete_channels(&state.db, stream_ids)
-        .map_err(|e| format!("Bulk delete channels failed: {}", e))
-}
-
-/// Bulk delete categories
-#[tauri::command]
-async fn bulk_delete_categories(
-    state: tauri::State<'_, DvrState>,
-    category_ids: Vec<String>,
-) -> Result<usize, String> {
-    db_bulk_ops::bulk_delete_categories(&state.db, category_ids)
-        .map_err(|e| format!("Bulk delete categories failed: {}", e))
-}
-
-/// Update source metadata
-#[tauri::command]
-async fn update_source_meta(
-    state: tauri::State<'_, DvrState>,
-    meta: db_bulk_ops::SourceMetaUpdate,
-) -> Result<(), String> {
-    println!("[update_source_meta] Called for source_id: {}", meta.source_id);
-    db_bulk_ops::update_source_meta(&state.db, meta)
-        .map_err(|e| {
-            println!("[update_source_meta] ERROR: {}", e);
-            format!("Update source meta failed: {}", e)
-        })
-}
-
-/// Health check - verifies backend systems are ready
-#[tauri::command]
-async fn health_check(state: tauri::State<'_, DvrState>) -> Result<bool, String> {
-    println!("[health_check] DVR state is active");
-    Ok(true)
-}
-
-/// Stream and parse EPG from URL with progress updates
-#[tauri::command]
-async fn stream_parse_epg(
-    app: AppHandle,
-    state: tauri::State<'_, DvrState>,
-    source_id: String,
-    epg_url: String,
-    channel_mappings: Vec<epg_streaming::ChannelMapping>,
-) -> Result<epg_streaming::EpgParseResult, String> {
-    epg_streaming::stream_parse_epg(app, &state.db, source_id, epg_url, channel_mappings)
-        .await
-        .map_err(|e| format!("Stream parse EPG failed: {}", e))
-}
-
-/// Parse EPG from local file with progress updates
-#[tauri::command]
-async fn parse_epg_file(
-    app: AppHandle,
-    state: tauri::State<'_, DvrState>,
-    source_id: String,
-    file_path: String,
-    channel_mappings: Vec<epg_streaming::ChannelMapping>,
-) -> Result<epg_streaming::EpgParseResult, String> {
-    epg_streaming::parse_epg_file(app, &state.db, source_id, file_path, channel_mappings)
-        .await
-        .map_err(|e| format!("Parse EPG file failed: {}", e))
-}
-
-// =============================================================================
+// ============================================================================
 // DVR Commands (Rust Native Implementation)
-// =============================================================================
+// ============================================================================
 
 /// Initialize the DVR system
 #[tauri::command]
@@ -1061,6 +708,134 @@ async fn run_cleanup_now(
 }
 
 // =============================================================================
+// Optimized Bulk Sync Commands
+// =============================================================================
+
+/// Bulk upsert channels - optimized for sync operations
+#[tauri::command]
+async fn bulk_upsert_channels(
+    state: tauri::State<'_, DvrState>,
+    channels: Vec<db_bulk_ops::BulkChannel>,
+) -> Result<db_bulk_ops::BulkResult, String> {
+    println!("[bulk_upsert_channels] Called with {} channels", channels.len());
+    db_bulk_ops::bulk_upsert_channels(&state.db, channels)
+        .map_err(|e| {
+            println!("[bulk_upsert_channels] ERROR: {}", e);
+            format!("Bulk upsert channels failed: {}", e)
+        })
+}
+
+/// Bulk upsert categories - optimized for sync operations
+#[tauri::command]
+async fn bulk_upsert_categories(
+    state: tauri::State<'_, DvrState>,
+    categories: Vec<db_bulk_ops::BulkCategory>,
+) -> Result<db_bulk_ops::BulkResult, String> {
+    db_bulk_ops::bulk_upsert_categories(&state.db, categories)
+        .map_err(|e| format!("Bulk upsert categories failed: {}", e))
+}
+
+/// Bulk replace EPG programs for a source
+#[tauri::command]
+async fn bulk_replace_programs(
+    state: tauri::State<'_, DvrState>,
+    source_id: String,
+    programs: Vec<db_bulk_ops::BulkProgram>,
+) -> Result<db_bulk_ops::BulkResult, String> {
+    db_bulk_ops::bulk_replace_programs(&state.db, &source_id, programs)
+        .map_err(|e| format!("Bulk replace programs failed: {}", e))
+}
+
+/// Bulk upsert VOD movies
+#[tauri::command]
+async fn bulk_upsert_movies(
+    state: tauri::State<'_, DvrState>,
+    movies: Vec<db_bulk_ops::BulkMovie>,
+) -> Result<db_bulk_ops::BulkResult, String> {
+    db_bulk_ops::bulk_upsert_movies(&state.db, movies)
+        .map_err(|e| format!("Bulk upsert movies failed: {}", e))
+}
+
+/// Bulk upsert VOD series
+#[tauri::command]
+async fn bulk_upsert_series(
+    state: tauri::State<'_, DvrState>,
+    series: Vec<db_bulk_ops::BulkSeries>,
+) -> Result<db_bulk_ops::BulkResult, String> {
+    db_bulk_ops::bulk_upsert_series(&state.db, series)
+        .map_err(|e| format!("Bulk upsert series failed: {}", e))
+}
+
+/// Bulk delete channels
+#[tauri::command]
+async fn bulk_delete_channels(
+    state: tauri::State<'_, DvrState>,
+    stream_ids: Vec<String>,
+) -> Result<usize, String> {
+    db_bulk_ops::bulk_delete_channels(&state.db, stream_ids)
+        .map_err(|e| format!("Bulk delete channels failed: {}", e))
+}
+
+/// Bulk delete categories
+#[tauri::command]
+async fn bulk_delete_categories(
+    state: tauri::State<'_, DvrState>,
+    category_ids: Vec<String>,
+) -> Result<usize, String> {
+    db_bulk_ops::bulk_delete_categories(&state.db, category_ids)
+        .map_err(|e| format!("Bulk delete categories failed: {}", e))
+}
+
+/// Update source metadata
+#[tauri::command]
+async fn update_source_meta(
+    state: tauri::State<'_, DvrState>,
+    meta: db_bulk_ops::SourceMetaUpdate,
+) -> Result<(), String> {
+    println!("[update_source_meta] Called for source_id: {}", meta.source_id);
+    db_bulk_ops::update_source_meta(&state.db, meta)
+        .map_err(|e| {
+            println!("[update_source_meta] ERROR: {}", e);
+            format!("Update source meta failed: {}", e)
+        })
+}
+
+/// Health check - verifies backend systems are ready
+#[tauri::command]
+async fn health_check(state: tauri::State<'_, DvrState>) -> Result<bool, String> {
+    println!("[health_check] DVR state is active");
+    Ok(true)
+}
+
+/// Stream and parse EPG from URL with progress updates
+#[tauri::command]
+async fn stream_parse_epg(
+    app: AppHandle,
+    state: tauri::State<'_, DvrState>,
+    source_id: String,
+    epg_url: String,
+    channel_mappings: Vec<epg_streaming::ChannelMapping>,
+) -> Result<epg_streaming::EpgParseResult, String> {
+    epg_streaming::stream_parse_epg(app, &state.db, source_id, epg_url, channel_mappings)
+        .await
+        .map_err(|e| format!("Stream parse EPG failed: {}", e))
+}
+
+/// Parse EPG from local file with progress updates
+#[tauri::command]
+async fn parse_epg_file(
+    app: AppHandle,
+    state: tauri::State<'_, DvrState>,
+    source_id: String,
+    file_path: String,
+    channel_mappings: Vec<epg_streaming::ChannelMapping>,
+) -> Result<epg_streaming::EpgParseResult, String> {
+    epg_streaming::parse_epg_file(app, &state.db, source_id, file_path, channel_mappings)
+        .await
+        .map_err(|e| format!("Parse EPG file failed: {}", e))
+}
+
+// =============================================================================
 // TMDB Cache Commands
 // =============================================================================
 
@@ -1130,7 +905,10 @@ async fn clear_tmdb_cache(app: AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to clear cache: {}", e))
 }
 
-// App entry point
+// =============================================================================
+// App Entry Point
+// =============================================================================
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1147,15 +925,20 @@ pub fn run() {
                 file_name: Some("ynotv".into()) 
             }))
             .build())
-        .manage(MpvState {
-            process: Mutex::new(None),
-            socket_connected: Mutex::new(false),
-            ipc_tx: Mutex::new(None),
-            pending_requests: Arc::new(Mutex::new(HashMap::new())),
-            request_id_counter: Mutex::new(0),
-            initializing: Mutex::new(false),
-        })
+        // Manage platform-specific MPV state
+        .manage(MpvState::new())
         .setup(|app| {
+            // Configure macOS window for proper dragging with transparent titlebar
+            #[cfg(target_os = "macos")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    // Set the title bar style to Overlay for proper drag behavior
+                    // This allows the window to be dragged even when not focused
+                    let _ = window.set_title_bar_style(TitleBarStyle::Overlay);
+                    println!("[macOS] Window configured with Overlay title bar style");
+                }
+            }
+
             // Initialize DVR system FIRST before anything else
             let app_handle = app.handle().clone();
 
@@ -1180,9 +963,23 @@ pub fn run() {
                 }
             }
 
+            // On macOS, initialize MPV after a short delay to ensure window is ready
+            #[cfg(target_os = "macos")]
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+                    println!("[MPV macOS] Auto-initializing MPV...");
+                    if let Err(e) = mpv_macos::init_mpv(app_handle).await {
+                        eprintln!("[MPV macOS] Auto-init failed: {}", e);
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // MPV commands
             init_mpv,
             mpv_load,
             mpv_play,
@@ -1201,8 +998,9 @@ pub fn run() {
             mpv_set_subtitle,
             mpv_set_property,
             mpv_get_property,
-            bulk_insert,
-            // Optimized bulk sync commands (new)
+            mpv_sync_window,
+            mpv_kill,
+            // Optimized bulk sync commands
             bulk_upsert_channels,
             bulk_upsert_categories,
             bulk_replace_programs,
@@ -1212,10 +1010,10 @@ pub fn run() {
             bulk_delete_categories,
             update_source_meta,
             health_check,
-            // Streaming EPG commands (new)
+            // Streaming EPG commands
             stream_parse_epg,
             parse_epg_file,
-            // DVR commands (Rust native)
+            // DVR commands
             init_dvr,
             schedule_recording,
             get_scheduled_recordings,
@@ -1233,7 +1031,7 @@ pub fn run() {
             open_file_location,
             open_log_folder,
             run_cleanup_now,
-            // TMDB cache commands (new)
+            // TMDB cache commands
             get_tmdb_cache_stats,
             update_tmdb_movies_cache,
             update_tmdb_series_cache,

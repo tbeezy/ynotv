@@ -16,12 +16,119 @@ async function getStore() {
     return store;
 }
 
+// Window sync state for macOS hole punch
+type UnlistenFn = () => void;
+let windowSyncListeners: { move?: UnlistenFn; resize?: UnlistenFn; focus?: UnlistenFn } = {};
+let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Initialize window position syncing for macOS hole punch mode.
+ * This keeps the MPV window positioned behind the Tauri window.
+ * Only runs on macOS - Windows uses embedded MPV so no sync needed.
+ */
+export async function initWindowSync() {
+    // Only enable on macOS - Windows uses embedded mode
+    const isMacOS = navigator.platform.toLowerCase().includes('mac');
+    if (!isMacOS) {
+        console.log('[WindowSync] Not macOS, skipping window sync');
+        return;
+    }
+
+    console.log('[WindowSync] Initializing macOS window sync for MPV hole punch');
+
+    const appWindow = getCurrentWindow();
+
+    // Debounced sync function to avoid excessive IPC calls
+    const debouncedSync = () => {
+        if (syncDebounceTimer) {
+            clearTimeout(syncDebounceTimer);
+        }
+        syncDebounceTimer = setTimeout(() => {
+            console.log('[WindowSync] Syncing MPV window position');
+            invoke('mpv_sync_window').catch(err => {
+                console.error('[WindowSync] Failed to sync window:', err);
+            });
+        }, 150); // 150ms debounce
+    };
+
+    // Listen for window move events
+    try {
+        windowSyncListeners.move = await appWindow.onMoved(debouncedSync);
+        console.log('[WindowSync] Move listener attached');
+    } catch (e) {
+        console.error('[WindowSync] Failed to attach move listener:', e);
+    }
+
+    // Listen for window resize events
+    try {
+        windowSyncListeners.resize = await appWindow.onResized(debouncedSync);
+        console.log('[WindowSync] Resize listener attached');
+    } catch (e) {
+        console.error('[WindowSync] Failed to attach resize listener:', e);
+    }
+
+    // Listen for focus changes to re-assert window ordering
+    try {
+        windowSyncListeners.focus = await appWindow.onFocusChanged(({ payload: focused }) => {
+            if (focused) {
+                console.log('[WindowSync] Window focused, re-syncing MPV');
+                // Small delay to let macOS settle window ordering
+                setTimeout(() => {
+                    invoke('mpv_sync_window').catch(err => {
+                        console.error('[WindowSync] Failed to sync on focus:', err);
+                    });
+                }, 50);
+            }
+        });
+        console.log('[WindowSync] Focus listener attached');
+    } catch (e) {
+        console.error('[WindowSync] Failed to attach focus listener:', e);
+    }
+}
+
+/**
+ * Stop window sync listeners
+ */
+export function stopWindowSync() {
+    console.log('[WindowSync] Stopping window sync');
+    if (windowSyncListeners.move) {
+        windowSyncListeners.move();
+        windowSyncListeners.move = undefined;
+    }
+    if (windowSyncListeners.resize) {
+        windowSyncListeners.resize();
+        windowSyncListeners.resize = undefined;
+    }
+    if (windowSyncListeners.focus) {
+        windowSyncListeners.focus();
+        windowSyncListeners.focus = undefined;
+    }
+    if (syncDebounceTimer) {
+        clearTimeout(syncDebounceTimer);
+        syncDebounceTimer = null;
+    }
+}
+
 export const Bridge = {
     isTauri: true,
 
     // MPV Controls
     async initMpv() {
-        return invoke('init_mpv', { args: [] });
+        const result = await invoke('init_mpv', { args: [] });
+        // On macOS, also start window sync for hole punch mode
+        const isMacOS = navigator.platform.toLowerCase().includes('mac');
+        if (isMacOS) {
+            await initWindowSync();
+        }
+        return result;
+    },
+
+    // Window sync for macOS hole punch mode
+    async syncWindow() {
+        const isMacOS = navigator.platform.toLowerCase().includes('mac');
+        if (isMacOS) {
+            return invoke('mpv_sync_window');
+        }
     },
 
     async loadVideo(url: string) {
