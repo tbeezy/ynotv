@@ -103,10 +103,11 @@ export function useCategoriesForSource(sourceId: string | null) {
 // Hook to get channels for a category (or all if categoryId is null)
 // sortOrder: 'alphabetical' (default) or 'number' (by channel_num from provider)
 // Filters out channels from disabled sources
-export function useChannels(categoryId: string | null, sortOrder: 'alphabetical' | 'number' = 'alphabetical') {
+export function useChannels(categoryId: string | null, sortOrder: 'alphabetical' | 'number' = 'alphabetical', options?: { skip?: boolean }) {
   const enabledSourceIds = useEnabledSources();
   const channels = useLiveQuery(
     async () => {
+      if (options?.skip) return [];
       let results: StoredChannel[];
 
       // Handle virtual categories
@@ -163,7 +164,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         const category = await db.categories.get(categoryId);
         filterWords = category?.filter_words || [];
       }
-      
+
       // Apply filter words to channel names
       if (filterWords.length > 0) {
         results = results.map(ch => ({
@@ -189,7 +190,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
       // Default: alphabetical
       return results.sort((a, b) => a.name.localeCompare(b.name));
     },
-    [categoryId, sortOrder, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+    [categoryId, sortOrder, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading', options?.skip]
   );
   return channels ?? [];
 }
@@ -349,7 +350,7 @@ export function useProgramSearch(query: string, limit = 50) {
         AND cat.value IN (${categoryPlaceholders})
       `;
       const enabledChannelRows = await dbInstance.select(
-        enabledChannelsQuery, 
+        enabledChannelsQuery,
         [...sourceIdsList, ...enabledCategoryIds]
       );
       const enabledChannelIds = new Set(enabledChannelRows.map((row: any) => row.stream_id));

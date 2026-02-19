@@ -59,7 +59,10 @@ export function ChannelPanel({
   }, [error]);
 
   const channelSortOrder = useChannelSortOrder();
-  const channels = useChannels(categoryId, channelSortOrder);
+  // Optimization: Skip loading the main channel grid when in Search or Watchlist mode
+  // This prevents loading 40k+ channels in the background which causes UI lag
+  const shouldSkipGrid = isSearchMode || isWatchlistMode;
+  const channels = useChannels(categoryId, channelSortOrder, { skip: shouldSkipGrid });
   const categories = useCategories();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [availableWidth, setAvailableWidth] = useState(800);
