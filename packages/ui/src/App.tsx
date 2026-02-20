@@ -299,10 +299,10 @@ function App() {
   useEffect(() => { multiviewLayoutRef.current = multiview.layout; }, [multiview.layout]);
   useEffect(() => { switchLayoutRef.current = multiview.switchLayout; }, [multiview.switchLayout]);
 
-  // UI state
   const [showControls, setShowControls] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [activeView, setActiveView] = useState<View>('none');
+  const [sportsPreviewEnabled, setSportsPreviewEnabled] = useState(true);
 
   // Tab Mode: enter when EPG, Sports, or DVR opens; exit when they close
   useEffect(() => {
@@ -312,6 +312,91 @@ function App() {
       multiview.exitTabMode();
     }
   }, [activeView, multiview]);
+
+  // Sports Preview Pane Geometry Sync
+  useEffect(() => {
+    let observer: ResizeObserver;
+    let fallbackTimer: ReturnType<typeof setTimeout>;
+
+    if (activeView === 'sports' && sportsPreviewEnabled) {
+      const syncPane = async (pane: Element) => {
+        const rect = pane.getBoundingClientRect();
+        // Don't sync if the pane hasn't actually rendered a size yet
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const d = window.devicePixelRatio || 1;
+        const { invoke } = await import('@tauri-apps/api/core');
+        try {
+          await invoke('mpv_set_geometry', {
+            x: Math.round(rect.left * d),
+            y: Math.round(rect.top * d),
+            width: Math.round(rect.width * d),
+            height: Math.round(rect.height * d),
+          });
+          const { Bridge } = await import('./services/tauri-bridge');
+          await Bridge.setProperty('video-zoom', 0);
+          await Bridge.setProperty('video-align-x', 0);
+          await Bridge.setProperty('video-align-y', 0);
+        } catch (e) {
+          console.warn('[SportsPreview] Geometry Sync Failed', e);
+        }
+      };
+
+      // Mutation observer to catch the element as soon as React mounts it
+      const mutObserver = new MutationObserver(() => {
+        const pane = document.querySelector('.sports-preview-pane');
+        if (pane) {
+          mutObserver.disconnect();
+          syncPane(pane);
+          observer = new ResizeObserver(() => syncPane(pane));
+          observer.observe(pane);
+        }
+      });
+
+      mutObserver.observe(document.body, { childList: true, subtree: true });
+
+      // Fallback in case it's already in the DOM somehow
+      fallbackTimer = setTimeout(() => {
+        const pane = document.querySelector('.sports-preview-pane');
+        if (pane) {
+          mutObserver.disconnect();
+          syncPane(pane);
+          if (!observer) {
+            observer = new ResizeObserver(() => syncPane(pane));
+            observer.observe(pane);
+          }
+        }
+      }, 100);
+
+      const onResize = () => {
+        const pane = document.querySelector('.sports-preview-pane');
+        if (pane) syncPane(pane);
+      };
+
+      window.addEventListener('resize', onResize);
+      return () => {
+        window.removeEventListener('resize', onResize);
+        mutObserver.disconnect();
+        if (observer) observer.disconnect();
+        clearTimeout(fallbackTimer);
+        // Release the geometry lock so Live TV / Guide Software Scaling can start from a clean 100% natively
+        import('@tauri-apps/api/core').then(({ invoke }) => {
+          invoke('mpv_set_geometry', { x: 0, y: 0, width: 0, height: 0 }).catch(() => { });
+        });
+      };
+    } else if (activeView === 'sports' && !sportsPreviewEnabled) {
+      // If toggled off while sports is still open, force the video completely offscreen
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        invoke('mpv_set_geometry', { x: -10000, y: -10000, width: 1, height: 1 }).catch(() => { });
+      });
+      return () => {
+        import('@tauri-apps/api/core').then(({ invoke }) => {
+          invoke('mpv_set_geometry', { x: 0, y: 0, width: 0, height: 0 }).catch(() => { });
+        });
+      };
+    }
+  }, [activeView, sportsPreviewEnabled]);
+
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false); // Default to hidden
@@ -1724,6 +1809,8 @@ function App() {
             setSearchQuery(query);
             setActiveView('guide');
           }}
+          previewEnabled={sportsPreviewEnabled}
+          onTogglePreview={() => setSportsPreviewEnabled(prev => !prev)}
         />
       )}
 
