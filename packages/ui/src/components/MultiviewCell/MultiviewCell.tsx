@@ -38,7 +38,8 @@ export function MultiviewCell({
             setMuted(true);
             onSetProperty('mute', true);
         }
-    }, [channelUrl, active, onSetProperty]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [channelUrl, active]);
 
     const handleClick = () => {
         if (active) onSwapWithMain();
