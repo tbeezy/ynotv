@@ -1,8 +1,17 @@
 /* ── SHARED ─────────────────────────────── */
 
+.multiview-cell-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
 .multiview-cell {
+    flex: 1;
     position: relative;
-    background: transparent; /* Transparent so MPV windows show through when at HWND_TOP */
+    background: transparent;
+    /* Transparent so MPV windows show through when at HWND_TOP */
     overflow: hidden;
     cursor: pointer;
     user-select: none;
@@ -97,6 +106,51 @@
     font-size: 10px;
     color: rgba(255, 255, 255, 0.35);
     flex-shrink: 0;
+}
+
+/* ── Control Bar ── */
+.multiview-cell-controls {
+    height: 36px;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    box-sizing: border-box;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.multiview-cell-controls-name {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.multiview-cell-controls-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.multiview-cell-controls-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+}
+
+.multiview-cell-controls-btn:hover {
+    color: rgba(255, 255, 255, 1);
+}
+
+.multiview-cell-controls-btn.danger:hover {
+    color: rgba(255, 90, 90, 1);
 }
 
 /* Spinner */

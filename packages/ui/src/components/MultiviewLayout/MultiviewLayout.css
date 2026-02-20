@@ -17,10 +17,11 @@
 
 .layout-pip-overlay {
     position: absolute;
-    bottom: 100px; /* Above media bar (90px) + some padding */
+    bottom: 124px;
     right: 12px;
-    width: 280px;
-    height: 158px;
+    width: 490px;
+    height: 276px;
+    /* 16:9 aspect ratio */
     border-radius: 10px;
     overflow: hidden;
     border: 1.5px solid rgba(255, 255, 255, 0.18);
@@ -38,15 +39,18 @@
 
 .layout-2x2-cells {
     position: absolute;
-    top: 32px; /* Below title bar */
-    bottom: 90px; /* Above media bar */
+    top: 32px;
+    /* Below title bar */
+    bottom: 124px;
+    /* Above media bar */
     left: 0;
     right: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 2px;
-    background: transparent; /* Transparent so MPV windows show through */
+    background: transparent;
+    /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
 }
@@ -59,7 +63,7 @@
 }
 
 /* HLS cells need pointer events */
-.layout-2x2-cells .multiview-cell {
+.layout-2x2-cells .multiview-cell-container {
     pointer-events: all;
 }
 
@@ -67,14 +71,17 @@
 
 .layout-bigbottom-cells {
     position: absolute;
-    top: 32px; /* Below title bar */
-    bottom: 90px; /* Above media bar */
+    top: 32px;
+    /* Below title bar */
+    bottom: 124px;
+    /* Above media bar */
     left: 0;
     right: 0;
     display: grid;
-    grid-template-rows: 1fr 160px;
+    grid-template-rows: 1fr 240px;
     gap: 2px;
-    background: transparent; /* Transparent so MPV windows show through */
+    background: transparent;
+    /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
 }

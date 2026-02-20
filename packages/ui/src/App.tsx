@@ -1308,7 +1308,13 @@ function App() {
     <div className={`app${showControls ? '' : ' controls-hidden'}`} onMouseMove={handleMouseMove}>
       {/* Custom title bar for frameless window */}
       <div className={`title-bar${showControls ? ' visible' : ''}`} data-tauri-drag-region>
-        <Logo className="title-bar-logo" />
+        <div className="title-bar-left-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Logo className="title-bar-logo" />
+          <LayoutPicker
+            currentLayout={multiview.layout}
+            onSelect={multiview.switchLayout}
+          />
+        </div>
 
         {/* Spacer for left side */}
         <div className="title-bar-spacer"></div>
@@ -1460,11 +1466,6 @@ function App() {
           )}
         </div>
 
-        {/* Layout Picker Button - Multiview selector */}
-        <LayoutPicker
-          currentLayout={multiview.layout}
-          onSelect={multiview.switchLayout}
-        />
 
         {/* Settings Button */}
         <button
@@ -1536,6 +1537,7 @@ function App() {
           onSwapWithMain={(slotId) => multiview.swapWithMain(slotId, multiview.slots)}
           onStop={multiview.stopSlot}
           onSetProperty={multiview.setSlotProperty}
+          onReposition={() => multiview.repositionSecondarySlots()}
         />
       )}
 

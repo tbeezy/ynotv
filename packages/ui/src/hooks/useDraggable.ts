@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 
-export function useDraggable() {
+export function useDraggable(onDrag?: () => void) {
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -28,6 +28,7 @@ export function useDraggable() {
             el.style.top = `${startTop + dy}px`;
             el.style.right = 'auto';
             el.style.bottom = 'auto';
+            if (onDrag) onDrag();
         };
 
         const onMouseUp = () => {

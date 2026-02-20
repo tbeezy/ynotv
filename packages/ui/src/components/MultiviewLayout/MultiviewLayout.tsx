@@ -9,6 +9,7 @@ interface MultiviewLayoutProps {
     onSwapWithMain: (slotId: 2 | 3 | 4) => void;
     onStop: (slotId: 2 | 3 | 4) => void;
     onSetProperty: (slotId: 2 | 3 | 4, property: string, value: any) => void;
+    onReposition: () => void;
 }
 
 export function MultiviewLayout({
@@ -17,11 +18,14 @@ export function MultiviewLayout({
     onSwapWithMain,
     onStop,
     onSetProperty,
+    onReposition,
 }: MultiviewLayoutProps) {
     const slot2 = slots.find(s => s.id === 2)!;
     const slot3 = slots.find(s => s.id === 3)!;
     const slot4 = slots.find(s => s.id === 4)!;
-    const pipDragRef = useDraggable();
+    const pipDragRef = useDraggable(() => {
+        onReposition();
+    });
 
     const cell = (slot: ViewerSlot) => (
         <MultiviewCell

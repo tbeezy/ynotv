@@ -15,7 +15,7 @@
 .layout-picker-dropdown {
     position: absolute;
     top: calc(100% + 8px);
-    right: 0;
+    left: 0;
     background: rgba(16, 16, 20, 0.98);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);

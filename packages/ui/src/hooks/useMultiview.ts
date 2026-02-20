@@ -22,11 +22,12 @@ const EMPTY_SLOTS: ViewerSlot[] = [
 ];
 
 // Height of the bottom bar in bigbottom layout (must match CSS)
-const BOTTOM_BAR_HEIGHT = 162;
+const BOTTOM_BAR_HEIGHT = 240;
+const CONTROL_BAR_HEIGHT = 36;
 
 // UI element heights that multiview must avoid
 const TITLE_BAR_HEIGHT = 32; // Title bar height
-const MEDIA_BAR_HEIGHT = 90; // Now playing bar height (approximate, includes padding)
+const MEDIA_BAR_HEIGHT = 124; // Now playing bar height (approximate, includes padding)
 
 /** Scale factor applied to mpv_set_geometry coordinates to account for DPR */
 function dpr() {
@@ -63,42 +64,56 @@ function primaryRect(mode: LayoutMode): { x: number; y: number; w: number; h: nu
 
 /** Compute the secondary slot rect (physical pixels) */
 function secondaryRect(slotId: 2 | 3 | 4, mode: LayoutMode): { x: number; y: number; w: number; h: number } {
+    const el = document.getElementById(`mpv-video-rect-${slotId}`);
     const d = dpr();
+
+    // Prefer reading the exact DOM coordinates of the React layout
+    if (el) {
+        const rect = el.getBoundingClientRect();
+        return {
+            x: Math.round(rect.left * d),
+            y: Math.round(rect.top * d),
+            w: Math.round(rect.width * d),
+            h: Math.round(rect.height * d),
+        };
+    }
+
+    // Fallback math if DOM element is missing 
     const W = Math.round(window.innerWidth * d);
     const H = Math.round(window.innerHeight * d);
     const gap = Math.round(2 * d);
-
-    // Account for UI elements that multiview must avoid
     const titleBarH = Math.round(TITLE_BAR_HEIGHT * d);
     const mediaBarH = Math.round(MEDIA_BAR_HEIGHT * d);
     const availableH = H - titleBarH - mediaBarH;
 
     if (mode === 'pip') {
-        // PiP overlay: bottom-right, 25% of screen (above media bar)
         const pw = Math.floor(W / 4);
         const ph = Math.floor(availableH / 4);
-        return { x: W - pw - gap, y: H - mediaBarH - ph - gap, w: pw, h: ph };
+        const cbh = Math.round(CONTROL_BAR_HEIGHT * d);
+        return { x: W - pw - gap, y: H - mediaBarH - ph - gap, w: pw, h: ph - cbh };
     }
 
     if (mode === '2x2') {
         const cw = Math.floor((W - gap) / 2);
         const ch = Math.floor((availableH - gap) / 2);
+        const cbh = Math.round(CONTROL_BAR_HEIGHT * d);
         const positions: Record<2 | 3 | 4, { x: number; y: number }> = {
-            2: { x: cw + gap, y: titleBarH },                    // top-right
-            3: { x: 0, y: titleBarH + ch + gap },                // bottom-left
-            4: { x: cw + gap, y: titleBarH + ch + gap },         // bottom-right
+            2: { x: cw + gap, y: titleBarH },
+            3: { x: 0, y: titleBarH + ch + gap },
+            4: { x: cw + gap, y: titleBarH + ch + gap },
         };
         const pos = positions[slotId];
-        return { x: pos.x, y: pos.y, w: cw, h: ch };
+        return { x: pos.x, y: pos.y, w: cw, h: ch - cbh };
     }
 
     if (mode === 'bigbottom') {
         const bh = Math.round(BOTTOM_BAR_HEIGHT * d);
         const mainH = availableH - bh;
         const cellW = Math.floor((W - 2 * gap) / 3);
+        const cbh = Math.round(CONTROL_BAR_HEIGHT * d);
         const slotMap: Record<2 | 3 | 4, number> = { 2: 0, 3: 1, 4: 2 };
         const idx = slotMap[slotId];
-        return { x: idx * (cellW + gap), y: titleBarH + mainH + gap, w: cellW, h: bh - gap };
+        return { x: idx * (cellW + gap), y: titleBarH + mainH + gap, w: cellW, h: bh - gap - cbh };
     }
 
     return { x: 0, y: 0, w: 0, h: 0 };
@@ -233,14 +248,34 @@ export function useMultiview() {
             activeUrlsRef.current = { 2: null, 3: null, 4: null };
             // Small delay to ensure windows are fully destroyed before restoring main MPV
             await new Promise(resolve => setTimeout(resolve, 200));
-            console.log('[useMultiview] Secondary MPVs killed, restoring main MPV to fullscreen');
+        } else if (newLayout === 'pip') {
+            // When switching to PiP, we must manually kill slots 3 and 4 since PiP only uses slot 2
+            console.log('[useMultiview] Switching to PiP - killing slots 3 and 4...');
+            const ops = [];
+            for (const id of [3, 4]) {
+                if (slotsRef.current.find(s => s.id === id)?.active) {
+                    ops.push(invoke('multiview_kill_slot', { slotId: id }).catch(e => {
+                        console.warn(`[useMultiview] Error killing slot ${id}:`, e);
+                    }));
+                }
+            }
+            if (ops.length > 0) await Promise.all(ops);
+
+            // Wipe them from state
+            setSlots(prev => prev.map(s => (s.id === 3 || s.id === 4) ? { ...s, channelName: null, channelUrl: null, active: false } : s));
+            activeUrlsRef.current[3] = null;
+            activeUrlsRef.current[4] = null;
         }
+
         setLayout(newLayout);
         await syncMpvGeometry(newLayout);
         // When switching between 2x2 / pip / bigbottom, reposition existing secondary slots
         // (but NOT when switching to 'main' - they're already killed above)
         if (newLayout !== 'main') {
-            await repositionSecondarySlots(newLayout);
+            // Wait for React to render the new DOM containers before measuring their geometry
+            setTimeout(() => {
+                repositionSecondarySlots(newLayout);
+            }, 50);
         }
     }, [syncMpvGeometry, repositionSecondarySlots]);
 
@@ -462,6 +497,7 @@ export function useMultiview() {
         swapWithMain,
         stopSlot,
         setSlotProperty,
+        repositionSecondarySlots,
         notifyMainLoaded,
         syncMpvGeometry,
         enterTabMode,

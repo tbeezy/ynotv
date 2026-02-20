@@ -38,8 +38,9 @@ export function MultiviewCell({
     };
 
     return (
-        <>
+        <div className="multiview-cell-container">
             <div
+                id={`mpv-video-rect-${slotId}`}
                 className={`multiview-cell ${active ? 'multiview-cell-active' : 'multiview-cell-empty'}`}
                 onClick={handleClick}
                 onContextMenu={handleRightClick}
@@ -67,6 +68,23 @@ export function MultiviewCell({
                 )}
             </div>
 
+            {active && (
+                <div className="multiview-cell-controls">
+                    <span className="multiview-cell-controls-name">{channelName}</span>
+                    <div className="multiview-cell-controls-buttons">
+                        <button className="multiview-cell-controls-btn" onClick={(e) => { e.stopPropagation(); onSetProperty('pause', false); }} title="Play">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                        </button>
+                        <button className="multiview-cell-controls-btn" onClick={(e) => { e.stopPropagation(); onSetProperty('pause', true); }} title="Pause">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                        </button>
+                        <button className="multiview-cell-controls-btn danger" onClick={(e) => { e.stopPropagation(); onStop(); }} title="Stop / Clear Box">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z" /></svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {contextMenu && (
                 <CellContextMenu
                     position={contextMenu}
@@ -77,7 +95,7 @@ export function MultiviewCell({
                     onClose={() => setContextMenu(null)}
                 />
             )}
-        </>
+        </div>
     );
 }
 

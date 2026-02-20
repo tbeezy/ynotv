@@ -301,7 +301,13 @@ pub async fn set_property_slot<R: Runtime>(
         slots.get(&slot_id).and_then(|s| s.ipc_tx.clone())
     };
     if let Some(tx) = tx {
-        send_ipc(&tx, "set_property", vec![json!(property), value]).await;
+        // Many MPV properties over IPC expect string literals "yes"/"no", not JSON booleans
+        let payload_value = match value {
+            Value::Bool(true) => json!("yes"),
+            Value::Bool(false) => json!("no"),
+            _ => value
+        };
+        send_ipc(&tx, "set_property", vec![json!(property), payload_value]).await;
     }
     Ok(())
 }
