@@ -26,7 +26,8 @@ export interface Source {
     username: string;
     password: string;
   }>;
-  enabled: boolean;
+  display_order?: number;
+enabled: boolean;
 }
 
 export interface XtreamSource extends Source {

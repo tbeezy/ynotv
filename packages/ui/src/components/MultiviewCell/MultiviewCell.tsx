@@ -54,6 +54,12 @@ export function MultiviewCell({
         const newMuted = !muted;
         setMuted(newMuted);
         onSetProperty('mute', newMuted);
+
+        // If unmuting but the physical volume slider is at 0, bump it back up so they can hear it
+        if (!newMuted && volume === 0) {
+            setVolume(100);
+            onSetProperty('volume', 100);
+        }
     };
 
     const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

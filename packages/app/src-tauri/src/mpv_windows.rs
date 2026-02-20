@@ -54,26 +54,45 @@ enum MpvResponse {
     Response { request_id: u64, error: Option<String>, data: Option<Value> },
 }
 
-/// Find an MPV child HWND by process PID using Win32 EnumChildWindows
-pub fn find_mpv_hwnd_by_pid(parent_hwnd_raw: isize, target_pid: u32) -> Option<isize> {
+/// Find an MPV child HWND by exact Window Title using Win32 EnumChildWindows
+pub fn find_mpv_hwnd_by_title(parent_hwnd_raw: isize, target_title: &str) -> Option<isize> {
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
-    use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, GetWindowThreadProcessId};
+    use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetWindowTextW, GetWindowTextLengthW};
+    use std::os::windows::ffi::OsStrExt;
 
     let parent = HWND(parent_hwnd_raw as _);
+    
+    // Convert target title to UTF-16
+    let target_utf16: Vec<u16> = std::ffi::OsStr::new(target_title)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
 
-    struct SearchData { pid: u32, result: isize }
-    let mut data = SearchData { pid: target_pid, result: 0 };
+    struct SearchData { 
+        target: Vec<u16>, 
+        result: isize 
+    }
+    
+    let mut data = SearchData { 
+        target: target_utf16, 
+        result: 0 
+    };
 
     unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let data = &mut *(lparam.0 as *mut SearchData);
-        let mut pid: u32 = 0;
-        GetWindowThreadProcessId(hwnd, Some(&mut pid));
-        if pid == data.pid {
-            let mut buf = [0u16; 64];
-            let len = GetClassNameW(hwnd, &mut buf);
-            if len > 0 {
-                let class = String::from_utf16_lossy(&buf[..len as usize]);
-                if class.to_lowercase().contains("mpv") || class.starts_with("GL") {
+        
+        let len = GetWindowTextLengthW(hwnd);
+        if len > 0 {
+            // Include space for null terminator
+            let mut buf = vec![0u16; (len + 1) as usize];
+            let actual_len = GetWindowTextW(hwnd, &mut buf);
+            
+            if actual_len > 0 {
+                // Compare excluding null terminators
+                let text = &buf[..actual_len as usize];
+                let target = &data.target[..data.target.len() - 1]; // strip null
+                
+                if text == target {
                     data.result = hwnd.0 as isize;
                     return BOOL(0);
                 }
@@ -145,6 +164,7 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     let args = vec![
         format!("--input-ipc-server={}", socket_path),
         format!("--wid={}", hwnd),
+        "--title=YNOTV_MPV_MAIN".into(),
         "--force-window=immediate".into(),
         "--idle=yes".into(),
         "--keep-open=yes".into(),
@@ -508,7 +528,7 @@ pub async fn mpv_set_geometry<R: Runtime>(
     let pid = { *app.state::<MpvState>().pid.lock().unwrap() };
 
     let target_hwnd = if pid > 0 {
-        find_mpv_hwnd_by_pid(parent_hwnd.0 as isize, pid).map(|h| HWND(h as _))
+        find_mpv_hwnd_by_title(parent_hwnd.0 as isize, "YNOTV_MPV_MAIN").map(|h| HWND(h as _))
     } else {
         None
     };

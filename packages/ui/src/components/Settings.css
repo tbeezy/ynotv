@@ -487,7 +487,7 @@
   border-color: var(--accent-primary, rgba(0, 212, 255, 0.5));
   background: var(--surface-glow, rgba(0, 212, 255, 0.03));
   box-shadow: 0 0 0 1px var(--accent-primary, rgba(0, 212, 255, 0.5)),
-              0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
+    0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
 }
 
 .form-group input::placeholder {
@@ -1136,19 +1136,20 @@
 
 /* ===== SOURCE CARD LAYOUT - REDESIGNED & SIMPLIFIED ===== */
 
-/* Source List Item - Two Column Grid */
+/* Source List Item - Horizontal Flex */
 .source-item {
-  display: grid !important;
-  grid-template-columns: 2fr 1fr !important;
-  gap: 20px !important;
-  padding: 16px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 16px !important;
+  padding: 12px 16px 40px 16px !important;
   background: rgba(255, 255, 255, 0.03) !important;
-  border-radius: 6px !important;
+  border-radius: 8px !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   margin-bottom: 12px !important;
   min-height: auto !important;
   height: auto !important;
-  align-items: start !important;
+  position: relative !important;
 }
 
 .source-item:hover {
@@ -1156,12 +1157,13 @@
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* LEFT COLUMN - Source Info */
+/* CENTER CONTENT - Source Info */
 .source-info {
   display: flex !important;
   flex-direction: column !important;
-  gap: 10px !important;
+  gap: 8px !important;
   min-width: 0 !important;
+  flex: 1 !important;
   overflow: visible !important;
 }
 
@@ -1188,6 +1190,8 @@
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  flex: 0 1 auto !important;
 }
 
 .source-type {
@@ -1213,22 +1217,28 @@
 /* Details - Toggle, Stats, Expiry */
 .source-details {
   display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px 16px !important;
+  height: auto !important;
   overflow: visible !important;
+  margin-top: 4px !important;
 }
 
 /* Toggle */
 .source-toggle {
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 4px !important;
   cursor: pointer !important;
+  margin-left: 8px !important;
+  flex-shrink: 0 !important;
 }
 
 .source-toggle input[type="checkbox"] {
-  width: 16px !important;
-  height: 16px !important;
+  width: 14px !important;
+  height: 14px !important;
   accent-color: #00d4ff !important;
   cursor: pointer !important;
   flex-shrink: 0 !important;
@@ -1236,23 +1246,15 @@
 
 .toggle-label {
   color: rgba(255, 255, 255, 0.8) !important;
-  font-size: 0.8rem !important;
+  font-size: 0.75rem !important;
   font-weight: 500 !important;
-}
-
-/* Stats */
-.source-stats {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 16px !important;
-  overflow: visible !important;
 }
 
 .stat-item {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  font-size: 0.75rem !important;
+  gap: 4px !important;
+  font-size: 0.7rem !important;
   color: #4cd137 !important;
   font-weight: 600 !important;
   white-space: nowrap !important;
@@ -1260,65 +1262,62 @@
 
 /* Expiry */
 .source-expiry {
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  font-size: 0.75rem !important;
+  gap: 4px !important;
+  font-size: 0.7rem !important;
   color: #ffa502 !important;
   font-weight: 600 !important;
 }
 
 /* Connection Stats (Xtream) */
 .source-connections {
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  font-size: 0.75rem !important;
+  gap: 4px !important;
+  font-size: 0.7rem !important;
   color: #00d4ff !important;
   font-weight: 600 !important;
 }
 
 /* RIGHT COLUMN - Actions */
 .source-actions {
+  position: absolute !important;
+  bottom: 10px !important;
+  right: 16px !important;
   display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-  justify-content: flex-start !important;
-  align-items: stretch !important;
-}
-
-.action-row-primary {
-  display: flex !important;
-  flex-direction: column !important;
+  flex-direction: row !important;
   gap: 6px !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
 }
 
-.action-row-secondary {
-  display: flex !important;
-  gap: 6px !important;
+.source-actions button {
+  padding: 4px 8px !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
 }
 
-.action-row-secondary button {
-  flex: 1 !important;
-  padding: 8px 12px !important;
+.action-icon-btn {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 4px !important;
   background: transparent !important;
   color: rgba(255, 255, 255, 0.7) !important;
   cursor: pointer !important;
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
   transition: all 0.15s ease !important;
-  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.action-row-secondary button:hover {
+.action-icon-btn:hover {
   background: rgba(255, 255, 255, 0.05) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
   color: rgba(255, 255, 255, 0.9) !important;
 }
 
-.action-row-secondary button.delete {
+.action-icon-btn.delete {
   border-color: rgba(255, 59, 48, 0.3) !important;
   color: rgba(255, 59, 48, 0.8) !important;
 }

@@ -95,8 +95,22 @@ async fn connect_ipc(socket_path: &str) -> Result<tokio::sync::mpsc::Sender<Stri
         }
     }?;
 
-    let (_, mut writer) = tokio::io::split(stream);
+    let (mut reader, mut writer) = tokio::io::split(stream);
     let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(16);
+
+    // Spawn a dummy reader to continuously drain the named pipe OS buffer.
+    // MPV writes JSON events continuously. If we do not read from the buffer,
+    // the OS pipe fills up and blocks MPV's event loop, deadlocking the window.
+    tauri::async_runtime::spawn(async move {
+        use tokio::io::AsyncReadExt;
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf).await {
+                Ok(0) | Err(_) => break, // Pipe closed or error
+                Ok(_) => {} // Discard all read bytes
+            }
+        }
+    });
 
     tauri::async_runtime::spawn(async move {
         while let Some(msg) = rx.recv().await {
@@ -160,6 +174,7 @@ pub async fn spawn_slot<R: Runtime>(
     let args = vec![
         format!("--input-ipc-server={}", socket_path),
         format!("--wid={}", parent_hwnd_raw),
+        format!("--title=YNOTV_MPV_SLOT_{}", slot_id),
         "--force-window=immediate".into(),
         "--idle=yes".into(),
         "--keep-open=yes".into(),
@@ -203,8 +218,9 @@ pub async fn spawn_slot<R: Runtime>(
     println!("[SecondaryMPV] Slot {} attempting to find HWND (pid={}) and position at x={} y={} w={} h={}", 
         slot_id, pid, x, y, width, height);
 
-    // Find the MPV child HWND and position it
-    if let Some(hwnd_raw) = crate::mpv_windows::find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
+    // Find the MPV child HWND by exact title and position it
+    let target_title = format!("YNOTV_MPV_SLOT_{}", slot_id);
+    if let Some(hwnd_raw) = crate::mpv_windows::find_mpv_hwnd_by_title(parent_hwnd_raw, &target_title) {
         println!("[SecondaryMPV] Slot {} found HWND: {}, positioning...", slot_id, hwnd_raw);
         if let Err(e) = set_hwnd_rect(hwnd_raw, x, y, width, height, true) {
             println!("[SecondaryMPV] Slot {} initial reposition failed: {}", slot_id, e);
@@ -301,13 +317,7 @@ pub async fn set_property_slot<R: Runtime>(
         slots.get(&slot_id).and_then(|s| s.ipc_tx.clone())
     };
     if let Some(tx) = tx {
-        // Many MPV properties over IPC expect string literals "yes"/"no", not JSON booleans
-        let payload_value = match value {
-            Value::Bool(true) => json!("yes"),
-            Value::Bool(false) => json!("no"),
-            _ => value
-        };
-        send_ipc(&tx, "set_property", vec![json!(property), payload_value]).await;
+        send_ipc(&tx, "set_property", vec![json!(property), value]).await;
     }
     Ok(())
 }
@@ -333,7 +343,8 @@ pub async fn reposition_slot<R: Runtime>(
         // If we never discovered the HWND during spawn, try to locate it now by PID
         if effective_hwnd == 0 {
             if let Ok(parent_hwnd_raw) = get_parent_hwnd(app) {
-                if let Some(found) = crate::mpv_windows::find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
+                let target_title = format!("YNOTV_MPV_SLOT_{}", slot_id);
+                if let Some(found) = crate::mpv_windows::find_mpv_hwnd_by_title(parent_hwnd_raw, &target_title) {
                     println!("[SecondaryMPV] Re-discovered HWND for slot {} (pid={}): {}", slot_id, pid, found);
                     effective_hwnd = found;
                     // Persist the discovered HWND so future calls don't need to search

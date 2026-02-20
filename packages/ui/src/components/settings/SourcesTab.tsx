@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Source } from '@ynotv/core';
 import { syncAllSources, syncAllVod, syncSource, syncVodForSource, markSourceDeleted, type SyncResult, type VodSyncResult } from '../../db/sync';
@@ -39,6 +39,7 @@ interface SourceFormData {
   backupMacs: string[];
   backupCredentials: Array<{ username: string; password: string }>;
   pendingSwap: boolean;
+  display_order?: number;
 }
 
 const emptyForm: SourceFormData = {
@@ -55,7 +56,31 @@ const emptyForm: SourceFormData = {
   backupMacs: [],
   backupCredentials: [],
   pendingSwap: false,
+  display_order: undefined,
 };
+
+// Normalize vendor Expiration Strings to concise MM/DD/YY
+function formatExpiryDate(dateString?: string): string {
+  if (!dateString) return '';
+  // Clean " at " logic for Xtream vendor strings
+  const cleanString = dateString.replace(' at ', ' ');
+  let parsedDate = new Date(cleanString);
+
+  // Fallback to numeric Unix Epoch string check
+  if (isNaN(parsedDate.getTime()) && !isNaN(Number(dateString))) {
+    parsedDate = new Date(Number(dateString) * 1000);
+  }
+
+  if (isNaN(parsedDate.getTime())) {
+    return dateString; // Return arbitrary vendor text if it totally fails
+  }
+
+  const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(parsedDate.getDate()).padStart(2, '0');
+  const yy = String(parsedDate.getFullYear()).slice(-2);
+
+  return `${mm}/${dd}/${yy}`;
+}
 
 // Format time difference in human-readable format
 function formatTimeAgo(date: Date | null | undefined): string {
@@ -119,6 +144,20 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
 
   const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
 
+  // Drag and drop state
+  const dragFromIdx = useRef<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // Sorted sources for rendering (ensures UI matches DB order)
+  const sortedSources = useMemo(() => {
+    return [...sources].sort((a, b) => {
+      const orderA = a.display_order ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.display_order ?? Number.MAX_SAFE_INTEGER;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
+  }, [sources]);
 
   // Track imported M3U data (file import flow)
   const [importedM3U, setImportedM3U] = useState<{
@@ -186,6 +225,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
       backupMacs: source.backup_macs || [],
       backupCredentials: source.backup_credentials || [],
       pendingSwap: false,
+      display_order: source.display_order,
     });
     console.log('[SourcesTab] Editing source, existing UA:', source.user_agent);
     setEditingId(source.id);
@@ -273,6 +313,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
       epg_timeshift_hours: formData.epgTimeshiftHours || undefined,
       backup_macs: formData.type === 'stalker' && formData.backupMacs.length > 0 ? formData.backupMacs : undefined,
       backup_credentials: formData.type === 'xtream' && formData.backupCredentials.length > 0 ? formData.backupCredentials : undefined,
+      display_order: formData.display_order,
     };
 
     console.log('[SourcesTab] Saving source with UA:', source.user_agent);
@@ -522,6 +563,70 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
     onSourcesChange();
   }
 
+  // --- Drag and Drop Handlers ---
+
+  const getIndexFromClientY = (clientY: number): number => {
+    if (!listRef.current) return 0;
+    const children = Array.from(listRef.current.children) as HTMLElement[];
+    for (let i = 0; i < children.length; i++) {
+      const rect = children[i].getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return i;
+    }
+    return Math.max(0, children.length - 1);
+  };
+
+  const handleHandlePointerDown = (e: React.PointerEvent, index: number) => {
+    if (e.button !== 0) return; // Only left click
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragFromIdx.current = index;
+    setDragOverIdx(index);
+  };
+
+  const handleContainerPointerMove = (e: React.PointerEvent) => {
+    if (dragFromIdx.current === null) return;
+    e.preventDefault();
+    setDragOverIdx(getIndexFromClientY(e.clientY));
+  };
+
+  const handleContainerPointerUp = async (e: React.PointerEvent) => {
+    if (dragFromIdx.current === null) return;
+    const from = dragFromIdx.current;
+    const to = getIndexFromClientY(e.clientY);
+
+    dragFromIdx.current = null;
+    setDragOverIdx(null);
+
+    if (from === to) return;
+
+    // Execute reorder
+    const newSources = [...sortedSources];
+    const [moved] = newSources.splice(from, 1);
+    newSources.splice(to, 0, moved);
+
+    if (!window.storage) return;
+
+    // Fast optimistic UI update could go here if we had local state for sources,
+    // but we use the props passed down from Settings.tsx.
+    // Instead, we just sequentially save them.
+    for (let i = 0; i < newSources.length; i++) {
+      const sourceToSave = newSources[i];
+      // Only execute DB write if the physical order actually changed to prevent 
+      // pointless SQLite write saturation
+      if (sourceToSave.display_order !== i) {
+        await window.storage.saveSource({ ...sourceToSave, display_order: i });
+      }
+    }
+
+    // Refresh immediately
+    onSourcesChange();
+    incrementVersion(); // Tell downstream components (like CategoryStrip) that the source array order changed
+  };
+
+  const handleContainerPointerCancel = () => {
+    dragFromIdx.current = null;
+    setDragOverIdx(null);
+  };
+
 
   return (
     <div className="settings-tab-content">
@@ -559,16 +664,47 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
             <p className="hint">Add an M3U playlist or Xtream account to get started</p>
           </div>
         ) : (
-          <ul className="sources-list">
-            {sources.map((source) => {
+          <ul
+            className="sources-list sortable-list"
+            ref={listRef}
+            onPointerMove={handleContainerPointerMove}
+            onPointerUp={handleContainerPointerUp}
+            onPointerCancel={handleContainerPointerCancel}
+          >
+            {sortedSources.map((source, index) => {
               const meta = syncStatus.find(s => s.source_id === source.id);
+              const isDragging = dragFromIdx.current === index;
+              const isDragOver = dragOverIdx === index && dragFromIdx.current !== null && dragFromIdx.current !== index;
+
               return (
-                <li key={source.id} className="source-item">
+                <li
+                  key={source.id}
+                  className={`source-item${isDragging ? ' dragging' : ''}${isDragOver ? ' drag-over' : ''}`}
+                >
+                  <span
+                    className="drag-handle"
+                    style={{ touchAction: 'none' }}
+                    onPointerDown={e => handleHandlePointerDown(e, index)}
+                    title="Drag to reorder"
+                  >
+                    ⋮⋮
+                  </span>
                   <div className="source-info">
                     <div className="source-header">
                       <div className="source-name-type">
                         <span className="source-name">{source.name}</span>
                         <span className="source-type">{source.type.toUpperCase()}</span>
+                        <label className="source-toggle">
+                          <input
+                            type="checkbox"
+                            checked={source.enabled !== false}
+                            onChange={() => handleToggleEnabled(source.id)}
+                            title={source.enabled !== false ? 'Enabled' : 'Disabled'}
+                          />
+                          <span className="toggle-label">
+                            {source.enabled !== false ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </label>
                       </div>
                       {/* Last Sync Time - compact in corner */}
                       <span className="last-sync-time">
@@ -577,21 +713,9 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
                     </div>
 
                     <div className="source-details">
-                      {/* Enable/Disable Toggle */}
-                      <label className="source-toggle">
-                        <input
-                          type="checkbox"
-                          checked={source.enabled !== false}
-                          onChange={() => handleToggleEnabled(source.id)}
-                        />
-                        <span className="toggle-label">
-                          {source.enabled !== false ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </label>
-
                       {/* Channel/Movie counts inline */}
                       {meta && (
-                        <div className="source-stats">
+                        <>
                           {meta.channel_count > 0 && (
                             <span className="stat-item">
                               📡 {meta.channel_count} channels
@@ -602,68 +726,79 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
                               🎬 {meta.vod_movie_count ?? 0} movies, {meta.vod_series_count ?? 0} series
                             </span>
                           )}
-                        </div>
+                        </>
                       )}
 
                       {/* Connection stats for Xtream */}
                       {source.type === 'xtream' && meta && meta.active_cons && meta.max_connections && (
                         <div className="source-connections">
-                          🔗 Connections: {meta.active_cons}/{meta.max_connections}
+                          🔗 {meta.active_cons}/{meta.max_connections}
                         </div>
                       )}
 
                       {/* Expiry date on separate row */}
                       {meta && meta.expiry_date && (
                         <div className="source-expiry">
-                          ⏰ Expires: {meta.expiry_date}
+                          ⏰ Exp: {formatExpiryDate(meta.expiry_date)}
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div className="source-actions">
-                    <div className="action-row-primary">
-                      {/* Per-source sync buttons */}
+                    {/* Per-source sync buttons */}
+                    <button
+                      className="sync-source-btn"
+                      onClick={() => handleSourceSync(source.id)}
+                      disabled={syncingSourceId === source.id || !source.enabled}
+                      title="Sync channels for this source only"
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '0.65rem',
+                        ...(syncingSourceId === source.id ? { width: 'auto' } : {})
+                      }}
+                    >
+                      {syncingSourceId === source.id ? (syncStatusMsg || '⟳') : ''} {syncingSourceId === source.id ? '' : 'Sync Channels'}
+                    </button>
+
+                    {(source.type === 'xtream' || source.type === 'stalker') && (
                       <button
                         className="sync-source-btn"
-                        onClick={() => handleSourceSync(source.id)}
-                        disabled={syncingSourceId === source.id || !source.enabled}
-                        title="Sync channels for this source only"
-                        style={syncingSourceId === source.id ? { width: 'auto', paddingLeft: '8px', paddingRight: '8px' } : {}}
+                        onClick={() => handleSourceVodSync(source.id)}
+                        disabled={vodSyncingSourceId === source.id || !source.enabled}
+                        title="Sync movies & series for this source only"
+                        style={{ padding: '4px 8px', fontSize: '0.65rem' }}
                       >
-                        {syncingSourceId === source.id ? (syncStatusMsg || '⟳') : ''} {syncingSourceId === source.id ? '' : 'Sync Channels'}
+                        {vodSyncingSourceId === source.id ? '⟳' : ''} Sync VOD
                       </button>
+                    )}
 
-                      {(source.type === 'xtream' || source.type === 'stalker') && (
-                        <button
-                          className="sync-source-btn"
-                          onClick={() => handleSourceVodSync(source.id)}
-                          disabled={vodSyncingSourceId === source.id || !source.enabled}
-                          title="Sync movies & series for this source only"
-                        >
-                          {vodSyncingSourceId === source.id ? '⟳' : ''} Sync VOD
-                        </button>
-                      )}
+                    <button
+                      className="sync-source-btn"
+                      onClick={() => setCategoryManagerSource({ id: source.id, name: source.name })}
+                      title="Manage categories for this source"
+                      style={{ padding: '4px 8px', fontSize: '0.65rem' }}
+                    >
+                      Categories
+                    </button>
 
-                      <button
-                        className="sync-source-btn"
-                        onClick={() => setCategoryManagerSource({ id: source.id, name: source.name })}
-                        title="Manage categories for this source"
-                      >
-                        Categories
-                      </button>
-                    </div>
-
-                    <div className="action-row-secondary">
-                      <button onClick={() => handleEdit(source)}>Edit</button>
-                      <button
-                        className="delete"
-                        onClick={() => handleDeleteClick(source.id, source.name)}
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </div>
+                    <button
+                      className="action-icon-btn"
+                      onClick={() => handleEdit(source)}
+                      title="Edit Source"
+                      style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                    >
+                      ⚙️
+                    </button>
+                    <button
+                      className="action-icon-btn delete"
+                      onClick={() => handleDeleteClick(source.id, source.name)}
+                      disabled={isDeleting}
+                      title="Delete Source"
+                      style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                    >
+                      {isDeleting ? '⏳' : '🗑️'}
+                    </button>
                   </div>
                 </li>
               );

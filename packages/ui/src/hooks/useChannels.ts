@@ -460,9 +460,30 @@ export interface SourceWithCategories {
 // Hook to get categories grouped by source (filtered by enabled sources)
 export function useCategoriesBySource(): SourceWithCategories[] {
   const enabledSourceIds = useEnabledSources();
+  const { version } = useSourceVersion(); // Track reorders and edits
+
   const data = useLiveQuery(
     async () => {
-      // Get all categories first
+      // 1. Fetch raw Source ordering from JSON layer
+      const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
+      const sourceOrderMap: Record<string, number> = {};
+
+      if (sourcesResult.data) {
+        // Map source ID to its true display position in settings
+        sourcesResult.data
+          // Ensure they are strictly sorted by display_order physically first
+          .sort((a, b) => {
+            const orderA = a.display_order ?? Number.MAX_SAFE_INTEGER;
+            const orderB = b.display_order ?? Number.MAX_SAFE_INTEGER;
+            if (orderA !== orderB) return orderA - orderB;
+            return a.name.localeCompare(b.name);
+          })
+          .forEach((source, index) => {
+            sourceOrderMap[source.id] = index;
+          });
+      }
+
+      // 2. Get all categories
       const allCategories = await db.categories.orderBy('category_name').toArray();
       const categories = enabledSourceIds
         ? allCategories.filter(cat => enabledSourceIds.has(cat.source_id) && cat.enabled !== false)
@@ -508,7 +529,7 @@ export function useCategoriesBySource(): SourceWithCategories[] {
         return acc;
       }, {} as Record<string, CategoryWithCount[]>);
 
-      // Sort categories within each source by display_order, then category_name
+      // Sort INDIVIDUAL categories inside each source strictly by name (unless category has its own order)
       Object.values(grouped).forEach(cats => {
         cats.sort((a, b) => {
           if (a.display_order !== undefined && b.display_order !== undefined) {
@@ -520,12 +541,21 @@ export function useCategoriesBySource(): SourceWithCategories[] {
         });
       });
 
-      return Object.entries(grouped).map(([sourceId, categories]) => ({
+      // 3. Convert Object map into final Array, and SORT it by the Parent Source display order we mapped
+      const finalArray = Object.entries(grouped).map(([sourceId, categories]) => ({
         sourceId,
         categories,
       }));
+
+      finalArray.sort((a, b) => {
+        const orderA = sourceOrderMap[a.sourceId] ?? Number.MAX_SAFE_INTEGER;
+        const orderB = sourceOrderMap[b.sourceId] ?? Number.MAX_SAFE_INTEGER;
+        return orderA - orderB;
+      });
+
+      return finalArray;
     },
-    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading', version]
   );
 
   return data ?? [];

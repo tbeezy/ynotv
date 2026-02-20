@@ -168,7 +168,7 @@
     outline: none;
     background: rgba(0, 0, 0, 0.3);
     box-shadow: 0 0 0 1px var(--accent-primary, #00d4ff),
-                0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
+        0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
 }
 
 .backup-input-actions {
@@ -255,4 +255,49 @@
 
 .backup-toggle-btn {
     right: 6px;
+}
+
+/* --- Drag and Drop Overrides --- */
+
+.sortable-list {
+    position: relative;
+}
+
+.source-item {
+    transition: transform 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.source-item.dragging {
+    opacity: 0.4;
+    transform: scale(0.98);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.source-item.drag-over {
+    border-top: 2px solid var(--accent-primary, #00d4ff);
+    margin-top: 2px;
+}
+
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.2rem;
+    padding-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
+}
+
+.drag-handle:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }

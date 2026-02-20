@@ -54,6 +54,7 @@ export interface SourceMeta {
   active_cons?: string;          // Active connections (Xtream only)
   max_connections?: string;      // Max connections (Xtream only)
   error?: string;
+  display_order?: number;        // Custom ordering for sources
 }
 
 // VOD Movie with TMDB enrichment
@@ -340,7 +341,7 @@ class YnotvDatabase extends SqliteDatabase {
     await addColumn('channels', 'fav_order', 'INTEGER');
     await addColumn('channels', 'display_order', 'INTEGER');
     await addColumn('categories', 'filter_words', 'TEXT');
-
+    await addColumn('sourcesMeta', 'display_order', 'INTEGER');
 
     await addColumn('vodSeries', 'title', 'TEXT');
     await addColumn('vodSeries', 'last_modified', 'TEXT');
@@ -426,7 +427,8 @@ class YnotvDatabase extends SqliteDatabase {
         expiry_date TEXT,
         active_cons TEXT,
         max_connections TEXT,
-        error TEXT
+        error TEXT,
+        display_order INTEGER
       )`);
 
     // Prefs
