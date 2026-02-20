@@ -111,15 +111,20 @@ export function useMultiview() {
     const layoutRef = useRef<LayoutMode>('main');
     const slotsRef = useRef<ViewerSlot[]>(slots);
 
-    // Guide mode state: save multiview state when EPG opens, restore when it closes
+    // Tab mode state: save multiview state when a full-screen UI tab opens (Guide, Sports, DVR)
     const savedStateRef = useRef<{ layout: LayoutMode; slots: ViewerSlot[] } | null>(null);
-    const isGuideModeRef = useRef(false);
+    const isTabModeRef = useRef(false);
 
     useEffect(() => { layoutRef.current = layout; }, [layout]);
     useEffect(() => { slotsRef.current = slots; }, [slots]);
 
     /** Resize primary MPV HWND to match the current layout mode */
     const syncMpvGeometry = useCallback(async (mode?: LayoutMode) => {
+        // Do not enforce multiview quadrant geometry if we are currently inside a full-screen Tab!
+        // The EPG preview pane relies on the Main MPV being strictly unrestricted
+        // so its software `video-zoom` scaler can project the video into the preview pane.
+        if (isTabModeRef.current) return;
+
         const m = mode ?? layoutRef.current;
         const r = primaryRect(m);
         try {
@@ -200,11 +205,14 @@ export function useMultiview() {
         mainSlotRef.current = { channelName, channelUrl };
     }, []);
 
-    const switchLayout = useCallback(async (newLayout: LayoutMode) => {
-        if (isGuideModeRef.current && savedStateRef.current) {
-            console.log(`[useMultiview] Layout changed to ${newLayout} while guide is open. Deferring until guide closes.`);
+    // Tracks the URL currently loaded in each secondary MPV's process
+    const activeUrlsRef = useRef<Record<number, string | null>>({ 2: null, 3: null, 4: null });
 
-            // If switching to 'main' while guide is open, we need to clear pending secondary slots
+    const switchLayout = useCallback(async (newLayout: LayoutMode) => {
+        if (isTabModeRef.current && savedStateRef.current) {
+            console.log(`[useMultiview] Layout changed to ${newLayout} while a tab is open. Deferring until closed.`);
+
+            // If switching to 'main' while tab is open, we need to clear pending secondary slots
             if (newLayout === 'main') {
                 savedStateRef.current.slots = EMPTY_SLOTS.map(s => ({ ...s }));
                 setSlots(EMPTY_SLOTS.map(s => ({ ...s })));
@@ -217,13 +225,12 @@ export function useMultiview() {
 
         if (newLayout === 'main') {
             // CRITICAL: Kill all secondary MPVs FIRST and wait for them to fully terminate
-            // before restoring main MPV to fullscreen. This prevents secondary windows
-            // from blocking UI when returning to single-view mode.
             console.log('[useMultiview] Switching to main layout - killing all secondary MPVs...');
             await invoke('multiview_kill_all').catch((e) => {
                 console.warn('[useMultiview] Error killing secondary MPVs:', e);
             });
             setSlots(EMPTY_SLOTS.map(s => ({ ...s })));
+            activeUrlsRef.current = { 2: null, 3: null, 4: null };
             // Small delay to ensure windows are fully destroyed before restoring main MPV
             await new Promise(resolve => setTimeout(resolve, 200));
             console.log('[useMultiview] Secondary MPVs killed, restoring main MPV to fullscreen');
@@ -239,8 +246,8 @@ export function useMultiview() {
 
     /** Load a stream URL into a secondary MPV slot */
     const sendToSlot = useCallback(async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => {
-        if (isGuideModeRef.current && savedStateRef.current) {
-            console.log(`[useMultiview] Deferring load for slot ${slotId} while guide is open`);
+        if (isTabModeRef.current && savedStateRef.current) {
+            console.log(`[useMultiview] Deferring load for slot ${slotId} while a full-screen tab is open`);
             savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
                 s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
             );
@@ -266,6 +273,7 @@ export function useMultiview() {
                 url: channelUrl,
                 x: r.x, y: r.y, width: r.w, height: r.h,
             });
+            activeUrlsRef.current[slotId] = channelUrl;
             setSlots(prev => prev.map(s =>
                 s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
             ));
@@ -283,7 +291,7 @@ export function useMultiview() {
         const newMainUrl = slot.channelUrl;
         const newMainName = slot.channelName;
 
-        if (isGuideModeRef.current && savedStateRef.current) {
+        if (isTabModeRef.current && savedStateRef.current) {
             // Update saved state for deferred loading of new secondary assignment
             if (prevMain.channelUrl) {
                 savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
@@ -306,7 +314,7 @@ export function useMultiview() {
                     : s
             ));
 
-            // Still change the primary MPV, because primary MPV runs in background of Guide
+            // Still change the primary MPV, because primary MPV runs in background of Tab UI
             await invoke('mpv_load', { url: newMainUrl });
             mainSlotRef.current = { channelName: newMainName, channelUrl: newMainUrl };
             return;
@@ -324,6 +332,7 @@ export function useMultiview() {
                 url: prevMain.channelUrl,
                 x: r.x, y: r.y, width: r.w, height: r.h,
             }).catch(() => { });
+            activeUrlsRef.current[slotId] = prevMain.channelUrl;
             setSlots(prev => prev.map(s =>
                 s.id === slotId
                     ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, active: true }
@@ -332,6 +341,7 @@ export function useMultiview() {
         } else {
             // Old main was empty — just stop the slot
             await invoke('multiview_stop_slot', { slotId }).catch(() => { });
+            activeUrlsRef.current[slotId] = null;
             setSlots(prev => prev.map(s =>
                 s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
             ));
@@ -339,7 +349,7 @@ export function useMultiview() {
     }, []);
 
     const stopSlot = useCallback(async (slotId: 2 | 3 | 4) => {
-        if (isGuideModeRef.current && savedStateRef.current) {
+        if (isTabModeRef.current && savedStateRef.current) {
             savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
                 s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
             );
@@ -350,67 +360,87 @@ export function useMultiview() {
         }
 
         await invoke('multiview_stop_slot', { slotId }).catch(() => { });
+        activeUrlsRef.current[slotId] = null;
         setSlots(prev => prev.map(s =>
             s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
         ));
     }, []);
 
-    /** Enter guide mode: kill secondary MPVs and save state for restoration */
-    const enterGuideMode = useCallback(async () => {
-        if (isGuideModeRef.current) return; // Already in guide mode
+    const setSlotProperty = useCallback(async (slotId: 2 | 3 | 4, property: string, value: any) => {
+        try {
+            await invoke('multiview_set_property_slot', { slotId, property, value });
+        } catch (e) {
+            console.warn('[useMultiview] setSlotProperty failed for slot', slotId, e);
+        }
+    }, []);
 
-        console.log('[useMultiview] Entering guide mode - saving multiview state and killing secondaries');
-        isGuideModeRef.current = true;
+    /** Enter tab mode: push secondary MPVs off-screen to keep them buffering/playing */
+    const enterTabMode = useCallback(async (tabName?: string) => {
+        if (isTabModeRef.current) return;
+        console.log(`[useMultiview] Entering tab ${tabName || 'mode'} - hiding secondaries off-screen`);
+        isTabModeRef.current = true;
 
-        // Save current multiview state
         savedStateRef.current = {
             layout: layoutRef.current,
             slots: [...slotsRef.current],
         };
 
-        // Kill all secondary MPVs so they don't block EPG UI
         if (layoutRef.current !== 'main') {
-            await invoke('multiview_kill_all').catch((e) => {
-                console.warn('[useMultiview] Error killing secondary MPVs for guide mode:', e);
-            });
-            // Temporarily reset primary MPV geometry to fullscreen so it doesn't stay tiny
-            // but DO NOT call setLayout('main') as that updates the UI picker
+            // Push all active secondary slots off-screen (-10000, -10000) so they don't block the UI
+            // but keep playing/buffering audio in the background.
+            const ops = slotsRef.current.filter(s => s.active).map(s =>
+                invoke('multiview_reposition_slot', { slotId: s.id, x: -10000, y: -10000, width: 1, height: 1 })
+            );
+            await Promise.all(ops).catch(e => console.warn('[useMultiview] Error hiding MPVs:', e));
+
+            // Temporarily reset primary MPV geometry to fullscreen so the Guide preview
+            // pane's `video-zoom` and `video-align` software scaling can work normally.
             await invoke('mpv_set_geometry', { x: 0, y: 0, width: 0, height: 0 }).catch(() => { });
         }
     }, []);
 
-    /** Exit guide mode: restore saved multiview state */
-    const exitGuideMode = useCallback(async () => {
-        if (!isGuideModeRef.current) return; // Not in guide mode
-
-        console.log('[useMultiview] Exiting guide mode - restoring multiview state');
-        isGuideModeRef.current = false;
+    /** Exit tab mode: restore saved multiview state, unhiding or loading slots as needed */
+    const exitTabMode = useCallback(async () => {
+        if (!isTabModeRef.current) return;
+        console.log('[useMultiview] Exiting full-screen tab - restoring multiview state');
+        isTabModeRef.current = false;
 
         const saved = savedStateRef.current;
-        if (saved && saved.layout !== 'main') {
-            // Restore primary MPV layout without touching React state (since it never changed)
-            await syncMpvGeometry(saved.layout);
+        savedStateRef.current = null;
 
-            // Restore secondary slots
+        if (!saved) return;
+
+        if (saved.layout === 'main') {
+            // The user switched to main layout while tab was open; we need to kill the hidden MPVs
+            await invoke('multiview_kill_all').catch(console.warn);
+            activeUrlsRef.current = { 2: null, 3: null, 4: null };
+            await syncMpvGeometry('main');
+        } else {
+            // Restore primary MPV layout without touching React state (since it never changed if not main)
+            await syncMpvGeometry(saved.layout);
             setSlots(saved.slots.map(s => ({ ...s })));
 
-            // Respawn secondary MPVs with their saved channels
             for (const slot of saved.slots) {
                 if (slot.active && slot.channelUrl) {
                     const r = secondaryRect(slot.id, saved.layout);
-                    try {
-                        await invoke('multiview_load_slot', {
-                            slotId: slot.id,
-                            url: slot.channelUrl,
-                            x: r.x, y: r.y, width: r.w, height: r.h,
-                        });
-                    } catch (e) {
-                        console.warn('[useMultiview] Failed to restore slot', slot.id, e);
+                    // If the slot is already playing the exact same URL in the background, just bring it back on-screen
+                    if (activeUrlsRef.current[slot.id] === slot.channelUrl) {
+                        invoke('multiview_reposition_slot', {
+                            slotId: slot.id, x: r.x, y: r.y, width: r.w, height: r.h
+                        }).catch(e => console.warn('[useMultiview] Failed to restore slot', slot.id, e));
+                    } else {
+                        // It was assigned a NEW stream while the tab was open, so load it
+                        invoke('multiview_load_slot', {
+                            slotId: slot.id, url: slot.channelUrl, x: r.x, y: r.y, width: r.w, height: r.h
+                        }).catch(e => console.warn('[useMultiview] Failed to load new slot', slot.id, e));
+                        activeUrlsRef.current[slot.id] = slot.channelUrl;
                     }
+                } else if (!slot.active && activeUrlsRef.current[slot.id]) {
+                    // It was stopped while the tab was open
+                    invoke('multiview_stop_slot', { slotId: slot.id }).catch(e => console.warn('[useMultiview] Failed to stop slot', slot.id, e));
+                    activeUrlsRef.current[slot.id] = null;
                 }
             }
-
-            savedStateRef.current = null;
         }
     }, [syncMpvGeometry]);
 
@@ -431,9 +461,10 @@ export function useMultiview() {
         sendToSlot,
         swapWithMain,
         stopSlot,
+        setSlotProperty,
         notifyMainLoaded,
         syncMpvGeometry,
-        enterGuideMode,
-        exitGuideMode,
+        enterTabMode,
+        exitTabMode,
     };
 }

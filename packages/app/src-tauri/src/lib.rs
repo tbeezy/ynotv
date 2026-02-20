@@ -374,6 +374,19 @@ async fn multiview_stop_slot<R: Runtime>(
 }
 
 #[tauri::command]
+async fn multiview_set_property_slot<R: Runtime>(
+    app: AppHandle<R>,
+    slot_id: u8,
+    property: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { mpv_secondary::set_property_slot(&app, slot_id, &property, value).await }
+    #[cfg(not(target_os = "windows"))]
+    { let _ = (slot_id, property, value); Ok(()) }
+}
+
+#[tauri::command]
 async fn multiview_reposition_slot<R: Runtime>(
     app: AppHandle<R>,
     slot_id: u8,
@@ -1183,6 +1196,7 @@ pub fn run() {
             // Multiview secondary MPV commands
             multiview_load_slot,
             multiview_stop_slot,
+            multiview_set_property_slot,
             multiview_reposition_slot,
             multiview_kill_slot,
             multiview_kill_all,

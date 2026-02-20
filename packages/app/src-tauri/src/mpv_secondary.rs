@@ -50,45 +50,6 @@ fn get_parent_hwnd<R: Runtime>(app: &AppHandle<R>) -> Result<isize, String> {
     }
 }
 
-/// Find an MPV child HWND by process PID using Win32 EnumChildWindows
-fn find_mpv_hwnd_by_pid(parent_hwnd_raw: isize, target_pid: u32) -> Option<isize> {
-    use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
-    use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, GetWindowThreadProcessId};
-
-    let parent = HWND(parent_hwnd_raw as _);
-
-    struct SearchData { pid: u32, result: isize }
-    let mut data = SearchData { pid: target_pid, result: 0 };
-
-    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
-        let data = &mut *(lparam.0 as *mut SearchData);
-        let mut pid: u32 = 0;
-        GetWindowThreadProcessId(hwnd, Some(&mut pid));
-        if pid == data.pid {
-            let mut buf = [0u16; 64];
-            let len = GetClassNameW(hwnd, &mut buf);
-            if len > 0 {
-                let class = String::from_utf16_lossy(&buf[..len as usize]);
-                if class.to_lowercase().contains("mpv") || class.starts_with("GL") {
-                    data.result = hwnd.0 as isize;
-                    return BOOL(0);
-                }
-            }
-        }
-        BOOL(1)
-    }
-
-    unsafe {
-        let _ = EnumChildWindows(
-            parent,
-            Some(enum_proc),
-            LPARAM(&mut data as *mut SearchData as isize),
-        );
-    }
-
-    if data.result == 0 { None } else { Some(data.result) }
-}
-
 /// Resize an HWND (identified by raw isize) to the given rect.
 /// If bring_to_front is true, brings the window to HWND_TOP so it's visible above the webview.
 /// This is necessary for secondary MPV windows in multiview layouts to be visible,
@@ -243,7 +204,7 @@ pub async fn spawn_slot<R: Runtime>(
         slot_id, pid, x, y, width, height);
 
     // Find the MPV child HWND and position it
-    if let Some(hwnd_raw) = find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
+    if let Some(hwnd_raw) = crate::mpv_windows::find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
         println!("[SecondaryMPV] Slot {} found HWND: {}, positioning...", slot_id, hwnd_raw);
         if let Err(e) = set_hwnd_rect(hwnd_raw, x, y, width, height, true) {
             println!("[SecondaryMPV] Slot {} initial reposition failed: {}", slot_id, e);
@@ -327,6 +288,24 @@ pub async fn stop_slot<R: Runtime>(app: &AppHandle<R>, slot_id: u8) -> Result<()
     Ok(())
 }
 
+/// Set an MPV property (like "pause", "volume") for a specific slot
+pub async fn set_property_slot<R: Runtime>(
+    app: &AppHandle<R>,
+    slot_id: u8,
+    property: &str,
+    value: Value,
+) -> Result<(), String> {
+    let tx = {
+        let state = app.state::<SecondaryMpvState>();
+        let slots = state.slots.lock().unwrap();
+        slots.get(&slot_id).and_then(|s| s.ipc_tx.clone())
+    };
+    if let Some(tx) = tx {
+        send_ipc(&tx, "set_property", vec![json!(property), value]).await;
+    }
+    Ok(())
+}
+
 /// Reposition a running slot's HWND
 pub async fn reposition_slot<R: Runtime>(
     app: &AppHandle<R>,
@@ -348,7 +327,7 @@ pub async fn reposition_slot<R: Runtime>(
         // If we never discovered the HWND during spawn, try to locate it now by PID
         if effective_hwnd == 0 {
             if let Ok(parent_hwnd_raw) = get_parent_hwnd(app) {
-                if let Some(found) = find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
+                if let Some(found) = crate::mpv_windows::find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
                     println!("[SecondaryMPV] Re-discovered HWND for slot {} (pid={}): {}", slot_id, pid, found);
                     effective_hwnd = found;
                     // Persist the discovered HWND so future calls don't need to search

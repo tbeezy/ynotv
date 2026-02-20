@@ -15,6 +15,7 @@ interface MultiviewCellProps {
     active: boolean;
     onSwapWithMain: () => void;
     onStop: () => void;
+    onSetProperty: (property: string, value: any) => void;
 }
 
 export function MultiviewCell({
@@ -23,6 +24,7 @@ export function MultiviewCell({
     active,
     onSwapWithMain,
     onStop,
+    onSetProperty,
 }: MultiviewCellProps) {
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -69,6 +71,8 @@ export function MultiviewCell({
                 <CellContextMenu
                     position={contextMenu}
                     channelName={channelName}
+                    onPlay={() => { onSetProperty('pause', false); setContextMenu(null); }}
+                    onPause={() => { onSetProperty('pause', true); setContextMenu(null); }}
                     onStop={() => { onStop(); setContextMenu(null); }}
                     onClose={() => setContextMenu(null)}
                 />
@@ -80,11 +84,15 @@ export function MultiviewCell({
 function CellContextMenu({
     position,
     channelName,
+    onPlay,
+    onPause,
     onStop,
     onClose,
 }: {
     position: { x: number; y: number };
     channelName: string | null;
+    onPlay: () => void;
+    onPause: () => void;
     onStop: () => void;
     onClose: () => void;
 }) {
@@ -105,8 +113,14 @@ function CellContextMenu({
             style={{ position: 'fixed', left: position.x, top: position.y, zIndex: 9999 }}
         >
             {channelName && <div className="cell-context-header">{channelName}</div>}
+            <button className="cell-context-item" onClick={onPlay}>
+                ▶ Play Stream
+            </button>
+            <button className="cell-context-item" onClick={onPause}>
+                ⏸ Pause Stream
+            </button>
             <button className="cell-context-item cell-context-danger" onClick={onStop}>
-                ⏹ Stop Stream
+                ⏹ Stop / Clear Slot
             </button>
         </div>
     );

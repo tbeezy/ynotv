@@ -8,6 +8,7 @@ interface MultiviewLayoutProps {
     slots: ViewerSlot[];
     onSwapWithMain: (slotId: 2 | 3 | 4) => void;
     onStop: (slotId: 2 | 3 | 4) => void;
+    onSetProperty: (slotId: 2 | 3 | 4, property: string, value: any) => void;
 }
 
 export function MultiviewLayout({
@@ -15,6 +16,7 @@ export function MultiviewLayout({
     slots,
     onSwapWithMain,
     onStop,
+    onSetProperty,
 }: MultiviewLayoutProps) {
     const slot2 = slots.find(s => s.id === 2)!;
     const slot3 = slots.find(s => s.id === 3)!;
@@ -30,6 +32,7 @@ export function MultiviewLayout({
             active={slot.active}
             onSwapWithMain={() => onSwapWithMain(slot.id)}
             onStop={() => onStop(slot.id)}
+            onSetProperty={(prop: string, val: any) => onSetProperty(slot.id, prop, val)}
         />
     );
 

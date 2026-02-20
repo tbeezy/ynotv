@@ -16,6 +16,7 @@ use serde_json::{json, Value};
 
 pub struct MpvState {
     pub process: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    pub pid: Mutex<u32>,
     pub socket_connected: Mutex<bool>,
     pub ipc_tx: Mutex<Option<tokio::sync::mpsc::Sender<String>>>,
     pub pending_requests: Arc<Mutex<HashMap<u64, tokio::sync::oneshot::Sender<Result<Value, String>>>>>,
@@ -27,6 +28,7 @@ impl MpvState {
     pub fn new() -> Self {
         MpvState {
             process: Mutex::new(None),
+            pid: Mutex::new(0),
             socket_connected: Mutex::new(false),
             ipc_tx: Mutex::new(None),
             pending_requests: Arc::new(Mutex::new(HashMap::new())),
@@ -50,6 +52,45 @@ pub struct MpvStatus {
 enum MpvResponse {
     Event { event: String, name: Option<String>, data: Option<Value> },
     Response { request_id: u64, error: Option<String>, data: Option<Value> },
+}
+
+/// Find an MPV child HWND by process PID using Win32 EnumChildWindows
+pub fn find_mpv_hwnd_by_pid(parent_hwnd_raw: isize, target_pid: u32) -> Option<isize> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, GetWindowThreadProcessId};
+
+    let parent = HWND(parent_hwnd_raw as _);
+
+    struct SearchData { pid: u32, result: isize }
+    let mut data = SearchData { pid: target_pid, result: 0 };
+
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let data = &mut *(lparam.0 as *mut SearchData);
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == data.pid {
+            let mut buf = [0u16; 64];
+            let len = GetClassNameW(hwnd, &mut buf);
+            if len > 0 {
+                let class = String::from_utf16_lossy(&buf[..len as usize]);
+                if class.to_lowercase().contains("mpv") || class.starts_with("GL") {
+                    data.result = hwnd.0 as isize;
+                    return BOOL(0);
+                }
+            }
+        }
+        BOOL(1)
+    }
+
+    unsafe {
+        let _ = EnumChildWindows(
+            parent,
+            Some(enum_proc),
+            LPARAM(&mut data as *mut SearchData as isize),
+        );
+    }
+
+    if data.result == 0 { None } else { Some(data.result) }
 }
 
 fn get_socket_path() -> String {
@@ -121,10 +162,13 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         .map_err(|e| format!("Failed to create sidecar: {}", e))?;
 
     let cmd = sidecar.args(&args);
-    let (mut rx, _) = cmd.spawn()
+    let (mut rx, child) = cmd.spawn()
         .map_err(|e| format!("Failed to spawn mpv: {}", e))?;
 
-    println!("[MPV Windows] MPV spawned successfully");
+    let pid = child.pid();
+    *state.pid.lock().unwrap() = pid;
+
+    println!("[MPV Windows] MPV spawned successfully with PID: {}", pid);
 
     // Spawn a thread to monitor the process
     {
@@ -461,54 +505,13 @@ pub async fn mpv_set_geometry<R: Runtime>(
         (x, y, width, height)
     };
 
-    println!("[MPV Windows] set_geometry → x={} y={} w={} h={}", tx, ty, tw, th);
+    let pid = { *app.state::<MpvState>().pid.lock().unwrap() };
 
-    // EnumChildWindows to find the MPV window (class "mpv")
-    struct SearchData { result: HWND }
-
-    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
-        let data = &mut *(lparam.0 as *mut SearchData);
-        let mut buf = [0u16; 64];
-        let len = GetClassNameW(hwnd, &mut buf);
-        if len > 0 {
-            let class = String::from_utf16_lossy(&buf[..len as usize]);
-            // MPV registers its window class as "mpv" on Windows
-            if class.to_lowercase().contains("mpv") || class == "GL" {
-                data.result = hwnd;
-                return BOOL(0); // stop enum
-            }
-        }
-        BOOL(1) // continue
-    }
-
-    // Helper to search for the MPV child HWND with a few retries.
-    fn find_child_with_retries(parent_hwnd: HWND, tx: i32, ty: i32, tw: u32, th: u32) -> Option<HWND> {
-        use std::thread;
-        use std::time::Duration;
-
-        unsafe {
-            let mut attempt = 0;
-            while attempt < 5 {
-                let mut data = SearchData { result: HWND(std::ptr::null_mut()) };
-                let _ = EnumChildWindows(
-                    parent_hwnd,
-                    Some(enum_proc),
-                    LPARAM(&mut data as *mut SearchData as isize),
-                );
-                if !data.result.0.is_null() {
-                    println!("[MPV Windows] Found MPV child HWND on attempt {} → x={} y={} w={} h={}",
-                        attempt + 1, tx, ty, tw, th);
-                    return Some(data.result);
-                }
-                attempt += 1;
-                thread::sleep(Duration::from_millis(150));
-            }
-        }
-
+    let target_hwnd = if pid > 0 {
+        find_mpv_hwnd_by_pid(parent_hwnd.0 as isize, pid).map(|h| HWND(h as _))
+    } else {
         None
-    }
-
-    let target_hwnd = find_child_with_retries(parent_hwnd, tx, ty, tw, th);
+    };
 
     if target_hwnd.is_none() {
         // MPV window not found — fall back to IPC zoom/align

@@ -296,13 +296,13 @@ function App() {
   const [showControls, setShowControls] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [activeView, setActiveView] = useState<View>('none');
-  
-  // Guide mode: enter when EPG opens, exit when it closes
+
+  // Tab Mode: enter when EPG, Sports, or DVR opens; exit when they close
   useEffect(() => {
-    if (activeView === 'guide') {
-      multiview.enterGuideMode();
+    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr') {
+      multiview.enterTabMode(activeView);
     } else {
-      multiview.exitGuideMode();
+      multiview.exitTabMode();
     }
   }, [activeView, multiview]);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -1535,6 +1535,7 @@ function App() {
           slots={multiview.slots}
           onSwapWithMain={(slotId) => multiview.swapWithMain(slotId, multiview.slots)}
           onStop={multiview.stopSlot}
+          onSetProperty={multiview.setSlotProperty}
         />
       )}
 
@@ -1628,8 +1629,8 @@ function App() {
           setActiveView('none');
           setCategoriesOpen(false);
           setSidebarExpanded(false);
-          // Exit guide mode: restore multiview state if it was active
-          multiview.exitGuideMode();
+          // Exit tab mode: restore multiview state if it was active
+          multiview.exitTabMode();
           // EPG guard: only reset MPV geometry if multiview is NOT active
           // (if multiview is active, MPV stays in its grid quadrant)
           if (multiviewLayoutRef.current === 'main') {
