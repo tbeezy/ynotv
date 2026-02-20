@@ -17,6 +17,8 @@ interface SearchResultRowProps {
   onPlay: () => void;
   onFavoriteToggle?: () => void;
   activeRecordings?: RecordingInfo[];
+  currentLayout?: string;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
 }
 
 // Width of the channel info column (must match ChannelPanel)
@@ -29,7 +31,7 @@ function formatProgramDate(date: Date | string): string {
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
   const isTomorrow = new Date(now.getTime() + 86400000).toDateString() === d.toDateString();
-  
+
   if (isToday) return 'Today';
   if (isTomorrow) return 'Tomorrow';
   return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -45,6 +47,8 @@ export const SearchResultRow = memo(function SearchResultRow({
   onPlay,
   onFavoriteToggle,
   activeRecordings = [],
+  currentLayout,
+  onSendToSlot,
 }: SearchResultRowProps) {
   const now = new Date();
 
@@ -76,7 +80,7 @@ export const SearchResultRow = memo(function SearchResultRow({
   function getXOffset(): number {
     const guidePanel = document.querySelector('.guide-panel');
     if (!guidePanel) return 0;
-    
+
     const computedStyle = window.getComputedStyle(guidePanel);
     const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
     return paddingLeft;
@@ -123,14 +127,14 @@ export const SearchResultRow = memo(function SearchResultRow({
     const aEnd = a.end instanceof Date ? a.end.getTime() : new Date(a.end).getTime();
     const bStart = b.start instanceof Date ? b.start.getTime() : new Date(b.start).getTime();
     const bEnd = b.end instanceof Date ? b.end.getTime() : new Date(b.end).getTime();
-    
+
     const aIsLive = aStart <= now.getTime() && aEnd > now.getTime();
     const bIsLive = bStart <= now.getTime() && bEnd > now.getTime();
-    
+
     // Live programs come first
     if (aIsLive && !bIsLive) return -1;
     if (!aIsLive && bIsLive) return 1;
-    
+
     // Then sort by start time
     return aStart - bStart;
   });
@@ -243,6 +247,8 @@ export const SearchResultRow = memo(function SearchResultRow({
           channel={channel}
           position={{ x: channelContextMenu.x, y: channelContextMenu.y }}
           onClose={() => setChannelContextMenu(null)}
+          currentLayout={currentLayout}
+          onSendToSlot={onSendToSlot}
         />
       )}
 

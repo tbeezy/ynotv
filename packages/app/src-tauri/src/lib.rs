@@ -10,12 +10,16 @@ use tauri::TitleBarStyle;
 mod mpv_macos;
 #[cfg(target_os = "windows")]
 mod mpv_windows;
+#[cfg(target_os = "windows")]
+mod mpv_secondary;
 
 // Re-export the MPV state and functions based on platform
 #[cfg(target_os = "macos")]
 use mpv_macos::MpvState;
 #[cfg(target_os = "windows")]
 use mpv_windows::MpvState;
+#[cfg(target_os = "windows")]
+use mpv_secondary::SecondaryMpvState;
 
 // DVR Module (Rust native implementation)
 mod dvr;
@@ -316,6 +320,93 @@ async fn mpv_toggle_stats<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         mpv_windows::send_command(&app, "script-binding", vec![json!("stats/display-stats-toggle")]).await?;
     }
     Ok(())
+}
+
+#[tauri::command]
+async fn mpv_set_geometry<R: Runtime>(
+    app: AppHandle<R>,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        // On macOS, hole-punch mode uses window syncing — geometry not directly supported
+        let _ = (x, y, width, height);
+        Ok(())
+    }
+    #[cfg(target_os = "windows")]
+    {
+        mpv_windows::mpv_set_geometry(&app, x, y, width, height).await
+    }
+}
+
+// ============================================================================
+// Secondary MPV commands for multiview
+// ============================================================================
+
+#[tauri::command]
+async fn multiview_load_slot<R: Runtime>(
+    app: AppHandle<R>,
+    slot_id: u8,
+    url: String,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { mpv_secondary::load_slot(&app, slot_id, url, x, y, width, height).await }
+    #[cfg(not(target_os = "windows"))]
+    { let _ = (slot_id, url, x, y, width, height); Ok(()) }
+}
+
+#[tauri::command]
+async fn multiview_stop_slot<R: Runtime>(
+    app: AppHandle<R>,
+    slot_id: u8,
+) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { mpv_secondary::stop_slot(&app, slot_id).await }
+    #[cfg(not(target_os = "windows"))]
+    { let _ = slot_id; Ok(()) }
+}
+
+#[tauri::command]
+async fn multiview_reposition_slot<R: Runtime>(
+    app: AppHandle<R>,
+    slot_id: u8,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { mpv_secondary::reposition_slot(&app, slot_id, x, y, width, height).await }
+    #[cfg(not(target_os = "windows"))]
+    { let _ = (slot_id, x, y, width, height); Ok(()) }
+}
+
+#[tauri::command]
+async fn multiview_kill_slot<R: Runtime>(
+    app: AppHandle<R>,
+    slot_id: u8,
+) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { mpv_secondary::kill_slot(&app, slot_id).await; Ok(()) }
+    #[cfg(not(target_os = "windows"))]
+    { let _ = slot_id; Ok(()) }
+}
+
+#[tauri::command]
+async fn multiview_kill_all<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { mpv_secondary::kill_all(&app).await; Ok(()) }
+    #[cfg(not(target_os = "windows"))]
+    { Ok(()) }
 }
 
 // ============================================================================
@@ -1003,6 +1094,10 @@ pub fn run() {
         // Manage platform-specific MPV state
         .manage(MpvState::new())
         .setup(|app| {
+            // Register secondary MPV state (Windows only)
+            #[cfg(target_os = "windows")]
+            app.manage(SecondaryMpvState::new());
+
             // Configure macOS window for proper dragging with transparent titlebar
             #[cfg(target_os = "macos")]
             {
@@ -1083,7 +1178,14 @@ pub fn run() {
             mpv_set_property,
             mpv_get_property,
             mpv_sync_window,
+            mpv_set_geometry,
             mpv_kill,
+            // Multiview secondary MPV commands
+            multiview_load_slot,
+            multiview_stop_slot,
+            multiview_reposition_slot,
+            multiview_kill_slot,
+            multiview_kill_all,
             // Optimized bulk sync commands
             bulk_upsert_channels,
             bulk_upsert_categories,

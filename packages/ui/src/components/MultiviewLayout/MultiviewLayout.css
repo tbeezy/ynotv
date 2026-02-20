@@ -1,0 +1,87 @@
+/* ── SHARED MPV PLACEHOLDER ─────────────── */
+
+/* Semi-transparent label showing where MPV is rendering */
+.layout-mpv-placeholder {
+    background: transparent;
+    /* purely a layout grid slot — MPV renders behind it */
+}
+
+/* ── PiP OVERLAY ─────────────────────────── */
+
+.layout-pip-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 40;
+}
+
+.layout-pip-overlay {
+    position: absolute;
+    bottom: 72px;
+    right: 12px;
+    width: 280px;
+    height: 158px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    z-index: 50;
+    cursor: grab;
+    pointer-events: all;
+}
+
+.layout-pip-overlay:active {
+    cursor: grabbing;
+}
+
+/* ── 2x2 GRID ───────────────────────────── */
+
+.layout-2x2-cells {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 2px;
+    background: #0d0d0d;
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* Top-left quadrant is occupied by MPV (transparent placeholder) */
+.layout-2x2-mpv {
+    grid-column: 1;
+    grid-row: 1;
+    pointer-events: none;
+}
+
+/* HLS cells need pointer events */
+.layout-2x2-cells .multiview-cell {
+    pointer-events: all;
+}
+
+/* ── BIG + BOTTOM BAR ───────────────────── */
+
+.layout-bigbottom-cells {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-rows: 1fr 160px;
+    gap: 2px;
+    background: #0d0d0d;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.layout-bigbottom-mpv {
+    grid-row: 1;
+    pointer-events: none;
+}
+
+.layout-bottom-bar {
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2px;
+    pointer-events: all;
+}

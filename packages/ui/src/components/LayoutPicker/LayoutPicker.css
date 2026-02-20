@@ -1,0 +1,200 @@
+/* ── LAYOUT PICKER BUTTON ─────────────── */
+
+.layout-picker {
+    position: relative;
+}
+
+/* .layout-picker-btn inherits .title-bar-settings-btn styles from App.css */
+
+.layout-picker-btn-active {
+    background: rgba(0, 212, 255, 0.2) !important;
+    color: #00d4ff !important;
+}
+
+/* Dropdown panel */
+.layout-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: rgba(16, 16, 20, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 6px;
+    width: 230px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    animation: lpDropIn 0.12s ease-out;
+}
+
+@keyframes lpDropIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.layout-picker-header {
+    padding: 5px 10px 7px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    margin-bottom: 4px;
+}
+
+.layout-picker-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 8px;
+    background: none;
+    border: none;
+    border-radius: 7px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+}
+
+.layout-picker-option:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.layout-picker-option-active {
+    background: rgba(0, 212, 255, 0.1);
+    color: #fff;
+}
+
+.layout-picker-option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+}
+
+.layout-picker-option-label {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.layout-picker-option-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.layout-picker-check {
+    color: #00d4ff;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.layout-picker-preview-wrap {
+    flex-shrink: 0;
+}
+
+/* Preview thumbnails */
+.layout-preview {
+    width: 36px;
+    height: 24px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lp-cell {
+    border-radius: 1px;
+}
+
+.lp-cell-main {
+    background: rgba(0, 212, 255, 0.65);
+}
+
+.lp-cell-secondary {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.lp-cell-pip {
+    background: rgba(255, 200, 80, 0.65);
+    border-radius: 1px;
+}
+
+.lp-main {
+    width: 100%;
+    height: 100%;
+}
+
+.lp-main .lp-cell-main {
+    width: 100%;
+    height: 100%;
+}
+
+.lp-pip {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.lp-pip .lp-cell-main {
+    width: 100%;
+    height: 100%;
+}
+
+.lp-pip .lp-cell-pip {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 40%;
+    height: 40%;
+}
+
+.lp-grid-2x2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 1px;
+    width: 100%;
+    height: 100%;
+    background: #111;
+}
+
+.lp-grid-2x2 .lp-cell {
+    width: 100%;
+    height: 100%;
+}
+
+.lp-bigbottom {
+    display: grid;
+    grid-template-rows: 1fr 8px;
+    gap: 1px;
+    width: 100%;
+    height: 100%;
+    background: #111;
+}
+
+.lp-bigbottom .lp-cell-main {
+    width: 100%;
+    height: 100%;
+}
+
+.lp-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+}
+
+.lp-bottom-row .lp-cell {
+    width: 100%;
+    height: 100%;
+}

@@ -40,6 +40,10 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { addToRecentChannels } from './utils/recentChannels';
 import type { ThemeId } from './types/app';
 import { WatchlistNotificationContainer, type WatchlistNotificationItem } from './components/WatchlistNotification';
+import { useMultiview } from './hooks/useMultiview';
+import { MultiviewLayout } from './components/MultiviewLayout/MultiviewLayout';
+import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
+import type { LayoutMode } from './hooks/useMultiview';
 import './themes.css';
 
 // Helper to check stream status if mpv fails
@@ -282,6 +286,11 @@ function App() {
       console.log('[(Renderer) Error State Changed]', error);
     }
   }, [error]);
+
+  // Multiview state
+  const multiview = useMultiview();
+  const multiviewLayoutRef = useRef<LayoutMode>('main');
+  useEffect(() => { multiviewLayoutRef.current = multiview.layout; }, [multiview.layout]);
 
   // UI state
   const [showControls, setShowControls] = useState(true);
@@ -628,6 +637,8 @@ function App() {
 
         // Initialize MPV AFTER listeners are ready to catch mpv-ready event
         Bridge.initMpv();
+        // After MPV is ready, sync geometry in case multiview was already active
+        multiview.syncMpvGeometry();
       });
     } else {
       setError('mpv API not available');
@@ -767,11 +778,13 @@ function App() {
     } else {
       debugLog(`  SUCCESS: playing`);
       // Update channel with working URL if fallback was used
-      setCurrentChannel(result.url !== playUrl
+      const resolvedChannel = result.url !== playUrl
         ? { ...channel, direct_url: result.url }
-        : channel
-      );
+        : channel;
+      setCurrentChannel(resolvedChannel);
       setPlaying(true);
+      // Notify multiview hook what's now in MPV (needed for swap logic)
+      multiview.notifyMainLoaded(channel.name, result.url);
 
       // Capture video metadata after successful load
       import('./services/video-metadata').then(({ captureAndSaveMetadata }) => {
@@ -1438,6 +1451,12 @@ function App() {
           )}
         </div>
 
+        {/* Layout Picker Button - Multiview selector */}
+        <LayoutPicker
+          currentLayout={multiview.layout}
+          onSelect={multiview.switchLayout}
+        />
+
         {/* Settings Button */}
         <button
           className={`title-bar-settings-btn ${activeView === 'settings' ? 'active' : ''}`}
@@ -1499,6 +1518,16 @@ function App() {
           />
         )}
       </div>
+
+      {/* Multiview HLS cell grid (rendered on top of MPV, which renders behind) */}
+      {multiview.layout !== 'main' && (
+        <MultiviewLayout
+          layout={multiview.layout}
+          slots={multiview.slots}
+          onSwapWithMain={(slotId) => multiview.swapWithMain(slotId, multiview.slots)}
+          onStop={multiview.stopSlot}
+        />
+      )}
 
       {/* Now Playing Bar */}
       <NowPlayingBar
@@ -1590,6 +1619,11 @@ function App() {
           setActiveView('none');
           setCategoriesOpen(false);
           setSidebarExpanded(false);
+          // EPG guard: only reset MPV geometry if multiview is NOT active
+          // (if multiview is active, MPV stays in its grid quadrant)
+          if (multiviewLayoutRef.current === 'main') {
+            Bridge.syncWindow();
+          }
         }}
         error={error}
         isSearchMode={isSearchMode}
@@ -1599,6 +1633,8 @@ function App() {
         isWatchlistMode={isWatchlistMode}
         watchlistItems={watchlistItems}
         onWatchlistRefresh={() => setWatchlistRefreshTrigger(v => v + 1)}
+        currentLayout={multiview.layout}
+        onSendToSlot={multiview.sendToSlot}
       />
 
       {/* Settings Panel */}

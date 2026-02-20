@@ -10,8 +10,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ynotv/core": "workspace:*",
-    "@ynotv/local-adapter": "workspace:*",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
@@ -21,6 +19,9 @@
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-sql": "^2.3.2",
     "@tauri-apps/plugin-store": "^2.4.2",
+    "@ynotv/core": "workspace:*",
+    "@ynotv/local-adapter": "workspace:*",
+    "hls.js": "^1.5.13",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-virtuoso": "^4.18.1",

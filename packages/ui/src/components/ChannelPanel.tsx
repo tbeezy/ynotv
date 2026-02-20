@@ -37,6 +37,9 @@ interface ChannelPanelProps {
   isWatchlistMode?: boolean;
   watchlistItems?: WatchlistItem[];
   onWatchlistRefresh?: () => void;
+  // Multiview props
+  currentLayout?: string;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
 }
 
 export function ChannelPanel({
@@ -55,6 +58,8 @@ export function ChannelPanel({
   isWatchlistMode,
   watchlistItems,
   onWatchlistRefresh,
+  currentLayout,
+  onSendToSlot,
 }: ChannelPanelProps) {
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);
@@ -817,6 +822,8 @@ export function ChannelPanel({
                       onPlay={() => handleSearchChannelClick(channel)}
                       onFavoriteToggle={refreshSearchResults}
                       activeRecordings={activeRecordings}
+                      currentLayout={currentLayout}
+                      onSendToSlot={onSendToSlot}
                     />
                   ))}
                 </div>
@@ -945,6 +952,8 @@ export function ChannelPanel({
                   onFavoriteToggle={handleFavoriteToggle}
                   categoryId={categoryId}
                   activeRecordings={activeRecordings}
+                  currentLayout={currentLayout}
+                  onSendToSlot={onSendToSlot}
                 />
               )}
               components={{

@@ -25,6 +25,8 @@ interface ChannelRowProps {
   onFavoriteToggle?: () => void;
   categoryId?: string | null;
   activeRecordings?: RecordingInfo[];
+  currentLayout?: string;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
 }
 
 export const ChannelRow = memo(function ChannelRow({
@@ -40,6 +42,8 @@ export const ChannelRow = memo(function ChannelRow({
   onFavoriteToggle,
   categoryId,
   activeRecordings = [],
+  currentLayout,
+  onSendToSlot,
 }: ChannelRowProps) {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ program: StoredProgram; x: number; y: number } | null>(null);
@@ -78,7 +82,7 @@ export const ChannelRow = memo(function ChannelRow({
   function getXOffset(): number {
     const guidePanel = document.querySelector('.guide-panel');
     if (!guidePanel) return 0;
-    
+
     const computedStyle = window.getComputedStyle(guidePanel);
     const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
     return paddingLeft;
@@ -223,6 +227,8 @@ export const ChannelRow = memo(function ChannelRow({
           channel={channel}
           position={{ x: channelContextMenu.x, y: channelContextMenu.y }}
           onClose={() => setChannelContextMenu(null)}
+          currentLayout={currentLayout}
+          onSendToSlot={onSendToSlot}
         />
       )}
     </div>

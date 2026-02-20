@@ -1,0 +1,322 @@
+//! Secondary MPV instances for multiview slots 2, 3, and 4.
+//! Each slot gets its own MPV process embedded in the main HWND,
+//! resized to its quadrant via SetWindowPos.
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::Duration;
+use tauri::{AppHandle, Runtime, Manager};
+use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::CommandEvent;
+use tokio::io::AsyncWriteExt;
+use tokio::net::windows::named_pipe::ClientOptions;
+use serde_json::{json, Value};
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+struct SlotInstance {
+    pid: u32,
+    /// Raw HWND value stored as isize so it's Send
+    hwnd: isize,
+    ipc_tx: Option<tokio::sync::mpsc::Sender<String>>,
+}
+
+pub struct SecondaryMpvState {
+    slots: Mutex<HashMap<u8, SlotInstance>>,
+}
+
+impl SecondaryMpvState {
+    pub fn new() -> Self {
+        SecondaryMpvState {
+            slots: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+fn slot_socket_path(slot_id: u8) -> String {
+    format!(r"\\.\pipe\mpv-secondary-{}-{}", slot_id, std::process::id())
+}
+
+fn get_parent_hwnd<R: Runtime>(app: &AppHandle<R>) -> Result<isize, String> {
+    let window = app.get_webview_window("main")
+        .ok_or("Main window not found")?;
+    let handle = window.window_handle().map_err(|e| e.to_string())?;
+    match handle.as_raw() {
+        RawWindowHandle::Win32(h) => Ok(h.hwnd.get() as isize),
+        _ => Err("Unsupported window handle".to_string()),
+    }
+}
+
+/// Find an MPV child HWND by process PID using Win32 EnumChildWindows
+fn find_mpv_hwnd_by_pid(parent_hwnd_raw: isize, target_pid: u32) -> Option<isize> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, GetWindowThreadProcessId};
+
+    let parent = HWND(parent_hwnd_raw as _);
+
+    struct SearchData { pid: u32, result: isize }
+    let mut data = SearchData { pid: target_pid, result: 0 };
+
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let data = &mut *(lparam.0 as *mut SearchData);
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == data.pid {
+            let mut buf = [0u16; 64];
+            let len = GetClassNameW(hwnd, &mut buf);
+            if len > 0 {
+                let class = String::from_utf16_lossy(&buf[..len as usize]);
+                if class.to_lowercase().contains("mpv") || class.starts_with("GL") {
+                    data.result = hwnd.0 as isize;
+                    return BOOL(0);
+                }
+            }
+        }
+        BOOL(1)
+    }
+
+    unsafe {
+        let _ = EnumChildWindows(
+            parent,
+            Some(enum_proc),
+            LPARAM(&mut data as *mut SearchData as isize),
+        );
+    }
+
+    if data.result == 0 { None } else { Some(data.result) }
+}
+
+/// Resize an HWND (identified by raw isize) to the given rect
+fn set_hwnd_rect(hwnd_raw: isize, x: i32, y: i32, w: u32, h: u32) -> Result<(), String> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOZORDER, SWP_NOACTIVATE};
+
+    let hwnd = HWND(hwnd_raw as _);
+    unsafe {
+        SetWindowPos(hwnd, None, x, y, w as i32, h as i32, SWP_NOZORDER | SWP_NOACTIVATE)
+            .map_err(|e| format!("SetWindowPos failed: {}", e))?;
+    }
+    Ok(())
+}
+
+async fn send_ipc(tx: &tokio::sync::mpsc::Sender<String>, command: &str, args: Vec<Value>) {
+    let mut cmd_args = vec![Value::String(command.to_string())];
+    cmd_args.extend(args);
+    let msg = json!({ "command": cmd_args }).to_string();
+    let _ = tx.send(msg).await;
+}
+
+async fn connect_ipc(socket_path: &str) -> Result<tokio::sync::mpsc::Sender<String>, String> {
+    let stream = {
+        let mut retries = 15;
+        loop {
+            match ClientOptions::new().open(socket_path) {
+                Ok(s) => break Ok(s),
+                Err(_) if retries > 0 => {
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+                    retries -= 1;
+                }
+                Err(e) => break Err(format!("Secondary IPC connect failed: {}", e)),
+            }
+        }
+    }?;
+
+    let (_, mut writer) = tokio::io::split(stream);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(16);
+
+    tauri::async_runtime::spawn(async move {
+        while let Some(msg) = rx.recv().await {
+            let _ = writer.write_all(msg.as_bytes()).await;
+            let _ = writer.write_all(b"\n").await;
+            let _ = writer.flush().await;
+        }
+    });
+
+    Ok(tx)
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+/// Kill any existing secondary MPV for the given slot (synchronous, blocks briefly)
+pub async fn kill_slot<R: Runtime>(app: &AppHandle<R>, slot_id: u8) {
+    let state = app.state::<SecondaryMpvState>();
+    let maybe_pid = {
+        let mut slots = state.slots.lock().unwrap();
+        if let Some(slot) = slots.remove(&slot_id) {
+            drop(slot.ipc_tx); // close IPC channel
+            Some(slot.pid)
+        } else {
+            None
+        }
+    };
+    if let Some(pid) = maybe_pid {
+        use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+        unsafe {
+            if let Ok(ph) = OpenProcess(PROCESS_TERMINATE, false, pid) {
+                let _ = TerminateProcess(ph, 0);
+            }
+        }
+        println!("[SecondaryMPV] Slot {} killed (pid={})", slot_id, pid);
+    }
+}
+
+/// Kill all secondary slots
+pub async fn kill_all<R: Runtime>(app: &AppHandle<R>) {
+    kill_slot(app, 2).await;
+    kill_slot(app, 3).await;
+    kill_slot(app, 4).await;
+}
+
+/// Spawn a secondary MPV for the given slot, positioned at (x, y, w, h)
+pub async fn spawn_slot<R: Runtime>(
+    app: &AppHandle<R>,
+    slot_id: u8,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    // Kill any existing instance
+    kill_slot(app, slot_id).await;
+
+    // Get parent HWND before any awaits
+    let parent_hwnd_raw = get_parent_hwnd(app)?;
+    let socket_path = slot_socket_path(slot_id);
+
+    let args = vec![
+        format!("--input-ipc-server={}", socket_path),
+        format!("--wid={}", parent_hwnd_raw),
+        "--force-window=immediate".into(),
+        "--idle=yes".into(),
+        "--keep-open=yes".into(),
+        "--no-osc".into(),
+        "--no-osd-bar".into(),
+        "--osd-level=0".into(),
+        "--input-default-bindings=no".into(),
+        "--no-input-cursor".into(),
+        "--cursor-autohide=no".into(),
+        "--no-terminal".into(),
+        "--volume=80".into(),
+    ];
+
+    let sidecar = app.shell().sidecar("mpv")
+        .map_err(|e| format!("Sidecar error: {}", e))?;
+
+    let (mut rx, child) = sidecar.args(&args).spawn()
+        .map_err(|e| format!("Failed to spawn secondary MPV: {}", e))?;
+
+    let pid = child.pid();
+    println!("[SecondaryMPV] Slot {} spawned PID={}", slot_id, pid);
+
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stderr(line) => {
+                    println!("[MPV-{}] {}", slot_id, String::from_utf8_lossy(&line));
+                }
+                CommandEvent::Terminated(s) => {
+                    println!("[MPV-{}] Terminated: {:?}", slot_id, s);
+                }
+                _ => {}
+            }
+        }
+    });
+
+    // Wait for MPV to create its window, then position it
+    tokio::time::sleep(Duration::from_millis(1200)).await;
+
+    // Find the MPV child HWND and position it
+    if let Some(hwnd_raw) = find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
+        if let Err(e) = set_hwnd_rect(hwnd_raw, x, y, width, height) {
+            println!("[SecondaryMPV] Slot {} initial reposition failed: {}", slot_id, e);
+        }
+        // Store the discovered HWND so we don't need to search again
+        let ipc_tx = connect_ipc(&socket_path).await.ok();
+        let state = app.state::<SecondaryMpvState>();
+        let mut slots = state.slots.lock().unwrap();
+        slots.insert(slot_id, SlotInstance { pid, hwnd: hwnd_raw, ipc_tx });
+    } else {
+        println!("[SecondaryMPV] Slot {} HWND not found — storing without HWND", slot_id);
+        let ipc_tx = connect_ipc(&socket_path).await.ok();
+        let state = app.state::<SecondaryMpvState>();
+        let mut slots = state.slots.lock().unwrap();
+        slots.insert(slot_id, SlotInstance { pid, hwnd: 0, ipc_tx });
+    }
+
+    println!("[SecondaryMPV] Slot {} ready", slot_id);
+    Ok(())
+}
+
+/// Load a URL in a secondary slot. Spawns the slot MPV if not yet running.
+pub async fn load_slot<R: Runtime>(
+    app: &AppHandle<R>,
+    slot_id: u8,
+    url: String,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    // Check if slot is already running; extract tx clone before any await
+    let existing_tx = {
+        let state = app.state::<SecondaryMpvState>();
+        let slots = state.slots.lock().unwrap();
+        slots.get(&slot_id).and_then(|s| s.ipc_tx.clone())
+    };
+
+    if existing_tx.is_none() {
+        spawn_slot(app, slot_id, x, y, width, height).await?;
+    }
+
+    // Reload tx after potential spawn
+    let tx = {
+        let state = app.state::<SecondaryMpvState>();
+        let slots = state.slots.lock().unwrap();
+        slots.get(&slot_id).and_then(|s| s.ipc_tx.clone())
+    };
+
+    if let Some(tx) = tx {
+        send_ipc(&tx, "loadfile", vec![json!(url)]).await;
+        println!("[SecondaryMPV] Slot {} loading: {}", slot_id, &url[..url.len().min(80)]);
+    }
+    Ok(())
+}
+
+/// Stop playback in a slot (keep MPV alive)
+pub async fn stop_slot<R: Runtime>(app: &AppHandle<R>, slot_id: u8) -> Result<(), String> {
+    let tx = {
+        let state = app.state::<SecondaryMpvState>();
+        let slots = state.slots.lock().unwrap();
+        slots.get(&slot_id).and_then(|s| s.ipc_tx.clone())
+    };
+    if let Some(tx) = tx {
+        send_ipc(&tx, "stop", vec![]).await;
+    }
+    Ok(())
+}
+
+/// Reposition a running slot's HWND
+pub async fn reposition_slot<R: Runtime>(
+    app: &AppHandle<R>,
+    slot_id: u8,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    let hwnd_raw = {
+        let state = app.state::<SecondaryMpvState>();
+        let slots = state.slots.lock().unwrap();
+        slots.get(&slot_id).map(|s| s.hwnd)
+    };
+
+    if let Some(hwnd) = hwnd_raw {
+        if hwnd != 0 {
+            set_hwnd_rect(hwnd, x, y, width, height)?;
+        }
+    }
+    Ok(())
+}

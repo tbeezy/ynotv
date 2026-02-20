@@ -12,6 +12,9 @@ interface ChannelContextMenuProps {
     channel: StoredChannel;
     position: { x: number; y: number };
     onClose: () => void;
+    // Multiview props
+    currentLayout?: string;
+    onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
 }
 
 // Helper to format date for datetime-local input
@@ -27,6 +30,8 @@ export function ChannelContextMenu({
     channel,
     position,
     onClose,
+    currentLayout,
+    onSendToSlot,
 }: ChannelContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
     const [currentView, setCurrentView] = useState<MenuView>('main');
@@ -321,12 +326,42 @@ export function ChannelContextMenu({
     }
 
     // ── MAIN MENU VIEW ──
+    // Determine which secondary slots are available based on the current layout
+    const viewerSlots: Array<2 | 3 | 4> = (() => {
+        if (!onSendToSlot || !currentLayout || currentLayout === 'main') return [];
+        if (currentLayout === 'pip') return [2];
+        return [2, 3, 4]; // 2x2 and bigbottom have 3 secondary slots
+    })();
+
+    const handleSendToSlot = async (slotId: 2 | 3 | 4) => {
+        if (!onSendToSlot) return;
+        // Resolve the stream URL (same logic as main player)
+        const url = channel.direct_url ?? '';
+        onSendToSlot(slotId, channel.name, url);
+        onClose();
+    };
+
     return (
         <div
             ref={menuRef}
             className="program-context-menu"
             style={{ left: `${adjustedPosition.x}px`, top: `${adjustedPosition.y}px` }}
         >
+            {/* Send to Viewer - only shown when a multiview layout is active */}
+            {viewerSlots.length > 0 && (
+                <>
+                    {viewerSlots.map(slotId => (
+                        <div
+                            key={slotId}
+                            className="context-menu-item"
+                            onClick={() => handleSendToSlot(slotId)}
+                        >
+                            📺 Send to Viewer {slotId}
+                        </div>
+                    ))}
+                    <div className="context-menu-separator" />
+                </>
+            )}
             <div className="context-menu-item" onClick={() => setCurrentView('custom')}>
                 📹 Record...
             </div>

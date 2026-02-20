@@ -420,6 +420,98 @@ pub async fn sync_window<R: Runtime>(
     Ok(())
 }
 
+
+/// Physically resize the MPV embedded child window to a specific rect.
+/// When all args are 0, restores MPV to fill the parent window.
+///
+/// On Windows, MPV is spawned with --wid=HWND which makes it a child window
+/// that normally fills the entire parent. IPC video-zoom/align properties only
+/// affect the video content *inside* the MPV window — the black MPV surface still
+/// covers everything. The only way to expose the HTML cells underneath is to
+/// resize the MPV child HWND to the intended quadrant via SetWindowPos.
+pub async fn mpv_set_geometry<R: Runtime>(
+    app: &AppHandle<R>,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumChildWindows, GetClassNameW, SetWindowPos, SWP_NOZORDER, SWP_NOACTIVATE,
+    };
+
+    // Get the Tauri window's HWND
+    let window = app.get_webview_window("main")
+        .ok_or("Main window not found")?;
+    let handle = window.window_handle().map_err(|e| e.to_string())?;
+    let parent_hwnd = match handle.as_raw() {
+        raw_window_handle::RawWindowHandle::Win32(h) => HWND(h.hwnd.get() as _),
+        _ => return Err("Unsupported window handle".to_string()),
+    };
+
+    // Determine the target rect
+    let (tx, ty, tw, th) = if width == 0 && height == 0 {
+        // Restore: fill entire parent window
+        use windows::Win32::UI::WindowsAndMessaging::GetClientRect;
+        let mut rect = windows::Win32::Foundation::RECT::default();
+        unsafe { let _ = GetClientRect(parent_hwnd, &mut rect); }
+        (0i32, 0i32, (rect.right - rect.left) as u32, (rect.bottom - rect.top) as u32)
+    } else {
+        (x, y, width, height)
+    };
+
+    println!("[MPV Windows] set_geometry → x={} y={} w={} h={}", tx, ty, tw, th);
+
+    // EnumChildWindows to find the MPV window (class "mpv")
+    struct SearchData { result: HWND }
+    let mut data = SearchData { result: HWND(std::ptr::null_mut()) };
+
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let data = &mut *(lparam.0 as *mut SearchData);
+        let mut buf = [0u16; 64];
+        let len = GetClassNameW(hwnd, &mut buf);
+        if len > 0 {
+            let class = String::from_utf16_lossy(&buf[..len as usize]);
+            // MPV registers its window class as "mpv" on Windows
+            if class.to_lowercase().contains("mpv") || class == "GL" {
+                data.result = hwnd;
+                return BOOL(0); // stop enum
+            }
+        }
+        BOOL(1) // continue
+    }
+
+    unsafe {
+        let _ = EnumChildWindows(
+            parent_hwnd,
+            Some(enum_proc),
+            LPARAM(&mut data as *mut SearchData as isize),
+        );
+    }
+
+    if data.result.0.is_null() {
+        // MPV window not found — fall back to IPC zoom/align
+        println!("[MPV Windows] MPV child window not found, skipping SetWindowPos");
+        return Ok(());
+    }
+
+    unsafe {
+        SetWindowPos(
+            data.result,
+            None,
+            tx,
+            ty,
+            tw as i32,
+            th as i32,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        ).map_err(|e| format!("SetWindowPos failed: {}", e))?;
+    }
+
+    println!("[MPV Windows] MPV HWND repositioned successfully");
+    Ok(())
+}
+
 pub async fn kill_mpv<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<MpvState>();
     

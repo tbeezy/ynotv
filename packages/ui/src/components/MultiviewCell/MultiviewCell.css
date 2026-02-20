@@ -1,0 +1,158 @@
+/* ── SHARED ─────────────────────────────── */
+
+.multiview-cell {
+    position: relative;
+    background: #0a0a0a;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+}
+
+.multiview-cell-active:hover {
+    outline: 2px solid rgba(0, 212, 255, 0.4);
+    outline-offset: -2px;
+}
+
+.multiview-cell-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Overlays */
+.multiview-cell-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 11px;
+    pointer-events: none;
+}
+
+.multiview-cell-overlay-loading {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.multiview-cell-overlay-error {
+    background: rgba(0, 0, 0, 0.5);
+    color: rgba(255, 100, 100, 0.7);
+}
+
+.multiview-cell-slot-icon {
+    color: rgba(255, 255, 255, 0.15);
+    margin-bottom: 2px;
+}
+
+.multiview-cell-slot-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.18);
+}
+
+.multiview-cell-hint {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.12);
+}
+
+/* Channel name badge */
+.multiview-cell-badge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 4px 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+
+.multiview-cell:hover .multiview-cell-badge {
+    opacity: 1;
+}
+
+.multiview-cell-name {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.multiview-cell-swap-hint {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
+    flex-shrink: 0;
+}
+
+/* Spinner */
+.multiview-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: rgba(0, 212, 255, 0.6);
+    border-radius: 50%;
+    animation: mvSpin 0.7s linear infinite;
+}
+
+@keyframes mvSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Cell right-click context menu */
+.cell-context-menu {
+    background: rgba(16, 16, 20, 0.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 160px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+
+.cell-context-header {
+    padding: 6px 10px 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.cell-context-item {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    background: none;
+    border: none;
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    text-align: left;
+    font-size: 13px;
+}
+
+.cell-context-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cell-context-danger {
+    color: rgba(255, 90, 90, 0.9);
+}
+
+.cell-context-danger:hover {
+    background: rgba(255, 50, 50, 0.15) !important;
+}
