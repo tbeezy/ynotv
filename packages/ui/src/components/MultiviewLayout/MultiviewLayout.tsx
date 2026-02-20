@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { MultiviewCell } from '../MultiviewCell/MultiviewCell';
 import { ViewerSlot } from '../../hooks/useMultiview';
 import { useDraggable } from '../../hooks/useDraggable';
@@ -23,7 +24,8 @@ export function MultiviewLayout({
     const slot2 = slots.find(s => s.id === 2)!;
     const slot3 = slots.find(s => s.id === 3)!;
     const slot4 = slots.find(s => s.id === 4)!;
-    const pipDragRef = useDraggable(() => {
+    const pipDragRef = useRef<HTMLDivElement>(null);
+    useDraggable(pipDragRef, () => {
         onReposition();
     });
 

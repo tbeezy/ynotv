@@ -1,8 +1,7 @@
-import { useRef, useEffect } from 'react';
+import { useEffect } from 'react';
 
-export function useDraggable(onDrag?: () => void) {
-    const ref = useRef<HTMLDivElement>(null);
-
+// useDraggable.ts
+export function useDraggable(ref: React.RefObject<HTMLDivElement | null>, onDrag?: () => void) {
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
@@ -38,7 +37,5 @@ export function useDraggable(onDrag?: () => void) {
 
         el.addEventListener('mousedown', onMouseDown);
         return () => el.removeEventListener('mousedown', onMouseDown);
-    }, []);
-
-    return ref;
+    }, [ref.current, onDrag]); // Rebind when the ref points to a new DOM element (e.g. layout change)
 }

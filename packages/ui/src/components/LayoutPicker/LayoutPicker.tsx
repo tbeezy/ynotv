@@ -19,14 +19,14 @@ const LAYOUTS: { mode: LayoutMode; label: string; description: string }[] = [
         description: 'Full player + 1 overlay',
     },
     {
-        mode: '2x2',
-        label: '2×2 Grid',
-        description: 'Equal 4-panel grid',
-    },
-    {
         mode: 'bigbottom',
         label: 'Big + Bottom Bar',
         description: 'Large main + 3 below',
+    },
+    {
+        mode: '2x2',
+        label: '2×2 Grid',
+        description: 'Equal 4-panel grid',
     },
 ];
 

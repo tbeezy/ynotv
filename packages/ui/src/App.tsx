@@ -148,7 +148,11 @@ const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
   focusSearch: 's',
   close: 'Escape',
   seekForward: 'ArrowRight',
-  seekBackward: 'ArrowLeft'
+  seekBackward: 'ArrowLeft',
+  layoutMain: '1',
+  layoutPip: '2',
+  layoutBigBottom: '3',
+  layout2x2: '4'
 };
 
 // Debug logging helper for UI playback
@@ -290,7 +294,9 @@ function App() {
   // Multiview state
   const multiview = useMultiview();
   const multiviewLayoutRef = useRef<LayoutMode>('main');
+  const switchLayoutRef = useRef(multiview.switchLayout);
   useEffect(() => { multiviewLayoutRef.current = multiview.layout; }, [multiview.layout]);
+  useEffect(() => { switchLayoutRef.current = multiview.switchLayout; }, [multiview.switchLayout]);
 
   // UI state
   const [showControls, setShowControls] = useState(true);
@@ -299,7 +305,7 @@ function App() {
 
   // Tab Mode: enter when EPG, Sports, or DVR opens; exit when they close
   useEffect(() => {
-    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr') {
+    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' || activeView === 'settings') {
       multiview.enterTabMode(activeView);
     } else {
       multiview.exitTabMode();
@@ -1284,6 +1290,18 @@ function App() {
       } else if (matches('seekBackward', e.key)) {
         e.preventDefault();
         handleSeek(positionRef.current - 10);
+      } else if (matches('layoutMain', e.key)) {
+        e.preventDefault();
+        if (switchLayoutRef.current) switchLayoutRef.current('main');
+      } else if (matches('layoutPip', e.key)) {
+        e.preventDefault();
+        if (switchLayoutRef.current) switchLayoutRef.current('pip');
+      } else if (matches('layoutBigBottom', e.key)) {
+        e.preventDefault();
+        if (switchLayoutRef.current) switchLayoutRef.current('bigbottom');
+      } else if (matches('layout2x2', e.key)) {
+        e.preventDefault();
+        if (switchLayoutRef.current) switchLayoutRef.current('2x2');
       }
     };
 

@@ -21,7 +21,11 @@ export type ShortcutAction =
     | 'focusSearch'
     | 'close'
     | 'seekForward'
-    | 'seekBackward';
+    | 'seekBackward'
+    | 'layoutMain'
+    | 'layoutPip'
+    | 'layoutBigBottom'
+    | 'layout2x2';
 
 export interface AppSettings {
     theme?: ThemeId;

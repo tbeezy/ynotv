@@ -23,7 +23,11 @@ const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
     focusSearch: 's',
     close: 'Escape',
     seekForward: 'ArrowRight',
-    seekBackward: 'ArrowLeft'
+    seekBackward: 'ArrowLeft',
+    layoutMain: '1',
+    layoutPip: '2',
+    layoutBigBottom: '3',
+    layout2x2: '4'
 };
 
 const ACTION_LABELS: Record<ShortcutAction, string> = {
@@ -43,12 +47,17 @@ const ACTION_LABELS: Record<ShortcutAction, string> = {
     focusSearch: 'Focus Search',
     close: 'Close / Back',
     seekForward: 'Seek Forward',
-    seekBackward: 'Seek Backward'
+    seekBackward: 'Seek Backward',
+    layoutMain: 'Layout: Main View',
+    layoutPip: 'Layout: Picture in Picture',
+    layoutBigBottom: 'Layout: Big + Bottom Bar',
+    layout2x2: 'Layout: 2×2 Grid'
 };
 
 const GROUPS: Record<string, ShortcutAction[]> = {
     'Playback': ['togglePlay', 'seekForward', 'seekBackward', 'toggleMute', 'selectSubtitle', 'selectAudio', 'toggleFullscreen'],
-    'Interface': ['toggleLiveTV', 'toggleGuide', 'toggleCategories', 'toggleDvr', 'toggleSettings', 'toggleStats', 'focusSearch', 'close']
+    'Interface': ['toggleLiveTV', 'toggleGuide', 'toggleCategories', 'toggleDvr', 'toggleSettings', 'toggleStats', 'focusSearch', 'close'],
+    'Layout': ['layoutMain', 'layoutPip', 'layoutBigBottom', 'layout2x2']
 };
 
 

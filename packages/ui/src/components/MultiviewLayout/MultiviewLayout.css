@@ -53,6 +53,7 @@
     /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
+    overflow: hidden;
 }
 
 /* Top-left quadrant is occupied by MPV (transparent placeholder) */
@@ -60,6 +61,7 @@
     grid-column: 1;
     grid-row: 1;
     pointer-events: none;
+    box-shadow: 0 0 0 4000px #000;
 }
 
 /* HLS cells need pointer events */
@@ -84,11 +86,13 @@
     /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
+    overflow: hidden;
 }
 
 .layout-bigbottom-mpv {
     grid-row: 1;
     pointer-events: none;
+    box-shadow: 0 0 0 4000px #000;
 }
 
 .layout-bottom-bar {

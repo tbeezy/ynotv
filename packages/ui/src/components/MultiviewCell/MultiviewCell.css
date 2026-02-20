@@ -133,6 +133,42 @@
     gap: 12px;
 }
 
+.multiview-cell-controls-volume {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 8px;
+    transition: width 0.2s;
+}
+
+.multiview-cell-volume-slider {
+    width: 0;
+    opacity: 0;
+    transition: all 0.2s ease;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    transform-origin: left;
+}
+
+.multiview-cell-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+}
+
+.multiview-cell-controls-volume:hover .multiview-cell-volume-slider {
+    width: 60px;
+    opacity: 1;
+}
+
 .multiview-cell-controls-btn {
     background: none;
     border: none;
