@@ -62,17 +62,17 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
     );
   };
 
-  const homeWinning = isLive || isFinished 
-    ? (event.homeScore ?? 0) > (event.awayScore ?? 0) 
+  const homeWinning = isLive || isFinished
+    ? (event.homeScore ?? 0) > (event.awayScore ?? 0)
     : false;
-  const awayWinning = isLive || isFinished 
-    ? (event.awayScore ?? 0) > (event.homeScore ?? 0) 
+  const awayWinning = isLive || isFinished
+    ? (event.awayScore ?? 0) > (event.homeScore ?? 0)
     : false;
 
   if (compact) {
     return (
-      <div 
-        className={`game-card compact ${event.status}`} 
+      <div
+        className={`game-card compact ${event.status}`}
         onClick={onClick}
         onKeyDown={handleKeyDown}
         tabIndex={0}
@@ -101,8 +101,8 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
   }
 
   return (
-    <div 
-      className={`game-card ${event.status} ${isLive ? 'has-status' : ''}`} 
+    <div
+      className={`game-card ${event.status} ${isLive ? 'has-status' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
@@ -118,9 +118,9 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
         <div className="game-card-team away">
           <div className="game-card-team-info">
             {event.awayTeam.logo && (
-              <img 
-                src={event.awayTeam.logo} 
-                alt={event.awayTeam.name} 
+              <img
+                src={event.awayTeam.logo}
+                alt={event.awayTeam.name}
                 className="game-card-team-logo"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
@@ -138,9 +138,9 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
         <div className="game-card-team home">
           <div className="game-card-team-info">
             {event.homeTeam.logo && (
-              <img 
-                src={event.homeTeam.logo} 
-                alt={event.homeTeam.name} 
+              <img
+                src={event.homeTeam.logo}
+                alt={event.homeTeam.name}
                 className="game-card-team-logo"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
@@ -161,7 +161,7 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
       {event.channels.length > 0 && (
         <div className="game-card-footer">
           <div className="game-card-channels">
-            {event.channels.slice(0, 2).map((channel, idx) => (
+            {event.channels.map((channel, idx) => (
               <button
                 key={idx}
                 className="game-card-channel-btn"
@@ -173,9 +173,6 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
                 {channel.name}
               </button>
             ))}
-            {event.channels.length > 2 && (
-              <span className="game-card-channels-more">+{event.channels.length - 2}</span>
-            )}
           </div>
         </div>
       )}
@@ -186,7 +183,7 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
 function FootballStatus({ event, isLive }: { event: SportsEvent; isLive: boolean }) {
   const period = event.period ? parseInt(event.period, 10) : 0;
   const quarterLabel = period <= 4 ? `Q${period}` : `OT${period - 4}`;
-  
+
   if (!isLive) {
     return event.period ? (
       <div className="game-card-status football">
@@ -207,7 +204,7 @@ function FootballStatus({ event, isLive }: { event: SportsEvent; isLive: boolean
 function BasketballStatus({ event, isLive }: { event: SportsEvent; isLive: boolean }) {
   const period = event.period ? parseInt(event.period, 10) : 0;
   const periodLabel = period <= 4 ? `Q${period}` : `OT${period - 4}`;
-  
+
   if (!isLive && !event.period) return null;
 
   return (
@@ -220,12 +217,12 @@ function BasketballStatus({ event, isLive }: { event: SportsEvent; isLive: boole
 
 function BaseballStatus({ event, isLive }: { event: SportsEvent; isLive: boolean }) {
   const period = event.period ? parseInt(event.period, 10) : 0;
-  const inningLabel = period > 9 ? `${period}th` : 
-    period === 1 ? '1st' : 
-    period === 2 ? '2nd' : 
-    period === 3 ? '3rd' : 
-    period ? `${period}th` : '';
-  
+  const inningLabel = period > 9 ? `${period}th` :
+    period === 1 ? '1st' :
+      period === 2 ? '2nd' :
+        period === 3 ? '3rd' :
+          period ? `${period}th` : '';
+
   if (!isLive && !event.period) return null;
 
   return (
@@ -241,10 +238,10 @@ function BaseballStatus({ event, isLive }: { event: SportsEvent; isLive: boolean
 
 function HockeyStatus({ event, isLive }: { event: SportsEvent; isLive: boolean }) {
   const period = event.period ? parseInt(event.period, 10) : 0;
-  const periodLabel = period <= 3 ? `${period}${period === 1 ? 'st' : period === 2 ? 'nd' : period === 3 ? 'rd' : 'th'}` : 
-    period === 4 ? 'OT' : 
-    period === 5 ? 'SO' : `${period - 3}OT`;
-  
+  const periodLabel = period <= 3 ? `${period}${period === 1 ? 'st' : period === 2 ? 'nd' : period === 3 ? 'rd' : 'th'}` :
+    period === 4 ? 'OT' :
+      period === 5 ? 'SO' : `${period - 3}OT`;
+
   if (!isLive && !event.period) return null;
 
   return (

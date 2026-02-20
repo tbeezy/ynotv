@@ -7,6 +7,8 @@ import { ChannelRow } from './ChannelRow';
 import { SearchResultRow } from './SearchResultRow';
 import { WatchlistRow } from './WatchlistRow';
 import { ChannelManager } from './settings/ChannelManager';
+import { FavoriteManager } from './settings/FavoriteManager';
+
 import { useChannelSortOrder } from '../stores/uiStore';
 import type { StoredChannel, StoredProgram, WatchlistItem } from '../db';
 import { db } from '../db';
@@ -94,6 +96,7 @@ export function ChannelPanel({
 
   // State for channel manager modal
   const [managingCategory, setManagingCategory] = useState<{ id: string; name: string; sourceId: string } | null>(null);
+  const [managingFavorites, setManagingFavorites] = useState(false);
 
   // Ref for measuring the grid container width
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -648,6 +651,15 @@ export function ChannelPanel({
               <>
                 <span className="guide-current-time">{formatTime(currentTime)}</span>
                 <span className="guide-channel-count">{channels.length} channels</span>
+                {categoryId === '__favorites__' && (
+                  <button
+                    className="guide-manage-channels-btn"
+                    onClick={() => setManagingFavorites(true)}
+                    title="Manage favorites order"
+                  >
+                    ⭐ Manage Favorites
+                  </button>
+                )}
                 {canManageChannels && (
                   <button
                     className="guide-manage-channels-btn"
@@ -954,6 +966,14 @@ export function ChannelPanel({
           categoryName={managingCategory.name}
           sourceId={managingCategory.sourceId}
           onClose={handleChannelManagerClose}
+          onChange={() => setFavoritesVersion(v => v + 1)}
+          sortOrder={channelSortOrder}
+        />
+      )}
+
+      {managingFavorites && (
+        <FavoriteManager
+          onClose={() => setManagingFavorites(false)}
           onChange={() => setFavoritesVersion(v => v + 1)}
         />
       )}

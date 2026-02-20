@@ -904,6 +904,83 @@ async fn clear_tmdb_cache(app: AppHandle) -> Result<(), String> {
 }
 
 // =============================================================================
+// Window State Persistence
+// =============================================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct WindowState {
+    width: u32,
+    height: u32,
+    x: i32,
+    y: i32,
+}
+
+fn window_state_path(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    app.path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("window_state.json"))
+}
+
+fn save_window_state(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        // Don't save fullscreen state — restore to last windowed geometry instead
+        if window.is_fullscreen().unwrap_or(false) {
+            return;
+        }
+        let size = match window.outer_size() {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+        let pos = match window.outer_position() {
+            Ok(p) => p,
+            Err(_) => return,
+        };
+        // Sanity-check: ignore absurd values (minimised, off-screen, etc.)
+        if size.width < 400 || size.height < 300 {
+            return;
+        }
+        let state = WindowState {
+            width: size.width,
+            height: size.height,
+            x: pos.x,
+            y: pos.y,
+        };
+        if let Some(path) = window_state_path(app) {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            if let Ok(json) = serde_json::to_string(&state) {
+                let _ = std::fs::write(&path, json);
+            }
+        }
+    }
+}
+
+fn restore_window_state(app: &tauri::AppHandle) {
+    if let Some(path) = window_state_path(app) {
+        if let Ok(json) = std::fs::read_to_string(&path) {
+            if let Ok(state) = serde_json::from_str::<WindowState>(&json) {
+                if let Some(window) = app.get_webview_window("main") {
+                    // Apply size
+                    let _ = window.set_size(tauri::Size::Physical(
+                        tauri::PhysicalSize { width: state.width, height: state.height }
+                    ));
+                    // Apply position (only if non-zero — avoids placing off-screen on first run)
+                    if state.x != 0 || state.y != 0 {
+                        let _ = window.set_position(tauri::Position::Physical(
+                            tauri::PhysicalPosition { x: state.x, y: state.y }
+                        ));
+                    }
+                    println!("[WindowState] Restored: {}x{} at ({}, {})",
+                        state.width, state.height, state.x, state.y);
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
 // App Entry Point
 // =============================================================================
 
@@ -974,7 +1051,16 @@ pub fn run() {
                 });
             }
 
+            // Restore saved window geometry (size + position)
+            restore_window_state(app.handle());
+
             Ok(())
+        })
+        // Save window size/position when the window is about to close
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                save_window_state(&window.app_handle());
+            }
         })
         .invoke_handler(tauri::generate_handler![
             // MPV commands

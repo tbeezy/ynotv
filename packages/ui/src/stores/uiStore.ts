@@ -68,8 +68,9 @@ export const useUIStore = create<UIState>((set) => ({
   setSyncStatusMessage: (msg) => set({ syncStatusMessage: msg }),
 
   // Channel display settings
-  channelSortOrder: 'alphabetical',
+  channelSortOrder: 'number',
   setChannelSortOrder: (value) => set({ channelSortOrder: value }),
+
 }));
 
 // Selectors for cleaner component code

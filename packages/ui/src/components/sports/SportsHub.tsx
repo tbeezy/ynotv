@@ -43,9 +43,10 @@ export function SportsHub({ onClose, onSearchChannels }: SportsHubProps) {
   const handleSearchChannels = useCallback((channelName: string) => {
     if (onSearchChannels) {
       onSearchChannels(channelName);
-      onClose();
+      // Note: do NOT call onClose() here — onSearchChannels already switches
+      // activeView to 'guide', so calling onClose() would immediately undo that.
     }
-  }, [onSearchChannels, onClose]);
+  }, [onSearchChannels]);
 
   const handleBack = useCallback(() => {
     if (selectedTeam) {

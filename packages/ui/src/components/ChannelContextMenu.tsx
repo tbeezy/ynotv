@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { scheduleRecording, detectScheduleConflicts, type DvrSchedule } from '../db';
+import { scheduleRecording, detectScheduleConflicts, type DvrSchedule, db } from '../db';
 import type { StoredChannel } from '../db';
 import { StalkerClient } from '@ynotv/local-adapter';
 import { useModal } from './Modal';
+import { addChannelsToGroup } from '../services/custom-groups';
 import './ProgramContextMenu.css'; // Reuse the same styles
 
-type MenuView = 'main' | 'quick' | 'custom';
+type MenuView = 'main' | 'quick' | 'custom' | 'group';
 
 interface ChannelContextMenuProps {
     channel: StoredChannel;
@@ -34,6 +35,10 @@ export function ChannelContextMenu({
     const [adjustedPosition, setAdjustedPosition] = useState(position);
     const { showSuccess, showError, ModalComponent } = useModal();
 
+    // Group state
+    const [customGroups, setCustomGroups] = useState<{ group_id: string; name: string }[]>([]);
+    const [addingToGroup, setAddingToGroup] = useState<string | null>(null);
+
     // Custom date/time state
     const now = new Date();
     const defaultEnd = new Date(now.getTime() + 30 * 60 * 1000);
@@ -41,6 +46,18 @@ export function ChannelContextMenu({
     const [startTime, setStartTime] = useState(formatTimeForInput(now));
     const [endDate, setEndDate] = useState(formatDateForInput(defaultEnd));
     const [endTime, setEndTime] = useState(formatTimeForInput(defaultEnd));
+
+    // Load custom groups when the user opens the group submenu
+    useEffect(() => {
+        if (currentView !== 'group') return;
+        let isMounted = true;
+        db.customGroups.toArray().then(groups => {
+            if (isMounted) setCustomGroups(groups.sort((a, b) => a.name.localeCompare(b.name)));
+        }).catch(() => {
+            if (isMounted) setCustomGroups([]);
+        });
+        return () => { isMounted = false; };
+    }, [currentView]);
 
     // Adjust position to keep menu within viewport
     useLayoutEffect(() => {
@@ -53,29 +70,14 @@ export function ChannelContextMenu({
             let x = position.x;
             let y = position.y;
 
-            // Prevent menu from going off right edge
-            if (x + rect.width > viewportWidth) {
-                x = viewportWidth - rect.width - 10;
-            }
-
-            // Prevent menu from going off bottom edge
-            if (y + rect.height > viewportHeight) {
-                y = viewportHeight - rect.height - 10;
-            }
-
-            // Prevent menu from going off left edge
-            if (x < 10) {
-                x = 10;
-            }
-
-            // Prevent menu from going off top edge
-            if (y < 10) {
-                y = 10;
-            }
+            if (x + rect.width > viewportWidth) x = viewportWidth - rect.width - 10;
+            if (y + rect.height > viewportHeight) y = viewportHeight - rect.height - 10;
+            if (x < 10) x = 10;
+            if (y < 10) y = 10;
 
             setAdjustedPosition({ x, y });
         }
-    }, [position]);
+    }, [position, currentView]);
 
     // Close on click outside
     useEffect(() => {
@@ -84,7 +86,6 @@ export function ChannelContextMenu({
                 onClose();
             }
         }
-
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [onClose]);
@@ -92,45 +93,17 @@ export function ChannelContextMenu({
     // Close on escape
     useEffect(() => {
         function handleEscape(e: KeyboardEvent) {
-            if (e.key === 'Escape') {
-                onClose();
-            }
+            if (e.key === 'Escape') onClose();
         }
-
         document.addEventListener('keydown', handleEscape);
         return () => document.removeEventListener('keydown', handleEscape);
     }, [onClose]);
-
-    // Close on escape
-    useEffect(() => {
-        function handleEscape(e: KeyboardEvent) {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        }
-
-        document.addEventListener('keydown', handleEscape);
-        return () => document.removeEventListener('keydown', handleEscape);
-    }, [onClose]);
-
-    function handleQuickRecordClick() {
-        setCurrentView('quick');
-    }
-
-    function handleCustomRecordClick() {
-        setCurrentView('custom');
-    }
 
     async function createRecording(startTimestamp: number, endTimestamp: number, title: string) {
-        // Get channel info to check if we need URL resolution
         let resolvedUrl: string | undefined;
 
-        // For Stalker sources, resolve the URL before scheduling
         if (channel.direct_url?.startsWith('stalker_')) {
-            if (!window.storage) {
-                throw new Error('Storage API not available');
-            }
-
+            if (!window.storage) throw new Error('Storage API not available');
             const sourceRes = await window.storage.getSource(channel.source_id);
             if (sourceRes.data?.type === 'stalker' && sourceRes.data.mac) {
                 const client = new StalkerClient({
@@ -138,9 +111,7 @@ export function ChannelContextMenu({
                     mac: sourceRes.data.mac,
                     userAgent: sourceRes.data.user_agent
                 }, channel.source_id);
-
                 resolvedUrl = await client.resolveStreamUrl(channel.direct_url);
-                console.log('[ChannelContextMenu] Resolved Stalker URL:', resolvedUrl);
             }
         }
 
@@ -158,32 +129,24 @@ export function ChannelContextMenu({
             stream_url: resolvedUrl,
         };
 
-        // Check for conflicts
         const conflictResult = await detectScheduleConflicts(schedule);
         if (conflictResult.hasConflict) {
             showError('Scheduling Conflict', conflictResult.message || 'This program conflicts with an existing recording.');
             return;
         }
 
-        // Schedule the recording
         await scheduleRecording(schedule);
-
         const durationMins = Math.round((endTimestamp - startTimestamp) / 60);
-        showSuccess(
-            'Recording Scheduled',
-            `${channel.name} scheduled for ${durationMins} minutes`
-        );
+        showSuccess('Recording Scheduled', `${channel.name} scheduled for ${durationMins} minutes`);
         onClose();
     }
 
     async function handleConfirmQuickRecord() {
         setScheduling(true);
-
         try {
             const now = new Date();
             const startTimestamp = Math.floor(now.getTime() / 1000);
             const endTimestamp = startTimestamp + (durationMinutes * 60);
-
             await createRecording(startTimestamp, endTimestamp, `${channel.name} - Quick Record`);
         } catch (error: any) {
             console.error('Failed to schedule recording:', error);
@@ -195,7 +158,6 @@ export function ChannelContextMenu({
 
     async function handleConfirmCustomRecord() {
         setScheduling(true);
-
         try {
             const startDateTime = new Date(`${startDate}T${startTime}`);
             const endDateTime = new Date(`${endDate}T${endTime}`);
@@ -204,7 +166,6 @@ export function ChannelContextMenu({
                 showError('Invalid Input', 'Invalid date/time selected');
                 return;
             }
-
             if (endDateTime <= startDateTime) {
                 showError('Invalid Input', 'End time must be after start time');
                 return;
@@ -212,7 +173,6 @@ export function ChannelContextMenu({
 
             const startTimestamp = Math.floor(startDateTime.getTime() / 1000);
             const endTimestamp = Math.floor(endDateTime.getTime() / 1000);
-
             await createRecording(startTimestamp, endTimestamp, `${channel.name} - Scheduled`);
         } catch (error: any) {
             console.error('Failed to schedule recording:', error);
@@ -222,19 +182,65 @@ export function ChannelContextMenu({
         }
     }
 
+    async function handleAddToGroup(groupId: string, groupName: string) {
+        if (addingToGroup) return;
+        setAddingToGroup(groupId);
+        try {
+            await addChannelsToGroup(groupId, [channel.stream_id]);
+            showSuccess('Added to Group', `${channel.name} added to "${groupName}"`);
+            onClose();
+        } catch (e: any) {
+            console.error('Failed to add channel to group:', e);
+            showError('Failed', e?.message || 'Could not add channel to group');
+            setAddingToGroup(null);
+        }
+    }
+
     const durationOptions = [5, 15, 30, 60, 90, 120, 180, 240];
 
-    // QUICK RECORD VIEW
+    // ── ADD TO GROUP VIEW ──
+    if (currentView === 'group') {
+        return (
+            <div
+                ref={menuRef}
+                className="program-context-menu"
+                style={{ left: `${adjustedPosition.x}px`, top: `${adjustedPosition.y}px`, minWidth: '200px' }}
+            >
+                <div className="context-menu-header">
+                    Add to Group
+                </div>
+                <div className="context-menu-separator" />
+                {customGroups.length === 0 && (
+                    <div style={{ padding: '10px 16px', opacity: 0.5, fontSize: '0.85rem' }}>
+                        No custom groups yet
+                    </div>
+                )}
+                {customGroups.map(group => (
+                    <div
+                        key={group.group_id}
+                        className="context-menu-item"
+                        onClick={() => handleAddToGroup(group.group_id, group.name)}
+                        style={{ opacity: addingToGroup === group.group_id ? 0.5 : 1 }}
+                    >
+                        {addingToGroup === group.group_id ? '⏳' : '📋'} {group.name}
+                    </div>
+                ))}
+                <div className="context-menu-separator" />
+                <div className="context-menu-item context-menu-item-secondary" onClick={() => setCurrentView('main')}>
+                    ← Back
+                </div>
+                <ModalComponent />
+            </div>
+        );
+    }
+
+    // ── QUICK RECORD VIEW ──
     if (currentView === 'quick') {
         return (
             <div
                 ref={menuRef}
                 className="program-context-menu"
-                style={{
-                    left: `${adjustedPosition.x}px`,
-                    top: `${adjustedPosition.y}px`,
-                    minWidth: '200px',
-                }}
+                style={{ left: `${adjustedPosition.x}px`, top: `${adjustedPosition.y}px`, minWidth: '200px' }}
             >
                 <div className="context-menu-header">
                     Quick Record {channel.name}
@@ -260,11 +266,7 @@ export function ChannelContextMenu({
                     >
                         {scheduling ? '⏳ Starting...' : `📹 Record ${durationMinutes} min`}
                     </button>
-                    <button
-                        className="context-menu-btn context-menu-btn-secondary"
-                        onClick={onClose}
-                        disabled={scheduling}
-                    >
+                    <button className="context-menu-btn context-menu-btn-secondary" onClick={onClose} disabled={scheduling}>
                         Cancel
                     </button>
                 </div>
@@ -273,56 +275,30 @@ export function ChannelContextMenu({
         );
     }
 
-    // CUSTOM RECORD VIEW
+    // ── CUSTOM RECORD VIEW ──
     if (currentView === 'custom') {
         return (
             <div
                 ref={menuRef}
                 className="program-context-menu"
-                style={{
-                    left: `${adjustedPosition.x}px`,
-                    top: `${adjustedPosition.y}px`,
-                    minWidth: '260px',
-                }}
+                style={{ left: `${adjustedPosition.x}px`, top: `${adjustedPosition.y}px`, minWidth: '260px' }}
             >
-                <div className="context-menu-header">
-                    Schedule Recording
-                </div>
+                <div className="context-menu-header">Schedule Recording</div>
                 <div className="context-menu-separator" />
 
                 <div className="datetime-section">
                     <label className="datetime-label">Start</label>
                     <div className="datetime-inputs">
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="datetime-input"
-                        />
-                        <input
-                            type="time"
-                            value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
-                            className="datetime-input"
-                        />
+                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="datetime-input" />
+                        <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="datetime-input" />
                     </div>
                 </div>
 
                 <div className="datetime-section">
                     <label className="datetime-label">End</label>
                     <div className="datetime-inputs">
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="datetime-input"
-                        />
-                        <input
-                            type="time"
-                            value={endTime}
-                            onChange={(e) => setEndTime(e.target.value)}
-                            className="datetime-input"
-                        />
+                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="datetime-input" />
+                        <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="datetime-input" />
                     </div>
                 </div>
 
@@ -335,11 +311,7 @@ export function ChannelContextMenu({
                     >
                         {scheduling ? '⏳ Scheduling...' : '📹 Schedule'}
                     </button>
-                    <button
-                        className="context-menu-btn context-menu-btn-secondary"
-                        onClick={onClose}
-                        disabled={scheduling}
-                    >
+                    <button className="context-menu-btn context-menu-btn-secondary" onClick={onClose} disabled={scheduling}>
                         Cancel
                     </button>
                 </div>
@@ -348,21 +320,22 @@ export function ChannelContextMenu({
         );
     }
 
-    // MAIN MENU VIEW
+    // ── MAIN MENU VIEW ──
     return (
         <div
             ref={menuRef}
             className="program-context-menu"
-            style={{
-                left: `${adjustedPosition.x}px`,
-                top: `${adjustedPosition.y}px`,
-            }}
+            style={{ left: `${adjustedPosition.x}px`, top: `${adjustedPosition.y}px` }}
         >
-            <div className="context-menu-item" onClick={handleCustomRecordClick}>
+            <div className="context-menu-item" onClick={() => setCurrentView('custom')}>
                 📹 Record...
             </div>
-            <div className="context-menu-item" onClick={handleQuickRecordClick}>
+            <div className="context-menu-item" onClick={() => setCurrentView('quick')}>
                 ⚡ Quick Record
+            </div>
+            <div className="context-menu-separator" />
+            <div className="context-menu-item" onClick={() => setCurrentView('group')}>
+                📋 Add to Group →
             </div>
             <div className="context-menu-separator" />
             <div className="context-menu-item context-menu-item-secondary" onClick={onClose}>

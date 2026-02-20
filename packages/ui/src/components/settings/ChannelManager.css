@@ -129,7 +129,7 @@
     outline: none;
     border-color: var(--accent-primary, #00d4ff);
     box-shadow: 0 0 0 1px var(--accent-primary, #00d4ff),
-                0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
+        0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
 }
 
 .channel-search input::placeholder {
@@ -182,6 +182,31 @@
 .channel-item.disabled .channel-name {
     text-decoration: line-through;
 }
+
+.channel-item.dragging {
+    opacity: 0.4;
+}
+
+.channel-item.drag-over {
+    border-top: 2px solid var(--accent-primary, #00d4ff);
+}
+
+/* Drag handle in ChannelManager (same design as CategoryManager) */
+.channel-item .drag-handle {
+    color: rgba(255, 255, 255, 0.2);
+    cursor: grab;
+    font-size: 1rem;
+    letter-spacing: -2px;
+    flex-shrink: 0;
+    padding: 0 4px 0 0;
+    user-select: none;
+}
+
+.channel-item:hover .drag-handle {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+
 
 .channel-checkbox {
     display: flex;
@@ -309,7 +334,7 @@
     outline: none;
     border-color: var(--accent-primary, #00d4ff);
     box-shadow: 0 0 0 1px var(--accent-primary, #00d4ff),
-                0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
+        0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
 }
 
 .filter-add-btn {

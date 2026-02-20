@@ -10,9 +10,11 @@ interface ChannelManagerProps {
     sourceId: string;
     onClose: () => void;
     onChange?: () => void;
+    sortOrder?: 'alphabetical' | 'number';
 }
 
-export function ChannelManager({ categoryId, categoryName, sourceId, onClose, onChange }: ChannelManagerProps) {
+
+export function ChannelManager({ categoryId, categoryName, sourceId, onClose, onChange, sortOrder = 'number' }: ChannelManagerProps) {
     const [channels, setChannels] = useState<StoredChannel[]>([]);
     const [isDirty, setIsDirty] = useState(false);
     const [hideDisabled, setHideDisabled] = useState(false);
@@ -21,6 +23,21 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
     const [newFilterWord, setNewFilterWord] = useState('');
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const isSavingRef = useRef(false);
+
+    // Container-level pointer drag for reorder (same pattern as CategoryManager)
+    const dragFromIdx = useRef<number | null>(null);
+    const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+
+    const getIndexFromClientY = (clientY: number): number => {
+        if (!listRef.current) return 0;
+        const children = Array.from(listRef.current.children) as HTMLElement[];
+        for (let i = 0; i < children.length; i++) {
+            const rect = children[i].getBoundingClientRect();
+            if (clientY < rect.top + rect.height / 2) return i;
+        }
+        return Math.max(0, children.length - 1);
+    };
 
     // Ensure font size CSS variable is set when modal opens
     useEffect(() => {
@@ -57,20 +74,28 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
     // Initialize channels from database (but not while saving)
     useEffect(() => {
         if (dbChannels && !isSavingRef.current) {
-            // Sort by name
-            const sorted = [...dbChannels].sort((a, b) => 
-                a.name.localeCompare(b.name)
-            );
+            const sorted = [...dbChannels].sort((a, b) => {
+                // If any channel has a manually saved display_order, use that
+                if (a.display_order != null && b.display_order != null) return a.display_order - b.display_order;
+                if (a.display_order != null) return -1;
+                if (b.display_order != null) return 1;
+                // Fall back to the sort order preference
+                if (sortOrder === 'number') {
+                    const numA = a.channel_num ?? Infinity;
+                    const numB = b.channel_num ?? Infinity;
+                    if (numA !== numB) return numA - numB;
+                }
 
-            // Set enabled if not set (default to true)
+                return a.name.localeCompare(b.name);
+            });
             const channelsWithEnabled = sorted.map((ch) => ({
                 ...ch,
-                enabled: ch.enabled !== false, // Default to true unless explicitly false
+                enabled: ch.enabled !== false,
             }));
             setChannels(channelsWithEnabled);
             setIsDirty(false);
         }
-    }, [dbChannels]);
+    }, [dbChannels, sortOrder]);
 
     // Toggle enable/disable
     const toggleChannel = useCallback((channelId: string) => {
@@ -78,6 +103,48 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
             ch.stream_id === channelId ? { ...ch, enabled: !ch.enabled } : ch
         ));
         setIsDirty(true);
+    }, []);
+
+    // Pointer drag handlers — on container
+    const handleHandlePointerDown = useCallback((e: React.PointerEvent, index: number) => {
+        if (e.button !== 0) return;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        dragFromIdx.current = index;
+        setDragOverIdx(index);
+    }, []);
+
+    const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
+        if (dragFromIdx.current === null) return;
+        e.preventDefault();
+        setDragOverIdx(getIndexFromClientY(e.clientY));
+    }, []);
+
+    const handleContainerPointerUp = useCallback((e: React.PointerEvent) => {
+        if (dragFromIdx.current === null) return;
+        const from = dragFromIdx.current;
+        const to = getIndexFromClientY(e.clientY);
+        dragFromIdx.current = null;
+        setDragOverIdx(null);
+        if (from === to) return;
+        setChannels(chs => {
+            const visible = chs.filter((_, i) => !hideDisabled || chs[i].enabled !== false);
+            // Remap: find actual indices in full array
+            const fromStreamId = visible[from]?.stream_id;
+            const toStreamId = visible[to]?.stream_id;
+            if (!fromStreamId || !toStreamId) return chs;
+            const fromActual = chs.findIndex(c => c.stream_id === fromStreamId);
+            const toActual = chs.findIndex(c => c.stream_id === toStreamId);
+            const next = [...chs];
+            const [moved] = next.splice(fromActual, 1);
+            next.splice(toActual, 0, moved);
+            return next.map((ch, idx) => ({ ...ch, display_order: idx }));
+        });
+        setIsDirty(true);
+    }, [hideDisabled]);
+
+    const handleContainerPointerCancel = useCallback(() => {
+        dragFromIdx.current = null;
+        setDragOverIdx(null);
     }, []);
 
     // Select all
@@ -121,36 +188,25 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
     // Save changes
     const handleSave = useCallback(async () => {
         try {
-            // Mark that we're saving to prevent useEffect from resetting state
             isSavingRef.current = true;
-
-            // Save ALL channels with their current state
             await db.transaction('rw', [db.channels, db.categories], async () => {
-                for (const ch of channels) {
-                    await db.channels.update(ch.stream_id, { 
-                        enabled: ch.enabled 
+                for (let i = 0; i < channels.length; i++) {
+                    await db.channels.update(channels[i].stream_id, {
+                        enabled: channels[i].enabled,
+                        display_order: i,
                     });
                 }
-                // Save filter words to category
                 await db.categories.update(categoryId, {
                     filter_words: filterWords
                 });
             });
-
-            // Wait for database to commit
             await new Promise(resolve => setTimeout(resolve, 300));
-
-            // Trigger UI refresh
-            if (onChange) {
-                await onChange();
-            }
-
+            if (onChange) await onChange();
             onClose();
         } catch (err) {
             console.error('[ChannelManager] Failed to save:', err);
             alert('Failed to save changes. Please try again.');
         } finally {
-            // Always reset the saving flag
             isSavingRef.current = false;
         }
     }, [channels, filterWords, categoryId, onChange, onClose]);
@@ -158,20 +214,20 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
     // Get visible channels based on filter and search
     const visibleChannels = useMemo(() => {
         let filtered = channels;
-        
+
         // Filter by enabled status
         if (hideDisabled) {
             filtered = filtered.filter(c => c.enabled !== false);
         }
-        
+
         // Filter by search query
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(c => 
+            filtered = filtered.filter(c =>
                 c.name.toLowerCase().includes(query)
             );
         }
-        
+
         return filtered;
     }, [channels, hideDisabled, searchQuery]);
 
@@ -250,19 +306,32 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
                     />
                 </div>
 
-                <div className="channel-list">
+                <div
+                    className="channel-list"
+                    ref={listRef}
+                    onPointerMove={handleContainerPointerMove}
+                    onPointerUp={handleContainerPointerUp}
+                    onPointerCancel={handleContainerPointerCancel}
+                >
                     {visibleChannels.length === 0 ? (
                         <div className="channel-empty">
                             {searchQuery ? 'No channels match your search' : 'No channels in this category'}
                         </div>
                     ) : (
-                        visibleChannels.map((ch) => {
+                        visibleChannels.map((ch, visibleIndex) => {
                             const filteredName = applyFilterWords(ch.name);
+                            const isDragging = dragFromIdx.current === visibleIndex;
+                            const isDragOver = dragOverIdx === visibleIndex && dragFromIdx.current !== null && dragFromIdx.current !== visibleIndex;
                             return (
                                 <div
                                     key={ch.stream_id}
-                                    className={`channel-item ${ch.enabled === false ? 'disabled' : ''}`}
+                                    className={`channel-item ${ch.enabled === false ? 'disabled' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
                                 >
+                                    <span
+                                        className="drag-handle"
+                                        style={{ touchAction: 'none' }}
+                                        onPointerDown={e => handleHandlePointerDown(e, visibleIndex)}
+                                    >⋮⋮</span>
                                     <label className="channel-checkbox">
                                         <input
                                             type="checkbox"

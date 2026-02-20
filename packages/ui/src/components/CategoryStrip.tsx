@@ -97,6 +97,33 @@ function RecentlyViewedButton({ selectedCategoryId, onSelectCategory }: { select
   );
 }
 
+// Custom Group button with reactive channel count
+interface CustomGroupButtonProps {
+  group: CustomGroup;
+  selectedCategoryId: string | null;
+  onSelectCategory: (id: string | null) => void;
+  onContextMenu: (e: React.MouseEvent, groupId: string) => void;
+}
+function CustomGroupButton({ group, selectedCategoryId, onSelectCategory, onContextMenu }: CustomGroupButtonProps) {
+  const channelCount = useLiveQuery(
+    () => db.customGroupChannels.where('group_id').equals(group.group_id).count(),
+    [group.group_id]
+  );
+
+  return (
+    <button
+      className={`category-item ${selectedCategoryId === group.group_id ? 'selected' : ''}`}
+      onClick={() => onSelectCategory(group.group_id)}
+      onContextMenu={(e) => onContextMenu(e, group.group_id)}
+    >
+      <span className="category-name">📂 {group.name}</span>
+      <span className="category-count">{channelCount ?? 0}</span>
+    </button>
+  );
+}
+
+
+
 export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, sidebarExpanded, showSidebar = true }: CategoryStripProps) {
   const groupedCategories = useCategoriesBySource();
   const [sources, setSources] = useState<Record<string, string>>({});
@@ -241,16 +268,15 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           <div className="custom-groups-section">
             <div className="section-divider"></div>
             {customGroups.map(group => (
-              <button
+              <CustomGroupButton
                 key={group.group_id}
-                className={`category-item ${selectedCategoryId === group.group_id ? 'selected' : ''}`}
-                onClick={() => onSelectCategory(group.group_id)}
-                onContextMenu={(e) => handleContextMenu(e, group.group_id)}
-              >
-                <span className="category-name">📂 {group.name}</span>
-                {/* We could calc count here too but might be expensive in loop */}
-              </button>
+                group={group}
+                selectedCategoryId={selectedCategoryId}
+                onSelectCategory={onSelectCategory}
+                onContextMenu={handleContextMenu}
+              />
             ))}
+
           </div>
         )}
 

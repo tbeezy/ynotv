@@ -15,10 +15,24 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
     const [categories, setCategories] = useState<StoredCategory[]>([]);
     const [isDirty, setIsDirty] = useState(false);
     const [hideUnselected, setHideUnselected] = useState(false);
-    const [draggingId, setDraggingId] = useState<string | null>(null);
-    const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [managingCategory, setManagingCategory] = useState<{ id: string; name: string } | null>(null);
     const isSavingRef = useRef(false);
+
+    // Pointer-event drag state
+    const dragFromIdx = useRef<number | null>(null);
+    const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+
+    // Compute which list-item index a clientY falls into
+    const getIndexFromClientY = (clientY: number): number => {
+        if (!listRef.current) return 0;
+        const children = Array.from(listRef.current.children) as HTMLElement[];
+        for (let i = 0; i < children.length; i++) {
+            const rect = children[i].getBoundingClientRect();
+            if (clientY < rect.top + rect.height / 2) return i;
+        }
+        return Math.max(0, children.length - 1);
+    };
 
     // Load categories for this source
     const dbCategories = useLiveQuery(
@@ -81,55 +95,41 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
         setIsDirty(true);
     }, []);
 
-    // Drag and Drop Handlers
-    const handleDragStart = useCallback((e: React.DragEvent, categoryId: string) => {
-        setDraggingId(categoryId);
-        e.dataTransfer.effectAllowed = 'move';
-        // Set drag data
-        e.dataTransfer.setData('text/plain', categoryId);
+    // Pointer-event drag handlers — attached to the CONTAINER, not individual items
+    // This avoids the pointer-capture trap where captured events only reach the handle element
+    const handleHandlePointerDown = useCallback((e: React.PointerEvent, index: number) => {
+        if (e.button !== 0) return;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        dragFromIdx.current = index;
+        setDragOverIdx(index);
     }, []);
 
-    const handleDragOver = useCallback((e: React.DragEvent, categoryId: string) => {
+    const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
+        if (dragFromIdx.current === null) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        setDragOverId(categoryId);
+        const idx = getIndexFromClientY(e.clientY);
+        setDragOverIdx(idx);
     }, []);
 
-    const handleDragLeave = useCallback(() => {
-        setDragOverId(null);
-    }, []);
-
-    const handleDrop = useCallback((e: React.DragEvent, targetId: string) => {
-        e.preventDefault();
-        setDragOverId(null);
-        
-        const draggedId = e.dataTransfer.getData('text/plain');
-        if (!draggedId || draggedId === targetId) {
-            setDraggingId(null);
-            return;
-        }
-
+    const handleContainerPointerUp = useCallback((e: React.PointerEvent) => {
+        if (dragFromIdx.current === null) return;
+        const from = dragFromIdx.current;
+        const to = getIndexFromClientY(e.clientY);
+        dragFromIdx.current = null;
+        setDragOverIdx(null);
+        if (from === to) return;
         setCategories(cats => {
-            const draggedIndex = cats.findIndex(c => c.category_id === draggedId);
-            const targetIndex = cats.findIndex(c => c.category_id === targetId);
-            
-            if (draggedIndex === -1 || targetIndex === -1) return cats;
-
             const newCats = [...cats];
-            const [removed] = newCats.splice(draggedIndex, 1);
-            newCats.splice(targetIndex, 0, removed);
-            
-            // Update display_order for all
+            const [removed] = newCats.splice(from, 1);
+            newCats.splice(to, 0, removed);
             return newCats.map((cat, idx) => ({ ...cat, display_order: idx }));
         });
-        
-        setDraggingId(null);
         setIsDirty(true);
     }, []);
 
-    const handleDragEnd = useCallback(() => {
-        setDraggingId(null);
-        setDragOverId(null);
+    const handleContainerPointerCancel = useCallback(() => {
+        dragFromIdx.current = null;
+        setDragOverIdx(null);
     }, []);
 
     // Select all
@@ -202,28 +202,29 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
                     </button>
                 </div>
 
-                <div className="category-list">
+                <div
+                    className="category-list"
+                    ref={listRef}
+                    onPointerMove={handleContainerPointerMove}
+                    onPointerUp={handleContainerPointerUp}
+                    onPointerCancel={handleContainerPointerCancel}
+                >
                     {visibleCategories.map((cat) => {
                         const index = categories.findIndex(c => c.category_id === cat.category_id);
-                        const isDragging = draggingId === cat.category_id;
-                        const isDragOver = dragOverId === cat.category_id;
+                        const isDragging = dragFromIdx.current === index;
+                        const isDragOver = dragOverIdx === index && dragFromIdx.current !== null && dragFromIdx.current !== index;
 
                         return (
                             <div
                                 key={cat.category_id}
                                 className={`category-item ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
-                                onDragOver={(e) => handleDragOver(e, cat.category_id)}
-                                onDragLeave={handleDragLeave}
-                                onDrop={(e) => handleDrop(e, cat.category_id)}
                             >
                                 <span
                                     className="drag-handle"
-                                    title="Drag to reorder"
-                                    draggable={true}
-                                    onDragStart={(e) => handleDragStart(e, cat.category_id)}
-                                    onDragEnd={handleDragEnd}
+                                    style={{ touchAction: 'none' }}
+                                    onPointerDown={(e) => handleHandlePointerDown(e, index)}
                                 >
-                                    ☰
+                                    ⋮⋮
                                 </span>
 
                                 <label className="category-checkbox">

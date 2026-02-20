@@ -8,7 +8,11 @@ export interface StoredChannel extends Omit<Channel, 'stream_icon' | 'epg_channe
   name: string;
   channel_num?: number;
   is_favorite?: boolean;    // For favorites feature
+  fav_order?: number;       // Custom ordering for favorites
+  display_order?: number;   // Custom ordering for channels within a category
   enabled?: boolean;        // For showing/hiding channels
+
+
   // For quick lookups
   source_category_key?: string; // `${source_id}_${category_id}` for compound index
 
@@ -333,7 +337,11 @@ class YnotvDatabase extends SqliteDatabase {
 
     await addColumn('channels', 'direct_url', 'TEXT');
     await addColumn('channels', 'enabled', 'BOOLEAN');
+    await addColumn('channels', 'fav_order', 'INTEGER');
+    await addColumn('channels', 'display_order', 'INTEGER');
     await addColumn('categories', 'filter_words', 'TEXT');
+
+
     await addColumn('vodSeries', 'title', 'TEXT');
     await addColumn('vodSeries', 'last_modified', 'TEXT');
     await addColumn('vodSeries', 'year', 'TEXT');

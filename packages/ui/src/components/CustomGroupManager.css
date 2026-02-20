@@ -44,6 +44,79 @@
     color: var(--text-primary, #fff);
 }
 
+/* Rename UI */
+.cgm-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.cgm-title-row h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.cgm-rename-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.5;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: opacity 0.2s;
+    line-height: 1;
+}
+
+.cgm-rename-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cgm-rename-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.cgm-rename-input {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--accent-primary, #00d4ff);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary, #fff);
+    font-size: 1rem;
+    font-weight: 600;
+    outline: none;
+    font-family: inherit;
+}
+
+.cgm-rename-ok {
+    background: var(--accent-primary, #00d4ff);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+/* Drag-over highlight */
+.group-channel-item[data-dragover="true"] {
+    border-top: 2px solid var(--accent-primary, #00d4ff);
+}
+
+.group-channel-item[data-dragging="true"] {
+    opacity: 0.4;
+}
+
+
 .close-btn {
     background: none;
     border: none;
