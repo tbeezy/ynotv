@@ -2,10 +2,15 @@
 
 .multiview-cell {
     position: relative;
-    background: #0a0a0a;
+    background: transparent; /* Transparent so MPV windows show through when at HWND_TOP */
     overflow: hidden;
     cursor: pointer;
     user-select: none;
+}
+
+/* Only show background when cell is empty (no video) */
+.multiview-cell-empty {
+    background: #0a0a0a;
 }
 
 .multiview-cell-active:hover {

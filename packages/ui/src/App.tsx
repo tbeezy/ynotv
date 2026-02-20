@@ -296,6 +296,15 @@ function App() {
   const [showControls, setShowControls] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [activeView, setActiveView] = useState<View>('none');
+  
+  // Guide mode: enter when EPG opens, exit when it closes
+  useEffect(() => {
+    if (activeView === 'guide') {
+      multiview.enterGuideMode();
+    } else {
+      multiview.exitGuideMode();
+    }
+  }, [activeView, multiview]);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false); // Default to hidden
@@ -1619,6 +1628,8 @@ function App() {
           setActiveView('none');
           setCategoriesOpen(false);
           setSidebarExpanded(false);
+          // Exit guide mode: restore multiview state if it was active
+          multiview.exitGuideMode();
           // EPG guard: only reset MPV geometry if multiview is NOT active
           // (if multiview is active, MPV stays in its grid quadrant)
           if (multiviewLayoutRef.current === 'main') {

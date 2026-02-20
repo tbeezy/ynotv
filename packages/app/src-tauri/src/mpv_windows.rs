@@ -465,7 +465,6 @@ pub async fn mpv_set_geometry<R: Runtime>(
 
     // EnumChildWindows to find the MPV window (class "mpv")
     struct SearchData { result: HWND }
-    let mut data = SearchData { result: HWND(std::ptr::null_mut()) };
 
     unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let data = &mut *(lparam.0 as *mut SearchData);
@@ -482,23 +481,44 @@ pub async fn mpv_set_geometry<R: Runtime>(
         BOOL(1) // continue
     }
 
-    unsafe {
-        let _ = EnumChildWindows(
-            parent_hwnd,
-            Some(enum_proc),
-            LPARAM(&mut data as *mut SearchData as isize),
-        );
+    // Helper to search for the MPV child HWND with a few retries.
+    fn find_child_with_retries(parent_hwnd: HWND, tx: i32, ty: i32, tw: u32, th: u32) -> Option<HWND> {
+        use std::thread;
+        use std::time::Duration;
+
+        unsafe {
+            let mut attempt = 0;
+            while attempt < 5 {
+                let mut data = SearchData { result: HWND(std::ptr::null_mut()) };
+                let _ = EnumChildWindows(
+                    parent_hwnd,
+                    Some(enum_proc),
+                    LPARAM(&mut data as *mut SearchData as isize),
+                );
+                if !data.result.0.is_null() {
+                    println!("[MPV Windows] Found MPV child HWND on attempt {} → x={} y={} w={} h={}",
+                        attempt + 1, tx, ty, tw, th);
+                    return Some(data.result);
+                }
+                attempt += 1;
+                thread::sleep(Duration::from_millis(150));
+            }
+        }
+
+        None
     }
 
-    if data.result.0.is_null() {
+    let target_hwnd = find_child_with_retries(parent_hwnd, tx, ty, tw, th);
+
+    if target_hwnd.is_none() {
         // MPV window not found — fall back to IPC zoom/align
-        println!("[MPV Windows] MPV child window not found, skipping SetWindowPos");
+        println!("[MPV Windows] MPV child window not found after retries, skipping SetWindowPos");
         return Ok(());
     }
 
     unsafe {
         SetWindowPos(
-            data.result,
+            target_hwnd.unwrap(),
             None,
             tx,
             ty,

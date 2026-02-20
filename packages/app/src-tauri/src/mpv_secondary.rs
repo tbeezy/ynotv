@@ -89,15 +89,25 @@ fn find_mpv_hwnd_by_pid(parent_hwnd_raw: isize, target_pid: u32) -> Option<isize
     if data.result == 0 { None } else { Some(data.result) }
 }
 
-/// Resize an HWND (identified by raw isize) to the given rect
-fn set_hwnd_rect(hwnd_raw: isize, x: i32, y: i32, w: u32, h: u32) -> Result<(), String> {
+/// Resize an HWND (identified by raw isize) to the given rect.
+/// If bring_to_front is true, brings the window to HWND_TOP so it's visible above the webview.
+/// This is necessary for secondary MPV windows in multiview layouts to be visible,
+/// but we must ensure they're killed when returning to 'main' layout to prevent blocking UI.
+fn set_hwnd_rect(hwnd_raw: isize, x: i32, y: i32, w: u32, h: u32, bring_to_front: bool) -> Result<(), String> {
     use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOZORDER, SWP_NOACTIVATE};
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOZORDER, SWP_NOACTIVATE, HWND_TOP};
 
     let hwnd = HWND(hwnd_raw as _);
     unsafe {
-        SetWindowPos(hwnd, None, x, y, w as i32, h as i32, SWP_NOZORDER | SWP_NOACTIVATE)
-            .map_err(|e| format!("SetWindowPos failed: {}", e))?;
+        if bring_to_front {
+            // Bring secondary MPV windows to front so they're visible above webview
+            SetWindowPos(hwnd, HWND_TOP, x, y, w as i32, h as i32, SWP_NOACTIVATE)
+                .map_err(|e| format!("SetWindowPos failed: {}", e))?;
+        } else {
+            // Main MPV stays behind webview (no z-order change)
+            SetWindowPos(hwnd, None, x, y, w as i32, h as i32, SWP_NOZORDER | SWP_NOACTIVATE)
+                .map_err(|e| format!("SetWindowPos failed: {}", e))?;
+        }
     }
     Ok(())
 }
@@ -200,6 +210,7 @@ pub async fn spawn_slot<R: Runtime>(
         "--cursor-autohide=no".into(),
         "--no-terminal".into(),
         "--volume=80".into(),
+        "--mute=yes".into(),
     ];
 
     let sidecar = app.shell().sidecar("mpv")
@@ -228,10 +239,17 @@ pub async fn spawn_slot<R: Runtime>(
     // Wait for MPV to create its window, then position it
     tokio::time::sleep(Duration::from_millis(1200)).await;
 
+    println!("[SecondaryMPV] Slot {} attempting to find HWND (pid={}) and position at x={} y={} w={} h={}", 
+        slot_id, pid, x, y, width, height);
+
     // Find the MPV child HWND and position it
     if let Some(hwnd_raw) = find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
-        if let Err(e) = set_hwnd_rect(hwnd_raw, x, y, width, height) {
+        println!("[SecondaryMPV] Slot {} found HWND: {}, positioning...", slot_id, hwnd_raw);
+        if let Err(e) = set_hwnd_rect(hwnd_raw, x, y, width, height, true) {
             println!("[SecondaryMPV] Slot {} initial reposition failed: {}", slot_id, e);
+        } else {
+            println!("[SecondaryMPV] Slot {} successfully positioned at x={} y={} w={} h={} (brought to front)", 
+                slot_id, x, y, width, height);
         }
         // Store the discovered HWND so we don't need to search again
         let ipc_tx = connect_ipc(&socket_path).await.ok();
@@ -239,7 +257,7 @@ pub async fn spawn_slot<R: Runtime>(
         let mut slots = state.slots.lock().unwrap();
         slots.insert(slot_id, SlotInstance { pid, hwnd: hwnd_raw, ipc_tx });
     } else {
-        println!("[SecondaryMPV] Slot {} HWND not found — storing without HWND", slot_id);
+        println!("[SecondaryMPV] Slot {} HWND not found after search — storing without HWND (will retry on reposition)", slot_id);
         let ipc_tx = connect_ipc(&socket_path).await.ok();
         let state = app.state::<SecondaryMpvState>();
         let mut slots = state.slots.lock().unwrap();
@@ -260,6 +278,9 @@ pub async fn load_slot<R: Runtime>(
     width: u32,
     height: u32,
 ) -> Result<(), String> {
+    println!("[SecondaryMPV] load_slot called: slot={} x={} y={} w={} h={} url={}", 
+        slot_id, x, y, width, height, &url[..url.len().min(60)]);
+
     // Check if slot is already running; extract tx clone before any await
     let existing_tx = {
         let state = app.state::<SecondaryMpvState>();
@@ -268,7 +289,13 @@ pub async fn load_slot<R: Runtime>(
     };
 
     if existing_tx.is_none() {
+        println!("[SecondaryMPV] Slot {} not found, spawning new instance...", slot_id);
         spawn_slot(app, slot_id, x, y, width, height).await?;
+    } else {
+        // Slot already exists - reposition it to the new coordinates
+        println!("[SecondaryMPV] Slot {} already exists, repositioning to x={} y={} w={} h={}", 
+            slot_id, x, y, width, height);
+        reposition_slot(app, slot_id, x, y, width, height).await?;
     }
 
     // Reload tx after potential spawn
@@ -281,6 +308,8 @@ pub async fn load_slot<R: Runtime>(
     if let Some(tx) = tx {
         send_ipc(&tx, "loadfile", vec![json!(url)]).await;
         println!("[SecondaryMPV] Slot {} loading: {}", slot_id, &url[..url.len().min(80)]);
+    } else {
+        println!("[SecondaryMPV] WARNING: Slot {} has no IPC channel after spawn/reposition", slot_id);
     }
     Ok(())
 }
@@ -307,16 +336,45 @@ pub async fn reposition_slot<R: Runtime>(
     width: u32,
     height: u32,
 ) -> Result<(), String> {
-    let hwnd_raw = {
+    let slot_entry = {
         let state = app.state::<SecondaryMpvState>();
         let slots = state.slots.lock().unwrap();
-        slots.get(&slot_id).map(|s| s.hwnd)
+        slots.get(&slot_id).map(|s| (s.hwnd, s.pid))
     };
 
-    if let Some(hwnd) = hwnd_raw {
-        if hwnd != 0 {
-            set_hwnd_rect(hwnd, x, y, width, height)?;
+    if let Some((hwnd, pid)) = slot_entry {
+        let mut effective_hwnd = hwnd;
+
+        // If we never discovered the HWND during spawn, try to locate it now by PID
+        if effective_hwnd == 0 {
+            if let Ok(parent_hwnd_raw) = get_parent_hwnd(app) {
+                if let Some(found) = find_mpv_hwnd_by_pid(parent_hwnd_raw, pid) {
+                    println!("[SecondaryMPV] Re-discovered HWND for slot {} (pid={}): {}", slot_id, pid, found);
+                    effective_hwnd = found;
+                    // Persist the discovered HWND so future calls don't need to search
+                    {
+                        let state = app.state::<SecondaryMpvState>();
+                        let mut slots = state.slots.lock().unwrap();
+                        if let Some(slot) = slots.get_mut(&slot_id) {
+                            slot.hwnd = found;
+                        }
+                    }
+                } else {
+                    println!("[SecondaryMPV] WARNING: Could not find HWND for slot {} (pid={}) during reposition", slot_id, pid);
+                }
+            }
         }
+
+        if effective_hwnd != 0 {
+            println!("[SecondaryMPV] reposition_slot → slot={} x={} y={} w={} h={}", slot_id, x, y, width, height);
+            set_hwnd_rect(effective_hwnd, x, y, width, height, true)?;
+            println!("[SecondaryMPV] reposition_slot → slot={} completed successfully (brought to front)", slot_id);
+        } else {
+            println!("[SecondaryMPV] WARNING: No valid HWND for slot {} during reposition; skipping SetWindowPos", slot_id);
+        }
+    } else {
+        println!("[SecondaryMPV] WARNING: reposition_slot called for unknown slot {}", slot_id);
     }
+
     Ok(())
 }

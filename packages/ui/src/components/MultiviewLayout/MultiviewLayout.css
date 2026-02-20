@@ -17,7 +17,7 @@
 
 .layout-pip-overlay {
     position: absolute;
-    bottom: 72px;
+    bottom: 100px; /* Above media bar (90px) + some padding */
     right: 12px;
     width: 280px;
     height: 158px;
@@ -38,12 +38,15 @@
 
 .layout-2x2-cells {
     position: absolute;
-    inset: 0;
+    top: 32px; /* Below title bar */
+    bottom: 90px; /* Above media bar */
+    left: 0;
+    right: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 2px;
-    background: #0d0d0d;
+    background: transparent; /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
 }
@@ -64,11 +67,14 @@
 
 .layout-bigbottom-cells {
     position: absolute;
-    inset: 0;
+    top: 32px; /* Below title bar */
+    bottom: 90px; /* Above media bar */
+    left: 0;
+    right: 0;
     display: grid;
     grid-template-rows: 1fr 160px;
     gap: 2px;
-    background: #0d0d0d;
+    background: transparent; /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
 }
