@@ -144,6 +144,7 @@ const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
   toggleCategories: 'c',
   toggleLiveTV: 'l',
   toggleDvr: 'r',
+  toggleSports: 'u',
   toggleSettings: ',',
   focusSearch: 's',
   close: 'Escape',
@@ -1259,6 +1260,12 @@ function App() {
         // Toggle Settings
         const currentActiveView = activeViewRef.current;
         setActiveView(currentActiveView === 'settings' ? 'none' : 'settings');
+      } else if (matches('toggleSports', e.key)) {
+        e.preventDefault();
+        // Toggle Sports
+        const currentActiveView = activeViewRef.current;
+        setCategoriesOpen(false);
+        setActiveView(currentActiveView === 'sports' ? 'none' : 'sports');
       } else if (matches('toggleDvr', e.key)) {
         e.preventDefault();
         // Toggle DVR
@@ -1346,8 +1353,14 @@ function App() {
               <button
                 className={`segmented-btn ${activeView === 'guide' || (activeView === 'none' && categoriesOpen) ? 'active' : ''}`}
                 onClick={() => {
-                  setActiveView('guide');
-                  setCategoriesOpen(true);
+                  const newLiveTVState = !(activeView === 'guide' && categoriesOpen);
+                  if (newLiveTVState) {
+                    setActiveView('guide');
+                    setCategoriesOpen(true);
+                  } else {
+                    setActiveView('none');
+                    setCategoriesOpen(false);
+                  }
                 }}
                 title="Live TV"
               >

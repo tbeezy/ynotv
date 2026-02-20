@@ -21,6 +21,7 @@ interface MultiviewCellProps {
 export function MultiviewCell({
     slotId,
     channelName,
+    channelUrl,
     active,
     onSwapWithMain,
     onStop,
@@ -28,7 +29,16 @@ export function MultiviewCell({
 }: MultiviewCellProps) {
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
     const [volume, setVolume] = useState(100);
-    const [muted, setMuted] = useState(false);
+    const [muted, setMuted] = useState(true);
+
+    // Reset volume and mute state when a new channel is loaded into this slot
+    useEffect(() => {
+        if (channelUrl && active) {
+            setVolume(100);
+            setMuted(true);
+            onSetProperty('mute', true);
+        }
+    }, [channelUrl, active, onSetProperty]);
 
     const handleClick = () => {
         if (active) onSwapWithMain();

@@ -53,7 +53,6 @@
     /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
-    overflow: hidden;
 }
 
 /* Top-left quadrant is occupied by MPV (transparent placeholder) */
@@ -86,7 +85,6 @@
     /* Transparent so MPV windows show through */
     z-index: 5;
     pointer-events: none;
-    overflow: hidden;
 }
 
 .layout-bigbottom-mpv {
