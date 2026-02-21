@@ -346,7 +346,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
       case 'theme':
         return (
           <ThemeTab
-            theme={theme || 'dark'}
+            theme={theme || 'glass-neon'}
             onThemeChange={onThemeChange || (() => { })}
           />
         );

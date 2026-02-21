@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-AGPL%20v3-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)]()
 
-A modern, cross-platform IPTV player built with **Tauri v2** and **React**. Features stunning glassmorphism UI, DVR recording, comprehensive EPG guide, VOD support, TMDB integration, and watchlist management.
+A modern, feature-rich FOSS IPTV player built with **Tauri v2** and **React**, delivering a premium viewing experience with an elegant interface. This was made with the help of AI.
 
 
 <div align="center">
@@ -15,58 +15,51 @@ A modern, cross-platform IPTV player built with **Tauri v2** and **React**. Feat
 
 ---
 
-## ✨ What Makes ynoTV Special
+## ✨ Features
 
-### 🎨 Visual Excellence
-- **40+ Beautiful Themes**: Dark, light, glassmorphism, solid gradients, and vibrant neon themes
-- **Miami Vice, Neon Collection**: Hot pink, electric blue, lime, and more neon accent themes
-- **Glassmorphism UI**: Frosted glass effects with blur, transparency, and depth
-- **Customizable Interface**: Font sizes, sidebar visibility, channel sorting
+### 📡 Playlist Management
+- **Multi-format Support** — M3U/M3U8 playlists, Xtream Codes API, and Stalker Portal integration
+- **EPG Integration** — Built-in EPG support with separate EPG source configuration
+- **Backup Credentials** — Add backup MAC addresses or credentials to any provider with one-click switching
+- **Custom User Agents** — Per-source user agent configuration for maximum compatibility
+- **Source Overview** — View channel, movie, and series counts for each playlist at a glance
+- **Connection Monitoring** — Real-time active/max connection status and expiration dates
+- **Playlist Control** — Enable, disable, and reorder playlists with ease
+- **Category Management** — Enable/disable categories and reorganize your channel list
 
-### 📡 Advanced IPTV Support
-- **Multiple Source Types**: Xtream Codes API, Stalker Portal, M3U/M3U8 playlists
-- **MAC Stalker Support**: Full support for MAC-based Stalker portals with backup MACs
-- **Smart Subcategories**: Each source maintains its own main category structure
-- **Custom User Agents**: Per-source user agent configuration for compatibility
-- **Expiration Tracking**: Displays expiration dates for Stalker and Xtream sources
-- **Connection Monitoring**: Shows current/max connections for Xtream portals
+### 📺 User Interface
+- **Full EPG Guide** — Comprehensive electronic program guide with integrated video preview
+- **Intuitive Navigation** — Single click to watch, double-click for fullscreen
+- **Quick Favorites** — One-click to add any channel to your favorites
+- **Custom Groups** — Create personalized channel groups for quick access
 
-### 📺 Live TV & EPG
-- **Traditional EPG View**: Browse like classic IPTV players
-- **Time Shifting**: Configurable EPG timezone offsets per source
-- **Single-Click Preview**: Quick preview with double-click fullscreen
-- **Smart Title Scrolling**: Channel names scroll when highlighted
-- **Category Management**: Reorder, hide/show, and organize categories
-- **Favorites System**: Quick access to most-watched channels
-- **Channel Ordering**: Sort by provider numbers or alphabetically
+### 🔍 Search
+- **Lightning Fast** — SQLite-powered search for instant results
+- **Comprehensive** — Search across channel names and EPG program data
 
-### 🎥 Video & Playback
-- **mpv Integration**: Powerful, hardware-accelerated video playback
-- **Stream Stats**: Detailed stream information and diagnostics
-- **Audio/Subtitle Tracks**: Easy track switching on the fly
-- **Fallback Streams**: Automatic fallback when primary stream fails
-- **HTTP Error Reporting**: Shows error codes instead of blank screens
+### ⏰ Watchlist & Reminders
+- **EPG Watchlist** — Add any program to your watchlist directly from the guide
+- **Smart Notifications** — Popup reminders with customizable timing and auto-tune options
+- **Auto Channel Swap** — Can set to automatically switch to the channel when your watchlist program begins
 
-### 📼 DVR (Digital Video Recording)
-- **Schedule Recordings**: Record live TV programs
-- **Series Recording**: Auto-record by title pattern
-- **Storage Management**: Configurable storage location
-- **Recording Library**: Browse and manage recorded content
-- **Thumbnail Previews**: Automatic thumbnail generation for recordings
+### ⏺️ DVR Recording
+- **Quick Record** — One-click recording on the currently playing channel
+- **Scheduled Recordings** — Set recordings at specific times for a channel without EPG
+- **EPG Recording** — Record programs directly from the guide
+- **In-App Playback** — Watch all your recordings without leaving the app
 
-### 🎬 Watchlist & VOD
-- **TMDB Integration**: Enhanced metadata, posters, backdrops
-- **Watchlist Management**: Track movies and series you want to watch
-- **Genre Browsing**: Discover movies and series by genre
-- **Poster Overlays**: Rating badges via RPDB integration
-- **Recently Added**: Track new VOD content
+### 🏈 Sports Hub
+- **Live Scoreboards** — Real-time scores for major sports leagues with detailed game information
+- **Channel Integration** — View the channel source for each match and instantly search for it
 
-### ⚡ Power User Features
-- **Customizable Shortcuts**: Fully configurable keyboard hotkeys
-- **Import/Export**: Backup and restore settings, sources, favorites
-- **Debug Logging**: Comprehensive logs for troubleshooting
-- **Single Provider Resync**: Update specific sources without full refresh
-- **Quick Provider Switching**: Swap credentials for rapid account changes
+### 🖼️ Multiview
+- **Flexible Layouts** — Picture-in-picture mode or up to 4 simultaneous streams
+- **Quick Swap** — Easily exchange feeds between main and secondary windows
+- **Independent Audio** — Control volume and mute for each channel individually
+
+### 🎨 Personalization
+- **40+ Built-in Themes** — Dark, light, glassmorphism, gradients, and vibrant neon options for every taste
+- **Import/Export** — Backup and restore all your settings with ease
 
 ---
 
@@ -452,9 +445,11 @@ Fully customizable in Settings → Shortcuts
 
 ## ⚠️ Disclaimer
 
-This application is a **media player only** and does not provide any content. Users must provide their own IPTV service credentials from legitimate providers. The developers are not responsible for how this software is used or for any content accessed through it.
-
-This product uses the TMDB API but is not endorsed or certified by TMDB.
+Disclaimer
+This application is a media player only. It does not provide, host, distribute, or facilitate access to any streaming services, broadcast content, channel lists, or IPTV subscriptions of any kind.
+All content, streams, and playlists are sourced, configured, and managed solely by the end user. The developers of this application have no knowledge of, control over, or responsibility for any third-party content accessed through the application.
+It is the sole responsibility of the user to ensure that any content they choose to access complies with the laws and regulations applicable in their jurisdiction. The developers do not condone, encourage, or support the use of this application to access unlicensed, unauthorized, or otherwise illegal content.
+By using this application, you acknowledge and agree that the developers bear no liability for how the application is used.
 
 ---
 

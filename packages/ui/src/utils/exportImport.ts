@@ -89,7 +89,7 @@ export async function exportAllData(): Promise<{ success: boolean; filePath?: st
             version: EXPORT_VERSION,
             timestamp: new Date().toISOString(),
             sources: sourcesResult.data || [],
-            settings: settingsResult.data || { theme: 'dark' },
+            settings: settingsResult.data || { theme: 'glass-neon' },
             favorites: favoriteData,
             categoryPreferences,
             channelPreferences

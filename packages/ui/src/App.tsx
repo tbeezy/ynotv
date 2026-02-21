@@ -477,7 +477,7 @@ function App() {
   const [shortcuts, setShortcuts] = useState<ShortcutsMap>({});
 
   // Theme state
-  const [theme, setTheme] = useState<ThemeId>('dark');
+  const [theme, setTheme] = useState<ThemeId>('glass-neon');
 
   // Apply theme effect
   useEffect(() => {
