@@ -1646,7 +1646,8 @@ function App() {
       </div>
 
       {/* Multiview HLS cell grid (rendered on top of MPV, which renders behind) */}
-      {multiview.layout !== 'main' && (
+      {/* Hide when in tab mode (guide/sports/dvr/settings) so secondaries don't block preview */}
+      {multiview.layout !== 'main' && activeView === 'none' && (
         <MultiviewLayout
           layout={multiview.layout}
           slots={multiview.slots}
