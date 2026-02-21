@@ -17,13 +17,36 @@ interface UseSportsPollingResult {
   isPolling: boolean;
 }
 
+// Global cache to persist data across component mounts
+interface SportsCache {
+  events: SportsEvent[];
+  lastUpdated: Date | null;
+  leagues: string[] | undefined;
+}
+const sportsCache: SportsCache = {
+  events: [],
+  lastUpdated: null,
+  leagues: undefined,
+};
+
+// How long cache is considered fresh (5 minutes if no live games, 30s if live)
+const CACHE_FRESH_NO_LIVE = 5 * 60 * 1000;
+const CACHE_FRESH_LIVE = 30 * 1000;
+
 export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSportsPollingResult {
   const { pollingInterval = 30000, enabled = true, leagues } = options;
   
-  const [events, setEvents] = useState<SportsEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<SportsEvent[]>(() => {
+    // Initialize from cache if available and leagues match
+    if (sportsCache.events.length > 0 && 
+        JSON.stringify(sportsCache.leagues) === JSON.stringify(leagues)) {
+      return sportsCache.events;
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(sportsCache.events.length === 0);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(sportsCache.lastUpdated);
   const [isPolling, setIsPolling] = useState(false);
   
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -46,6 +69,10 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
       const data = await getLiveScores(leagues);
       setEvents(data);
       setLastUpdated(new Date());
+      // Update global cache
+      sportsCache.events = data;
+      sportsCache.lastUpdated = new Date();
+      sportsCache.leagues = leagues;
       console.log('[SportsPolling] Fetched', data.length, 'events,', data.filter(e => e.status === 'live').length, 'live');
     } catch (err) {
       console.error('[SportsPolling] Failed to fetch:', err);
@@ -60,10 +87,22 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     await fetchData(true);
   }, [fetchData]);
 
-  // Initial fetch
+  // Check if cache is fresh enough to skip initial fetch
+  const isCacheFresh = useCallback(() => {
+    if (!sportsCache.lastUpdated) return false;
+    const age = Date.now() - sportsCache.lastUpdated.getTime();
+    const hasLive = sportsCache.events.some(e => e.status === 'live');
+    return age < (hasLive ? CACHE_FRESH_LIVE : CACHE_FRESH_NO_LIVE);
+  }, []);
+
+  // Initial fetch - only if cache is empty or stale
   useEffect(() => {
+    if (sportsCache.events.length > 0 && isCacheFresh()) {
+      console.log('[SportsPolling] Using cached data');
+      return;
+    }
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, isCacheFresh]);
 
   // Polling effect
   useEffect(() => {
@@ -103,14 +142,13 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     };
   }, [enabled, hasLiveGames, events.length, pollingInterval, fetchData]);
 
-  // Visibility change handler - refresh when tab becomes visible
+  // Visibility change handler - refresh when tab becomes visible only if cache is stale
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && lastUpdated) {
-        const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
-        // If more than 30 seconds since last update, refresh immediately
-        if (timeSinceLastUpdate > pollingInterval) {
-          console.log('[SportsPolling] Tab visible, refreshing...');
+        // Only refresh if cache is stale
+        if (!isCacheFresh()) {
+          console.log('[SportsPolling] Tab visible, cache stale, refreshing...');
           fetchData();
         }
       }
@@ -121,7 +159,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [lastUpdated, pollingInterval, fetchData]);
+  }, [lastUpdated, isCacheFresh, fetchData]);
 
   return {
     events,
