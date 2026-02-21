@@ -115,13 +115,12 @@ pub async fn launch_mpv<R: Runtime>(
             match event {
                 CommandEvent::Stdout(line) => {
                     let stdout_str = String::from_utf8_lossy(&line).to_string();
-                    println!("[MPV] {}", stdout_str);
+                    // println!("[MPV] {}", stdout_str); // uncomment for local debugging
                     parse_and_emit(&stdout_str, &app_handle_for_stderr);
                 },
                 CommandEvent::Stderr(line) => {
                     let stderr_str = String::from_utf8_lossy(&line).to_string();
-                    println!("[MPV stderr] {}", stderr_str);
-                    let _ = app_handle_for_stderr.emit("mpv-stderr", stderr_str.clone());
+                    // println!("[MPV stderr] {}", stderr_str); // uncomment for local debugging
                     parse_and_emit(&stderr_str, &app_handle_for_stderr);
                 },
                 CommandEvent::Error(e) => println!("[MPV error] {}", e),

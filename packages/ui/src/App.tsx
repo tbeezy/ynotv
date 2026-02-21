@@ -639,12 +639,7 @@ function App() {
           // Optional start-file listener if we want to reset error
         });
 
-        // Debug listener to see exactly what stderr MPV is producing
-        const unlistenStderr = await listen('mpv-stderr', (e: any) => {
-          console.log('[mpv-stderr]', e.payload);
-        });
-
-        unlistenFunctions.push(unlistenReady, unlistenStatus, unlistenError, unlistenHttpError, unlistenEndFileError, unlistenStartFile, unlistenStderr);
+        unlistenFunctions.push(unlistenReady, unlistenStatus, unlistenError, unlistenHttpError, unlistenEndFileError, unlistenStartFile);
 
         // Initialize MPV AFTER listeners are ready to catch mpv-ready event
         Bridge.initMpv();

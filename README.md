@@ -63,7 +63,52 @@ A modern, feature-rich FOSS IPTV player built with **Tauri v2** and **React**, d
 
 ---
 
-## 📥 Installation
+## 🎮 Keyboard Shortcuts
+
+Fully customizable in Settings → Shortcuts
+
+### Playback Controls
+| Action | Default Shortcut |
+|--------|-----------------|
+| Play / Pause | `Space` |
+| Mute / Unmute | `M` |
+| Seek Forward | `→` |
+| Seek Backward | `←` |
+| Toggle Fullscreen | `F` |
+
+### Interface
+| Action | Default Shortcut |
+|--------|-----------------|
+| Toggle Live TV | `L` |
+| Toggle Guide | `G` |
+| Toggle Categories | `C` |
+| Toggle DVR | `R` |
+| Toggle Sports | `U` |
+| Toggle Settings | `,` |
+| Toggle Stats | `I` |
+| Focus Search | `S` |
+| Close / Back | `Esc` |
+
+### Layout
+| Action | Default Shortcut |
+|--------|-----------------|
+| Main View | `1` |
+| Picture in Picture | `2` |
+| Big + Bottom Bar | `3` |
+| 2×2 Grid | `4` |
+
+### Stream Controls
+| Action | Default Shortcut |
+|--------|-----------------|
+| Audio Track Menu | `A` |
+| Subtitle Menu | `J` |
+
+
+---
+
+
+<details>
+<summary>## 📥 Installation</summary>
 
 ### Download Pre-built Binaries
 
@@ -133,10 +178,12 @@ sudo apt-get install -f
 ```bash
 sudo rpm -i ynoTV.x86_64.rpm
 ```
+</details>
 
 ---
 
-## 🛠️ Building from Source
+<details>
+<summary>## 🛠️ Building from Source</summary>
 
 ### Prerequisites
 
@@ -238,10 +285,12 @@ pnpm run typecheck
 ```bash
 pnpm run lint
 ```
+</details>
 
 ---
 
-## 📁 Data Location
+<details>
+<summary>## 📁 Data Location</summary>
 
 ### Configuration & Settings
 
@@ -334,118 +383,13 @@ Default: Configurable in Settings → DVR
 ```
 ~/Videos/ynoTV Recordings/
 ```
-
----
-
-## 🎮 Keyboard Shortcuts
-
-Fully customizable in Settings → Shortcuts
-
-### Playback Controls
-| Action | Default Shortcut |
-|--------|-----------------|
-| Play/Pause | `Space` |
-| Mute/Unmute | `M` |
-| Volume Up | `↑` |
-| Volume Down | `↓` |
-| Seek Forward | `→` |
-| Seek Backward | `←` |
-| Fullscreen | `F` |
-
-### Navigation
-| Action | Default Shortcut |
-|--------|-----------------|
-| Toggle Guide | `G` |
-| Toggle Categories | `C` |
-| Toggle Live TV | `L` |
-| Toggle DVR | `D` |
-| Toggle Watchlist | `W` |
-| Toggle Settings | `,` |
-| Focus Search | `/` |
-| Close Window | `Esc` |
-
-### Stream Controls
-| Action | Default Shortcut |
-|--------|-----------------|
-| Cycle Audio Track | `A` |
-| Cycle Subtitle Track | `S` |
-| Toggle Stats | `I` |
-
----
-
-## 🐛 Troubleshooting
-
-### Video Not Playing
-
-**Symptoms:** Black screen, loading spinner
-
-**Solutions:**
-1. Check stream URL validity (test in external player)
-2. Verify source credentials in Settings → Sources
-3. Try different User-Agent in source settings
-4. Enable debug logging and check logs
-5. Check if mpv is properly installed (macOS/Linux)
-
-### EPG Not Showing
-
-**Symptoms:** "No EPG Data" message
-
-**Solutions:**
-1. Verify EPG URL in source settings
-2. Check that `epg_channel_id` matches provider's `tvg-id`
-3. Force EPG sync from Settings → Sources → Sync
-4. Adjust EPG timeshift hours for timezone
-5. Check if EPG source is accessible
-
-### Channels Not Loading
-
-**Symptoms:** Empty channel list
-
-**Solutions:**
-1. Check network connectivity
-2. Verify source is enabled
-3. Test source connection in Settings → Sources
-4. Check credentials (username/password/MAC)
-5. Try manual sync with debug logging enabled
-
-### Sync Failures
-
-**Symptoms:** Sync hangs or fails
-
-**Solutions:**
-1. Check API rate limiting
-2. Verify source credentials
-3. Check for very large EPG files (>50MB)
-4. Review debug logs for specific errors
-5. Try syncing individual sources instead of all
-
-### DVR Not Recording
-
-**Symptoms:** Recordings fail to start
-
-**Solutions:**
-1. Verify FFmpeg is installed (macOS/Linux): `ffmpeg -version`
-2. Check DVR storage location has free space
-3. Enable debug logging to check FFmpeg path detection
-4. On macOS/Linux, ensure FFmpeg is in PATH or bundled
-
-### macOS: Video Separate Window
-
-**Note:** This is a known limitation. macOS builds currently play video in a separate window due to Tauri platform constraints.
-
-### Getting Help
-
-1. **Enable Debug Logging:** Settings → Debug
-2. **Check Logs:** See [Data Location](#-data-location) section
-3. **Open Issue:** [GitHub Issues](../../issues)
-4. **Provide:** Platform, version, logs, steps to reproduce
-
+</details>
 
 ---
 
 ## ⚠️ Disclaimer
 
-Disclaimer
+
 This application is a media player only. It does not provide, host, distribute, or facilitate access to any streaming services, broadcast content, channel lists, or IPTV subscriptions of any kind.
 All content, streams, and playlists are sourced, configured, and managed solely by the end user. The developers of this application have no knowledge of, control over, or responsibility for any third-party content accessed through the application.
 It is the sole responsibility of the user to ensure that any content they choose to access complies with the laws and regulations applicable in their jurisdiction. The developers do not condone, encourage, or support the use of this application to access unlicensed, unauthorized, or otherwise illegal content.
