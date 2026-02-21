@@ -47,86 +47,6 @@ import type { LayoutMode } from './hooks/useMultiview';
 import './themes.css';
 
 // Helper to check stream status if mpv fails
-export async function checkStreamStatus(url: string, userAgent?: string): Promise<string | null> {
-  console.log('[checkStreamStatus] Checking:', url);
-  try {
-    const headers: Record<string, string> = {
-      'Range': 'bytes=0-2048', // Peek first 2KB
-      'Cache-Control': 'no-cache'
-    };
-    if (userAgent) headers['User-Agent'] = userAgent;
-
-    // Tauri Environment or Dev
-    // Note: tauriFetch follows redirects by default
-    const response = await tauriFetch(url, {
-      method: 'GET',
-      headers
-    });
-
-    console.log('[checkStreamStatus] Result Status:', response.status, response.statusText);
-
-    if (!response.ok) {
-      // Hard HTTP errors
-      if (response.status === 403 || response.status === 401) {
-        console.error(`[checkStreamStatus] Access Denied (${response.status}) for:`, url);
-        return `Access Denied (${response.status}): ${response.statusText}`;
-      }
-      if (response.status === 404) {
-        return `Stream Not Found (404)`;
-      }
-      return `HTTP Error ${response.status}: ${response.statusText}`;
-    }
-
-    // Soft Error Detection (200 OK but actually HTML error)
-    // CRITICAL: If server returns 200 OK (ignoring Range header), it might be sending the FULL infinite stream.
-    // Reading .text() here will HANG the app as it downloads a live stream into memory.
-    // We must be very careful.
-
-    const contentType = response.headers.get('content-type') || '';
-    const contentLength = response.headers.get('content-length');
-
-    // Safety check: Only read body if:
-    // 1. It is '206 Partial Content' (Server respected Range limit)
-    // 2. OR Content-Type indicates HTML (likely an error page)
-    // 3. OR Content-Length is small (< 100KB)
-
-    const isSafeToRead =
-      response.status === 206 ||
-      contentType.includes('text/html') ||
-      (contentLength && parseInt(contentLength) < 100000);
-
-    if (isSafeToRead) {
-      try {
-        const text = await response.text();
-        const trimmed = text.trim().substring(0, 500).toLowerCase();
-
-        // Check for common error signatures
-        const isHtml = trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html');
-
-        if (isHtml) {
-          // If it's HTML, it's likely NOT a video stream (unless it's an HLS master playlist)
-          if (!text.includes('#EXTM3U')) {
-            console.log('[checkStreamStatus] Detected HTML response for stream url:', text.substring(0, 100));
-
-            if (text.includes('Forbidden') || text.includes('Unauthorized') || text.includes('Access denied') || text.includes('Error')) {
-              return 'Stream Access Denied (Auth Failed)';
-            }
-            return 'Invalid Stream Format (HTML response)';
-          }
-        }
-      } catch (readError) {
-        console.warn('[checkStreamStatus] Could not read response body:', readError);
-      }
-    } else {
-      console.log('[checkStreamStatus] 200 OK with infinite stream potential. Skipping body check to prevent hang.');
-    }
-
-    return null; // OK
-  } catch (e: any) {
-    console.error('[checkStreamStatus] Exception:', e);
-    return `Connection failed: ${e.message || 'Unknown error'}`;
-  }
-}
 
 // Auto-hide controls after this many milliseconds of inactivity
 const CONTROLS_AUTO_HIDE_MS = 3000;
@@ -235,17 +155,7 @@ async function tryLoadWithFallbacks(
   // We launch MPV immediately. If it works, great.
   const result = await Bridge.loadVideo(primaryUrl);
 
-  // 2. Background Status Check
-  // We run this in parallel/background so we don't block playback.
-  // If it detects a 403/401, it will trigger the error overlay via callback.
-  if (primaryUrl.startsWith('http')) {
-    checkStreamStatus(primaryUrl, userAgent).then(statusErr => {
-      if (statusErr && (statusErr.includes('403') || statusErr.includes('401') || statusErr.includes('Access Denied'))) {
-        debugLog(`Background check failed: ${statusErr}`, 'error');
-        if (onError) onError(statusErr);
-      }
-    });
-  }
+
 
   if (result.success) {
     debugLog(`Primary URL loaded successfully`);
@@ -684,35 +594,15 @@ function App() {
 
     const handleError = async (err: string) => {
       console.error('[(Renderer) mpv.onError]', err);
-
-      let displayError = err;
-
-      // If generic error, try to get more info
-      if (err.includes('loading failed') || err === 'Playback error') {
-        const urlToTest = currentChannelRef.current?.direct_url;
-        if (urlToTest) {
-          // Try to get User-Agent from the source
-          let userAgent: string | undefined;
-          if (currentChannelRef.current?.source_id && window.storage) {
-            try {
-              const sourceResult = await window.storage.getSource(currentChannelRef.current.source_id);
-              if (sourceResult.success && sourceResult.data) {
-                userAgent = sourceResult.data.user_agent;
-              }
-            } catch (e) {
-              console.warn('[App] Failed to fetch source for UA:', e);
-            }
-          }
-
-          // Check stream status (this is async and uses await)
-          const statusError = await checkStreamStatus(urlToTest, userAgent);
-          if (statusError) {
-            displayError = statusError;
-          }
+      // We no longer do soft error detection here.
+      // mpv-http-error and mpv-end-file-error will handle the specific HTTP/fallback errors.
+      setError((prev) => {
+        // Prevent generic MPV errors from overwriting specific parsed errors
+        if (prev && prev !== err && (prev.includes('HTTP Error') || prev.includes('Access Denied') || prev.includes('Stream Not Found') || prev.includes('Stream Error:'))) {
+          return prev;
         }
-      }
-
-      setError(displayError);
+        return err;
+      });
     };
 
     let unlistenFunctions: (() => void)[] = [];
@@ -734,7 +624,27 @@ function App() {
           handleError(e.payload);
         });
 
-        unlistenFunctions.push(unlistenReady, unlistenStatus, unlistenError);
+        const unlistenHttpError = await listen('mpv-http-error', (e: any) => {
+          console.error('[mpv-http-error]', e.payload);
+          setError(e.payload);
+        });
+
+        const unlistenEndFileError = await listen('mpv-end-file-error', (e: any) => {
+          console.error('[mpv-end-file-error]', e.payload);
+          // Only show if no error already displayed
+          setError((prev) => prev ? prev : e.payload);
+        });
+
+        const unlistenStartFile = await listen('mpv-start-file', () => {
+          // Optional start-file listener if we want to reset error
+        });
+
+        // Debug listener to see exactly what stderr MPV is producing
+        const unlistenStderr = await listen('mpv-stderr', (e: any) => {
+          console.log('[mpv-stderr]', e.payload);
+        });
+
+        unlistenFunctions.push(unlistenReady, unlistenStatus, unlistenError, unlistenHttpError, unlistenEndFileError, unlistenStartFile, unlistenStderr);
 
         // Initialize MPV AFTER listeners are ready to catch mpv-ready event
         Bridge.initMpv();

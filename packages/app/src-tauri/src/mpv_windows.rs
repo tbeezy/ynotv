@@ -174,7 +174,6 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         "--input-default-bindings=no".into(),
         "--no-input-cursor".into(),
         "--cursor-autohide=no".into(),
-        "--no-terminal".into(),
     ];
 
     // Launch MPV using shell plugin
@@ -193,12 +192,50 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     // Spawn a thread to monitor the process
     {
         let mut proc_handle = state.process.lock().unwrap();
+        let app_handle_for_stderr = app.clone();
         *proc_handle = Some(tauri::async_runtime::spawn(async move {
+            let mut parse_and_emit = |line_str: &str, app_handle: &tauri::AppHandle<R>| {
+                let lower = line_str.to_lowercase();
+                let http_error_code: Option<u16> = if lower.contains("http error") || lower.contains("http error ") {
+                    lower.find("http error")
+                        .and_then(|pos| {
+                            let after = &lower[pos + "http error".len()..];
+                            after.split_whitespace()
+                                .find_map(|part| {
+                                    let clean = part.trim_matches(':').trim_matches(',');
+                                    clean.parse::<u16>().ok().filter(|&c| c >= 400 && c < 600)
+                                })
+                        })
+                } else {
+                    None
+                };
+
+                if let Some(code) = http_error_code {
+                    let error_msg = match code {
+                        401 => "Access Denied (401): Authentication required".to_string(),
+                        403 => "Access Denied (403): Stream blocked by server".to_string(),
+                        404 => "Stream Not Found (404)".to_string(),
+                        _ => format!("HTTP Error ({}): Unable to load stream", code),
+                    };
+                    println!("[MPV] Emitting HTTP error: {}", error_msg);
+                    let _ = app_handle.emit("mpv-http-error", error_msg);
+                }
+            };
+
             while let Some(event) = rx.recv().await {
                 let event: CommandEvent = event;
                 match event {
-                    CommandEvent::Stdout(line) => println!("[MPV] {}", String::from_utf8_lossy(&line)),
-                    CommandEvent::Stderr(line) => println!("[MPV stderr] {}", String::from_utf8_lossy(&line)),
+                    CommandEvent::Stdout(line) => {
+                        let stdout_str = String::from_utf8_lossy(&line).to_string();
+                        println!("[MPV] {}", stdout_str);
+                        parse_and_emit(&stdout_str, &app_handle_for_stderr);
+                    },
+                    CommandEvent::Stderr(line) => {
+                        let stderr_str = String::from_utf8_lossy(&line).to_string();
+                        println!("[MPV stderr] {}", stderr_str);
+                        let _ = app_handle_for_stderr.emit("mpv-stderr", stderr_str.clone());
+                        parse_and_emit(&stderr_str, &app_handle_for_stderr);
+                    },
                     CommandEvent::Error(e) => println!("[MPV error] {}", e),
                     CommandEvent::Terminated(s) => println!("[MPV] Terminated: {:?}", s),
                     _ => {}
@@ -294,6 +331,27 @@ async fn connect_ipc<R: Runtime>(
                                             _ => {}
                                         }
                                         let _ = app_handle.emit("mpv-status", status.clone());
+                                    }
+                                } else if event == "end-file" {
+                                    // Parse fallback errors if stderr didn't catch them
+                                    let reason = data.clone().and_then(|d| d.get("reason").and_then(|r| r.as_str().map(|s| s.to_string())));
+                                    let file_error = data.and_then(|d| d.get("file_error").and_then(|e| e.as_str().map(|s| s.to_string())));
+                                    
+                                    if reason.as_deref() == Some("error") {
+                                        let error_msg = match file_error.as_deref() {
+                                            Some(e) if e.to_lowercase().contains("403") || e.to_lowercase().contains("forbidden") =>
+                                                "Access Denied (403): Stream blocked by server".to_string(),
+                                            Some(e) if e.to_lowercase().contains("401") || e.to_lowercase().contains("unauthorized") =>
+                                                "Access Denied (401): Authentication required".to_string(),
+                                            Some(e) if e.to_lowercase().contains("404") =>
+                                                "Stream Not Found (404)".to_string(),
+                                            Some(e) if e.to_lowercase().contains("demuxer") || e.to_lowercase().contains("unsupported") =>
+                                                "Stream Unavailable: Server returned invalid content".to_string(),
+                                            Some(e) => format!("Stream Error: {}", e),
+                                            None => "Stream Error: Unknown playback error".to_string(),
+                                        };
+                                        println!("[MPV] end-file error: {}", error_msg);
+                                        let _ = app_handle.emit("mpv-end-file-error", error_msg);
                                     }
                                 }
                             }

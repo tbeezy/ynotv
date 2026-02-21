@@ -54,7 +54,6 @@ pub async fn launch_mpv<R: Runtime>(
         .map_err(|e| format!("Failed to create sidecar: {}", e))?;
 
     let cmd = sidecar.args(&[
-        "--no-terminal",
         "--no-osc",
         "--no-input-default-bindings",
         "--keep-open=yes",
@@ -81,12 +80,50 @@ pub async fn launch_mpv<R: Runtime>(
     }
 
     // Spawn a task to monitor MPV output
+    let app_handle_for_stderr = app.clone();
     tauri::async_runtime::spawn(async move {
+        let mut parse_and_emit = |line_str: &str, app_handle: &tauri::AppHandle<R>| {
+            let lower = line_str.to_lowercase();
+            let http_error_code: Option<u16> = if lower.contains("http error") || lower.contains("http error ") {
+                lower.find("http error")
+                    .and_then(|pos| {
+                        let after = &lower[pos + "http error".len()..];
+                        after.split_whitespace()
+                            .find_map(|part| {
+                                let clean = part.trim_matches(':').trim_matches(',');
+                                clean.parse::<u16>().ok().filter(|&c| c >= 400 && c < 600)
+                            })
+                    })
+            } else {
+                None
+            };
+
+            if let Some(code) = http_error_code {
+                let error_msg = match code {
+                    401 => "Access Denied (401): Authentication required".to_string(),
+                    403 => "Access Denied (403): Stream blocked by server".to_string(),
+                    404 => "Stream Not Found (404)".to_string(),
+                    _ => format!("HTTP Error ({}): Unable to load stream", code),
+                };
+                println!("[MPV] Emitting HTTP error: {}", error_msg);
+                let _ = app_handle.emit("mpv-http-error", error_msg);
+            }
+        };
+
         while let Some(event) = rx.recv().await {
             let event: CommandEvent = event;
             match event {
-                CommandEvent::Stdout(line) => println!("[MPV] {}", String::from_utf8_lossy(&line)),
-                CommandEvent::Stderr(line) => println!("[MPV stderr] {}", String::from_utf8_lossy(&line)),
+                CommandEvent::Stdout(line) => {
+                    let stdout_str = String::from_utf8_lossy(&line).to_string();
+                    println!("[MPV] {}", stdout_str);
+                    parse_and_emit(&stdout_str, &app_handle_for_stderr);
+                },
+                CommandEvent::Stderr(line) => {
+                    let stderr_str = String::from_utf8_lossy(&line).to_string();
+                    println!("[MPV stderr] {}", stderr_str);
+                    let _ = app_handle_for_stderr.emit("mpv-stderr", stderr_str.clone());
+                    parse_and_emit(&stderr_str, &app_handle_for_stderr);
+                },
                 CommandEvent::Error(e) => println!("[MPV error] {}", e),
                 CommandEvent::Terminated(s) => println!("[MPV] Terminated: {:?}", s),
                 _ => {}
@@ -142,29 +179,6 @@ async fn connect_ipc<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
 }
 
 fn start_status_monitor<R: Runtime>(app: AppHandle<R>) {
-    tauri::async_runtime::spawn(async move {
-        let mut last_status = MpvStatus {
-            playing: false,
-            volume: 100.0,
-            muted: false,
-            position: 0.0,
-            duration: 0.0,
-        };
-
-        loop {
-            tokio::time::sleep(Duration::from_millis(500)).await;
-
-            // Check if we should stop monitoring
-            let should_stop = {
-                let state = app.state::<MpvState>();
-                let socket = state.socket.lock().unwrap();
-                socket.is_none()
-            };
-
-            if should_stop {
-                break;
-            }
-
             // Poll properties
             let properties = ["pause", "volume", "mute", "time-pos", "duration"];
             for prop in &properties {
@@ -182,6 +196,13 @@ fn start_status_monitor<R: Runtime>(app: AppHandle<R>) {
             let _ = app.emit("mpv-status", last_status.clone());
         }
     });
+
+    // Also spawn a task to read unsolicited events from the same socket
+    // Actually, UnixStream in macOS implementation is used synchronously in send_command
+    // Adding an async reader would conflict with send_command's read_line.
+    // For macOS, the stderr parsing added previously will catch all HTTP errors (including 401/403).
+    // The "end-file" fallback for Windows is primarily needed if IPC gives an explicit failure 
+    // before stderr does. Stderr is sufficient for macOS for now without completely rewriting IPC.
 }
 
 #[derive(Clone, serde::Serialize)]
