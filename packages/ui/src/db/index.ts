@@ -326,76 +326,65 @@ class YnotvDatabase extends SqliteDatabase {
         live INTEGER
       )`);
 
-    // Migrations
-    // Helper to safely add column
-    const addColumn = async (table: string, col: string, type: string) => {
-      try {
-        await db.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
-      } catch (e) {
-        // Ignore error if column exists (SQLite throws if column exists)
+    // ─── Versioned migrations via PRAGMA user_version ─────────────────────────
+    // Each version block runs exactly ONCE. To add new columns in the future,
+    // increment DB_VERSION and add a new case (do NOT modify existing cases).
+    // ─────────────────────────────────────────────────────────────────────────
+    const DB_VERSION = 1;
+    const versionResult = await db.select('PRAGMA user_version') as Array<{ user_version: number }>;
+    const currentVersion = versionResult[0]?.user_version ?? 0;
+
+    if (currentVersion < DB_VERSION) {
+      console.log(`[DB] Migrating schema from v${currentVersion} to v${DB_VERSION}...`);
+
+      if (currentVersion < 1) {
+        // v1: Add columns that were not in the original CREATE TABLE definitions
+        const addColumn = async (table: string, col: string, type: string) => {
+          try { await db.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); } catch { /* already exists */ }
+        };
+        await addColumn('channels', 'direct_url', 'TEXT');
+        await addColumn('channels', 'enabled', 'BOOLEAN');
+        await addColumn('channels', 'fav_order', 'INTEGER');
+        await addColumn('channels', 'display_order', 'INTEGER');
+        await addColumn('categories', 'filter_words', 'TEXT');
+        await addColumn('sourcesMeta', 'display_order', 'INTEGER');
+        await addColumn('vodSeries', 'title', 'TEXT');
+        await addColumn('vodSeries', 'last_modified', 'TEXT');
+        await addColumn('vodSeries', 'year', 'TEXT');
+        await addColumn('vodSeries', 'stream_type', 'TEXT');
+        await addColumn('vodSeries', 'stream_icon', 'TEXT');
+        await addColumn('vodSeries', 'direct_url', 'TEXT');
+        await addColumn('vodSeries', 'rating_5based', 'INTEGER');
+        await addColumn('vodSeries', 'category_id', 'TEXT');
+        await addColumn('vodSeries', '_stalker_raw_id', 'TEXT');
+        await addColumn('vodMovies', 'genre', 'TEXT');
+        await addColumn('vodMovies', 'title', 'TEXT');
+        await addColumn('vodMovies', 'release_date', 'TEXT');
+        await addColumn('vodMovies', 'direct_url', 'TEXT');
+        await addColumn('vodEpisodes', 'direct_url', 'TEXT');
+        await addColumn('vodEpisodes', 'plot', 'TEXT');
+        await addColumn('vodEpisodes', 'duration', 'INTEGER');
+        await addColumn('watchlist', 'reminder_enabled', 'BOOLEAN DEFAULT 1');
+        await addColumn('watchlist', 'reminder_minutes', 'INTEGER DEFAULT 0');
+        await addColumn('watchlist', 'autoswitch_enabled', 'BOOLEAN DEFAULT 0');
+        await addColumn('watchlist', 'autoswitch_seconds_before', 'INTEGER DEFAULT 0');
+        await addColumn('watchlist', 'reminder_shown', 'BOOLEAN DEFAULT 0');
+        await addColumn('watchlist', 'autoswitch_triggered', 'BOOLEAN DEFAULT 0');
+        await addColumn('dvr_recordings', 'keep_until', 'INTEGER');
+        await addColumn('dvr_recordings', 'auto_delete_policy', 'TEXT DEFAULT "space_needed"');
+        // One-time data migration: copy direct_source → direct_url
+        try {
+          await db.execute('UPDATE vodMovies SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
+          await db.execute('UPDATE vodEpisodes SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
+        } catch { /* columns may not exist on fresh installs */ }
       }
-    };
 
-    await addColumn('channels', 'direct_url', 'TEXT');
-    await addColumn('channels', 'enabled', 'BOOLEAN');
-    await addColumn('channels', 'fav_order', 'INTEGER');
-    await addColumn('channels', 'display_order', 'INTEGER');
-    await addColumn('categories', 'filter_words', 'TEXT');
-    await addColumn('sourcesMeta', 'display_order', 'INTEGER');
-
-    await addColumn('vodSeries', 'title', 'TEXT');
-    await addColumn('vodSeries', 'last_modified', 'TEXT');
-    await addColumn('vodSeries', 'year', 'TEXT');
-    await addColumn('vodSeries', 'stream_type', 'TEXT');
-
-    // Add missing columns to vodMovies for metadata
-    await addColumn('vodMovies', 'genre', 'TEXT');
-    await addColumn('vodMovies', 'title', 'TEXT');
-    await addColumn('vodMovies', 'release_date', 'TEXT');
-
-    // Add missing columns to vodSeries for metadata
-    await addColumn('vodSeries', 'stream_icon', 'TEXT');
-    await addColumn('vodSeries', 'year', 'TEXT');
-    await addColumn('vodSeries', 'direct_url', 'TEXT');
-    await addColumn('vodSeries', 'rating_5based', 'INTEGER');
-    await addColumn('vodSeries', 'category_id', 'TEXT');
-    await addColumn('vodSeries', '_stalker_raw_id', 'TEXT');
-
-    // Add watchlist columns for reminder/autoswitch features
-    await addColumn('watchlist', 'reminder_enabled', 'BOOLEAN DEFAULT 1');
-    await addColumn('watchlist', 'reminder_minutes', 'INTEGER DEFAULT 0');
-    await addColumn('watchlist', 'autoswitch_enabled', 'BOOLEAN DEFAULT 0');
-    await addColumn('watchlist', 'autoswitch_seconds_before', 'INTEGER DEFAULT 0');
-    await addColumn('watchlist', 'reminder_shown', 'BOOLEAN DEFAULT 0');
-    await addColumn('watchlist', 'autoswitch_triggered', 'BOOLEAN DEFAULT 0');
-
-    // Add missing columns to dvr_recordings
-    await addColumn('dvr_recordings', 'keep_until', 'INTEGER');
-    await addColumn('dvr_recordings', 'auto_delete_policy', 'TEXT DEFAULT "space_needed"');
-
-    // Fix: Rename direct_source to direct_url in VOD tables (schema/type mismatch)
-    await addColumn('vodMovies', 'direct_url', 'TEXT');
-    await addColumn('vodEpisodes', 'direct_url', 'TEXT');
-    await addColumn('vodEpisodes', 'plot', 'TEXT');
-    await addColumn('vodEpisodes', 'duration', 'INTEGER');
-
-    // Migration: Copy data from old columns
-    try {
-      await db.execute('UPDATE vodMovies SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
-      await db.execute('UPDATE vodEpisodes SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
-    } catch (e) {
-      // Ignore errors if columns don't exist
+      // Bump the stored version so these migrations never run again
+      await db.execute(`PRAGMA user_version = ${DB_VERSION}`);
+      console.log(`[DB] Migration to v${DB_VERSION} complete`);
     }
+    // ──────────────────────────────────────────────────────────────────────────
 
-    // Indexes
-    // Migration: Add direct_url if not exists (Primitive migration)
-    try {
-      await db.execute('ALTER TABLE channels ADD COLUMN direct_url TEXT');
-    } catch (e) {
-      // Ignore error if column exists
-    }
-    // Indexes? SQLite creates index on Primary Key automatically.
-    // We might need index on source_id and category_ids for performance.
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_channels_source ON channels(source_id)`);
     // Index for fast name search (LIKE queries)
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_channels_name ON channels(name COLLATE NOCASE)`);

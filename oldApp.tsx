@@ -3,7 +3,7 @@ import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
-import type { ShortcutsMap, ShortcutAction } from './types/app';
+import type { MpvStatus, ShortcutsMap, ShortcutAction } from './types/app';
 import { Settings } from './components/Settings';
 import { Sidebar, type View } from './components/Sidebar';
 import { NowPlayingBar } from './components/NowPlayingBar';
@@ -28,6 +28,7 @@ import {
   useSyncStatusMessage,
   useSetSyncStatusMessage
 } from './stores/uiStore';
+import { syncVodForSource, isVodStale, isEpgStale, syncSource } from './db/sync';
 import { bulkOps } from './services/bulk-ops';
 import type { StoredChannel, WatchlistItem } from './db';
 import { getWatchlist, db } from './db';
@@ -45,8 +46,6 @@ import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
 import type { LayoutMode } from './hooks/useMultiview';
 import './themes.css';
 import { DEFAULT_SHORTCUTS } from './constants/shortcuts';
-import { useMpvListeners } from './hooks/useMpvListeners';
-import { useAutoSync } from './hooks/useAutoSync';
 
 // Helper to check stream status if mpv fails
 
@@ -163,19 +162,14 @@ async function tryLoadWithFallbacks(
 }
 
 function App() {
-  // Multiview must be declared first — useMpvListeners.onReady references it
-  const multiview = useMultiview();
-
-  // ── MPV state (via extracted hook) ────────────────────────────────────────
-  const mpv = useMpvListeners({
-    onReady: () => multiview.syncMpvGeometry(),
-  });
-  const {
-    mpvReady, playing, volume, muted, position, duration, error,
-    volumeDraggingRef, seekingRef,
-    setError, setPlaying, setPosition, setVolume,
-  } = mpv;
-
+  // mpv state
+  const [mpvReady, setMpvReady] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [volume, setVolume] = useState(100);
+  const [muted, setMuted] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const [currentChannel, setCurrentChannel] = useState<StoredChannel | null>(null);
   const [vodInfo, setVodInfo] = useState<VodPlayInfo | null>(null);
 
@@ -187,6 +181,7 @@ function App() {
   }, [error]);
 
   // Multiview state
+  const multiview = useMultiview();
   const multiviewLayoutRef = useRef<LayoutMode>('main');
   const switchLayoutRef = useRef(multiview.switchLayout);
   useEffect(() => { multiviewLayoutRef.current = multiview.layout; }, [multiview.layout]);
@@ -377,6 +372,16 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Track volume slider dragging to ignore mpv updates during drag
+  const volumeDraggingRef = useRef(false);
+
+  // Track seeking to prevent position flickering during scrub
+  const seekingRef = useRef(false);
+
+  // Track if mouse is hovering over controls (prevents auto-hide)
+  const controlsHoveredRef = useRef(false);
+
+  // Refs for State (Fixes Stale Closures in Event Listeners)
   const playingRef = useRef(playing);
   const positionRef = useRef(position);
   const shortcutsRef = useRef(shortcuts);
@@ -562,8 +567,73 @@ function App() {
     };
   }, []);
 
-  // Track if mouse is hovering over controls (prevents auto-hide)
-  const controlsHoveredRef = useRef(false);
+  // Set up mpv event listeners
+  useEffect(() => {
+
+    const handleError = async (err: string) => {
+      console.error('[(Renderer) mpv.onError]', err);
+      // We no longer do soft error detection here.
+      // mpv-http-error and mpv-end-file-error will handle the specific HTTP/fallback errors.
+      setError((prev) => {
+        // Prevent generic MPV errors from overwriting specific parsed errors
+        if (prev && prev !== err && (prev.includes('HTTP Error') || prev.includes('Access Denied') || prev.includes('Stream Not Found') || prev.includes('Stream Error:'))) {
+          return prev;
+        }
+        return err;
+      });
+    };
+
+    let unlistenFunctions: (() => void)[] = [];
+
+    if (Bridge.isTauri) {
+      // Tauri specific listeners
+      import('@tauri-apps/api/event').then(async ({ listen }) => {
+        const unlistenReady = await listen('mpv-ready', (e: any) => setMpvReady(e.payload));
+        const unlistenStatus = await listen('mpv-status', (e: any) => {
+          const status = e.payload as MpvStatus;
+          // console.log('[App] mpv-status:', status); // Debug logging
+          if (status.playing !== undefined) setPlaying(status.playing);
+          if (status.volume !== undefined && !volumeDraggingRef.current) setVolume(status.volume);
+          if (status.muted !== undefined) setMuted(status.muted);
+          if (status.position !== undefined && !seekingRef.current) setPosition(status.position);
+          if (status.duration !== undefined) setDuration(status.duration);
+        });
+        const unlistenError = await listen('mpv-error', (e: any) => {
+          handleError(e.payload);
+        });
+
+        const unlistenHttpError = await listen('mpv-http-error', (e: any) => {
+          console.error('[mpv-http-error]', e.payload);
+          setError(e.payload);
+        });
+
+        const unlistenEndFileError = await listen('mpv-end-file-error', (e: any) => {
+          console.error('[mpv-end-file-error]', e.payload);
+          // Only show if no error already displayed
+          setError((prev) => prev ? prev : e.payload);
+        });
+
+        const unlistenStartFile = await listen('mpv-start-file', () => {
+          // Optional start-file listener if we want to reset error
+        });
+
+        unlistenFunctions.push(unlistenReady, unlistenStatus, unlistenError, unlistenHttpError, unlistenEndFileError, unlistenStartFile);
+
+        // Initialize MPV AFTER listeners are ready to catch mpv-ready event
+        Bridge.initMpv();
+        // After MPV is ready, sync geometry in case multiview was already active
+        multiview.syncMpvGeometry();
+      });
+    } else {
+      setError('mpv API not available');
+    }
+
+    return () => {
+      // Cleanup Tauri listeners
+      unlistenFunctions.forEach(fn => fn());
+    };
+  }, []); // Run once on mount
+
 
   // Auto-hide controls after 3 seconds of no activity
   useEffect(() => {
@@ -942,16 +1012,149 @@ function App() {
     }
   };
 
-  // ── Auto-sync on startup (via extracted hook) ────────────────────────────
-  useAutoSync({
-    onShortcutsLoaded: (s) => setShortcuts(s as ShortcutsMap),
-    onThemeLoaded: (t) => setTheme(t as ThemeId),
-    onSidebarVisibilityLoaded: (v) => setShowSidebar(v),
-    onFontSizeLoaded: (ch, cat) => {
-      if (ch) document.documentElement.style.setProperty('--channel-font-size', `${ch}px`);
-      if (cat) document.documentElement.style.setProperty('--category-font-size', `${cat}px`);
-    },
-  });
+  // Sync sources on app load (if sources exist)
+  useEffect(() => {
+    const doInitialSync = async () => {
+      if (!window.storage) return;
+
+      // Health check - ensure backend bulk operations are ready
+      console.log('[App] Checking backend health...');
+      const healthy = await bulkOps.healthCheck();
+      if (!healthy) {
+        console.error('[App] Backend health check failed - sync operations may not work');
+        // Continue anyway - the health check failure is logged
+      } else {
+        console.log('[App] Backend health check passed');
+      }
+
+      try {
+        const result = await window.storage.getSources();
+        if (result.data && result.data.length > 0) {
+          // Get user's configured refresh settings
+          const settingsResult = await window.storage.getSettings();
+          const epgRefreshHours = settingsResult.data?.epgRefreshHours ?? 6;
+          const vodRefreshHours = settingsResult.data?.vodRefreshHours ?? 24;
+          // Load channel sort order preference
+          if (settingsResult.data?.channelSortOrder) {
+            setChannelSortOrder(settingsResult.data.channelSortOrder as 'alphabetical' | 'number');
+          }
+          // Load shortcuts
+          if (settingsResult.data?.shortcuts) {
+            setShortcuts(settingsResult.data.shortcuts);
+          }
+          // Load and apply UI font size settings
+          if (settingsResult.data?.channelFontSize) {
+            document.documentElement.style.setProperty('--channel-font-size', `${settingsResult.data.channelFontSize}px`);
+          }
+          if (settingsResult.data?.categoryFontSize) {
+            document.documentElement.style.setProperty('--category-font-size', `${settingsResult.data.categoryFontSize}px`);
+          }
+          // Load theme
+          if (settingsResult.data?.theme) {
+            setTheme(settingsResult.data.theme);
+          }
+          // Load sidebar visibility setting (defaults to false - hidden)
+          if (settingsResult.data?.showSidebar !== undefined) {
+            setShowSidebar(settingsResult.data.showSidebar);
+          }
+
+          // Sync channels/EPG only for stale sources
+          const enabledSources = result.data.filter(s => s.enabled);
+          const staleSources = [];
+          for (const source of enabledSources) {
+            const stale = await isEpgStale(source.id, epgRefreshHours);
+            if (stale) {
+              staleSources.push(source);
+            } else {
+              debugLog(`Source ${source.name} is fresh, skipping channel/EPG sync`, 'sync');
+            }
+          }
+
+          if (staleSources.length > 0) {
+            setChannelSyncing(true);
+            const total = staleSources.length;
+            const CONCURRENCY_LIMIT = 5;
+
+            for (let i = 0; i < total; i += CONCURRENCY_LIMIT) {
+              const batch = staleSources.slice(i, i + CONCURRENCY_LIMIT);
+              const batchNum = Math.floor(i / CONCURRENCY_LIMIT) + 1;
+              const totalBatches = Math.ceil(total / CONCURRENCY_LIMIT);
+
+              debugLog(`Processing channel sync batch ${batchNum}/${totalBatches}`, 'sync');
+              setSyncStatusMessage(`Syncing batch ${batchNum}/${totalBatches}: ${batch.map(s => s.name).join(', ')}`);
+
+              // Process batch in parallel
+              await Promise.all(
+                batch.map(async (source, batchIndex) => {
+                  const overallIndex = i + batchIndex + 1;
+                  const prefix = `[${overallIndex}/${total}] ${source.name}`;
+
+                  debugLog(`Source ${source.name} is stale, syncing...`, 'sync');
+
+                  // Pass a callback that prepends the source prefix to every update
+                  await syncSource(source, (msg) => {
+                    setSyncStatusMessage(`${prefix}: ${msg}`);
+                  });
+                })
+              );
+            }
+            setSyncStatusMessage(null); // Clear message when done
+          }
+
+          // Sync VOD only for Xtream sources that are stale
+          const xtreamSources = result.data.filter(s => s.type === 'xtream' && s.enabled);
+          if (xtreamSources.length > 0) {
+            const staleVodSources = [];
+            for (const source of xtreamSources) {
+              const stale = await isVodStale(source.id, vodRefreshHours);
+              if (stale) {
+                staleVodSources.push(source);
+              } else {
+                debugLog(`Source ${source.name} is fresh, skipping VOD sync`, 'vod');
+              }
+            }
+
+            if (staleVodSources.length > 0) {
+              setVodSyncing(true);
+              const total = staleVodSources.length;
+              const CONCURRENCY_LIMIT = 5;
+
+              for (let i = 0; i < total; i += CONCURRENCY_LIMIT) {
+                const batch = staleVodSources.slice(i, i + CONCURRENCY_LIMIT);
+                const batchNum = Math.floor(i / CONCURRENCY_LIMIT) + 1;
+                const totalBatches = Math.ceil(total / CONCURRENCY_LIMIT);
+
+                debugLog(`Processing VOD sync batch ${batchNum}/${totalBatches}`, 'vod');
+                setSyncStatusMessage(`Syncing VOD batch ${batchNum}/${totalBatches}: ${batch.map(s => s.name).join(', ')}`);
+
+                // Process batch in parallel
+                await Promise.all(
+                  batch.map(async (source, batchIndex) => {
+                    const overallIndex = i + batchIndex + 1;
+                    const prefix = `[${overallIndex}/${total}] ${source.name}`;
+
+                    debugLog(`Source ${source.name} is stale, syncing VOD...`, 'vod');
+                    setSyncStatusMessage(`${prefix}: Syncing VOD...`);
+
+                    await syncVodForSource(source);
+                  })
+                );
+              }
+              setSyncStatusMessage(null);
+            }
+          }
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        debugLog(`Initial sync failed: ${errMsg}`, 'sync');
+        console.error('[App] Initial sync failed:', err);
+      } finally {
+        setChannelSyncing(false);
+        setVodSyncing(false);
+      }
+    };
+    doInitialSync();
+  }, [setChannelSyncing, setVodSyncing]);
 
   // Keyboard shortcuts
   useEffect(() => {
