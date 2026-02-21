@@ -4,7 +4,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/License-AGPL%20v3-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)]()
+[![Platform](https://img.shields.io/badge/Platform-Windows-blue)]()
 
 A modern, feature-rich FOSS IPTV player built with **Tauri v2** and **React**, delivering a premium viewing experience with an elegant interface. This was made with the help of AI.
 
@@ -107,78 +107,6 @@ Fully customizable in Settings → Shortcuts
 ---
 
 
-<details>
-<summary>## 📥 Installation</summary>
-
-### Download Pre-built Binaries
-
-Get the latest release from the [Releases](../../releases) page.
-
-| Platform | Download | Notes |
-|----------|----------|-------|
-| **Windows** | `.exe` (Installer & Portable) | mpv & FFmpeg included |
-| **macOS** | `.dmg` | Requires mpv via Homebrew |
-| **Linux** | `.AppImage` / `.deb` / `.rpm` | Requires mpv installed |
-
-### Windows
-
-**Using Installer:**
-1. Download `ynoTV-setup.exe`
-2. Run the installer (Windows SmartScreen may warn - click "More info" → "Run anyway")
-3. Launch from Start Menu or Desktop
-
-**Portable Version:**
-1. Download `ynoTV-portable.exe`
-2. Extract to any folder
-3. Run `ynoTV.exe` - no installation needed!
-
-### macOS
-
-**Prerequisites:**
-```bash
-# Install mpv and FFmpeg via Homebrew
-brew install mpv ffmpeg
-```
-
-**Installation:**
-1. Download `ynoTV.dmg`
-2. Mount the DMG and drag ynoTV to Applications
-3. Remove quarantine flag:
-```bash
-xattr -dr com.apple.quarantine /Applications/ynoTV.app
-```
-
-### Linux
-
-**Install mpv and FFmpeg:**
-```bash
-# Ubuntu/Debian
-sudo apt install mpv ffmpeg
-
-# Fedora
-sudo dnf install mpv ffmpeg
-
-# Arch Linux
-sudo pacman -S mpv ffmpeg
-```
-
-**AppImage (Recommended):**
-```bash
-chmod +x ynoTV.AppImage
-./ynoTV.AppImage
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo dpkg -i ynoTV_amd64.deb
-sudo apt-get install -f
-```
-
-**Fedora/RHEL:**
-```bash
-sudo rpm -i ynoTV.x86_64.rpm
-```
-</details>
 
 ---
 
@@ -197,22 +125,6 @@ sudo rpm -i ynoTV.x86_64.rpm
 **Windows:**
 - Visual Studio 2022 with C++ build tools
 - Windows 10 SDK
-
-**macOS:**
-- Xcode Command Line Tools (`xcode-select --install`)
-- mpv: `brew install mpv`
-- FFmpeg: `brew install ffmpeg`
-
-**Linux:**
-```bash
-# Ubuntu/Debian
-sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf mpv ffmpeg
-
-# Fedora
-sudo dnf install gtk3-devel webkit2gtk4-devel libappindicator-gtk3-devel mpv ffmpeg
-
-# Arch Linux
-sudo pacman -S webkitgtk-4.1 libappindicator-gtk3 librsvg mpv ffmpeg
 ```
 
 ### Build Instructions
@@ -242,8 +154,7 @@ cd ../..
 **4. Development Mode:**
 ```bash
 # Start development server with hot reload
-pnpm dev
-# or
+
 pnpm tauri dev
 ```
 
@@ -257,34 +168,7 @@ pnpm tauri build
 packages/app/src-tauri/target/release/bundle/
 ```
 
-### Platform-specific Builds
 
-```bash
-# Windows (x64)
-pnpm tauri build --target x86_64-pc-windows-msvc
-
-# macOS (Apple Silicon)
-pnpm tauri build --target aarch64-apple-darwin
-
-# macOS (Intel)
-pnpm tauri build --target x86_64-apple-darwin
-
-# Linux (x64)
-pnpm tauri build --target x86_64-unknown-linux-gnu
-```
-
-### Development Tips
-
-**Type Checking:**
-```bash
-cd packages/ui
-pnpm run typecheck
-```
-
-**Code Linting:**
-```bash
-pnpm run lint
-```
 </details>
 
 ---
@@ -301,18 +185,6 @@ pnpm run lint
 └── .windows-state.json    # Window state
 ```
 
-**macOS:**
-```
-~/Library/Application Support/com.ynotv.app/
-├── settings.json
-└── .window-state.json
-```
-
-**Linux:**
-```
-~/.config/com.ynotv.app/
-├── settings.json
-└── .window-state.json
 ```
 
 ### Database (SQLite)
@@ -324,15 +196,6 @@ pnpm run lint
 %LOCALAPPDATA%\com.ynotv.app\app.db
 ```
 
-**macOS:**
-```
-~/Library/Application Support/com.ynotv.app/app.db
-```
-
-**Linux:**
-```
-~/.local/share/com.ynotv.app/app.db
-```
 
 **Database contains:**
 - Channels and categories
@@ -355,16 +218,6 @@ Settings → Debug → Enable debug logging
 %APPDATA%\com.ynotv.app\logs\app.log
 ```
 
-**macOS:**
-```
-~/Library/Logs/com.ynotv.app/app.log
-```
-
-**Linux:**
-```
-~/.local/share/com.ynotv.app/logs/app.log
-```
-
 ### DVR Recordings
 
 Default: Configurable in Settings → DVR
@@ -372,16 +225,8 @@ Default: Configurable in Settings → DVR
 **Windows:**
 ```
 %USERPROFILE%\Videos\ynoTV Recordings\
-```
 
-**macOS:**
-```
-~/Movies/ynoTV Recordings/
-```
 
-**Linux:**
-```
-~/Videos/ynoTV Recordings/
 ```
 </details>
 

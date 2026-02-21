@@ -376,6 +376,8 @@ export function useMultiview() {
         } else {
             // Old main was empty — just stop the slot
             await invoke('multiview_stop_slot', { slotId }).catch(() => { });
+            // Move the stopped MPV window off-screen to prevent black overlay
+            await invoke('multiview_reposition_slot', { slotId, x: -10000, y: -10000, width: 1, height: 1 }).catch(() => { });
             activeUrlsRef.current[slotId] = null;
             setSlots(prev => prev.map(s =>
                 s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
@@ -395,6 +397,9 @@ export function useMultiview() {
         }
 
         await invoke('multiview_stop_slot', { slotId }).catch(() => { });
+        // Move the stopped MPV window off-screen to prevent black overlay
+        // (MPV with --idle=yes keeps window visible after stop)
+        await invoke('multiview_reposition_slot', { slotId, x: -10000, y: -10000, width: 1, height: 1 }).catch(() => { });
         activeUrlsRef.current[slotId] = null;
         setSlots(prev => prev.map(s =>
             s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
@@ -473,6 +478,8 @@ export function useMultiview() {
                 } else if (!slot.active && activeUrlsRef.current[slot.id]) {
                     // It was stopped while the tab was open
                     invoke('multiview_stop_slot', { slotId: slot.id }).catch(e => console.warn('[useMultiview] Failed to stop slot', slot.id, e));
+                    // Ensure the stopped MPV window stays hidden off-screen
+                    invoke('multiview_reposition_slot', { slotId: slot.id, x: -10000, y: -10000, width: 1, height: 1 }).catch(() => { });
                     activeUrlsRef.current[slot.id] = null;
                 }
             }
