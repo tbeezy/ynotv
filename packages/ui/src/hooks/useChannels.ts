@@ -314,44 +314,38 @@ export function useChannelSearch(query: string, limit = 50) {
       const sourceIdsList = Array.from(enabledSourceIds);
       const sourcePlaceholders = sourceIdsList.map(() => '?').join(',');
 
-      // Search channels with SQL filtering
-      const queryParams = [`%${query}%`, ...sourceIdsList, limit * 2];
-      const allChannels = await dbInstance.select(
-        `SELECT * FROM channels 
-         WHERE name LIKE ? 
-         AND source_id IN (${sourcePlaceholders})
-         AND (enabled IS NULL OR enabled != 0)
+      // Get enabled category IDs via SQL (avoids full table scan to JS)
+      const enabledCategoryRows = await dbInstance.select(
+        `SELECT category_id FROM categories
+         WHERE source_id IN (${sourcePlaceholders})
+         AND (enabled IS NULL OR enabled != 0)`,
+        sourceIdsList
+      );
+      const enabledCategoryIds = new Set<string>(enabledCategoryRows.map((r: any) => r.category_id));
+
+      if (enabledCategoryIds.size === 0) return [];
+
+      // Search channels that match the name and belong to an enabled category
+      // json_each lets SQLite expand the category_ids JSON array inline
+      const categoryPlaceholders = Array.from(enabledCategoryIds).map(() => '?').join(',');
+      const filteredChannels = await dbInstance.select(
+        `SELECT DISTINCT c.*
+         FROM channels c, json_each(c.category_ids) AS cat
+         WHERE c.name LIKE ?
+         AND c.source_id IN (${sourcePlaceholders})
+         AND (c.enabled IS NULL OR c.enabled != 0)
+         AND cat.value IN (${categoryPlaceholders})
          LIMIT ?`,
-        queryParams
+        [`%${query}%`, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
       );
 
-      // We still need to filter by enabled categories, since categories can be individually disabled
-      // Let's get enabled categories
-      const allCategories = await db.categories.toArray();
-      const enabledCategoryIds = new Set<string>();
-      for (const cat of allCategories) {
-        if (cat.enabled !== false && cat.category_id && enabledSourceIds.has(cat.source_id)) {
-          enabledCategoryIds.add(cat.category_id);
-        }
-      }
-
-      const filteredChannels: StoredChannel[] = [];
-      for (const channel of allChannels) {
-        const channelCategories = parseCategoryIds(channel.category_ids);
-        const isInEnabledCategory = channelCategories.some(catId => enabledCategoryIds.has(catId));
-        if (isInEnabledCategory) {
-          filteredChannels.push(channel);
-          // Standard limit applied here after memory filtering
-          if (filteredChannels.length >= limit) break;
-        }
-      }
-
-      return filteredChannels;
+      return filteredChannels as StoredChannel[];
     },
     [query, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
   );
   return channels ?? [];
 }
+
 
 // Hook to search programs (EPG) by title - only searches enabled categories
 export function useProgramSearch(query: string, limit = 50) {
@@ -496,16 +490,34 @@ export function useCategoriesBySource(): SourceWithCategories[] {
       let channelCounts: Record<string, number> = {};
 
       if (categoryIds.length > 0) {
-        // Use an optimized grouping query via json_each rather than looping 100 UNION ALLs
-        // We filter to enabled sources implicitly if required
-        const countQuery = `
-          SELECT cat.value as cat_id, COUNT(*) as cnt
-          FROM channels c, json_each(c.category_ids) AS cat
-          GROUP BY cat.value
-        `;
+        // Count channels per category, filtered to only enabled sources
+        const sourceIdsList = enabledSourceIds ? Array.from(enabledSourceIds) : [];
+        let countQuery: string;
+        let countParams: any[];
+
+        if (sourceIdsList.length > 0) {
+          const sourcePlaceholders = sourceIdsList.map(() => '?').join(',');
+          countQuery = `
+            SELECT cat.value as cat_id, COUNT(*) as cnt
+            FROM channels c, json_each(c.category_ids) AS cat
+            WHERE c.source_id IN (${sourcePlaceholders})
+            AND (c.enabled IS NULL OR c.enabled != 0)
+            GROUP BY cat.value
+          `;
+          countParams = sourceIdsList;
+        } else {
+          countQuery = `
+            SELECT cat.value as cat_id, COUNT(*) as cnt
+            FROM channels c, json_each(c.category_ids) AS cat
+            WHERE (c.enabled IS NULL OR c.enabled != 0)
+            GROUP BY cat.value
+          `;
+          countParams = [];
+        }
+
 
         try {
-          const countResults = await dbInstance.select(countQuery);
+          const countResults = await dbInstance.select(countQuery, countParams);
           countResults.forEach((row: any) => {
             channelCounts[row.cat_id] = row.cnt;
           });
@@ -513,6 +525,7 @@ export function useCategoriesBySource(): SourceWithCategories[] {
           console.warn("Failed to fetch categorized channel counts with JSON approach:", e);
         }
       }
+
 
       const withCounts: CategoryWithCount[] = categories.map(cat => ({
         ...cat,
@@ -707,18 +720,32 @@ export function usePrograms(streamIds: string[]): Map<string, StoredProgram | nu
       const now = new Date();
       const result = new Map<string, StoredProgram | null>();
 
-      for (const id of streamIds) {
-        const program = await db.programs
+      // Initialize all to null so callers know these IDs were checked
+      for (const id of streamIds) result.set(id, null);
+
+      // Single batched query instead of N separate round-trips
+      const allPrograms: StoredProgram[] = [];
+      for (let i = 0; i < streamIds.length; i += SQL_CHUNK_SIZE) {
+        const chunk = streamIds.slice(i, i + SQL_CHUNK_SIZE);
+        const chunkPrograms = await db.programs
           .where('stream_id')
-          .equals(id)
+          .anyOf(chunk)
           .filter((p) => {
             const start = p.start instanceof Date ? p.start : new Date(p.start);
             const end = p.end instanceof Date ? p.end : new Date(p.end);
             return start <= now && end > now;
           })
-          .first();
-        result.set(id, program ?? null);
+          .toArray();
+        allPrograms.push(...chunkPrograms);
       }
+
+      // Pick first current program per channel (channels rarely have overlapping programs)
+      for (const prog of allPrograms) {
+        if (!result.get(prog.stream_id)) {
+          result.set(prog.stream_id, prog);
+        }
+      }
+
       return result;
     },
     [streamIds.join(',')]

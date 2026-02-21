@@ -45,36 +45,14 @@ import { MultiviewLayout } from './components/MultiviewLayout/MultiviewLayout';
 import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
 import type { LayoutMode } from './hooks/useMultiview';
 import './themes.css';
+import { DEFAULT_SHORTCUTS } from './constants/shortcuts';
 
 // Helper to check stream status if mpv fails
 
 // Auto-hide controls after this many milliseconds of inactivity
 const CONTROLS_AUTO_HIDE_MS = 3000;
 
-const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
-  togglePlay: ' ',
-  toggleMute: 'm',
-  cycleSubtitle: 'j',
-  cycleAudio: 'a',
-  selectSubtitle: 'j',
-  selectAudio: 'a',
-  toggleStats: 'i',
-  toggleFullscreen: 'f',
-  toggleGuide: 'g',
-  toggleCategories: 'c',
-  toggleLiveTV: 'l',
-  toggleDvr: 'r',
-  toggleSports: 'u',
-  toggleSettings: ',',
-  focusSearch: 's',
-  close: 'Escape',
-  seekForward: 'ArrowRight',
-  seekBackward: 'ArrowLeft',
-  layoutMain: '1',
-  layoutPip: '2',
-  layoutBigBottom: '3',
-  layout2x2: '4'
-};
+
 
 // Debug logging helper for UI playback
 function debugLog(message: string, category = 'play'): void {
@@ -1714,6 +1692,13 @@ function App() {
           onSearchChannels={(query) => {
             setSearchQuery(query);
             setActiveView('guide');
+            setCategoriesOpen(true);
+            // Focus the search input after the view transition
+            setTimeout(() => {
+              if (titleBarSearchRef.current) {
+                titleBarSearchRef.current.focus();
+              }
+            }, 50);
           }}
           previewEnabled={sportsPreviewEnabled}
           onTogglePreview={() => setSportsPreviewEnabled(prev => !prev)}

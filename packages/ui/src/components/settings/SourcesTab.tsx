@@ -142,6 +142,9 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
+  // Backup delete confirmation modal state
+  const [deleteBackupConfirm, setDeleteBackupConfirm] = useState<{ type: 'stalker' | 'xtream'; index: number } | null>(null);
+
   const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
 
   // Drag and drop state
@@ -445,15 +448,21 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
   }
 
   function handleDeleteBackup(type: 'stalker' | 'xtream', index: number) {
-    if (confirm('Are you sure you want to delete this backup credential?')) {
-      if (type === 'stalker') {
-        const newBackups = formData.backupMacs.filter((_, i) => i !== index);
-        setFormData({ ...formData, backupMacs: newBackups });
-      } else {
-        const newBackups = formData.backupCredentials.filter((_, i) => i !== index);
-        setFormData({ ...formData, backupCredentials: newBackups });
-      }
+    setDeleteBackupConfirm({ type, index });
+  }
+
+  function confirmDeleteBackup() {
+    if (!deleteBackupConfirm) return;
+    const { type, index } = deleteBackupConfirm;
+
+    if (type === 'stalker') {
+      const newBackups = formData.backupMacs.filter((_, i) => i !== index);
+      setFormData({ ...formData, backupMacs: newBackups });
+    } else {
+      const newBackups = formData.backupCredentials.filter((_, i) => i !== index);
+      setFormData({ ...formData, backupCredentials: newBackups });
     }
+    setDeleteBackupConfirm(null);
   }
 
   function handleCancel() {
@@ -1238,6 +1247,36 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
                 style={{ borderColor: '#ff4444', color: '#ff4444', background: 'rgba(255, 68, 68, 0.1)' }}
               >
                 {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Backup Confirmation Modal */}
+      {deleteBackupConfirm && createPortal(
+        <div className="source-form-overlay" style={{ zIndex: 1002 }}>
+          <div className="source-form" style={{ maxWidth: '400px', height: 'auto' }}>
+            <h3>Delete Backup Credential</h3>
+            <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '24px', lineHeight: '1.5' }}>
+              Are you sure you want to delete this backup credential?
+            </p>
+            <div className="form-actions" style={{ marginTop: '0' }}>
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => setDeleteBackupConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="save-btn"
+                onClick={confirmDeleteBackup}
+                style={{ borderColor: '#ff4444', color: '#ff4444', background: 'rgba(255, 68, 68, 0.1)' }}
+              >
+                Yes, Delete
               </button>
             </div>
           </div>

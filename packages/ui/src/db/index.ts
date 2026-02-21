@@ -738,34 +738,30 @@ export async function clearVodData(sourceId: string): Promise<void> {
 }
 
 // Helper to clear ALL cached data (channels, EPG, VOD, metadata)
-// Keeps: prefs (user preferences), Tauri Store settings, source configs
+// Also clears dvr_schedules/recordings since they reference channels (stale after source clear).
+// Keeps: prefs, Tauri Store settings, source configs, dvr_settings, custom_groups, watchlist.
 export async function clearAllCachedData(): Promise<void> {
-  await db.transaction('rw', [
-    db.channels,
-    db.categories,
-    db.sourcesMeta,
-    db.programs,
-    db.vodMovies,
-    db.vodSeries,
-    db.vodEpisodes,
-    db.vodCategories,
-  ], async () => {
-    await db.channels.clear();
-    await db.categories.clear();
-    await db.sourcesMeta.clear();
-    await db.programs.clear();
-    await db.vodMovies.clear();
-    await db.vodSeries.clear();
-    await db.vodEpisodes.clear();
-    await db.vodCategories.clear();
-  });
+  // Use the adapter's .clear() rather than raw SQL transactions — Tauri's connection pool
+  // means BEGIN/COMMIT may run on different connections, causing "no transaction active" errors.
+  // .clear() uses the writeLock mutex so each DELETE runs safely and notifies reactive queries.
 
-  // VACUUM to reclaim disk space (SQLite doesn't shrink file on DELETE)
-  console.log('[DB] Running VACUUM to reclaim disk space...');
-  const dbInstance = await (db as any).dbPromise;
-  await dbInstance.execute('VACUUM');
-  console.log('[DB] VACUUM complete - disk space reclaimed');
+  // Delete dvr_schedules first: it has NOT NULL FK refs to channels and sourcesMeta (no cascade),
+  // so deleting it before those tables prevents FK constraint errors.
+  await db.dvrSchedules.clear();
+  await db.dvrRecordings.clear();
+
+  await db.channels.clear();
+  await db.categories.clear();
+  await db.sourcesMeta.clear();
+  await db.programs.clear();
+  await db.vodMovies.clear();
+  await db.vodSeries.clear();
+  await db.vodEpisodes.clear();
+  await db.vodCategories.clear();
 }
+
+
+
 
 // Helper to get last selected category
 export async function getLastCategory(): Promise<string | null> {

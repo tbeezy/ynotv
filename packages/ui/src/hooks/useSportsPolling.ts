@@ -35,11 +35,12 @@ const CACHE_FRESH_LIVE = 30 * 1000;
 
 export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSportsPollingResult {
   const { pollingInterval = 30000, enabled = true, leagues } = options;
-  
+
   const [events, setEvents] = useState<SportsEvent[]>(() => {
-    // Initialize from cache if available and leagues match
-    if (sportsCache.events.length > 0 && 
-        JSON.stringify(sportsCache.leagues) === JSON.stringify(leagues)) {
+    // Initialize from cache if available and fresh — even if leagues don't match yet
+    // (leagues may still be loading from settings). We prefer showing stale data
+    // over an empty flash while the real fetch runs in the background.
+    if (sportsCache.events.length > 0) {
       return sportsCache.events;
     }
     return [];
@@ -48,7 +49,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(sportsCache.lastUpdated);
   const [isPolling, setIsPolling] = useState(false);
-  
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isRefreshingRef = useRef(false);
 
@@ -56,15 +57,15 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
 
   const fetchData = useCallback(async (isManualRefresh = false) => {
     if (isRefreshingRef.current && !isManualRefresh) return;
-    
+
     isRefreshingRef.current = true;
-    
+
     if (isManualRefresh) {
       setLoading(true);
     }
-    
+
     setError(null);
-    
+
     try {
       const data = await getLiveScores(leagues);
       setEvents(data);
@@ -95,14 +96,16 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     return age < (hasLive ? CACHE_FRESH_LIVE : CACHE_FRESH_NO_LIVE);
   }, []);
 
-  // Initial fetch - only if cache is empty or stale
+  // Initial fetch - only if cache is empty, stale, or leagues changed
   useEffect(() => {
-    if (sportsCache.events.length > 0 && isCacheFresh()) {
+    const leaguesChanged = JSON.stringify(sportsCache.leagues) !== JSON.stringify(leagues);
+    if (sportsCache.events.length > 0 && isCacheFresh() && !leaguesChanged) {
       console.log('[SportsPolling] Using cached data');
       return;
     }
+    // Cache hit but leagues changed — fetch silently in background (don't flash empty)
     fetchData();
-  }, [fetchData, isCacheFresh]);
+  }, [fetchData, isCacheFresh, leagues]);
 
   // Polling effect
   useEffect(() => {
@@ -117,7 +120,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     if (shouldPoll && !intervalRef.current) {
       console.log('[SportsPolling] Starting poll (30s interval)');
       setIsPolling(true);
-      
+
       intervalRef.current = setInterval(() => {
         // Don't poll if tab is hidden
         if (document.hidden) {
@@ -155,7 +158,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -174,16 +177,16 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
 // Helper to format the last updated time
 export function formatLastUpdated(date: Date | null): string {
   if (!date) return '';
-  
+
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
-  
+
   if (seconds < 10) return 'Just now';
   if (seconds < 60) return `${seconds}s ago`;
   if (minutes < 60) return `${minutes}m ago`;
-  
+
   return date.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',

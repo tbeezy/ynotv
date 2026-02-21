@@ -278,8 +278,8 @@
 }
 
 .source-item.drag-over {
-    border-top: 2px solid var(--accent-primary, #00d4ff);
-    margin-top: 2px;
+    border: 2px solid var(--accent-primary, #00d4ff) !important;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3) !important;
 }
 
 .drag-handle {

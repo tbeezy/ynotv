@@ -98,6 +98,54 @@ const VOD_SERIES_FIELDS = [
   'title', 'last_modified', 'year', 'stream_type'
 ];
 
+// ─── Shared EPG helper ────────────────────────────────────────────────────────
+/**
+ * Convert raw XMLTV programs into StoredProgram format.
+ * @param xmltvPrograms  Parsed XMLTV entries
+ * @param channelMap     Map from epg_channel_id → stream_id
+ * @param sourceId       Source identifier (written into each record)
+ * @param options.compressDescriptions  Whether to gzip-compress descriptions (Xtream/M3U path)
+ * @param options.idPrefix              Optional prefix for the program ID (pass sourceId for legacy format)
+ * @returns storedPrograms array + count of unmatched channels
+ */
+function buildStoredPrograms(
+  xmltvPrograms: import('@ynotv/local-adapter').XmltvProgram[],
+  channelMap: Map<string, string>,
+  sourceId: string,
+  options: { compressDescriptions?: boolean; idPrefix?: string } = {}
+): { programs: StoredProgram[]; unmatchedCount: number } {
+  const programs: StoredProgram[] = [];
+  const unmatched = new Set<string>();
+
+  for (const prog of xmltvPrograms) {
+    const streamId = channelMap.get(prog.channel_id);
+    if (streamId) {
+      const idBase = options.idPrefix
+        ? `${options.idPrefix}-${streamId}-${prog.start.getTime()}`
+        : `${streamId}_${prog.start.getTime()}`;
+
+      const description = options.compressDescriptions
+        ? (compressEpgDescription(prog.description) ?? '')
+        : (prog.description || '');
+
+      programs.push({
+        id: idBase,
+        stream_id: streamId,
+        title: prog.title,
+        description,
+        start: prog.start,
+        end: prog.stop,
+        source_id: sourceId,
+      });
+    } else {
+      unmatched.add(prog.channel_id);
+    }
+  }
+
+  return { programs, unmatchedCount: unmatched.size };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function sanitizeMovie(movie: any, existingMovie?: any): any {
   const clean: any = {};
 
@@ -513,31 +561,13 @@ async function syncEpgFromUrlLegacy(
       'epg'
     );
 
-    // Convert XMLTV programs to stored format
-    const storedPrograms: StoredProgram[] = [];
-    const unmatchedChannels = new Set<string>();
-
-    for (const prog of xmltvPrograms) {
-      const streamId = channelMap.get(prog.channel_id);
-      if (streamId) {
-        storedPrograms.push({
-          id: `${source.id}-${streamId}-${prog.start.getTime()}`,
-          stream_id: streamId,
-          title: prog.title,
-          description: prog.description,
-          start: prog.start,
-          end: prog.stop,
-          source_id: source.id,
-        });
-      } else {
-        unmatchedChannels.add(prog.channel_id);
-      }
-    }
-
-    debugLog(
-      `Matched ${storedPrograms.length}/${xmltvPrograms.length} programs`,
-      'epg'
+    // Convert XMLTV programs to stored format using shared helper
+    const { programs: storedPrograms, unmatchedCount } = buildStoredPrograms(
+      xmltvPrograms, channelMap, source.id,
+      { idPrefix: source.id }  // Legacy uses source.id prefix in the program ID
     );
+
+    debugLog(`Matched ${storedPrograms.length}/${xmltvPrograms.length} programs (${unmatchedCount} unmatched)`, 'epg');
 
     if (storedPrograms.length === 0) {
       debugLog(
@@ -630,35 +660,13 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
 
     debugLog(`${channelsWithEpgId}/${channels.length} channels have epg_channel_id`, 'epg');
 
-    // Convert XMLTV programs to stored format
-    const storedPrograms: StoredProgram[] = [];
-    const unmatchedChannels = new Set<string>();
+    // Convert XMLTV programs to stored format using shared helper (with compression)
+    const { programs: storedPrograms, unmatchedCount } = buildStoredPrograms(
+      xmltvPrograms, channelMap, source.id,
+      { compressDescriptions: true }
+    );
 
-    for (const prog of xmltvPrograms) {
-      const streamId = channelMap.get(prog.channel_id);
-      if (streamId) {
-        storedPrograms.push({
-          id: `${streamId}_${prog.start.getTime()}`,
-          stream_id: streamId,
-          title: prog.title,
-          description: compressEpgDescription(prog.description) ?? '',
-          start: prog.start,
-          end: prog.stop,
-          source_id: source.id,
-        });
-      } else {
-        unmatchedChannels.add(prog.channel_id);
-      }
-    }
-
-    console.log(`[EPG] Matched ${storedPrograms.length}/${xmltvPrograms.length} programs`);
-    console.log(`[EPG] Unmatched EPG channels: ${unmatchedChannels.size}`);
-
-    if (unmatchedChannels.size > 0 && unmatchedChannels.size <= 10) {
-      console.log(`[EPG] Unmatched channel IDs:`, Array.from(unmatchedChannels).join(', '));
-    }
-
-    debugLog(`Matched ${storedPrograms.length}/${xmltvPrograms.length} programs (${unmatchedChannels.size} unmatched EPG channels)`, 'epg');
+    debugLog(`Matched ${storedPrograms.length}/${xmltvPrograms.length} programs (${unmatchedCount} unmatched EPG channels)`, 'epg');
 
     // SAFETY: Only clear old data if we have new data to replace it
     if (storedPrograms.length === 0) {

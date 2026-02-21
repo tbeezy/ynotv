@@ -1,35 +1,13 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShortcutsMap, ShortcutAction } from '../../types/app';
+import { DEFAULT_SHORTCUTS } from '../../constants/shortcuts';
 
 interface ShortcutsTabProps {
     shortcuts: ShortcutsMap;
     onShortcutsChange: (shortcuts: ShortcutsMap) => void;
 }
-const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
-    togglePlay: ' ',
-    toggleMute: 'm',
-    cycleSubtitle: 'j',
-    cycleAudio: 'a',
-    selectSubtitle: 'j',
-    selectAudio: 'a',
-    toggleStats: 'i',
-    toggleFullscreen: 'f',
-    toggleGuide: 'g',
-    toggleCategories: 'c',
-    toggleLiveTV: 'l',
-    toggleDvr: 'r',
-    toggleSports: 'u',
-    toggleSettings: ',',
-    focusSearch: 's',
-    close: 'Escape',
-    seekForward: 'ArrowRight',
-    seekBackward: 'ArrowLeft',
-    layoutMain: '1',
-    layoutPip: '2',
-    layoutBigBottom: '3',
-    layout2x2: '4'
-};
+
 
 const ACTION_LABELS: Record<ShortcutAction, string> = {
     togglePlay: 'Play / Pause',

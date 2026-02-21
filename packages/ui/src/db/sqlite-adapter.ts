@@ -36,25 +36,31 @@ export const dbEvents = new DbEvents();
 
 // Helper to convert SQLite values to proper JavaScript types
 // SQLite stores BOOLEAN as 0/1 integers, but Tauri plugin may return them as strings
+
+// ─── Shared field-type maps (single source of truth) ─────────────────────────
+// Boolean fields that are stored as 0/1 in SQLite but should be JS booleans
+const BOOLEAN_FIELDS: Record<string, string[]> = {
+    'channels': ['is_favorite', 'enabled'],
+    'categories': ['enabled'],
+    'vodCategories': ['enabled'],
+    'watchlist': ['reminder_enabled', 'autoswitch_enabled', 'reminder_shown', 'autoswitch_triggered'],
+};
+
+// JSON fields that are stored as serialized strings but should be parsed objects
+const JSON_FIELDS: Record<string, string[]> = {
+    'categories': ['filter_words'],
+    'channels': ['category_ids'],
+    'vodMovies': ['category_ids'],
+    'vodSeries': ['category_ids'],
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 function normalizeRow(row: any, tableName: string): any {
     if (!row || typeof row !== 'object') return row;
 
     const normalized = { ...row };
 
-    // Define boolean fields per table
-    const booleanFields: Record<string, string[]> = {
-        'channels': ['is_favorite', 'enabled'],
-        'categories': ['enabled'],
-        'sourcesMeta': [],
-        'programs': [],
-        'vodMovies': [],
-        'vodSeries': [],
-        'vodEpisodes': [],
-        'vodCategories': ['enabled'],
-        'watchlist': ['reminder_enabled', 'autoswitch_enabled', 'reminder_shown', 'autoswitch_triggered'],
-    };
-
-    const fields = booleanFields[tableName];
+    const fields = BOOLEAN_FIELDS[tableName];
     if (fields) {
         for (const field of fields) {
             if (field in normalized) {
@@ -71,14 +77,7 @@ function normalizeRow(row: any, tableName: string): any {
     }
 
     // Parse JSON fields
-    const jsonFields: Record<string, string[]> = {
-        'categories': ['filter_words'],
-        'channels': ['category_ids'],
-        'vodMovies': ['category_ids'],
-        'vodSeries': ['category_ids'],
-    };
-
-    const jsonFieldList = jsonFields[tableName];
+    const jsonFieldList = JSON_FIELDS[tableName];
     if (jsonFieldList) {
         for (const field of jsonFieldList) {
             if (field in normalized && normalized[field] !== null && normalized[field] !== undefined) {
@@ -367,19 +366,10 @@ export class SqliteTable<T, TKey> {
         const MAX_PARAMS = 32766;
         const BATCH_SIZE = Math.floor(MAX_PARAMS / keys.length);
 
-        // JSON fields that need to be stringified
-        const jsonFields: Record<string, string[]> = {
-            'categories': ['filter_words'],
-        };
-        const tableJsonFields = jsonFields[this.tableName] || [];
+        const tableJsonFields = JSON_FIELDS[this.tableName] || [];
 
         // Boolean fields that need to be converted to 0/1
-        const booleanFields: Record<string, string[]> = {
-            'channels': ['is_favorite', 'enabled'],
-            'categories': ['enabled'],
-            'watchlist': ['reminder_enabled', 'autoswitch_enabled', 'reminder_shown', 'autoswitch_triggered'],
-        };
-        const tableBooleanFields = booleanFields[this.tableName] || [];
+        const tableBooleanFields = BOOLEAN_FIELDS[this.tableName] || [];
 
         for (let i = 0; i < items.length; i += BATCH_SIZE) {
             const chunk = items.slice(i, i + BATCH_SIZE);
@@ -420,19 +410,10 @@ export class SqliteTable<T, TKey> {
         }
         const keys = Array.from(keysSet);
 
-        // JSON fields that need to be stringified
-        const jsonFields: Record<string, string[]> = {
-            'categories': ['filter_words'],
-        };
-        const tableJsonFields = jsonFields[this.tableName] || [];
+        const tableJsonFields = JSON_FIELDS[this.tableName] || [];
 
         // Boolean fields that need to be converted to 0/1
-        const booleanFields: Record<string, string[]> = {
-            'channels': ['is_favorite', 'enabled'],
-            'categories': ['enabled'],
-            'watchlist': ['reminder_enabled', 'autoswitch_enabled', 'reminder_shown', 'autoswitch_triggered'],
-        };
-        const tableBooleanFields = booleanFields[this.tableName] || [];
+        const tableBooleanFields = BOOLEAN_FIELDS[this.tableName] || [];
 
         const rows = items.map(item => keys.map(key => {
             let val = (item as any)[key] ?? null;
@@ -497,11 +478,7 @@ export class SqliteTable<T, TKey> {
         const MAX_PARAMS = 32766;
         const BATCH_SIZE = Math.floor(MAX_PARAMS / keys.length);
 
-        // JSON fields that need to be stringified
-        const jsonFields: Record<string, string[]> = {
-            'categories': ['filter_words'],
-        };
-        const tableJsonFields = jsonFields[this.tableName] || [];
+        const tableJsonFields = JSON_FIELDS[this.tableName] || [];
 
         for (let i = 0; i < items.length; i += BATCH_SIZE) {
             const chunk = items.slice(i, i + BATCH_SIZE);
@@ -581,20 +558,10 @@ export class SqliteTable<T, TKey> {
             const keys = Object.keys(changes);
             if (keys.length === 0) return 0;
 
-            // JSON fields that need to be stringified
-            const jsonFields: Record<string, string[]> = {
-                'categories': ['filter_words'],
-            };
-
-            const tableJsonFields = jsonFields[this.tableName] || [];
+            const tableJsonFields = JSON_FIELDS[this.tableName] || [];
 
             // Boolean fields that need to be converted to 0/1
-            const booleanFields: Record<string, string[]> = {
-                'channels': ['is_favorite', 'enabled'],
-                'categories': ['enabled'],
-            };
-
-            const tableBooleanFields = booleanFields[this.tableName] || [];
+            const tableBooleanFields = BOOLEAN_FIELDS[this.tableName] || [];
 
             const processedChanges: Record<string, any> = { ...changes };
 
