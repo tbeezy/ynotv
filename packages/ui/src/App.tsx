@@ -18,7 +18,7 @@ import { SportsHub } from './components/sports/SportsHub';
 import { useActiveRecordings } from './hooks/useActiveRecordings';
 import { RecordingIndicator } from './components/RecordingIndicator';
 import { Logo } from './components/Logo';
-import { useSelectedCategory, useChannelSearch, useProgramSearch } from './hooks/useChannels';
+import { useSelectedCategory, useChannelSearch, useProgramSearch, useChannels } from './hooks/useChannels';
 import {
   useChannelSyncing,
   useVodSyncing,
@@ -27,7 +27,8 @@ import {
   useSetVodSyncing,
   useSetChannelSortOrder,
   useSyncStatusMessage,
-  useSetSyncStatusMessage
+  useSetSyncStatusMessage,
+  useChannelSortOrder
 } from './stores/uiStore';
 import { bulkOps } from './services/bulk-ops';
 import type { StoredChannel, WatchlistItem } from './db';
@@ -400,6 +401,10 @@ function App() {
   // Channel/category state (persisted)
   const { categoryId, setCategoryId, loading: categoryLoading } = useSelectedCategory();
 
+  // Get channels for current category (for up/down navigation)
+  const channelSortOrder = useChannelSortOrder();
+  const currentChannels = useChannels(categoryId, channelSortOrder);
+
   // Active recordings for title bar indicator
   const { recordings: activeRecordings, isRecording: hasActiveRecording } = useActiveRecordings(5000);
 
@@ -494,6 +499,10 @@ function App() {
 
   const currentChannelRef = useRef(currentChannel);
   useEffect(() => { currentChannelRef.current = currentChannel; }, [currentChannel]);
+
+  // Ref for current channels list (for up/down navigation)
+  const currentChannelsRef = useRef(currentChannels);
+  useEffect(() => { currentChannelsRef.current = currentChannels; }, [currentChannels]);
 
   // Ref for title bar search input
   const titleBarSearchRef = useRef<HTMLInputElement>(null);
@@ -890,6 +899,10 @@ function App() {
     handleLoadStream(channel);
   };
 
+  // Ref for play channel handler (for up/down navigation)
+  const handlePlayChannelRef = useRef(handlePlayChannel);
+  useEffect(() => { handlePlayChannelRef.current = handlePlayChannel; }, [handlePlayChannel]);
+
   // Background timer for watchlist reminders and autoswitch
   useEffect(() => {
     const checkWatchlist = async () => {
@@ -1177,6 +1190,36 @@ function App() {
       } else if (matches('layout2x2', e.key)) {
         e.preventDefault();
         if (switchLayoutRef.current) switchLayoutRef.current('2x2');
+      } else if (matches('channelUp', e.key)) {
+        e.preventDefault();
+        // Navigate to previous channel in current category
+        const channels = currentChannelsRef.current;
+        const currentCh = currentChannelRef.current;
+        if (channels.length > 0 && currentCh) {
+          const currentIndex = channels.findIndex(ch => ch.stream_id === currentCh.stream_id);
+          if (currentIndex > 0) {
+            // Go to previous channel
+            handlePlayChannelRef.current(channels[currentIndex - 1]);
+          } else if (currentIndex === 0) {
+            // Wrap to last channel
+            handlePlayChannelRef.current(channels[channels.length - 1]);
+          }
+        }
+      } else if (matches('channelDown', e.key)) {
+        e.preventDefault();
+        // Navigate to next channel in current category
+        const channels = currentChannelsRef.current;
+        const currentCh = currentChannelRef.current;
+        if (channels.length > 0 && currentCh) {
+          const currentIndex = channels.findIndex(ch => ch.stream_id === currentCh.stream_id);
+          if (currentIndex >= 0 && currentIndex < channels.length - 1) {
+            // Go to next channel
+            handlePlayChannelRef.current(channels[currentIndex + 1]);
+          } else if (currentIndex === channels.length - 1) {
+            // Wrap to first channel
+            handlePlayChannelRef.current(channels[0]);
+          }
+        }
       }
     };
 

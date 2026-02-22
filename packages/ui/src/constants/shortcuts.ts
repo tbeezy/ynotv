@@ -30,4 +30,6 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
     layoutPip: '2',
     layoutBigBottom: '3',
     layout2x2: '4',
+    channelUp: 'ArrowUp',
+    channelDown: 'ArrowDown',
 };

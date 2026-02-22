@@ -31,11 +31,14 @@ const ACTION_LABELS: Record<ShortcutAction, string> = {
     layoutMain: 'Layout: Main View',
     layoutPip: 'Layout: Picture in Picture',
     layoutBigBottom: 'Layout: Big + Bottom Bar',
-    layout2x2: 'Layout: 2×2 Grid'
+    layout2x2: 'Layout: 2×2 Grid',
+    channelUp: 'Channel Up',
+    channelDown: 'Channel Down'
 };
 
 const GROUPS: Record<string, ShortcutAction[]> = {
     'Playback': ['togglePlay', 'seekForward', 'seekBackward', 'toggleMute', 'selectSubtitle', 'selectAudio', 'toggleFullscreen'],
+    'Navigation': ['channelUp', 'channelDown'],
     'Interface': ['toggleLiveTV', 'toggleGuide', 'toggleCategories', 'toggleDvr', 'toggleSports', 'toggleSettings', 'toggleStats', 'focusSearch', 'close'],
     'Layout': ['layoutMain', 'layoutPip', 'layoutBigBottom', 'layout2x2']
 };

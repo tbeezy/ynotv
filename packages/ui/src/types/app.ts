@@ -26,7 +26,9 @@ export type ShortcutAction =
     | 'layoutMain'
     | 'layoutPip'
     | 'layoutBigBottom'
-    | 'layout2x2';
+    | 'layout2x2'
+    | 'channelUp'
+    | 'channelDown';
 
 export interface SavedChannelState {
     channelName: string | null;
