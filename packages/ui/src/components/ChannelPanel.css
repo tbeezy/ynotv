@@ -163,6 +163,7 @@
   max-width: 800px;
   display: -webkit-box;
   -webkit-line-clamp: 4;
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1086,4 +1087,18 @@
   color: #ff3b30;
   margin-right: 6px;
   font-size: 0.8em;
+}
+
+/* ==========================================================================
+   NON-GLASS THEME GRADIENT FIX
+   Since LiveTV forces the .app container to be transparent (to show video),
+   solid themes with global gradients (like solid-berry) lose their background.
+   We explicitly attach the viewport-fixed gradient under these panels, while
+   tinting them with their default overlay colors for contrast.
+   ========================================================================== */
+[data-theme]:not([data-theme*="glass-"]) .guide-info-pane,
+[data-theme]:not([data-theme*="glass-"]) .guide-grid-section,
+[data-theme]:not([data-theme*="glass-"]) .guide-header {
+  background: var(--bg-primary, #1e1e1e) !important;
+  background-attachment: fixed !important;
 }

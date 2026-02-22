@@ -287,3 +287,15 @@
   font-size: 0.75rem;
   opacity: 0.7;
 }
+
+/* ==========================================================================
+   NON-GLASS THEME GRADIENT FIX
+   Since LiveTV forces the .app container to be transparent (to show video),
+   solid themes with global gradients (like solid-berry) lose their background.
+   We explicitly attach the viewport-fixed gradient under these panels, while
+   tinting them with their default overlay colors for contrast.
+   ========================================================================== */
+[data-theme]:not([data-theme*="glass-"]) .category-strip {
+  background: var(--bg-primary, #1a1a1a) !important;
+  background-attachment: fixed !important;
+}
