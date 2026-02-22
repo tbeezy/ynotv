@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Source } from '@ynotv/core';
 import { syncAllSources, syncAllVod, syncSource, syncVodForSource, markSourceDeleted, type SyncResult, type VodSyncResult } from '../../db/sync';
@@ -21,6 +21,7 @@ interface SourcesTabProps {
   sources: Source[];
   isEncryptionAvailable: boolean;
   onSourcesChange: () => void;
+  editSourceId?: string | null;
 }
 
 type SourceType = 'm3u' | 'xtream' | 'stalker';
@@ -101,7 +102,7 @@ function formatTimeAgo(date: Date | null | undefined): string {
   return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
 }
 
-export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: SourcesTabProps) {
+export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, editSourceId }: SourcesTabProps) {
   const { incrementVersion } = useSourceVersion(); // Get version incrementer
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,6 +147,16 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange }: 
   const [deleteBackupConfirm, setDeleteBackupConfirm] = useState<{ type: 'stalker' | 'xtream'; index: number } | null>(null);
 
   const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
+
+  // Handle auto-opening edit form when requested
+  useEffect(() => {
+    if (editSourceId && sources.length > 0) {
+      const sourceToEdit = sources.find(s => s.id === editSourceId);
+      if (sourceToEdit && editingId !== editSourceId) {
+        handleEdit(sourceToEdit);
+      }
+    }
+  }, [editSourceId, sources]);
 
   // Drag and drop state
   const dragFromIdx = useRef<number | null>(null);

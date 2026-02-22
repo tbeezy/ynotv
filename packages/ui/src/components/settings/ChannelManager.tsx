@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLiveQuery } from '../../hooks/useSqliteLiveQuery';
 import { db, type StoredChannel } from '../../db';
 import { normalizeBoolean } from '../../utils/db-helpers';
@@ -234,7 +235,7 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
     const enabledCount = channels.filter(c => c.enabled !== false).length;
     const totalCount = channels.length;
 
-    return (
+    const modalContent = (
         <div className="channel-manager-overlay" onClick={onClose}>
             <div className="channel-manager-modal" onClick={e => e.stopPropagation()}>
                 <div className="channel-manager-header">
@@ -366,4 +367,6 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 }

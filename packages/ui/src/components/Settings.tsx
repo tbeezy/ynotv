@@ -24,10 +24,12 @@ interface SettingsProps {
   onShortcutsChange?: (shortcuts: ShortcutsMap) => void;
   theme?: ThemeId;
   onThemeChange?: (theme: ThemeId) => void;
+  initialTab?: SettingsTabId;
+  editSourceId?: string | null;
 }
 
-export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: SettingsProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>('sources');
+export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, initialTab = 'sources', editSourceId = null }: SettingsProps) {
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
   const [sources, setSources] = useState<Source[]>([]);
   const [isEncryptionAvailable, setIsEncryptionAvailable] = useState(true);
 
@@ -291,6 +293,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
             sources={sources}
             isEncryptionAvailable={isEncryptionAvailable}
             onSourcesChange={loadSources}
+            editSourceId={editSourceId}
           />
         );
       case 'tmdb':

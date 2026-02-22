@@ -8,6 +8,8 @@ import { normalizeBoolean } from '../utils/db-helpers';
 import { useModal } from './Modal';
 import { createCustomGroup, deleteCustomGroup } from '../services/custom-groups';
 import { CustomGroupManager } from './CustomGroupManager';
+import { CategoryManager } from './settings/CategoryManager';
+import { SourceContextMenu } from './SourceContextMenu';
 import './CategoryStrip.css';
 
 interface CategoryStripProps {
@@ -16,6 +18,7 @@ interface CategoryStripProps {
   visible: boolean;
   sidebarExpanded: boolean;
   showSidebar?: boolean;
+  onEditSource?: (sourceId: string) => void;
 }
 
 // Chevron Icon for expand/collapse
@@ -124,7 +127,7 @@ function CustomGroupButton({ group, selectedCategoryId, onSelectCategory, onCont
 
 
 
-export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, sidebarExpanded, showSidebar = true }: CategoryStripProps) {
+export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, sidebarExpanded, showSidebar = true, onEditSource }: CategoryStripProps) {
   const groupedCategories = useCategoriesBySource();
   const [sources, setSources] = useState<Record<string, string>>({});
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
@@ -134,6 +137,10 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   const { showModal, showConfirm, showPrompt, ModalComponent } = useModal();
   const [managingGroup, setManagingGroup] = useState<{ id: string, name: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, groupId: string } | null>(null);
+
+  // Source Context Menu additions
+  const [sourceContextMenu, setSourceContextMenu] = useState<{ x: number, y: number, sourceId: string, sourceName: string } | null>(null);
+  const [managingCategorySource, setManagingCategorySource] = useState<{ id: string, name: string } | null>(null);
 
   const customGroups = useLiveQuery(
     () => db.customGroups.orderBy('display_order').toArray()
@@ -169,6 +176,11 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   const handleContextMenu = (e: React.MouseEvent, groupId: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, groupId });
+  };
+
+  const handleSourceContextMenu = (e: React.MouseEvent, sourceId: string, sourceName: string) => {
+    e.preventDefault();
+    setSourceContextMenu({ x: e.clientX, y: e.clientY, sourceId, sourceName });
   };
 
   // Fetch source names to resolve IDs
@@ -288,6 +300,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
             <button
               className="category-source-header"
               onClick={() => toggleSource(group.sourceId)}
+              onContextMenu={(e) => handleSourceContextMenu(e, group.sourceId, sources[group.sourceId] || 'Source')}
             >
               <div className="source-header-left">
                 <ChevronIcon expanded={expandedSources[group.sourceId]} />
@@ -372,6 +385,35 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           <div
             style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1 }}
             onClick={() => setContextMenu(null)}
+          />
+        </div>
+      )}
+
+      {sourceContextMenu && (
+        <SourceContextMenu
+          sourceId={sourceContextMenu.sourceId}
+          sourceName={sourceContextMenu.sourceName}
+          position={{ x: sourceContextMenu.x, y: sourceContextMenu.y }}
+          onClose={() => setSourceContextMenu(null)}
+          onManageCategories={(id, name) => setManagingCategorySource({ id, name })}
+          onEditSource={(id) => {
+            if (onEditSource) {
+              onEditSource(id);
+            }
+          }}
+        />
+      )}
+
+      {/* Category Manager Modal overlaying the app native to CategoryStrip entirely */}
+      {managingCategorySource && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'var(--bg-primary)' }}>
+          <CategoryManager
+            sourceId={managingCategorySource.id}
+            sourceName={managingCategorySource.name}
+            onClose={() => setManagingCategorySource(null)}
+            onChange={() => {
+              // The DB sync finishes naturally, updating the live hook automatically down the road
+            }}
           />
         </div>
       )}

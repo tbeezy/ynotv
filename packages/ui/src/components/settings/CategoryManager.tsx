@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLiveQuery } from '../../hooks/useSqliteLiveQuery';
 import { db, type StoredCategory, updateCategoriesBatch } from '../../db';
 import { ChannelManager } from './ChannelManager';
@@ -182,7 +183,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
             : categories;
     }, [categories, hideUnselected]);
 
-    return (
+    const modalContent = (
         <div className="category-manager-overlay" onClick={onClose}>
             <div className="category-manager-modal" onClick={e => e.stopPropagation()}>
                 <div className="category-manager-header">
@@ -290,4 +291,6 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 }

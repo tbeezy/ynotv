@@ -42,25 +42,25 @@ export function ProgramContextMenu({
             let x = position.x;
             let y = position.y;
 
+            // Determine if click was in top or bottom half of the screen
+            const isBottomHalf = position.y > viewportHeight / 2;
+
+            if (isBottomHalf) {
+                // If bottom half, menu pops UP (bottom left is at cursor)
+                y = position.y - rect.height;
+            }
+
             // Prevent menu from going off right edge
             if (x + rect.width > viewportWidth) {
                 x = viewportWidth - rect.width - 10;
             }
 
-            // Prevent menu from going off bottom edge
-            if (y + rect.height > viewportHeight) {
-                y = viewportHeight - rect.height - 10;
-            }
-
             // Prevent menu from going off left edge
-            if (x < 10) {
-                x = 10;
-            }
+            if (x < 10) x = 10;
 
-            // Prevent menu from going off top edge
-            if (y < 10) {
-                y = 10;
-            }
+            // Safety bounds for Y-axis (in case menu is extremely tall)
+            if (y + rect.height > viewportHeight) y = viewportHeight - rect.height - 10;
+            if (y < 10) y = 10;
 
             setAdjustedPosition({ x, y });
         }

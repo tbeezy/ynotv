@@ -5,6 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
 import type { ShortcutsMap, ShortcutAction } from './types/app';
 import { Settings } from './components/Settings';
+import type { SettingsTabId } from './components/settings/SettingsSidebar';
 import { Sidebar, type View } from './components/Sidebar';
 import { NowPlayingBar } from './components/NowPlayingBar';
 import { TrackSelectionModal } from './components/TrackSelectionModal';
@@ -295,6 +296,8 @@ function App() {
   const [showControls, setShowControls] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [activeView, setActiveView] = useState<View>('none');
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('sources');
+  const [editSourceId, setEditSourceId] = useState<string | null>(null);
   const [sportsPreviewEnabled, setSportsPreviewEnabled] = useState(true);
 
   // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, or Series opens; exit when they close
@@ -1369,6 +1372,8 @@ function App() {
           onClick={() => {
             setCategoriesOpen(false);
             setActiveView(activeView === 'settings' ? 'none' : 'settings');
+            setSettingsTab('sources');
+            setEditSourceId(null);
           }}
           title="Settings"
         >
@@ -1514,6 +1519,13 @@ function App() {
         visible={categoriesOpen}
         sidebarExpanded={sidebarExpanded}
         showSidebar={showSidebar}
+        onEditSource={(sourceId) => {
+          setSettingsTab('sources');
+          setEditSourceId(sourceId);
+          setActiveView('settings');
+          setCategoriesOpen(false);
+          setSidebarExpanded(false);
+        }}
       />
 
       {/* Channel Panel - slides out (shifts right if categories open) */}
@@ -1551,7 +1563,9 @@ function App() {
       {/* Settings Panel */}
       {activeView === 'settings' && (
         <Settings
-          onClose={() => setActiveView('none')}
+          initialTab={settingsTab}
+          editSourceId={editSourceId}
+          onClose={() => { setActiveView('none'); setEditSourceId(null); }}
           onShortcutsChange={setShortcuts}
           theme={theme}
           onThemeChange={setTheme}

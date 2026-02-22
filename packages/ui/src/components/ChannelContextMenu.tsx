@@ -76,9 +76,19 @@ export function ChannelContextMenu({
             let x = position.x;
             let y = position.y;
 
+            // Determine if click was in top or bottom half of the screen
+            const isBottomHalf = position.y > viewportHeight / 2;
+
+            if (isBottomHalf) {
+                // If bottom half, menu pops UP (bottom left is at cursor)
+                y = position.y - rect.height;
+            }
+
             if (x + rect.width > viewportWidth) x = viewportWidth - rect.width - 10;
-            if (y + rect.height > viewportHeight) y = viewportHeight - rect.height - 10;
             if (x < 10) x = 10;
+
+            // Safety bounds for Y-axis
+            if (y + rect.height > viewportHeight) y = viewportHeight - rect.height - 10;
             if (y < 10) y = 10;
 
             setAdjustedPosition({ x, y });
