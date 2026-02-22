@@ -561,8 +561,8 @@
 /* ==================== UPCOMING SHOWS TAB ==================== */
 
 .tvcp-upcoming-tab {
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
 }
 
 .tvcp-upcoming-header {
@@ -791,18 +791,78 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Upcoming Episodes Grid Layout - Dynamic based on viewport */
 .tvcp-upcoming-episodes {
-  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+  padding: 24px;
+  max-width: 100%;
+}
+
+/* Larger screens - fit more columns */
+@media (min-width: 1400px) {
+  .tvcp-upcoming-episodes {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    padding: 24px;
+  }
+}
+
+@media (min-width: 1800px) {
+  .tvcp-upcoming-episodes {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    padding: 24px;
+  }
+}
+
+/* Medium screens */
+@media (max-width: 1200px) {
+  .tvcp-upcoming-episodes {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+    padding: 20px;
+  }
+}
+
+/* Small screens */
+@media (max-width: 768px) {
+  .tvcp-upcoming-episodes {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+}
+
+/* Upcoming Card - Vertical Poster Style */
+.tvcp-upcoming-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.tvcp-upcoming-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(102, 126, 234, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.tvcp-upcoming-card-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .tvcp-upcoming-image {
-  width: 80px;
-  height: 120px;
-  flex-shrink: 0;
-  border-radius: 8px;
+  width: 100%;
+  aspect-ratio: 2/3;
   overflow: hidden;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
 }
@@ -811,6 +871,11 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.tvcp-upcoming-card:hover .tvcp-upcoming-image img {
+  transform: scale(1.05);
 }
 
 .tvcp-upcoming-placeholder {
@@ -822,43 +887,58 @@
   color: rgba(255, 255, 255, 0.2);
 }
 
+.tvcp-upcoming-placeholder svg {
+  width: 48px;
+  height: 48px;
+}
+
 .tvcp-upcoming-info {
+  padding: 16px;
   flex: 1;
-  min-width: 0;
-}
-
-.tvcp-upcoming-info h4 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 6px;
-  color: #fff;
-}
-
-.tvcp-upcoming-episode-title {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 8px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
 }
 
+.tvcp-upcoming-info h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: #fff;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.6em;
+}
+
+.tvcp-upcoming-episode-title {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .tvcp-se-num {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   padding: 3px 8px;
-  background: rgba(102, 126, 234, 0.15);
+  background: rgba(102, 126, 234, 0.2);
   border-radius: 12px;
   color: #a5b4fc;
+  white-space: nowrap;
 }
 
 .tvcp-upcoming-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
+  flex-wrap: wrap;
 }
 
 .tvcp-dot {
@@ -870,24 +950,13 @@
   background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   font-size: 11px;
-}
-
-.tvcp-upcoming-summary {
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: nowrap;
 }
 
 .tvcp-upcoming-network {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
   font-size: 12px;
   color: #a5b4fc;
 }
@@ -897,28 +966,21 @@
   flex-shrink: 0;
 }
 
-/* Upcoming Card Layout with Button */
-.tvcp-upcoming-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  transition: all 0.2s ease;
+.tvcp-upcoming-summary {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.tvcp-upcoming-card:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(102, 126, 234, 0.2);
-  transform: translateX(4px);
-}
-
-.tvcp-upcoming-card-content {
-  display: flex;
-  gap: 16px;
-  flex: 1;
+/* Upcoming Card Button Styles */
+.tvcp-upcoming-add-btn,
+.tvcp-upcoming-tracked-badge {
+  margin: 0 16px 16px;
 }
 
 .tvcp-upcoming-add-btn {
@@ -935,7 +997,6 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  align-self: flex-end;
 }
 
 .tvcp-upcoming-add-btn:hover {
@@ -965,7 +1026,6 @@
   color: #4ade80;
   font-size: 13px;
   font-weight: 600;
-  align-self: flex-end;
 }
 
 .tvcp-upcoming-tracked-badge svg {
