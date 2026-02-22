@@ -15,6 +15,7 @@ import { MoviesPage } from './components/MoviesPage';
 import { SeriesPage } from './components/SeriesPage';
 import { DvrDashboard } from './components/DvrDashboard';
 import { SportsHub } from './components/sports/SportsHub';
+import { TVCalendarPage } from './components/TVCalendarPage';
 import { useActiveRecordings } from './hooks/useActiveRecordings';
 import { RecordingIndicator } from './components/RecordingIndicator';
 import { Logo } from './components/Logo';
@@ -301,9 +302,23 @@ function App() {
   const [editSourceId, setEditSourceId] = useState<string | null>(null);
   const [sportsPreviewEnabled, setSportsPreviewEnabled] = useState(true);
 
+  // Listen for open-settings custom event (from TV Calendar, etc.)
+  useEffect(() => {
+    const handleOpenSettings = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tab?: SettingsTabId }>;
+      console.log('[App] Received open-settings event:', customEvent.detail);
+      if (customEvent.detail?.tab) {
+        setSettingsTab(customEvent.detail.tab);
+      }
+      setActiveView('settings');
+    };
+    window.addEventListener('open-settings', handleOpenSettings);
+    return () => window.removeEventListener('open-settings', handleOpenSettings);
+  }, []);
+
   // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, or Series opens; exit when they close
   useEffect(() => {
-    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' || activeView === 'settings' || activeView === 'movies' || activeView === 'series') {
+    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' || activeView === 'settings' || activeView === 'movies' || activeView === 'series' || activeView === 'calendar') {
       multiview.enterTabMode(activeView);
     } else {
       multiview.exitTabMode();
@@ -1409,6 +1424,23 @@ function App() {
         </div>
 
 
+        {/* Calendar Button */}
+        <button
+          className={`title-bar-calendar-btn ${activeView === 'calendar' ? 'active' : ''}`}
+          onClick={() => {
+            setCategoriesOpen(false);
+            setActiveView(activeView === 'calendar' ? 'none' : 'calendar');
+          }}
+          title="TV Calendar"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" />
+            <path d="M16 3v4" />
+            <path d="M8 3v4" />
+            <path d="M4 11h16" />
+          </svg>
+        </button>
+
         {/* Settings Button */}
         <button
           className={`title-bar-settings-btn ${activeView === 'settings' ? 'active' : ''}`}
@@ -1656,6 +1688,37 @@ function App() {
           }}
           previewEnabled={sportsPreviewEnabled}
           onTogglePreview={() => setSportsPreviewEnabled(prev => !prev)}
+        />
+      )}
+
+      {/* TV Calendar */}
+      {activeView === 'calendar' && (
+        <TVCalendarPage
+          onClose={() => setActiveView('none')}
+          onPlayChannel={async (channelName) => {
+            console.log('[App] Calendar onPlayChannel called with:', channelName);
+            console.log('[App] Available channels:', currentChannels.map(c => c.name));
+            // Find channel by name and play it
+            let channel = currentChannels.find(c => c.name === channelName);
+            console.log('[App] Found channel in currentChannels:', channel);
+
+            // Fallback: query database directly if not in current list
+            if (!channel) {
+              console.log('[App] Channel not in current list, querying database...');
+              const channels = await db.channels.whereRaw('name = ?', [channelName]).toArray();
+              console.log('[App] Database query result:', channels);
+              if (channels.length > 0) {
+                channel = channels[0];
+                console.log('[App] Using channel from database:', channel);
+              }
+            }
+
+            if (channel) {
+              handlePlayChannel(channel);
+            } else {
+              console.log('[App] Channel not found anywhere:', channelName);
+            }
+          }}
         />
       )}
 

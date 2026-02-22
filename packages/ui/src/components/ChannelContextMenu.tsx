@@ -6,6 +6,7 @@ import { StalkerClient } from '@ynotv/local-adapter';
 import { useModal } from './Modal';
 import { addChannelsToGroup } from '../services/custom-groups';
 import { addToRecentChannels } from '../utils/recentChannels';
+import { TVMazeSearchModal } from './TVMazeSearchModal';
 import './ProgramContextMenu.css'; // Reuse the same styles
 
 type MenuView = 'main' | 'quick' | 'custom' | 'group';
@@ -40,6 +41,7 @@ export function ChannelContextMenu({
     const [durationMinutes, setDurationMinutes] = useState(30);
     const [scheduling, setScheduling] = useState(false);
     const [adjustedPosition, setAdjustedPosition] = useState(position);
+    const [showTVMazeModal, setShowTVMazeModal] = useState(false);
     const { showSuccess, showError, ModalComponent } = useModal();
 
     // Group state
@@ -389,10 +391,22 @@ export function ChannelContextMenu({
                 📋 Add to Group →
             </div>
             <div className="context-menu-separator" />
+            <div className="context-menu-item" onClick={() => setShowTVMazeModal(true)}>
+                📺 Track Show
+            </div>
+            <div className="context-menu-separator" />
             <div className="context-menu-item context-menu-item-secondary" onClick={onClose}>
                 Cancel
             </div>
             <ModalComponent />
+            {showTVMazeModal && (
+                <TVMazeSearchModal
+                    programTitle={channel.name}
+                    channelName={channel.name}
+                    channelId={channel.stream_id}
+                    onClose={() => setShowTVMazeModal(false)}
+                />
+            )}
         </div>,
         document.body
     );

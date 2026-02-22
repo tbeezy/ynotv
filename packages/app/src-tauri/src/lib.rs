@@ -33,6 +33,9 @@ mod epg_streaming;
 
 // TMDB caching module
 mod tmdb_cache;
+
+// TVMaze module for TV Calendar
+mod tvmaze;
 use tmdb_cache::{TmdbCache, MatchResult, CacheStats};
 
 
@@ -1008,6 +1011,139 @@ async fn clear_tmdb_cache(app: AppHandle) -> Result<(), String> {
 }
 
 // =============================================================================
+// TVMaze / TV Calendar Commands
+// =============================================================================
+
+#[tauri::command]
+async fn search_tvmaze(query: String) -> Result<Vec<tvmaze::TvMazeShowResult>, String> {
+    tvmaze::fetch_show_search(&query).await
+}
+
+#[tauri::command]
+async fn add_tv_favorite(
+    state: tauri::State<'_, DvrState>,
+    tvmaze_id: i64,
+    show_name: String,
+    show_image: Option<String>,
+    channel_name: Option<String>,
+    channel_id: Option<String>,
+    status: Option<String>,
+) -> Result<(), String> {
+    println!("[TVMaze Command] add_tv_favorite called: id={}, name={}, channel={:?}, channel_id={:?}",
+        tvmaze_id, show_name, channel_name, channel_id);
+
+    state.db.tvmaze_add_favorite(
+        tvmaze_id, &show_name,
+        show_image.as_deref(), channel_name.as_deref(),
+        channel_id.as_deref(), status.as_deref(),
+    ).map_err(|e| {
+        println!("[TVMaze Command] Failed to add favorite: {}", e);
+        e.to_string()
+    })?;
+
+    println!("[TVMaze Command] Favorite added to DB, fetching episodes...");
+
+    // Fetch and store episodes immediately
+    let episodes = tvmaze::fetch_episodes(tvmaze_id).await.map_err(|e| {
+        println!("[TVMaze Command] Failed to fetch episodes: {}", e);
+        e
+    })?;
+
+    println!("[TVMaze Command] Fetched {} episodes", episodes.len());
+    // Log first 10 episodes to see what dates are available
+    for (i, ep) in episodes.iter().take(10).enumerate() {
+        println!("[TVMaze Command] Ep {}: S{}E{} airdate={:?}",
+            i,
+            ep.season.unwrap_or(-1),
+            ep.episode.unwrap_or(-1),
+            ep.airdate
+        );
+    }
+    // Count future episodes (2026+)
+    let future_count = episodes.iter().filter(|e| {
+        e.airdate.as_ref().map_or(false, |d| d.starts_with("2026-"))
+    }).count();
+    println!("[TVMaze Command] Episodes with 2026 air dates: {}", future_count);
+
+    state.db.tvmaze_upsert_episodes(tvmaze_id, &episodes)
+        .map_err(|e| {
+            println!("[TVMaze Command] Failed to upsert episodes: {}", e);
+            e.to_string()
+        })?;
+
+    state.db.tvmaze_update_last_synced(tvmaze_id)
+        .map_err(|e| e.to_string())?;
+
+    println!("[TVMaze Command] Successfully added show with {} episodes", episodes.len());
+    Ok(())
+}
+
+#[tauri::command]
+async fn remove_tv_favorite(
+    state: tauri::State<'_, DvrState>,
+    tvmaze_id: i64,
+) -> Result<(), String> {
+    state.db.tvmaze_remove_favorite(tvmaze_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_tracked_shows(
+    state: tauri::State<'_, DvrState>,
+) -> Result<Vec<tvmaze::TrackedShow>, String> {
+    state.db.tvmaze_get_favorites().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_calendar_episodes(
+    state: tauri::State<'_, DvrState>,
+    month: String,
+) -> Result<Vec<tvmaze::CalendarEpisode>, String> {
+    state.db.tvmaze_get_calendar_episodes(&month).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn sync_tvmaze_shows(
+    state: tauri::State<'_, DvrState>,
+) -> Result<u32, String> {
+    let shows = state.db.tvmaze_get_running_shows().map_err(|e| e.to_string())?;
+    let mut count = 0u32;
+    for (tvmaze_id, _) in shows {
+        if let Ok(eps) = tvmaze::fetch_episodes(tvmaze_id).await {
+            let _ = state.db.tvmaze_upsert_episodes(tvmaze_id, &eps);
+            let _ = state.db.tvmaze_update_last_synced(tvmaze_id);
+            count += 1;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+    Ok(count)
+}
+
+#[tauri::command]
+async fn get_show_details(tvmaze_id: i64) -> Result<tvmaze::TvMazeShowDetails, String> {
+    println!("[TVMaze Command] get_show_details called for id={}", tvmaze_id);
+    tvmaze::fetch_show_details(tvmaze_id).await
+}
+
+#[derive(Debug, Serialize)]
+struct ShowDetailsWithEpisodes {
+    details: tvmaze::TvMazeShowDetails,
+    episodes: Vec<tvmaze::TvMazeEpisode>,
+}
+
+#[tauri::command]
+async fn get_show_details_with_episodes(tvmaze_id: i64) -> Result<ShowDetailsWithEpisodes, String> {
+    println!("[TVMaze Command] get_show_details_with_episodes called for id={}", tvmaze_id);
+    let (details, episodes) = tvmaze::fetch_show_details_with_episodes(tvmaze_id).await?;
+    Ok(ShowDetailsWithEpisodes { details, episodes })
+}
+
+#[tauri::command]
+async fn open_external_url(url: String) -> Result<(), String> {
+    println!("[Open URL] Opening external URL: {}", url);
+    tauri_plugin_opener::open_url(&url, None::<&str>).map_err(|e| e.to_string())
+}
+
+// =============================================================================
 // Window State Persistence
 // =============================================================================
 
@@ -1237,7 +1373,18 @@ pub fn run() {
             update_tmdb_series_cache,
             find_tmdb_movies,
             find_tmdb_series,
-            clear_tmdb_cache
+            clear_tmdb_cache,
+            // TVMaze / TV Calendar commands
+            search_tvmaze,
+            add_tv_favorite,
+            remove_tv_favorite,
+            get_tracked_shows,
+            get_calendar_episodes,
+            sync_tvmaze_shows,
+            get_show_details,
+            get_show_details_with_episodes,
+            // Utility commands
+            open_external_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

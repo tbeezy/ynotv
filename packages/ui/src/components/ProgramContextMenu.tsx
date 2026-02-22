@@ -5,6 +5,7 @@ import type { StoredProgram, WatchlistOptions } from '../db';
 import { StalkerClient } from '@ynotv/local-adapter';
 import { useModal } from './Modal';
 import { WatchlistOptionsModal } from './WatchlistOptionsModal';
+import { TVMazeSearchModal } from './TVMazeSearchModal';
 import './ProgramContextMenu.css';
 
 interface ProgramContextMenuProps {
@@ -28,6 +29,7 @@ export function ProgramContextMenu({
     const [scheduling, setScheduling] = useState(false);
     const [addingToWatchlist, setAddingToWatchlist] = useState(false);
     const [showWatchlistModal, setShowWatchlistModal] = useState(false);
+    const [showTVMazeModal, setShowTVMazeModal] = useState(false);
     const [channelForWatchlist, setChannelForWatchlist] = useState<import('../db').StoredChannel | null>(null);
     const [adjustedPosition, setAdjustedPosition] = useState(position);
     const { showSuccess, showError, showInfo, ModalComponent } = useModal();
@@ -70,7 +72,8 @@ export function ProgramContextMenu({
     // Close on click outside (but not when modal is open)
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
-            if (showWatchlistModal) return; // Don't close if modal is open
+            if (showWatchlistModal) return; // Don't close if watchlist modal is open
+            if (showTVMazeModal) return; // Don't close if TVMaze modal is open
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
                 onClose();
             }
@@ -78,12 +81,13 @@ export function ProgramContextMenu({
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [onClose, showWatchlistModal]);
+    }, [onClose, showWatchlistModal, showTVMazeModal]);
 
     // Close on escape (but not when modal is open)
     useEffect(() => {
         function handleEscape(e: KeyboardEvent) {
-            if (showWatchlistModal) return; // Don't close if modal is open
+            if (showWatchlistModal) return; // Don't close if watchlist modal is open
+            if (showTVMazeModal) return; // Don't close if TVMaze modal is open
             if (e.key === 'Escape') {
                 onClose();
             }
@@ -91,7 +95,7 @@ export function ProgramContextMenu({
 
         document.addEventListener('keydown', handleEscape);
         return () => document.removeEventListener('keydown', handleEscape);
-    }, [onClose, showWatchlistModal]);
+    }, [onClose, showWatchlistModal, showTVMazeModal]);
 
     async function handleAddToWatchlistClick() {
         const channel = await db.channels.get(channelId);
@@ -216,6 +220,13 @@ export function ProgramContextMenu({
                     {addingToWatchlist ? '⏳ Adding...' : '⭐ Add to Watchlist'}
                 </div>
                 <div className="context-menu-separator" />
+                <div className="context-menu-item" onClick={() => {
+                    console.log('[ProgramContextMenu] Opening TVMaze modal for:', program.title);
+                    setShowTVMazeModal(true);
+                }}>
+                    📺 Track Show
+                </div>
+                <div className="context-menu-separator" />
                 <div className="context-menu-item context-menu-item-secondary" onClick={onClose}>
                     Cancel
                 </div>
@@ -228,6 +239,14 @@ export function ProgramContextMenu({
                 onConfirm={handleWatchlistConfirm}
                 onCancel={() => setShowWatchlistModal(false)}
             />
+            {showTVMazeModal && (
+                <TVMazeSearchModal
+                    programTitle={program.title}
+                    channelName={channelName}
+                    channelId={channelId}
+                    onClose={() => setShowTVMazeModal(false)}
+                />
+            )}
         </>,
         document.body
     );

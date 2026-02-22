@@ -16,6 +16,7 @@ import { UITab } from './settings/UITab';
 import { ThemeTab } from './settings/ThemeTab';
 import { DvrTab } from './settings/DvrTab';
 import { StartupTab, type SavedLayoutState } from './settings/StartupTab';
+import { TVCalendarTab } from './settings/TVCalendarTab';
 import type { ShortcutsMap, ThemeId } from '../types/app';
 import './Settings.css';
 
@@ -401,6 +402,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onReopenLastOnStartupChange={handleReopenLastOnStartupChange}
           />
         );
+      case 'tv-calendar':
+        return <TVCalendarTab />;
       default:
         return null;
     }

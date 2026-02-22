@@ -121,6 +121,13 @@ impl DvrState {
         self.cleanup.start_periodic_cleanup().await?;
         info!("Cleanup task started");
 
+        // Start TVMaze 24h background sync
+        let tvmaze_db = self.db.clone();
+        tokio::spawn(async move {
+            crate::tvmaze::run_background_sync(tvmaze_db).await;
+        });
+        info!("TVMaze background sync task started");
+
         info!("All DVR background tasks started");
         Ok(())
     }

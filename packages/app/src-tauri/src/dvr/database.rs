@@ -158,6 +158,48 @@ impl DvrDatabase {
         ); // Ignore error if column already exists
         println!("[DVR DB] thumbnail_path migration check complete");
 
+        // TVMaze tables for TV Show Calendar feature
+        println!("[DVR DB] Creating TVMaze tables...");
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tv_favorites (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                tvmaze_id    INTEGER UNIQUE NOT NULL,
+                show_name    TEXT NOT NULL,
+                show_image   TEXT,
+                channel_name TEXT,
+                channel_id   TEXT,
+                status       TEXT,
+                last_synced  TEXT,
+                added_at     TEXT DEFAULT (datetime('now'))
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tv_episodes (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                tvmaze_id    INTEGER NOT NULL,
+                season       INTEGER,
+                episode      INTEGER,
+                episode_name TEXT,
+                airdate      TEXT,
+                airtime      TEXT,
+                runtime      INTEGER,
+                FOREIGN KEY (tvmaze_id) REFERENCES tv_favorites(tvmaze_id)
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tv_episodes_tvmaze ON tv_episodes(tvmaze_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tv_episodes_airdate ON tv_episodes(airdate)",
+            [],
+        )?;
+
         println!("[DVR DB] Schema initialized successfully");
         debug!("Database schema initialized");
         Ok(())
@@ -826,6 +868,179 @@ impl DvrDatabase {
             .optional()?;
 
         Ok(max_connections)
+    }
+
+    // TVMaze / TV Calendar methods
+
+    pub fn tvmaze_add_favorite(
+        &self,
+        tvmaze_id: i64,
+        show_name: &str,
+        show_image: Option<&str>,
+        channel_name: Option<&str>,
+        channel_id: Option<&str>,
+        status: Option<&str>,
+    ) -> Result<()> {
+        println!("[TVMaze DB] Adding favorite: id={}, name={}", tvmaze_id, show_name);
+        let conn = self.get_conn()?;
+        let rows = conn.execute(
+            "INSERT OR IGNORE INTO tv_favorites
+             (tvmaze_id, show_name, show_image, channel_name, channel_id, status, last_synced)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'))",
+            params![tvmaze_id, show_name, show_image, channel_name, channel_id, status],
+        )?;
+        println!("[TVMaze DB] Insert affected {} rows", rows);
+        Ok(())
+    }
+
+    pub fn tvmaze_remove_favorite(&self, tvmaze_id: i64) -> Result<()> {
+        let conn = self.get_conn()?;
+        conn.execute("DELETE FROM tv_episodes WHERE tvmaze_id = ?1", params![tvmaze_id])?;
+        conn.execute("DELETE FROM tv_favorites WHERE tvmaze_id = ?1", params![tvmaze_id])?;
+        Ok(())
+    }
+
+    pub fn tvmaze_get_favorites(&self) -> Result<Vec<crate::tvmaze::TrackedShow>> {
+        let conn = self.get_conn()?;
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM tv_favorites", [], |r| r.get(0))?;
+        println!("[TVMaze DB] get_favorites: found {} favorites in DB", count);
+
+        let mut stmt = conn.prepare(
+            "SELECT tvmaze_id, show_name, show_image, channel_name, channel_id, status, last_synced
+             FROM tv_favorites ORDER BY show_name ASC"
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(crate::tvmaze::TrackedShow {
+                tvmaze_id:    row.get(0)?,
+                show_name:    row.get(1)?,
+                show_image:   row.get(2)?,
+                channel_name: row.get(3)?,
+                channel_id:   row.get(4)?,
+                status:       row.get(5)?,
+                last_synced:  row.get(6)?,
+            })
+        })?;
+        let result = rows.collect::<rusqlite::Result<Vec<_>>>().map_err(anyhow::Error::from)?;
+        println!("[TVMaze DB] get_favorites: returning {} shows", result.len());
+        Ok(result)
+    }
+
+    pub fn tvmaze_upsert_episodes(
+        &self,
+        tvmaze_id: i64,
+        episodes: &[crate::tvmaze::EpisodeRow],
+    ) -> Result<()> {
+        println!("[TVMaze DB] upsert_episodes: tvmaze_id={}, {} episodes", tvmaze_id, episodes.len());
+        let conn = self.get_conn()?;
+        let deleted = conn.execute("DELETE FROM tv_episodes WHERE tvmaze_id = ?1", params![tvmaze_id])?;
+        println!("[TVMaze DB] upsert_episodes: deleted {} old episodes", deleted);
+        for (i, ep) in episodes.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO tv_episodes
+                 (tvmaze_id, season, episode, episode_name, airdate, airtime, runtime)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![tvmaze_id, ep.season, ep.episode, ep.episode_name, ep.airdate, ep.airtime, ep.runtime],
+            )?;
+            if i < 3 {
+                // Log first 3 episodes for debugging
+                println!("[TVMaze DB] upsert_episodes: inserted ep {}: S{}E{} airdate={}",
+                    i, ep.season.unwrap_or(-1), ep.episode.unwrap_or(-1), ep.airdate.as_deref().unwrap_or("NULL"));
+            }
+        }
+        println!("[TVMaze DB] upsert_episodes: done");
+        Ok(())
+    }
+
+    pub fn tvmaze_update_last_synced(&self, tvmaze_id: i64) -> Result<()> {
+        let conn = self.get_conn()?;
+        conn.execute(
+            "UPDATE tv_favorites SET last_synced = datetime('now') WHERE tvmaze_id = ?1",
+            params![tvmaze_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn tvmaze_get_calendar_episodes(
+        &self,
+        month_prefix: &str,
+    ) -> Result<Vec<crate::tvmaze::CalendarEpisode>> {
+        let conn = self.get_conn()?;
+        let like_pattern = format!("{}%", month_prefix);
+        println!("[TVMaze DB] get_calendar_episodes: month_prefix={}, pattern={}", month_prefix, like_pattern);
+
+        // Check all unique airdates in the database for debugging
+        let mut date_stmt = conn.prepare("SELECT DISTINCT airdate FROM tv_episodes WHERE airdate IS NOT NULL ORDER BY airdate DESC LIMIT 20")?;
+        let dates: Vec<String> = date_stmt.query_map([], |r| r.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
+        println!("[TVMaze DB] Recent airdates in DB: {:?}", dates);
+
+        // Check specifically for 2026 dates
+        let mut future_stmt = conn.prepare("SELECT DISTINCT airdate FROM tv_episodes WHERE airdate LIKE '2026-%' ORDER BY airdate")?;
+        let future_dates: Vec<String> = future_stmt.query_map([], |r| r.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
+        println!("[TVMaze DB] 2026 airdates in DB: {:?}", future_dates);
+
+        // Check specifically for Storage Wars (tvmaze_id=860) 2026 dates
+        let mut sw_stmt = conn.prepare("SELECT season, episode, airdate FROM tv_episodes WHERE tvmaze_id=860 AND airdate LIKE '2026-%' ORDER BY airdate")?;
+        let sw_rows = sw_stmt.query_map([], |r| {
+            let season: i64 = r.get(0)?;
+            let episode: i64 = r.get(1)?;
+            let date: String = r.get(2)?;
+            Ok((season, episode, date))
+        })?.collect::<Result<Vec<_>, _>>()?;
+        println!("[TVMaze DB] Storage Wars 2026 episodes: {:?}", sw_rows);
+
+        // Check for data without the JOIN (raw episodes)
+        let raw_count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM tv_episodes WHERE airdate LIKE ?1",
+            params![like_pattern],
+            |r| r.get(0)
+        )?;
+        println!("[TVMaze DB] Raw episode count (no join): {}", raw_count);
+
+        // Check episode count
+        let ep_count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM tv_episodes WHERE airdate LIKE ?1",
+            params![like_pattern],
+            |r| r.get(0)
+        )?;
+        println!("[TVMaze DB] get_calendar_episodes: found {} episodes matching pattern", ep_count);
+
+        let mut stmt = conn.prepare(
+            "SELECT e.airdate, e.airtime, e.episode_name, e.season, e.episode,
+                    f.show_name, f.channel_name, f.show_image
+             FROM tv_episodes e
+             JOIN tv_favorites f ON f.tvmaze_id = e.tvmaze_id
+             WHERE e.airdate LIKE ?1
+             ORDER BY e.airdate ASC, e.airtime ASC"
+        )?;
+        let rows = stmt.query_map(params![like_pattern], |row| {
+            Ok(crate::tvmaze::CalendarEpisode {
+                airdate:      row.get(0)?,
+                airtime:      row.get(1)?,
+                episode_name: row.get(2)?,
+                season:       row.get(3)?,
+                episode:      row.get(4)?,
+                show_name:    row.get(5)?,
+                channel_name: row.get(6)?,
+                show_image:   row.get(7)?,
+            })
+        })?;
+        let result = rows.collect::<rusqlite::Result<Vec<_>>>().map_err(anyhow::Error::from)?;
+        println!("[TVMaze DB] get_calendar_episodes: returning {} episodes", result.len());
+        Ok(result)
+    }
+
+    pub fn tvmaze_get_running_shows(&self) -> Result<Vec<(i64, String)>> {
+        let conn = self.get_conn()?;
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM tv_favorites WHERE status = 'Running'", [], |r| r.get(0))?;
+        println!("[TVMaze DB] get_running_shows: found {} running shows", count);
+
+        let mut stmt = conn.prepare(
+            "SELECT tvmaze_id, show_name FROM tv_favorites WHERE status = 'Running'"
+        )?;
+        let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+        let result = rows.collect::<rusqlite::Result<Vec<_>>>().map_err(anyhow::Error::from)?;
+        println!("[TVMaze DB] get_running_shows: returning {} shows", result.len());
+        Ok(result)
     }
 }
 

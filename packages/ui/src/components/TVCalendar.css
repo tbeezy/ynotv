@@ -1,0 +1,310 @@
+.tvcal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.tvcal-panel {
+  background: #141428;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  width: 92%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.tvcal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tvcal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tvcal-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tvcal-controls button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.tvcal-controls button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tvcal-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tvcal-sync {
+  background: rgba(0, 212, 255, 0.15) !important;
+  color: #00d4ff !important;
+  border-color: rgba(0, 212, 255, 0.3) !important;
+}
+
+.tvcal-manage-btn {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%) !important;
+  border-color: rgba(102, 126, 234, 0.4) !important;
+  color: #a5b4fc !important;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.tvcal-manage-btn:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%) !important;
+  border-color: rgba(102, 126, 234, 0.6) !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+}
+
+.tvcal-month {
+  min-width: 140px;
+  text-align: center;
+  font-weight: 600;
+  color: #fff;
+}
+
+.tvcal-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.tvcal-close:hover {
+  color: #fff;
+}
+
+.tvcal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tvcal-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tvcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+.tvcal-day {
+  background: #1a1a2e;
+  min-height: 120px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tvcal-day.other-month {
+  background: #151525;
+  opacity: 0.7;
+}
+
+.tvcal-day.today {
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.tvcal-daynum {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 6px;
+}
+
+.tvcal-day.today .tvcal-daynum {
+  color: #00d4ff;
+}
+
+.tvcal-daycontent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.tvcal-episode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.75rem;
+}
+
+.tvcal-episode:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tvcal-ep-img {
+  width: 24px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.tvcal-ep-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tvcal-ep-time {
+  color: #00d4ff;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+.tvcal-ep-show {
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tvcal-ep-title {
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tvcal-ep-channel {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.7rem;
+}
+
+.tvcal-loading {
+  padding: 40px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tvcal-debug-btn {
+  background: rgba(255, 165, 0, 0.2) !important;
+  color: #ffa500 !important;
+  border-color: rgba(255, 165, 0, 0.4) !important;
+}
+
+.tvcal-settings-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  font-size: 1.1rem !important;
+  padding: 6px 10px !important;
+}
+
+.tvcal-debug-panel {
+  background: rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 20px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.tvcal-debug-section {
+  margin-bottom: 16px;
+}
+
+.tvcal-debug-section h4 {
+  margin: 0 0 8px 0;
+  color: #ffa500;
+  font-size: 0.9rem;
+}
+
+.tvcal-debug-section p {
+  margin: 4px 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.tvcal-debug-section pre {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 8px 0;
+}
+
+.tvcal-debug-show {
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.tvcal-debug-show strong {
+  color: #fff;
+  min-width: 120px;
+}
+
+.tvcal-debug-show span {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tvcal-remove-btn {
+  background: rgba(255, 80, 80, 0.2);
+  color: #ff5050;
+  border: 1px solid rgba(255, 80, 80, 0.4);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.tvcal-remove-btn:hover {
+  background: rgba(255, 80, 80, 0.3);
+}

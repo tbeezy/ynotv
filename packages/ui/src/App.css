@@ -265,6 +265,33 @@
   color: #00d4ff;
 }
 
+/* Calendar button in titlebar */
+.title-bar-calendar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+.title-bar-calendar-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.title-bar-calendar-btn.active {
+  background: rgba(0, 212, 255, 0.2);
+}
+
 /* Video layer - mpv renders BEHIND this via --wid embedding */
 .video-background {
   position: absolute;

@@ -1,0 +1,174 @@
+.tvmaze-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tvmaze-modal {
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.tvmaze-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.tvmaze-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.tvmaze-close {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.tvmaze-close:hover { color: #fff; }
+
+.tvmaze-search-row {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.tvmaze-input {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.tvmaze-input:focus {
+  border-color: #00d4ff;
+  background: rgba(255,255,255,0.1);
+}
+
+.tvmaze-search-btn {
+  background: #00d4ff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #000;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tvmaze-search-btn:hover { background: #00b8e6; }
+.tvmaze-search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.tvmaze-error {
+  padding: 8px 20px;
+  color: #ff6b6b;
+  font-size: 0.85rem;
+}
+
+.tvmaze-results {
+  overflow-y: auto;
+  max-height: 320px;
+  padding: 8px;
+}
+
+.tvmaze-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.tvmaze-result:hover { background: rgba(255,255,255,0.1); }
+.tvmaze-result:active { background: rgba(0,212,255,0.15); }
+.tvmaze-result.adding { opacity: 0.6; cursor: default; }
+
+.tvmaze-thumb {
+  width: 42px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+}
+
+.tvmaze-thumb-placeholder {
+  width: 42px;
+  height: 60px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.tvmaze-result-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tvmaze-result-info strong {
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.tvmaze-result-info span {
+  color: rgba(255,255,255,0.55);
+  font-size: 0.8rem;
+}
+
+.tvmaze-add-label {
+  background: rgba(0,212,255,0.15);
+  color: #00d4ff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid rgba(0,212,255,0.3);
+  user-select: none;
+}
+
+.tvmaze-empty {
+  padding: 20px;
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.9rem;
+}

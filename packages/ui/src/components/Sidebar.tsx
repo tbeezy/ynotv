@@ -77,9 +77,18 @@ const Icons = {
       <path d="M19 9c1.5 0 3 .6 3 2 0 1.4-1.5 2-3 2" />
     </svg>
   ),
+  // Calendar icon for TV Calendar
+  calendar: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" />
+      <path d="M16 3v4" />
+      <path d="M8 3v4" />
+      <path d="M4 11h16" />
+    </svg>
+  ),
 };
 
-type View = 'none' | 'guide' | 'movies' | 'series' | 'dvr' | 'sports' | 'settings';
+type View = 'none' | 'guide' | 'movies' | 'series' | 'dvr' | 'sports' | 'calendar' | 'settings';
 
 interface SidebarProps {
   activeView: View;
@@ -164,6 +173,15 @@ export function Sidebar({ activeView, onViewChange, visible, categoriesOpen, onC
         >
           <span className="nav-icon">{Icons.sports}</span>
           <span className="nav-label">Sports</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeView === 'calendar' ? 'active' : ''}`}
+          onClick={() => handleClick('calendar')}
+          title="TV Calendar"
+        >
+          <span className="nav-icon">{Icons.calendar}</span>
+          <span className="nav-label">Calendar</span>
         </button>
 
         {hasVodSource && (
