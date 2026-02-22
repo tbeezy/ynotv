@@ -17,24 +17,45 @@ export interface SavedLayoutState {
 
 interface StartupTabProps {
   rememberLastChannels: boolean;
+  reopenLastOnStartup: boolean;
   savedLayoutState: SavedLayoutState | null;
   onRememberLastChannelsChange: (value: boolean) => void;
+  onReopenLastOnStartupChange: (value: boolean) => void;
 }
 
 export function StartupTab({
   rememberLastChannels,
+  reopenLastOnStartup,
   savedLayoutState,
   onRememberLastChannelsChange,
+  onReopenLastOnStartupChange,
 }: StartupTabProps) {
   const [localValue, setLocalValue] = useState(rememberLastChannels);
+  const [localReopenValue, setLocalReopenValue] = useState(reopenLastOnStartup);
 
   useEffect(() => {
     setLocalValue(rememberLastChannels);
   }, [rememberLastChannels]);
 
+  useEffect(() => {
+    setLocalReopenValue(reopenLastOnStartup);
+  }, [reopenLastOnStartup]);
+
   const handleToggle = (checked: boolean) => {
     setLocalValue(checked);
     onRememberLastChannelsChange(checked);
+
+    // Automatically switch off 'reopen' if we just disabled 'remember'
+    if (!checked) {
+      setLocalReopenValue(false);
+      // Let Settings.tsx handle pushing the dependent state correctly to DB
+    }
+  };
+
+  const handleReopenToggle = (checked: boolean) => {
+    if (!localValue && checked) return; // Prevent enabling if remember channels isn't enabled
+    setLocalReopenValue(checked);
+    onReopenLastOnStartupChange(checked);
   };
 
   const getLayoutLabel = (layout: LayoutMode): string => {
@@ -90,6 +111,35 @@ export function StartupTab({
               checked={localValue}
               onChange={(e) => handleToggle(e.target.checked)}
               style={{ cursor: 'pointer', marginLeft: '1rem' }}
+            />
+          </div>
+
+          {/* Reopen Last On Startup Toggle */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.75rem 0',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              opacity: localValue ? 1 : 0.5,
+              transition: 'opacity 0.2s',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>
+                Reopen Last on Startup
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                Automatically load and play the remembered channels when the application starts
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={localReopenValue}
+              onChange={(e) => handleReopenToggle(e.target.checked)}
+              disabled={!localValue}
+              style={{ cursor: localValue ? 'pointer' : 'not-allowed', marginLeft: '1rem' }}
             />
           </div>
         </div>

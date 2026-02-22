@@ -25,6 +25,7 @@ export interface SavedLayoutState {
 
 interface UseLayoutPersistenceOptions {
   enabled: boolean;
+  reopenLastOnStartup?: boolean;
   initialSavedState?: SavedLayoutState | null;
   settingsLoaded?: boolean;
   mpvReady?: boolean;
@@ -37,7 +38,7 @@ interface UseLayoutPersistenceOptions {
  * and can restore them on startup.
  */
 export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
-  const { enabled, initialSavedState, settingsLoaded, mpvReady, onLoadMainChannel } = options;
+  const { enabled, reopenLastOnStartup, initialSavedState, settingsLoaded, mpvReady, onLoadMainChannel } = options;
 
   // Get base multiview functionality
   const multiview = useMultiview();
@@ -250,6 +251,10 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
 
       // Save state after loading
       if (enabled) {
+        // Manually update slotsRef so we don't save stale React state before the next render tick
+        slotsRef.current = slotsRef.current.map(s =>
+          s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
+        );
         await saveStateWithRefs();
       }
     },
@@ -262,6 +267,8 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
   const swapWithMain = useCallback(
     async (slotId: 2 | 3 | 4, currentSlots: ViewerSlot[]) => {
       const slot = currentSlots.find((s) => s.id === slotId);
+      const oldMain = { ...mainSlotRef.current };
+
       if (slot?.channelUrl) {
         mainSlotRef.current = {
           channelName: slot.channelName,
@@ -272,6 +279,15 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       await baseSwapWithMain(slotId, currentSlots);
 
       if (enabled) {
+        // Update slotsRef synchronously to swap old main stream into target slot before save
+        slotsRef.current = slotsRef.current.map(s =>
+          s.id === slotId ? {
+            ...s,
+            channelName: oldMain.channelName,
+            channelUrl: oldMain.channelUrl,
+            active: !!oldMain.channelUrl
+          } : s
+        );
         await saveStateWithRefs();
       }
     },
@@ -286,6 +302,10 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       await baseStopSlot(slotId);
 
       if (enabled) {
+        // Zero out target slot manually before save tick
+        slotsRef.current = slotsRef.current.map(s =>
+          s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+        );
         await saveStateWithRefs();
       }
     },
@@ -383,6 +403,14 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       return;
     }
 
+    // If remember is on, but auto-reopen is off, fast-forward the restore sequence.
+    // This allows manual layout switches to pull from masterStateRef properly.
+    if (!reopenLastOnStartup) {
+      restoreAttemptedRef.current = true;
+      hasRestoredRef.current = true;
+      return;
+    }
+
     restoreAttemptedRef.current = true;
     console.log('[useLayoutPersistence] Triggering restore with state:', initialStateRef.current);
     setIsRestoring(true);
@@ -390,7 +418,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       setIsRestoring(false);
     });
     // Only depend on the boolean flags, not the objects/functions
-  }, [enabled, settingsLoaded, mpvReady]);
+  }, [enabled, reopenLastOnStartup, settingsLoaded, mpvReady]);
 
   // Save state before window closes
   useEffect(() => {

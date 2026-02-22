@@ -165,6 +165,7 @@ async function tryLoadWithFallbacks(
 function App() {
   // Layout persistence state - must be declared before useEffect that uses them
   const [rememberLastChannels, setRememberLastChannels] = useState(false);
+  const [reopenLastOnStartup, setReopenLastOnStartup] = useState(false);
   const [savedLayoutState, setSavedLayoutState] = useState<SavedLayoutState | null>(null);
   const [layoutSettingsLoaded, setLayoutSettingsLoaded] = useState(false);
 
@@ -195,6 +196,7 @@ function App() {
         // Use the most recent state (prefer localStorage for layout state since it's saved on close)
         if (result.data) {
           setRememberLastChannels(result.data.rememberLastChannels ?? false);
+          setReopenLastOnStartup(result.data.reopenLastOnStartup ?? false);
 
           // Use localStorage state if available (more recent), otherwise use Tauri storage
           const layoutState = localStorageState || result.data.savedLayoutState || null;
@@ -235,6 +237,7 @@ function App() {
   // Multiview with persistence
   const multiview = useLayoutPersistence({
     enabled: rememberLastChannels,
+    reopenLastOnStartup: reopenLastOnStartup,
     initialSavedState: savedLayoutState,
     settingsLoaded: layoutSettingsLoaded,
     mpvReady: mpvReadyState,

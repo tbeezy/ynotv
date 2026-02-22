@@ -76,6 +76,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
 
   // Startup settings state
   const [rememberLastChannels, setRememberLastChannels] = useState(false);
+  const [reopenLastOnStartup, setReopenLastOnStartup] = useState(false);
   const [savedLayoutState, setSavedLayoutState] = useState<SavedLayoutState | null>(null);
 
   // Loading state for settings
@@ -137,6 +138,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
         startupWidth?: number;
         startupHeight?: number;
         rememberLastChannels?: boolean;
+        reopenLastOnStartup?: boolean;
         savedLayoutState?: SavedLayoutState;
       };
 
@@ -199,6 +201,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
 
       // Load startup settings
       setRememberLastChannels(settings.rememberLastChannels ?? false);
+      setReopenLastOnStartup(settings.reopenLastOnStartup ?? false);
       setSavedLayoutState(settings.savedLayoutState ?? null);
     }
     setSettingsLoaded(true);
@@ -260,8 +263,23 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
 
   const handleRememberLastChannelsChange = async (value: boolean) => {
     setRememberLastChannels(value);
+
+    // Automatically turn off Reopen when Remember is turned off
+    let updatePayload: any = { rememberLastChannels: value };
+    if (!value) {
+      setReopenLastOnStartup(false);
+      updatePayload.reopenLastOnStartup = false;
+    }
+
     if (window.storage) {
-      await window.storage.updateSettings({ rememberLastChannels: value });
+      await window.storage.updateSettings(updatePayload);
+    }
+  };
+
+  const handleReopenLastOnStartupChange = async (value: boolean) => {
+    setReopenLastOnStartup(value);
+    if (window.storage) {
+      await window.storage.updateSettings({ reopenLastOnStartup: value });
     }
   };
 
@@ -374,8 +392,10 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
         return (
           <StartupTab
             rememberLastChannels={rememberLastChannels}
+            reopenLastOnStartup={reopenLastOnStartup}
             savedLayoutState={savedLayoutState}
             onRememberLastChannelsChange={handleRememberLastChannelsChange}
+            onReopenLastOnStartupChange={handleReopenLastOnStartupChange}
           />
         );
       default:
