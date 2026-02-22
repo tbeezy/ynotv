@@ -47,19 +47,15 @@
 }
 
 .dvr-sidebar-title {
-    font-size: 24px;
-    font-weight: 700;
-    margin: 0;
-    color: var(--text-primary, #fff);
-    letter-spacing: -0.5px;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
 }
 
 .dvr-sidebar-subtitle {
     font-size: 12px;
-    margin: 4px 0 0 0;
-    color: var(--text-muted, rgba(255, 255, 255, 0.5));
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    color: var(--text-secondary, #888);
+    margin: 0;
 }
 
 /* Navigation */
@@ -77,24 +73,24 @@
     padding: 12px 16px;
     background: transparent;
     border: none;
-    border-radius: 10px;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
-    font-size: 15px;
+    border-radius: 8px;
+    color: var(--text-secondary, #888);
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     text-align: left;
+    width: 100%;
 }
 
 .dvr-nav-item:hover {
-    background: var(--surface-hover, rgba(60, 60, 60, 0.9));
+    background: var(--bg-hover, #2a2a2a);
     color: var(--text-primary, #fff);
 }
 
 .dvr-nav-item.active {
-    background: var(--surface-active, rgba(80, 80, 80, 0.95));
-    color: var(--text-accent, #00d4ff);
-    box-shadow: 0 0 15px var(--accent-glow, rgba(0, 212, 255, 0.2));
+    background: var(--accent-primary, #e50914);
+    color: white;
 }
 
 .dvr-nav-icon {
@@ -167,21 +163,21 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 16px;
-    background: var(--surface-color, rgba(40, 40, 40, 0.85));
-    border: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
-    border-radius: 10px;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    padding: 10px 16px;
+    border: 1px solid var(--border-color, #2a2a2a);
+    background: transparent;
+    color: var(--text-secondary, #888);
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    width: 100%;
+    transition: all 0.15s ease;
 }
 
 .dvr-back-btn:hover {
-    background: var(--surface-hover, rgba(60, 60, 60, 0.9));
+    background: var(--bg-hover, #2a2a2a);
     color: var(--text-primary, #fff);
-    border-color: var(--accent-primary, #00d4ff);
 }
 
 /* ============================================

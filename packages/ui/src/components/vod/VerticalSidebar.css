@@ -36,20 +36,21 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: none;
-    border: none;
-    color: var(--text-color-primary, #fff);
-    cursor: pointer;
-    padding: 8px 12px;
+    padding: 10px 16px;
+    border: 1px solid var(--border-color, #2a2a2a);
+    background: transparent;
+    color: var(--text-secondary, #888);
     border-radius: 8px;
-    transition: background-color 0.2s;
-    font-weight: 600;
-    font-size: 0.95rem;
+    cursor: pointer;
     width: 100%;
+    transition: all 0.15s ease;
+    font-weight: 500;
+    font-size: 14px;
 }
 
 .vertical-sidebar__back:hover {
-    background-color: var(--hover-color, rgba(255, 255, 255, 0.1));
+    background: var(--bg-hover, #2a2a2a);
+    color: var(--text-primary, #fff);
 }
 
 .vertical-sidebar__back-arrow {
@@ -160,14 +161,15 @@
     text-align: left;
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.8);
-    padding: 10px 12px;
+    color: var(--text-secondary, #888);
+    padding: 12px 16px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 14px;
+    font-weight: 500;
     line-height: 1.4;
     min-height: 44px;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: all 0.15s ease;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -177,14 +179,13 @@
 }
 
 .vertical-sidebar__item:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: #fff;
+    background: var(--bg-hover, #2a2a2a);
+    color: var(--text-primary, #fff);
 }
 
 .vertical-sidebar__item.active {
-    background-color: var(--accent-glow, rgba(0, 212, 255, 0.15));
-    color: var(--accent-primary, #00d4ff);
-    font-weight: 500;
+    background: var(--accent-primary, #e50914);
+    color: white;
 }
 
 .vertical-sidebar__separator {
