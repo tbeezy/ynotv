@@ -766,10 +766,8 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
               </div>
           )}
         </div>
-      )}
-    </div>
-  );
-};
+      );
+    };
 
   // Render My Shows Tab
   const renderMyShowsTab = () => (
