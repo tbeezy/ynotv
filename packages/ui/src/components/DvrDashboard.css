@@ -17,8 +17,8 @@
    SIDEBAR
    ============================================ */
 .dvr-sidebar {
-    width: 260px;
-    min-width: 260px;
+    width: 240px;
+    min-width: 240px;
     background: transparent;
     border-right: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
     display: flex;
@@ -26,6 +26,7 @@
     padding: 24px 16px;
     gap: 24px;
     position: relative;
+    box-sizing: border-box;
 }
 
 /* Pseudo-element to provide a dark underlay mimicking the app background, 

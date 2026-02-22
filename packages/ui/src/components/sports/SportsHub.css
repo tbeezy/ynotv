@@ -56,6 +56,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  box-sizing: border-box;
 }
 
 /* Pseudo-element to provide a dark underlay mimicking the app background, 
