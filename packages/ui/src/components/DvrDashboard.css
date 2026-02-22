@@ -19,12 +19,10 @@
 .dvr-sidebar {
     width: 240px;
     min-width: 240px;
-    background: transparent;
+    background: var(--bg-secondary, rgba(30, 30, 30, 0.95));
     border-right: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
     display: flex;
     flex-direction: column;
-    padding: 24px 16px;
-    gap: 24px;
     position: relative;
     box-sizing: border-box;
 }
@@ -43,8 +41,8 @@
 }
 
 .dvr-sidebar-header {
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
+    padding: 24px 16px;
+    border-bottom: 1px solid var(--border-color, #2a2a2a);
 }
 
 .dvr-sidebar-title {
@@ -63,8 +61,9 @@
 .dvr-nav {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     flex: 1;
+    padding: 16px 8px;
 }
 
 .dvr-nav-item {
@@ -121,8 +120,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding-top: 16px;
-    border-top: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
+    padding: 16px;
+    border-top: 1px solid var(--border-color, #2a2a2a);
 }
 
 .dvr-recording-indicator {
@@ -190,19 +189,23 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: var(--bg-primary, #0f0f0f);
 }
 
 .dvr-main-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
-    background: var(--bg-secondary, rgba(30, 30, 30, 0.95));
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border-color, #2a2a2a);
+    background: linear-gradient(135deg, var(--bg-secondary, #1a1a1a) 0%, var(--bg-primary, #0f0f0f) 100%);
 }
 
 .dvr-main-title {
-    font-size: 22px;
-    font-weight: 600;
+    font-size: 28px;
+    font-weight: 700;
     margin: 0;
-    color: var(--text-primary, #fff);
+    background: linear-gradient(135deg, var(--text-primary, #fff) 0%, var(--text-secondary, #888) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .dvr-content {
@@ -307,12 +310,15 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 16px;
-    font-weight: 600;
-    margin: 0;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+    border-bottom: 1px solid var(--border-color, #2a2a2a);
+    padding-bottom: 16px;
+    background: linear-gradient(135deg, var(--text-primary, #fff) 0%, var(--text-secondary, #888) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .dvr-status-dot {
