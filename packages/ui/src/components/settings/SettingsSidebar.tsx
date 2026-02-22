@@ -14,7 +14,8 @@ export type SettingsTabId =
   | 'export-import'
   | 'ui'
   | 'theme'
-  | 'dvr';
+  | 'dvr'
+  | 'startup';
 
 interface SettingsCategory {
   label: string;
@@ -49,6 +50,7 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
     tabs: [
       { id: 'theme', label: 'Theme' },
       { id: 'ui', label: 'UI' },
+      { id: 'startup', label: 'Startup' },
       { id: 'security', label: 'Security' },
       { id: 'debug', label: 'Debug' },
       { id: 'shortcuts', label: 'Shortcuts' },

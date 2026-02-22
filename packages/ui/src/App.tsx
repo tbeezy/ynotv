@@ -39,10 +39,10 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { addToRecentChannels } from './utils/recentChannels';
 import type { ThemeId } from './types/app';
 import { WatchlistNotificationContainer, type WatchlistNotificationItem } from './components/WatchlistNotification';
-import { useMultiview } from './hooks/useMultiview';
+import { useLayoutPersistence } from './hooks/useLayoutPersistence';
 import { MultiviewLayout } from './components/MultiviewLayout/MultiviewLayout';
 import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
-import type { LayoutMode } from './hooks/useMultiview';
+import type { LayoutMode, SavedLayoutState } from './hooks/useLayoutPersistence';
 import './themes.css';
 import { DEFAULT_SHORTCUTS } from './constants/shortcuts';
 import { useMpvListeners } from './hooks/useMpvListeners';
@@ -163,18 +163,115 @@ async function tryLoadWithFallbacks(
 }
 
 function App() {
-  // Multiview must be declared first — useMpvListeners.onReady references it
-  const multiview = useMultiview();
+  // Layout persistence state - must be declared before useEffect that uses them
+  const [rememberLastChannels, setRememberLastChannels] = useState(false);
+  const [savedLayoutState, setSavedLayoutState] = useState<SavedLayoutState | null>(null);
+  const [layoutSettingsLoaded, setLayoutSettingsLoaded] = useState(false);
 
-  // ── MPV state (via extracted hook) ────────────────────────────────────────
+  // Load layout persistence settings on mount
+  useEffect(() => {
+    const loadLayoutSettings = async () => {
+      if (!window.storage) {
+        setLayoutSettingsLoaded(true);
+        return;
+      }
+
+      try {
+        // Try Tauri storage first
+        const result = await window.storage.getSettings();
+
+        // Also check localStorage for saved layout state (saved on app close)
+        let localStorageState: SavedLayoutState | null = null;
+        try {
+          const localData = localStorage.getItem('app-settings');
+          if (localData) {
+            const parsed = JSON.parse(localData);
+            localStorageState = parsed.savedLayoutState ?? null;
+          }
+        } catch (e) {
+          console.warn('[App] Failed to read from localStorage:', e);
+        }
+
+        // Use the most recent state (prefer localStorage for layout state since it's saved on close)
+        if (result.data) {
+          setRememberLastChannels(result.data.rememberLastChannels ?? false);
+
+          // Use localStorage state if available (more recent), otherwise use Tauri storage
+          const layoutState = localStorageState || result.data.savedLayoutState || null;
+          setSavedLayoutState(layoutState);
+          console.log('[App] Loaded saved layout state:', layoutState);
+        } else if (localStorageState) {
+          // Fallback to localStorage if Tauri storage is empty
+          setSavedLayoutState(localStorageState);
+          console.log('[App] Loaded saved layout state from localStorage:', localStorageState);
+        }
+      } catch (e) {
+        console.error('[App] Failed to load layout settings:', e);
+      }
+      setLayoutSettingsLoaded(true);
+    };
+    loadLayoutSettings();
+  }, []);
+
+  // ── MPV state (via extracted hook) - MUST be before multiview to get mpvReady ───────────────────────────────────────
+  const syncMpvGeometryRef = useRef<() => Promise<void>>(async () => { });
+  const [mpvReadyState, setMpvReadyState] = useState(false);
+
   const mpv = useMpvListeners({
-    onReady: () => multiview.syncMpvGeometry(),
+    onReady: () => {
+      setMpvReadyState(true);
+      syncMpvGeometryRef.current();
+    },
   });
   const {
     mpvReady, playing, volume, muted, position, duration, error,
     volumeDraggingRef, seekingRef,
     setError, setPlaying, setPosition, setVolume,
   } = mpv;
+
+  // Ref for the restore callback (avoid circular dependency)
+  const onLoadMainChannelRef = useRef<(name: string, url: string) => void>(() => { });
+
+  // Multiview with persistence
+  const multiview = useLayoutPersistence({
+    enabled: rememberLastChannels,
+    initialSavedState: savedLayoutState,
+    settingsLoaded: layoutSettingsLoaded,
+    mpvReady: mpvReadyState,
+    onLoadMainChannel: (name, url) => onLoadMainChannelRef.current(name, url),
+  });
+
+  // Update the ref so onReady can call the latest syncMpvGeometry
+  useEffect(() => {
+    syncMpvGeometryRef.current = () => multiview.syncMpvGeometry();
+  }, [multiview]);
+
+  // Set up the restore callback now that multiview is initialized
+  onLoadMainChannelRef.current = (channelName: string, channelUrl: string) => {
+    // Create a minimal channel object for UI state
+    const restoredChannel: StoredChannel = {
+      stream_id: `restored_${Date.now()}`,
+      source_id: 'restored',
+      name: channelName,
+      direct_url: channelUrl,
+      stream_icon: '',
+      epg_channel_id: '',
+      category_ids: [],
+    };
+
+    // Load the stream directly
+    invoke('mpv_load', { url: channelUrl }).catch((e) =>
+      console.warn('[App] Failed to restore main channel:', e)
+    );
+
+    // Set UI state
+    setCurrentChannel(restoredChannel);
+    setPlaying(true);
+    setActiveView('none');
+
+    // Also notify multiview so swap logic works
+    multiview.notifyMainLoaded(channelName, channelUrl);
+  };
 
   const [currentChannel, setCurrentChannel] = useState<StoredChannel | null>(null);
   const [vodInfo, setVodInfo] = useState<VodPlayInfo | null>(null);
@@ -1294,7 +1391,7 @@ function App() {
 
       {/* Background - transparent over mpv */}
       <div className="video-background">
-        {!currentChannel && !error && (
+        {!currentChannel && !error && !multiview.isRestoring && (
           <div className="placeholder">
             <Logo className="placeholder__logo" />
             {(channelSyncing || vodSyncing || tmdbMatching) ? (

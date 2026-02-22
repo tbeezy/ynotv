@@ -28,6 +28,24 @@ export type ShortcutAction =
     | 'layoutBigBottom'
     | 'layout2x2';
 
+export interface SavedChannelState {
+    channelName: string | null;
+    channelUrl: string | null;
+}
+
+export interface SavedSlotState {
+    id: 2 | 3 | 4;
+    channelName: string | null;
+    channelUrl: string | null;
+    active: boolean;
+}
+
+export interface SavedLayoutState {
+    layout: 'main' | 'pip' | '2x2' | 'bigbottom';
+    mainChannel: SavedChannelState;
+    slots: SavedSlotState[];
+}
+
 export interface AppSettings {
     theme?: ThemeId;
     language?: string;
@@ -41,6 +59,8 @@ export interface AppSettings {
     showSidebar?: boolean;
     startupWidth?: number;
     startupHeight?: number;
+    rememberLastChannels?: boolean;
+    savedLayoutState?: SavedLayoutState;
     [key: string]: any;
 }
 

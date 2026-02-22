@@ -63,7 +63,7 @@ function primaryRect(mode: LayoutMode): { x: number; y: number; w: number; h: nu
 }
 
 /** Compute the secondary slot rect (physical pixels) */
-function secondaryRect(slotId: 2 | 3 | 4, mode: LayoutMode): { x: number; y: number; w: number; h: number } {
+export function secondaryRect(slotId: 2 | 3 | 4, mode: LayoutMode): { x: number; y: number; w: number; h: number } {
     const el = document.getElementById(`mpv-video-rect-${slotId}`);
     const d = dpr();
 
@@ -280,8 +280,8 @@ export function useMultiview() {
     }, [syncMpvGeometry, repositionSecondarySlots]);
 
     /** Load a stream URL into a secondary MPV slot */
-    const sendToSlot = useCallback(async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => {
-        if (isTabModeRef.current && savedStateRef.current) {
+    const sendToSlot = useCallback(async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, force: boolean = false) => {
+        if (isTabModeRef.current && savedStateRef.current && !force) {
             console.log(`[useMultiview] Deferring load for slot ${slotId} while a full-screen tab is open`);
             savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
                 s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
@@ -312,6 +312,19 @@ export function useMultiview() {
             setSlots(prev => prev.map(s =>
                 s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
             ));
+
+            // Allow React to render the active DOM element (adding the 36px control bar)
+            // then reposition the slot so MPV shrinks to fit exactly. 
+            setTimeout(() => {
+                const updatedRect = secondaryRect(slotId, layoutRef.current);
+                invoke('multiview_reposition_slot', {
+                    slotId,
+                    x: updatedRect.x,
+                    y: updatedRect.y,
+                    width: updatedRect.w,
+                    height: updatedRect.h,
+                }).catch(() => { });
+            }, 100);
         } catch (e) {
             console.error('[useMultiview] sendToSlot failed:', e);
         }

@@ -15,6 +15,7 @@ import { ImportExportTab } from './settings/ImportExportTab';
 import { UITab } from './settings/UITab';
 import { ThemeTab } from './settings/ThemeTab';
 import { DvrTab } from './settings/DvrTab';
+import { StartupTab, type SavedLayoutState } from './settings/StartupTab';
 import type { ShortcutsMap, ThemeId } from '../types/app';
 import './Settings.css';
 
@@ -72,6 +73,10 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
     categoryFontSize: 14,
     showSidebar: false,
   });
+
+  // Startup settings state
+  const [rememberLastChannels, setRememberLastChannels] = useState(false);
+  const [savedLayoutState, setSavedLayoutState] = useState<SavedLayoutState | null>(null);
 
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -131,6 +136,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
         showSidebar?: boolean;
         startupWidth?: number;
         startupHeight?: number;
+        rememberLastChannels?: boolean;
+        savedLayoutState?: SavedLayoutState;
       };
 
       // Load TMDB API key
@@ -189,6 +196,10 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
       // Apply UI settings immediately
       document.documentElement.style.setProperty('--channel-font-size', `${loadedUiSettings.channelFontSize}px`);
       document.documentElement.style.setProperty('--category-font-size', `${loadedUiSettings.categoryFontSize}px`);
+
+      // Load startup settings
+      setRememberLastChannels(settings.rememberLastChannels ?? false);
+      setSavedLayoutState(settings.savedLayoutState ?? null);
     }
     setSettingsLoaded(true);
   }
@@ -244,6 +255,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
       } catch (e) {
         console.error('Failed to save settings to localStorage', e);
       }
+    }
+  };
+
+  const handleRememberLastChannelsChange = async (value: boolean) => {
+    setRememberLastChannels(value);
+    if (window.storage) {
+      await window.storage.updateSettings({ rememberLastChannels: value });
     }
   };
 
@@ -352,6 +370,14 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange }: S
         );
       case 'dvr':
         return <DvrTab />;
+      case 'startup':
+        return (
+          <StartupTab
+            rememberLastChannels={rememberLastChannels}
+            savedLayoutState={savedLayoutState}
+            onRememberLastChannelsChange={handleRememberLastChannelsChange}
+          />
+        );
       default:
         return null;
     }

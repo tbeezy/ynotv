@@ -1,7 +1,0 @@
-﻿
-> @sbtltv/ui@0.1.0 typecheck C:\sbtlTV\packages\ui
-> tsc --noEmit
-
-src/components/settings/DebugTab.tsx(18,20): error TS2339: Property 'data' does not exist on type 'string'.
-src/components/settings/DebugTab.tsx(19,29): error TS2339: Property 'data' does not exist on type 'string'.
-ΓÇëELIFECYCLEΓÇë Command failed with exit code 2.
