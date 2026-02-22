@@ -217,7 +217,7 @@ export function ChannelContextMenu({
 
     // ── ADD TO GROUP VIEW ──
     if (currentView === 'group') {
-        return (
+        return createPortal(
             <div
                 ref={menuRef}
                 className="program-context-menu"
@@ -247,13 +247,14 @@ export function ChannelContextMenu({
                     ← Back
                 </div>
                 <ModalComponent />
-            </div>
+            </div>,
+            document.body
         );
     }
 
     // ── QUICK RECORD VIEW ──
     if (currentView === 'quick') {
-        return (
+        return createPortal(
             <div
                 ref={menuRef}
                 className="program-context-menu"
@@ -288,13 +289,14 @@ export function ChannelContextMenu({
                     </button>
                 </div>
                 <ModalComponent />
-            </div>
+            </div>,
+            document.body
         );
     }
 
     // ── CUSTOM RECORD VIEW ──
     if (currentView === 'custom') {
-        return (
+        return createPortal(
             <div
                 ref={menuRef}
                 className="program-context-menu"
@@ -333,7 +335,8 @@ export function ChannelContextMenu({
                     </button>
                 </div>
                 <ModalComponent />
-            </div>
+            </div>,
+            document.body
         );
     }
 
