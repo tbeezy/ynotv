@@ -709,6 +709,88 @@
   border-radius: 20px;
 }
 
+/* Date Picker */
+.tvcp-upcoming-date-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tvcp-date-nav-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tvcp-date-nav-btn:hover {
+  background: rgba(102, 126, 234, 0.15);
+  border-color: rgba(102, 126, 234, 0.3);
+  color: #fff;
+}
+
+.tvcp-date-picker-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tvcp-date-input {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color-scheme: dark;
+}
+
+.tvcp-date-input:hover,
+.tvcp-date-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(102, 126, 234, 0.4);
+  outline: none;
+}
+
+.tvcp-today-btn {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tvcp-today-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.tvcp-upcoming-date-display {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .tvcp-upcoming-episodes {
   padding: 16px;
   display: flex;
@@ -799,6 +881,20 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.tvcp-upcoming-network {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #a5b4fc;
+}
+
+.tvcp-upcoming-network svg {
+  color: #667eea;
+  flex-shrink: 0;
 }
 
 /* Upcoming Card Layout with Button */
@@ -1010,6 +1106,71 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* Upcoming Episode Section */
+.tvcp-myshow-upcoming {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tvcp-myshow-upcoming--loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+}
+
+.tvcp-spinner-tiny {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: tvcp-spin 1s linear infinite;
+}
+
+.tvcp-myshow-upcoming-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #667eea;
+  margin-bottom: 4px;
+}
+
+.tvcp-myshow-upcoming-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.tvcp-myshow-se-num {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: rgba(102, 126, 234, 0.15);
+  border-radius: 10px;
+  color: #a5b4fc;
+  flex-shrink: 0;
+}
+
+.tvcp-myshow-upcoming-date {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tvcp-myshow-upcoming--none {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+}
+
 .tvcp-myshow-actions {
   display: flex;
   gap: 8px;
@@ -1086,6 +1247,125 @@
 .tvcp-myshows-empty p {
   margin: 0;
   color: var(--text-secondary, #888);
+}
+
+/* Delete Confirmation Modal */
+.tvcp-delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: tvcp-fade-in 0.2s ease-out;
+}
+
+.tvcp-delete-modal {
+  width: 100%;
+  max-width: 400px;
+  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  animation: tvcp-modal-slide-up 0.3s ease-out;
+}
+
+@keyframes tvcp-modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tvcp-delete-modal-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: rgba(239, 68, 68, 0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f87171;
+}
+
+.tvcp-delete-modal-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.tvcp-delete-modal h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: #fff;
+}
+
+.tvcp-delete-modal p {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.tvcp-delete-modal p strong {
+  color: #fff;
+}
+
+.tvcp-delete-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.tvcp-delete-modal-cancel,
+.tvcp-delete-modal-confirm {
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tvcp-delete-modal-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tvcp-delete-modal-cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tvcp-delete-modal-confirm {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.tvcp-delete-modal-confirm:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.tvcp-delete-modal-cancel:disabled,
+.tvcp-delete-modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Responsive */

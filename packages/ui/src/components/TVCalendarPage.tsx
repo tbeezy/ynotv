@@ -138,10 +138,20 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
   // Selected show details
   const [selectedShow, setSelectedShow] = useState<TrackedShow | null>(null);
 
+  // Delete confirmation modal state
+  const [deleteModalShow, setDeleteModalShow] = useState<TrackedShow | null>(null);
+
+  // Upcoming episodes for tracked shows
+  const [showEpisodes, setShowEpisodes] = useState<Record<number, UpcomingEpisode[]>>({});
+  const [loadingEpisodes, setLoadingEpisodes] = useState<Set<number>>(new Set());
+
   // Upcoming shows state
   const [upcomingEpisodes, setUpcomingEpisodes] = useState<UpcomingEpisode[]>([]);
   const [upcomingLoading, setUpcomingLoading] = useState(true);
   const [upcomingError, setUpcomingError] = useState<string | null>(null);
+  const [upcomingDate, setUpcomingDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
   const monthKey = useMemo(() => {
     const y = now.getFullYear();
@@ -165,13 +175,19 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
     loadShows();
   }, [activeTab]);
 
+  // Load episodes for tracked shows
+  useEffect(() => {
+    if (activeTab !== 'myshows' || shows.length === 0) return;
+    loadEpisodesForShows();
+  }, [activeTab, shows]);
+
   // Load upcoming shows
   useEffect(() => {
     if (activeTab !== 'upcoming') return;
     loadUpcomingShows();
-  }, [activeTab]);
+  }, [activeTab, upcomingDate]);
 
-  // Group upcoming episodes by date - computed at top level to follow hooks rules
+  // Group upcoming episodes by date
   const groupedUpcomingEpisodes = useMemo(() => {
     const groups: Record<string, UpcomingEpisode[]> = {};
     upcomingEpisodes.forEach(ep => {
@@ -182,29 +198,34 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
     return groups;
   }, [upcomingEpisodes]);
 
+  // Navigation helpers for date
+  const goToPreviousDay = () => {
+    const date = new Date(upcomingDate);
+    date.setDate(date.getDate() - 1);
+    setUpcomingDate(date.toISOString().split('T')[0]);
+  };
+
+  const goToNextDay = () => {
+    const date = new Date(upcomingDate);
+    date.setDate(date.getDate() + 1);
+    setUpcomingDate(date.toISOString().split('T')[0]);
+  };
+
+  const goToToday = () => {
+    setUpcomingDate(new Date().toISOString().split('T')[0]);
+  };
+
   async function loadUpcomingShows() {
     setUpcomingLoading(true);
     setUpcomingError(null);
     try {
-      const allEpisodes: UpcomingEpisode[] = [];
-      const today = new Date();
+      const response = await fetch(
+        `https://api.tvmaze.com/schedule?country=US&date=${upcomingDate}`
+      );
+      if (!response.ok) throw new Error(`Failed to fetch schedule for ${upcomingDate}`);
 
-      // Fetch next 7 days
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-
-        const response = await fetch(
-          `https://api.tvmaze.com/schedule/web?date=${dateStr}&country=US`
-        );
-        if (!response.ok) throw new Error(`Failed to fetch schedule for ${dateStr}`);
-
-        const episodes: UpcomingEpisode[] = await response.json();
-        allEpisodes.push(...episodes);
-      }
-
-      setUpcomingEpisodes(allEpisodes);
+      const episodes: UpcomingEpisode[] = await response.json();
+      setUpcomingEpisodes(episodes);
     } catch (e: any) {
       console.error('[TVCalendarPage] Failed to load upcoming shows:', e);
       setUpcomingError(e.toString());
@@ -223,6 +244,42 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
     } finally {
       setShowsLoading(false);
     }
+  }
+
+  async function loadEpisodesForShows() {
+    const now = new Date();
+    const episodeMap: Record<number, UpcomingEpisode[]> = {};
+    const loadingSet = new Set<number>();
+
+    for (const show of shows) {
+      loadingSet.add(show.tvmaze_id);
+    }
+    setLoadingEpisodes(loadingSet);
+
+    await Promise.all(
+      shows.map(async (show) => {
+        try {
+          const result = await invoke<{ episodes: UpcomingEpisode[] }>('get_show_details_with_episodes', {
+            tvmazeId: show.tvmaze_id,
+          });
+          // Filter future episodes and sort by date
+          const futureEpisodes = result.episodes
+            .filter((ep) => ep.airdate && new Date(ep.airdate) >= now)
+            .sort((a, b) => {
+              const dateA = a.airdate ? new Date(a.airdate).getTime() : 0;
+              const dateB = b.airdate ? new Date(b.airdate).getTime() : 0;
+              return dateA - dateB;
+            });
+          episodeMap[show.tvmaze_id] = futureEpisodes;
+        } catch (e) {
+          console.error(`[TVCalendarPage] Failed to load episodes for ${show.show_name}:`, e);
+          episodeMap[show.tvmaze_id] = [];
+        }
+      })
+    );
+
+    setShowEpisodes(episodeMap);
+    setLoadingEpisodes(new Set());
   }
 
   // Helper function to strip HTML tags
@@ -245,14 +302,14 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
     }
   }, [tvmazeQuery]);
 
-  async function addShow(show: TVMazeShow) {
+  async function addShow(show: TVMazeShow, networkName?: string) {
     setAddingShowId(show.id);
     try {
       await invoke('add_tv_favorite', {
         tvmazeId: show.id,
         showName: show.name,
         showImage: show.image?.medium ?? null,
-        channelName: null,
+        channelName: networkName ?? show.network?.name ?? null,
         channelId: null,
         status: show.status ?? null,
       });
@@ -266,12 +323,18 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
     }
   }
 
-  async function removeShow(tvmazeId: number, showName: string) {
-    if (!confirm(`Remove "${showName}" from your tracked shows?`)) return;
-    setRemovingId(tvmazeId);
+  function confirmRemoveShow(show: TrackedShow) {
+    setDeleteModalShow(show);
+  }
+
+  async function executeRemoveShow() {
+    if (!deleteModalShow) return;
+    const { tvmaze_id, show_name } = deleteModalShow;
+    setRemovingId(tvmaze_id);
     try {
-      await invoke('remove_tv_favorite', { tvmazeId });
-      setShows(prev => prev.filter(s => s.tvmaze_id !== tvmazeId));
+      await invoke('remove_tv_favorite', { tvmazeId: tvmaze_id });
+      setShows(prev => prev.filter(s => s.tvmaze_id !== tvmaze_id));
+      setDeleteModalShow(null);
     } catch (e: any) {
       alert('Failed to remove show: ' + e);
     } finally {
@@ -517,13 +580,63 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
 
   // Render Upcoming Shows Tab
   const renderUpcomingTab = () => {
-    const sortedDates = Object.keys(groupedUpcomingEpisodes).sort();
+    const dateObj = new Date(upcomingDate);
+    const isToday = dateObj.toDateString() === new Date().toDateString();
+    const episodes = upcomingEpisodes;
 
     return (
       <div className="tvcp-upcoming-tab">
         <div className="tvcp-upcoming-header">
           <h2>Upcoming Shows</h2>
-          <p>TV Schedule for the next 7 days</p>
+          <p>TV Schedule for Web Channels</p>
+        </div>
+
+        {/* Date Picker */}
+        <div className="tvcp-upcoming-date-picker">
+          <button
+            className="tvcp-date-nav-btn"
+            onClick={goToPreviousDay}
+            title="Previous day"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <div className="tvcp-date-picker-center">
+            <input
+              type="date"
+              value={upcomingDate}
+              onChange={(e) => setUpcomingDate(e.target.value)}
+              className="tvcp-date-input"
+            />
+            {!isToday && (
+              <button className="tvcp-today-btn" onClick={goToToday}>
+                Today
+              </button>
+            )}
+          </div>
+          <button
+            className="tvcp-date-nav-btn"
+            onClick={goToNextDay}
+            title="Next day"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="tvcp-upcoming-date-display">
+          <div className={`tvcp-date-badge ${isToday ? 'today' : ''}`}>
+            <span className="tvcp-date-day">
+              {dateObj.toLocaleDateString(undefined, { weekday: 'short' })}
+            </span>
+            <span className="tvcp-date-num">{dateObj.getDate()}</span>
+          </div>
+          <span className="tvcp-date-full">
+            {dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+          </span>
+          <span className="tvcp-date-count">{episodes.length} episodes</span>
         </div>
 
         {upcomingLoading ? (
@@ -537,37 +650,16 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
             <span>{upcomingError}</span>
             <button onClick={loadUpcomingShows}>Retry</button>
           </div>
-        ) : upcomingEpisodes.length === 0 ? (
+        ) : episodes.length === 0 ? (
           <div className="tvcp-upcoming-empty">
             <UpcomingIcon />
-            <p>No upcoming episodes found</p>
+            <p>No episodes found for this date</p>
           </div>
         ) : (
           <div className="tvcp-upcoming-content">
-            {sortedDates.map(date => {
-              const dateEpisodes = groupedUpcomingEpisodes[date];
-              const dateObj = date !== 'Unknown' ? new Date(date) : null;
-              const isToday = dateObj && dateObj.toDateString() === new Date().toDateString();
-
-              return (
-                <div key={date} className="tvcp-upcoming-day">
-                  <div className="tvcp-upcoming-date-header">
-                    <div className={`tvcp-date-badge ${isToday ? 'today' : ''}`}>
-                      <span className="tvcp-date-day">
-                        {dateObj ? dateObj.toLocaleDateString(undefined, { weekday: 'short' }) : '???'}
-                      </span>
-                      <span className="tvcp-date-num">
-                        {dateObj ? dateObj.getDate() : '?'}
-                      </span>
-                    </div>
-                    <span className="tvcp-date-full">
-                      {dateObj ? dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Unknown Date'}
-                    </span>
-                    <span className="tvcp-date-count">{dateEpisodes.length} episodes</span>
-                  </div>
-
-                  <div className="tvcp-upcoming-episodes">
-                    {dateEpisodes.map(episode => {
+            <div className="tvcp-upcoming-day">
+              <div className="tvcp-upcoming-episodes">
+                {episodes.map(episode => {
                       const show = episode._embedded?.show;
                       const showImage = show?.image?.medium || episode.image?.medium;
                       const isAdding = addingShowId === show?.id;
@@ -622,6 +714,14 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                                   </>
                                 )}
                               </div>
+                              {(show?.network?.name || show?.webChannel?.name) && (
+                                <div className="tvcp-upcoming-network">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polygon points="5 3 19 12 5 21 5 3" />
+                                  </svg>
+                                  <span>{show.network?.name || show.webChannel?.name}</span>
+                                </div>
+                              )}
                               {episode.summary && (
                                 <p className="tvcp-upcoming-summary">{stripHtml(episode.summary)}</p>
                               )}
@@ -632,7 +732,7 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                               className="tvcp-upcoming-add-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                addShow(show);
+                                addShow(show, show.network?.name || show.webChannel?.name);
                               }}
                               disabled={isAdding}
                               title="Add to My Shows"
@@ -663,13 +763,13 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                     })}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
+              </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
   // Render My Shows Tab
   const renderMyShowsTab = () => (
@@ -723,41 +823,58 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
               </div>
               <div className="tvcp-myshow-info">
                 <h4>{show.show_name}</h4>
-                {show.channel_name && (
-                  <div className="tvcp-myshow-channel">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                    {show.channel_name}
-                  </div>
-                )}
-                {show.last_synced && (
-                  <span className="tvcp-myshow-synced">
-                    Synced {new Date(show.last_synced).toLocaleDateString()}
-                  </span>
-                )}
+                {(() => {
+                  const nextEp = showEpisodes[show.tvmaze_id]?.[0];
+                  const isLoading = loadingEpisodes.has(show.tvmaze_id);
+                  return (
+                    <>
+                      {show.channel_name && (
+                        <div className="tvcp-myshow-channel">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                          </svg>
+                          {show.channel_name}
+                        </div>
+                      )}
+                      {isLoading ? (
+                        <div className="tvcp-myshow-upcoming tvcp-myshow-upcoming--loading">
+                          <div className="tvcp-spinner-tiny" />
+                          <span>Loading episodes...</span>
+                        </div>
+                      ) : nextEp ? (
+                        <div className="tvcp-myshow-upcoming">
+                          <div className="tvcp-myshow-upcoming-label">Next Episode</div>
+                          <div className="tvcp-myshow-upcoming-title">
+                            {nextEp.name}
+                            {nextEp.season && nextEp.number && (
+                              <span className="tvcp-myshow-se-num">S{nextEp.season}E{nextEp.number}</span>
+                            )}
+                          </div>
+                          {nextEp.airdate && (
+                            <div className="tvcp-myshow-upcoming-date">
+                              {new Date(nextEp.airdate).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                weekday: 'short'
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="tvcp-myshow-upcoming tvcp-myshow-upcoming--none">
+                          <span>No upcoming episodes</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <div className="tvcp-myshow-actions">
-                {show.channel_name && onPlayChannel && (
-                  <button
-                    className="tvcp-action-btn tvcp-play-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPlayChannel(show.channel_name!);
-                      onClose();
-                    }}
-                    title="Play channel"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                  </button>
-                )}
                 <button
                   className="tvcp-action-btn tvcp-remove-btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    removeShow(show.tvmaze_id, show.show_name);
+                    confirmRemoveShow(show);
                   }}
                   disabled={removingId === show.tvmaze_id}
                   title="Remove show"
@@ -855,6 +972,45 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
           onClose={() => setSelectedShow(null)}
           onPlayChannel={onPlayChannel}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalShow && (
+        <div className="tvcp-delete-modal-overlay" onClick={() => setDeleteModalShow(null)}>
+          <div className="tvcp-delete-modal" onClick={e => e.stopPropagation()}>
+            <div className="tvcp-delete-modal-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </div>
+            <h3>Remove Show</h3>
+            <p>Are you sure you want to remove <strong>"{deleteModalShow.show_name}"</strong> from your tracked shows?</p>
+            <div className="tvcp-delete-modal-actions">
+              <button
+                className="tvcp-delete-modal-cancel"
+                onClick={() => setDeleteModalShow(null)}
+                disabled={removingId === deleteModalShow.tvmaze_id}
+              >
+                Cancel
+              </button>
+              <button
+                className="tvcp-delete-modal-confirm"
+                onClick={executeRemoveShow}
+                disabled={removingId === deleteModalShow.tvmaze_id}
+              >
+                {removingId === deleteModalShow.tvmaze_id ? (
+                  <>
+                    <div className="tvcp-spinner-small" />
+                    Removing...
+                  </>
+                ) : (
+                  'Remove'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

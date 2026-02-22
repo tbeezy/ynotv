@@ -467,7 +467,7 @@ export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onP
                       <dd>
                         <button
                           className="sdm-link-btn"
-                          onClick={() => openUrl(`https://www.imdb.com/title/${details.externals.imdb}`)}
+                          onClick={() => openUrl(`https://www.imdb.com/title/${details.externals?.imdb}`)}
                         >
                           {details.externals.imdb}
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
