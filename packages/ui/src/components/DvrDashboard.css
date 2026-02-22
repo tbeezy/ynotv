@@ -19,12 +19,26 @@
 .dvr-sidebar {
     width: 260px;
     min-width: 260px;
-    background: var(--bg-secondary, rgba(30, 30, 30, 0.95));
+    background: transparent;
     border-right: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
     gap: 24px;
+    position: relative;
+}
+
+/* Pseudo-element to provide a dark underlay mimicking the app background, 
+   ensuring glassmorphism theme colors cast securely against the transparent MPV hole */
+.dvr-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary, #0f0f0f);
+    z-index: -1;
 }
 
 .dvr-sidebar-header {

@@ -3,12 +3,25 @@
     flex-direction: column;
     width: 250px;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(20px);
+    background: transparent;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
     flex-shrink: 0;
     z-index: 10;
+    position: relative;
+}
+
+/* Pseudo-element to provide a dark underlay mimicking the app background, 
+   ensuring glassmorphism theme colors cast securely against the transparent MPV hole */
+.vertical-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary, #0f0f0f);
+    z-index: -1;
 }
 
 /* Header Area */

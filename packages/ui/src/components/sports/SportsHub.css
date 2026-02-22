@@ -58,9 +58,9 @@
   position: relative;
 }
 
-/* Pseudo-element to provide a dark underlay when in preview mode, 
-   ensuring glassmorphism theme colors are visible against the MPV background */
-.sports-hub.with-preview .sports-sidebar::before {
+/* Pseudo-element to provide a dark underlay mimicking the app background, 
+   ensuring glassmorphism theme colors cast securely against the transparent MPV hole */
+.sports-sidebar::before {
   content: '';
   position: absolute;
   top: 0;

@@ -105,7 +105,7 @@
   --glass-saturation: 150%;
   --glass-border: 1px solid rgba(100, 200, 255, 0.3);
   --glass-shadow: 0 8px 32px rgba(0, 50, 100, 0.4),
-                  0 0 0 1px rgba(100, 200, 255, 0.15) inset;
+    0 0 0 1px rgba(100, 200, 255, 0.15) inset;
 
   --bg-gradient-1: #0a1628;
   --bg-gradient-2: #1a3a5c;
@@ -138,8 +138,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 0, 200, 0.4);
   --glass-shadow: 0 8px 32px rgba(100, 0, 150, 0.5),
-                  0 0 20px rgba(255, 0, 200, 0.2),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 0, 200, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0d0d1a;
   --bg-gradient-2: #2a1050;
@@ -172,8 +172,8 @@
   --glass-saturation: 160%;
   --glass-border: 1px solid rgba(200, 100, 255, 0.35);
   --glass-shadow: 0 8px 32px rgba(80, 20, 120, 0.5),
-                  0 0 30px rgba(180, 100, 255, 0.2),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(180, 100, 255, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #1a0b2e;
   --bg-gradient-2: #4a1a6b;
@@ -206,8 +206,8 @@
   --glass-saturation: 140%;
   --glass-border: 1px solid rgba(255, 150, 80, 0.4);
   --glass-shadow: 0 8px 32px rgba(100, 40, 15, 0.5),
-                  0 0 20px rgba(255, 120, 50, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 120, 50, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2d1810;
   --bg-gradient-2: #5c2e1c;
@@ -240,8 +240,8 @@
   --glass-saturation: 150%;
   --glass-border: 1px solid rgba(255, 100, 150, 0.4);
   --glass-shadow: 0 8px 32px rgba(80, 20, 45, 0.5),
-                  0 0 20px rgba(255, 80, 130, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 80, 130, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a0f1a;
   --bg-gradient-2: #5c1a35;
@@ -274,8 +274,8 @@
   --glass-saturation: 140%;
   --glass-border: 1px solid rgba(100, 230, 150, 0.35);
   --glass-shadow: 0 8px 32px rgba(20, 60, 40, 0.5),
-                  0 0 20px rgba(80, 220, 140, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(80, 220, 140, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0d2418;
   --bg-gradient-2: #1a4a30;
@@ -308,8 +308,8 @@
   --glass-saturation: 160%;
   --glass-border: 1px solid rgba(255, 150, 120, 0.35);
   --glass-shadow: 0 8px 32px rgba(80, 30, 60, 0.5),
-                  0 0 30px rgba(255, 100, 150, 0.2),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(255, 100, 150, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2d1b4e;
   --bg-gradient-2: #6b3a5c;
@@ -342,8 +342,8 @@
   --glass-saturation: 155%;
   --glass-border: 1px solid rgba(255, 160, 180, 0.3);
   --glass-shadow: 0 8px 32px rgba(80, 30, 40, 0.45),
-                  0 0 30px rgba(255, 143, 163, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(255, 143, 163, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a1518;
   --bg-gradient-2: #5c2d3a;
@@ -376,8 +376,8 @@
   --glass-saturation: 160%;
   --glass-border: 1px solid rgba(100, 120, 255, 0.28);
   --glass-shadow: 0 8px 32px rgba(20, 20, 60, 0.5),
-                  0 0 30px rgba(99, 102, 241, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(99, 102, 241, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0a0a14;
   --bg-gradient-2: #1a1a3e;
@@ -410,8 +410,8 @@
   --glass-saturation: 155%;
   --glass-border: 1px solid rgba(255, 190, 80, 0.3);
   --glass-shadow: 0 8px 32px rgba(60, 40, 10, 0.5),
-                  0 0 30px rgba(245, 158, 11, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(245, 158, 11, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #1a1205;
   --bg-gradient-2: #3d2810;
@@ -444,8 +444,8 @@
   --glass-saturation: 155%;
   --glass-border: 1px solid rgba(120, 230, 180, 0.3);
   --glass-shadow: 0 8px 32px rgba(10, 50, 35, 0.45),
-                  0 0 30px rgba(52, 211, 153, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(52, 211, 153, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0a1f14;
   --bg-gradient-2: #16452e;
@@ -478,8 +478,8 @@
   --glass-saturation: 160%;
   --glass-border: 1px solid rgba(255, 150, 130, 0.3);
   --glass-shadow: 0 8px 32px rgba(80, 35, 30, 0.45),
-                  0 0 30px rgba(255, 107, 107, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(255, 107, 107, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a1512;
   --bg-gradient-2: #5c3028;
@@ -512,8 +512,8 @@
   --glass-saturation: 155%;
   --glass-border: 1px solid rgba(170, 150, 240, 0.3);
   --glass-shadow: 0 8px 32px rgba(40, 30, 70, 0.5),
-                  0 0 30px rgba(196, 181, 253, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(196, 181, 253, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #1a1428;
   --bg-gradient-2: #3d305c;
@@ -546,8 +546,8 @@
   --glass-saturation: 150%;
   --glass-border: 1px solid rgba(130, 150, 180, 0.28);
   --glass-shadow: 0 8px 32px rgba(20, 30, 50, 0.5),
-                  0 0 30px rgba(148, 163, 184, 0.12),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(148, 163, 184, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0f172a;
   --bg-gradient-2: #1e293b;
@@ -580,8 +580,8 @@
   --glass-saturation: 165%;
   --glass-border: 1px solid rgba(255, 140, 160, 0.3);
   --glass-shadow: 0 8px 32px rgba(60, 15, 25, 0.5),
-                  0 0 30px rgba(251, 113, 133, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(251, 113, 133, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a0a0f;
   --bg-gradient-2: #5c1420;
@@ -614,8 +614,8 @@
   --glass-saturation: 160%;
   --glass-border: 1px solid rgba(255, 220, 120, 0.3);
   --glass-shadow: 0 8px 32px rgba(50, 40, 12, 0.5),
-                  0 0 30px rgba(251, 191, 36, 0.15),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 30px rgba(251, 191, 36, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #1a1508;
   --bg-gradient-2: #3d3010;
@@ -652,8 +652,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 0, 255, 0.4);
   --glass-shadow: 0 8px 32px rgba(100, 0, 100, 0.5),
-                  0 0 20px rgba(255, 0, 255, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 0, 255, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #1a0a2a;
   --bg-gradient-2: #3d1a5c;
@@ -686,8 +686,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(0, 150, 255, 0.4);
   --glass-shadow: 0 8px 32px rgba(0, 50, 100, 0.5),
-                  0 0 20px rgba(0, 191, 255, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(0, 191, 255, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0a1528;
   --bg-gradient-2: #1a3a6b;
@@ -720,8 +720,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 20, 147, 0.4);
   --glass-shadow: 0 8px 32px rgba(100, 20, 60, 0.5),
-                  0 0 20px rgba(255, 20, 147, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 20, 147, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a0a1a;
   --bg-gradient-2: #5c1a3d;
@@ -754,8 +754,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(50, 255, 50, 0.4);
   --glass-shadow: 0 8px 32px rgba(20, 80, 20, 0.5),
-                  0 0 20px rgba(50, 255, 50, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(50, 255, 50, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0d1a0d;
   --bg-gradient-2: #1a3d1a;
@@ -788,8 +788,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 140, 0, 0.4);
   --glass-shadow: 0 8px 32px rgba(80, 45, 15, 0.5),
-                  0 0 20px rgba(255, 140, 0, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 140, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a180a;
   --bg-gradient-2: #5c3d1a;
@@ -822,8 +822,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 50, 50, 0.4);
   --glass-shadow: 0 8px 32px rgba(80, 20, 20, 0.5),
-                  0 0 20px rgba(255, 50, 50, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 50, 50, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a0a0a;
   --bg-gradient-2: #5c1a1a;
@@ -856,8 +856,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 255, 50, 0.4);
   --glass-shadow: 0 8px 32px rgba(80, 80, 20, 0.5),
-                  0 0 20px rgba(255, 255, 50, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 255, 50, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a2a0a;
   --bg-gradient-2: #5c5c1a;
@@ -890,8 +890,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(180, 100, 255, 0.4);
   --glass-shadow: 0 8px 32px rgba(60, 30, 90, 0.5),
-                  0 0 20px rgba(180, 100, 255, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(180, 100, 255, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #1a0a2a;
   --bg-gradient-2: #3d1a5c;
@@ -924,8 +924,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 127, 80, 0.4);
   --glass-shadow: 0 8px 32px rgba(80, 40, 25, 0.5),
-                  0 0 20px rgba(255, 127, 80, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 127, 80, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a1510;
   --bg-gradient-2: #5c3028;
@@ -958,8 +958,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(64, 224, 208, 0.4);
   --glass-shadow: 0 8px 32px rgba(20, 80, 75, 0.5),
-                  0 0 20px rgba(64, 224, 208, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(64, 224, 208, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0a2a28;
   --bg-gradient-2: #1a5c55;
@@ -992,8 +992,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(255, 0, 144, 0.4);
   --glass-shadow: 0 8px 32px rgba(80, 15, 55, 0.5),
-                  0 0 20px rgba(255, 0, 144, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(255, 0, 144, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #2a0a1f;
   --bg-gradient-2: #5c1a45;
@@ -1026,8 +1026,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(127, 255, 0, 0.4);
   --glass-shadow: 0 8px 32px rgba(40, 75, 15, 0.5),
-                  0 0 20px rgba(127, 255, 0, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(127, 255, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #1a2a0a;
   --bg-gradient-2: #3d5c1a;
@@ -1060,8 +1060,8 @@
   --glass-saturation: 180%;
   --glass-border: 1px solid rgba(100, 100, 255, 0.4);
   --glass-shadow: 0 8px 32px rgba(30, 25, 80, 0.5),
-                  0 0 20px rgba(100, 100, 255, 0.25),
-                  0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    0 0 20px rgba(100, 100, 255, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
   --bg-gradient-1: #0f0a2a;
   --bg-gradient-2: #2a1a5c;
@@ -1127,7 +1127,10 @@
 }
 
 /* Sidebar glass effect */
-[data-theme*="glass-"] .sidebar {
+[data-theme*="glass-"] .sidebar,
+[data-theme*="glass-"] .sports-sidebar,
+[data-theme*="glass-"] .vertical-sidebar,
+[data-theme*="glass-"] .dvr-sidebar {
   background: var(--surface-color);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
@@ -1176,7 +1179,7 @@
 [data-theme*="glass-"] .npb-btn:hover {
   background: var(--surface-hover);
   box-shadow: 0 0 20px var(--accent-glow),
-              var(--glass-shadow);
+    var(--glass-shadow);
   transform: translateY(-2px);
 }
 
@@ -1277,7 +1280,7 @@
 [data-theme*="glass-"] input:focus {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-primary),
-              0 0 10px var(--accent-glow);
+    0 0 10px var(--accent-glow);
 }
 
 /* Progress bars with accent colors */
