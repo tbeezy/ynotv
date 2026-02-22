@@ -18,6 +18,7 @@ export type ShortcutAction =
     | 'toggleLiveTV'
     | 'toggleDvr'
     | 'toggleSports'
+    | 'toggleCalendar'
     | 'toggleSettings'
     | 'focusSearch'
     | 'close'

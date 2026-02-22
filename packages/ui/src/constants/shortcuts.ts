@@ -21,6 +21,7 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
     toggleLiveTV: 'l',
     toggleDvr: 'r',
     toggleSports: 'u',
+    toggleCalendar: 't',
     toggleSettings: ',',
     focusSearch: 's',
     close: 'Escape',

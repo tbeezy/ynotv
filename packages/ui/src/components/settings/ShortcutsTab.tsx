@@ -23,6 +23,7 @@ const ACTION_LABELS: Record<ShortcutAction, string> = {
     toggleLiveTV: 'Toggle Live TV (Guide + Categories)',
     toggleDvr: 'Toggle DVR',
     toggleSports: 'Toggle Sports',
+    toggleCalendar: 'Toggle TV Calendar',
     toggleSettings: 'Toggle Settings',
     focusSearch: 'Focus Search',
     close: 'Close / Back',
@@ -39,7 +40,7 @@ const ACTION_LABELS: Record<ShortcutAction, string> = {
 const GROUPS: Record<string, ShortcutAction[]> = {
     'Playback': ['togglePlay', 'seekForward', 'seekBackward', 'toggleMute', 'selectSubtitle', 'selectAudio', 'toggleFullscreen'],
     'Navigation': ['channelUp', 'channelDown'],
-    'Interface': ['toggleLiveTV', 'toggleGuide', 'toggleCategories', 'toggleDvr', 'toggleSports', 'toggleSettings', 'toggleStats', 'focusSearch', 'close'],
+    'Interface': ['toggleLiveTV', 'toggleGuide', 'toggleCategories', 'toggleDvr', 'toggleSports', 'toggleCalendar', 'toggleSettings', 'toggleStats', 'focusSearch', 'close'],
     'Layout': ['layoutMain', 'layoutPip', 'layoutBigBottom', 'layout2x2']
 };
 

@@ -1168,6 +1168,12 @@ function App() {
         const currentActiveView = activeViewRef.current;
         setCategoriesOpen(false);
         setActiveView(currentActiveView === 'dvr' ? 'none' : 'dvr');
+      } else if (matches('toggleCalendar', e.key)) {
+        e.preventDefault();
+        // Toggle TV Calendar
+        const currentActiveView = activeViewRef.current;
+        setCategoriesOpen(false);
+        setActiveView(currentActiveView === 'calendar' ? 'none' : 'calendar');
       } else if (matches('focusSearch', e.key)) {
         e.preventDefault();
         // Always show controls when using Search hotkey

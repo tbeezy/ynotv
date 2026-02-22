@@ -52,6 +52,15 @@ A modern, feature-rich FOSS IPTV player built with **Tauri v2** and **React**, d
 - **Live Scoreboards** — Real-time scores for major sports leagues with detailed game information
 - **Channel Integration** — View the channel source for each match and instantly search for it
 
+### 📅 TV Calendar
+- **Show Tracking** — Search and track your favorite TV shows from TVMaze's comprehensive database
+- **Episode Calendar** — View upcoming episodes on a monthly calendar with show posters and episode details
+- **Smart Sync** — Automatic daily sync keeps episode data fresh with manual sync option
+- **Channel Assignment** — Link shows to your IPTV channels for one-click watching
+- **Auto-Add to Watchlist** — Future episodes automatically added to your watchlist with custom reminder and auto-switch settings
+- **Episode Details** — Click any episode to see full details including summary, air time (timezone-aware), and season/episode info
+- **Show Management** — Organize tracked shows by status, channel, or recently synced
+
 ### 🖼️ Multiview
 - **Flexible Layouts** — Picture-in-picture mode or up to 4 simultaneous streams
 - **Quick Swap** — Easily exchange feeds between main and secondary windows
@@ -65,48 +74,54 @@ A modern, feature-rich FOSS IPTV player built with **Tauri v2** and **React**, d
 
 ## 🎮 Keyboard Shortcuts
 
-Fully customizable in Settings → Shortcuts
+<p align="center">
+  <em>All shortcuts are fully customizable in Settings → Shortcuts</em>
+</p>
 
-### Playback Controls
-| Action | Default Shortcut |
-|--------|-----------------|
-| Play / Pause | `Space` |
-| Mute / Unmute | `M` |
-| Seek Forward | `→` |
-| Seek Backward | `←` |
-| Toggle Fullscreen | `F` |
+### 🎬 Playback Controls
+| Action | Default | Description |
+|--------|---------|-------------|
+| Play / Pause | `Space` | Toggle playback state |
+| Mute / Unmute | `M` | Toggle audio mute |
+| Seek Forward | `→` | Seek forward in current stream |
+| Seek Backward | `←` | Seek backward in current stream |
+| Toggle Fullscreen | `F` | Enter or exit fullscreen mode |
 
-### Interface
-| Action | Default Shortcut |
-|--------|-----------------|
-| Toggle Live TV | `L` |
-| Toggle Guide | `G` |
-| Toggle Categories | `C` |
-| Toggle DVR | `R` |
-| Toggle Sports | `U` |
-| Toggle Settings | `,` |
-| Toggle Stats | `I` |
-| Focus Search | `S` |
-| Close / Back | `Esc` |
+### 🧭 Navigation
+| Action | Default | Description |
+|--------|---------|-------------|
+| Channel Up | `↑` | Switch to previous channel |
+| Channel Down | `↓` | Switch to next channel |
 
-### Layout
-| Action | Default Shortcut |
-|--------|-----------------|
-| Main View | `1` |
-| Picture in Picture | `2` |
-| Big + Bottom Bar | `3` |
-| 2×2 Grid | `4` |
+### 🖥️ Interface Views
+| Action | Default | Description |
+|--------|---------|-------------|
+| Toggle Live TV | `L` | Open/Close Live TV view (Guide + Categories) |
+| Toggle Guide | `G` | Show/Hide the EPG guide panel |
+| Toggle Categories | `C` | Show/Hide the categories sidebar |
+| Toggle TV Calendar | `T` | Open/Close the TV Calendar for tracked shows |
+| Toggle DVR | `R` | Open/Close DVR view for recordings |
+| Toggle Sports | `U` | Open/Close Sports Hub with live scores |
+| Toggle Settings | `,` | Open/Close Settings panel |
+| Toggle Stats | `I` | Show/Hide playback statistics overlay |
+| Focus Search | `S` | Focus the search input in the title bar |
+| Close / Back | `Esc` | Close current view or go back |
 
-### Stream Controls
-| Action | Default Shortcut |
-|--------|-----------------|
-| Audio Track Menu | `A` |
-| Subtitle Menu | `J` |
+### 🎨 Layout Modes
+| Action | Default | Description |
+|--------|---------|-------------|
+| Main View | `1` | Single main channel view |
+| Picture in Picture | `2` | Main channel with small secondary window |
+| Big + Bottom Bar | `3` | Large main view with horizontal channel bar |
+| 2×2 Grid | `4` | Four channel multiview grid |
 
-
----
-
-
+### 🔊 Audio & Subtitles
+| Action | Default | Description |
+|--------|---------|-------------|
+| Audio Track Menu | `A` | Open audio track selection modal |
+| Subtitle Menu | `J` | Open subtitle track selection modal |
+| Cycle Audio Track | `A` | Legacy: cycle through audio tracks directly |
+| Cycle Subtitle | `J` | Legacy: cycle through subtitle tracks directly |
 
 ---
 
