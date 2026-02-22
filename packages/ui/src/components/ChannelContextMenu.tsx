@@ -4,6 +4,7 @@ import type { StoredChannel } from '../db';
 import { StalkerClient } from '@ynotv/local-adapter';
 import { useModal } from './Modal';
 import { addChannelsToGroup } from '../services/custom-groups';
+import { addToRecentChannels } from '../utils/recentChannels';
 import './ProgramContextMenu.css'; // Reuse the same styles
 
 type MenuView = 'main' | 'quick' | 'custom' | 'group';
@@ -338,6 +339,7 @@ export function ChannelContextMenu({
         // Resolve the stream URL (same logic as main player)
         const url = channel.direct_url ?? '';
         onSendToSlot(slotId, channel.name, url);
+        addToRecentChannels(channel);
         onClose();
     };
 
