@@ -91,6 +91,62 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
   }, [layout]);
 
   /**
+   * Helper to merge current active slots down to the master state
+   */
+  const updateMasterState = useCallback((currentState: SavedLayoutState): SavedLayoutState => {
+    const masterState = masterStateRef.current;
+    if (!masterState) {
+      masterStateRef.current = currentState;
+      return currentState;
+    }
+
+    // Start with master slots, overlay active current slots
+    const mergedSlots = masterState.slots.map((masterSlot) => {
+      const currentSlot = currentState.slots.find((s) => s.id === masterSlot.id);
+      // If slot is active now, use current data. Otherwise keep master data
+      if (currentSlot?.active) {
+        return currentSlot;
+      }
+      return masterSlot;
+    });
+
+    const updatedMasterState: SavedLayoutState = {
+      ...currentState,
+      slots: mergedSlots,
+    };
+    masterStateRef.current = updatedMasterState;
+    return updatedMasterState;
+  }, []);
+
+  /**
+   * Helper to synchronize storage cleanly. LocalStorage is updated synchronously first 
+   * to guarantee safety through window unloads, followed by an async Tauri push.
+   */
+  const persistToStorage = useCallback(async (stateToSave: SavedLayoutState) => {
+    try {
+      const existing = localStorage.getItem('app-settings');
+      const parsed = existing ? JSON.parse(existing) : {};
+      localStorage.setItem(
+        'app-settings',
+        JSON.stringify({
+          ...parsed,
+          savedLayoutState: stateToSave,
+        })
+      );
+    } catch (e) {
+      console.error('[useLayoutPersistence] Failed to save to localStorage:', e);
+    }
+
+    if (window.storage) {
+      try {
+        await window.storage.updateSettings({ savedLayoutState: stateToSave });
+      } catch (e) {
+        console.error('[useLayoutPersistence] Failed to save to Tauri storage:', e);
+      }
+    }
+  }, []);
+
+  /**
    * Save state using current refs (not React state which may be stale)
    * Updates master state incrementally to preserve channel info
    */
@@ -99,39 +155,12 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
 
     // Build new state from current refs
     const currentState = buildCurrentState();
-
     console.log('[useLayoutPersistence] Saving state:', currentState);
 
-    // Update master state incrementally - merge current slots with master slots
-    // This preserves channel info for slots that may be inactive in current layout (e.g., PiP)
-    const masterState = masterStateRef.current;
-    // Start with master slots (or current if no master), then overlay active current slots
-    const baseSlots = masterState?.slots || currentState.slots;
-    const updatedMasterState: SavedLayoutState = {
-      ...currentState,
-      slots: baseSlots.map((baseSlot) => {
-        const currentSlot = currentState.slots.find((s) => s.id === baseSlot.id);
-        // If slot is active now, use current data. Otherwise keep master/base data
-        if (currentSlot?.active) {
-          return currentSlot;
-        }
-        return baseSlot;
-      }),
-    };
-
-    masterStateRef.current = updatedMasterState;
     savedStateRef.current = currentState;
-
-    if (window.storage) {
-      try {
-        // Save the master state (with all channels) to storage
-        await window.storage.updateSettings({ savedLayoutState: updatedMasterState });
-        console.log('[useLayoutPersistence] Saved to storage');
-      } catch (e) {
-        console.error('[useLayoutPersistence] Failed to save:', e);
-      }
-    }
-  }, [enabled, buildCurrentState]);
+    const updatedMasterState = updateMasterState(currentState);
+    await persistToStorage(updatedMasterState);
+  }, [enabled, buildCurrentState, updateMasterState, persistToStorage]);
 
   /**
    * Notify that main channel loaded - tracks for persistence
@@ -158,36 +187,11 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       // Save current state BEFORE the switch
       if (enabled) {
         const stateBeforeSwitch = buildCurrentState();
-
-        // Update master state - merge to preserve inactive slot data
-        const masterState = masterStateRef.current;
-        if (masterState) {
-          // Start with master slots, overlay current active slots
-          const mergedSlots = masterState.slots.map((masterSlot) => {
-            const currentSlot = stateBeforeSwitch.slots.find((s) => s.id === masterSlot.id);
-            // If slot is currently active, use current data. Otherwise keep master.
-            return currentSlot?.active ? currentSlot : masterSlot;
-          });
-          masterStateRef.current = {
-            ...stateBeforeSwitch,
-            slots: mergedSlots,
-          };
-        } else {
-          masterStateRef.current = stateBeforeSwitch;
-        }
-
         savedStateRef.current = stateBeforeSwitch;
+        const updatedMasterState = updateMasterState(stateBeforeSwitch);
 
         console.log('[useLayoutPersistence] Saving before switch to', newLayout);
-        if (window.storage) {
-          try {
-            await window.storage.updateSettings({
-              savedLayoutState: masterStateRef.current,
-            });
-          } catch (e) {
-            console.error('[useLayoutPersistence] Failed to pre-save state:', e);
-          }
-        }
+        await persistToStorage(updatedMasterState);
       }
 
       // Perform the base layout switch - let useMultiview handle all the complexity
@@ -197,11 +201,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       // the new layout is what we recall, rather than the stateBeforeSwitch.
       if (enabled && masterStateRef.current) {
         masterStateRef.current.layout = newLayout;
-        if (window.storage) {
-          window.storage.updateSettings({
-            savedLayoutState: masterStateRef.current,
-          }).catch((e) => console.error('[useLayoutPersistence] Failed to save post-switch state:', e));
-        }
+        await persistToStorage(masterStateRef.current);
       }
 
       // After switching (and after startup restore is complete), restore slots for multiview layouts
@@ -236,7 +236,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
         }, 300);
       }
     },
-    [baseSwitchLayout, baseSendToSlot, enabled, buildCurrentState]
+    [baseSwitchLayout, baseSendToSlot, enabled, buildCurrentState, updateMasterState, persistToStorage]
   );
 
   /**
@@ -401,25 +401,13 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       // Use master state to ensure all channel info is preserved
       const stateToSave = masterStateRef.current || buildCurrentState();
 
-      try {
-        const existing = localStorage.getItem('app-settings');
-        const parsed = existing ? JSON.parse(existing) : {};
-        localStorage.setItem(
-          'app-settings',
-          JSON.stringify({
-            ...parsed,
-            savedLayoutState: stateToSave,
-          })
-        );
-        console.log('[useLayoutPersistence] Saved master state on beforeunload:', stateToSave);
-      } catch (e) {
-        console.error('[useLayoutPersistence] Failed to save on unload:', e);
-      }
+      persistToStorage(stateToSave);
+      console.log('[useLayoutPersistence] Triggered persistToStorage on beforeunload');
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [enabled, buildCurrentState]);
+  }, [enabled, buildCurrentState, persistToStorage]);
 
   return {
     ...multiview,
