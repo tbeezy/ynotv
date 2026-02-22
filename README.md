@@ -200,7 +200,6 @@ packages/app/src-tauri/target/release/bundle/
 └── .windows-state.json    # Window state
 ```
 
-```
 
 ### Database (SQLite)
 
@@ -240,8 +239,6 @@ Default: Configurable in Settings → DVR
 **Windows:**
 ```
 %USERPROFILE%\Videos\ynoTV Recordings\
-
-
 ```
 </details>
 
