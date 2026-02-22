@@ -1,12 +1,53 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import './TVCalendarPage.css';
 import { ShowDetailsModal } from './ShowDetailsModal';
+import { db, addTvEpisodeToWatchlist, type StoredChannel, type AutoAddEpisode } from '../db';
+
+// Cache storage key for localStorage
+const CACHE_STORAGE_KEY = 'tvmaze_episode_cache';
+
+// Load cache from localStorage
+const loadCacheFromStorage = (): Record<number, EpisodeCache> => {
+  try {
+    const stored = localStorage.getItem(CACHE_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('[TVCalendarPage] Failed to load cache from storage:', e);
+  }
+  return {};
+};
+
+// Save cache to localStorage
+const saveCacheToStorage = (cache: Record<number, EpisodeCache>) => {
+  try {
+    localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.error('[TVCalendarPage] Failed to save cache to storage:', e);
+  }
+};
+
+// Global cache for TVMaze API responses - persists across component unmounts
+interface EpisodeCache {
+  episodes: any[];
+  nextAirDate: string | null;
+  lastFetched: number;
+}
+const globalEpisodeCache: Record<number, EpisodeCache> = loadCacheFromStorage();
+
+// Rate limiting state - global to persist across unmounts
+const apiCallQueue: (() => Promise<void>)[] = [];
+const apiCallTimes: number[] = [];
+let processingQueue = false;
 
 // Types
 interface CalendarEpisode {
+  tvmaze_episode_id: number | null;
   airdate: string | null;
   airtime: string | null;
+  airstamp: string | null;
   episode_name: string | null;
   season: number | null;
   episode: number | null;
@@ -23,6 +64,11 @@ interface TrackedShow {
   channel_id: string | null;
   status: string | null;
   last_synced: string | null;
+  auto_add_to_watchlist: boolean;
+  watchlist_reminder_enabled: boolean;
+  watchlist_reminder_minutes: number;
+  watchlist_autoswitch_enabled: boolean;
+  watchlist_autoswitch_seconds: number;
 }
 
 interface TVMazeShow {
@@ -49,6 +95,7 @@ interface UpcomingEpisode {
   number?: number;
   airdate?: string;
   airtime?: string;
+  airstamp?: string;
   runtime?: number;
   summary?: string;
   image?: {
@@ -162,9 +209,75 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
   // Delete confirmation modal state
   const [deleteModalShow, setDeleteModalShow] = useState<TrackedShow | null>(null);
 
+  // Episode details modal state
+  const [selectedEpisode, setSelectedEpisode] = useState<CalendarEpisode | null>(null);
+  const [episodeDetails, setEpisodeDetails] = useState<any | null>(null);
+  const [episodeDetailsLoading, setEpisodeDetailsLoading] = useState(false);
+
   // Upcoming episodes for tracked shows
   const [showEpisodes, setShowEpisodes] = useState<Record<number, UpcomingEpisode[]>>({});
   const [loadingEpisodes, setLoadingEpisodes] = useState<Set<number>>(new Set());
+
+  // Use global cache and rate limiting (defined outside component)
+  const episodeCache = useRef(globalEpisodeCache);
+
+  const processApiQueue = async () => {
+    if (processingQueue) return;
+    processingQueue = true;
+
+    while (apiCallQueue.length > 0) {
+      // Clean up old call times (older than 10 seconds)
+      const now = Date.now();
+      for (let i = apiCallTimes.length - 1; i >= 0; i--) {
+        if (now - apiCallTimes[i] >= 10000) {
+          apiCallTimes.splice(i, 1);
+        }
+      }
+
+      // Check if we can make a call (under 20 calls in last 10 seconds)
+      if (apiCallTimes.length >= 20) {
+        // Wait until we can make a call
+        const oldestCall = apiCallTimes[0];
+        const waitTime = 10000 - (now - oldestCall) + 50; // 50ms buffer
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      // Make the call
+      const call = apiCallQueue.shift();
+      if (call) {
+        apiCallTimes.push(Date.now());
+        await call();
+      }
+    }
+
+    processingQueue = false;
+  };
+
+  const queueApiCall = (call: () => Promise<void>) => {
+    apiCallQueue.push(call);
+    processApiQueue();
+  };
+
+  // Check if cache is stale
+  const isCacheStale = (cache: EpisodeCache): boolean => {
+    const now = new Date();
+    const lastFetched = new Date(cache.lastFetched);
+
+    // Stale if 24 hours have passed
+    const hoursSinceFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceFetch >= 24) return true;
+
+    // Stale if current date is past the next episode air date
+    if (cache.nextAirDate) {
+      const nextAir = new Date(cache.nextAirDate);
+      // Add 1 day to next air date to consider it "past"
+      nextAir.setDate(nextAir.getDate() + 1);
+      if (now > nextAir) return true;
+    }
+
+    return false;
+  };
 
   // Upcoming shows state
   const [upcomingEpisodes, setUpcomingEpisodes] = useState<UpcomingEpisode[]>([]);
@@ -290,34 +403,86 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
     const episodeMap: Record<number, UpcomingEpisode[]> = {};
     const loadingSet = new Set<number>();
 
+    // Check cache first
     for (const show of shows) {
-      loadingSet.add(show.tvmaze_id);
+      const cache = episodeCache.current[show.tvmaze_id];
+      if (cache && !isCacheStale(cache)) {
+        // Use cached data
+        episodeMap[show.tvmaze_id] = cache.episodes;
+      } else {
+        // Need to fetch
+        loadingSet.add(show.tvmaze_id);
+      }
     }
+
+    // If all shows are cached, just update state and return
+    if (loadingSet.size === 0) {
+      const cachedEpisodes: Record<number, UpcomingEpisode[]> = {};
+      for (const show of shows) {
+        const cache = episodeCache.current[show.tvmaze_id];
+        if (cache) {
+          cachedEpisodes[show.tvmaze_id] = cache.episodes;
+        }
+      }
+      setShowEpisodes(cachedEpisodes);
+      return;
+    }
+
     setLoadingEpisodes(loadingSet);
 
-    await Promise.all(
-      shows.map(async (show) => {
-        try {
-          const result = await invoke<{ episodes: UpcomingEpisode[] }>('get_show_details_with_episodes', {
-            tvmazeId: show.tvmaze_id,
-          });
-          // Filter future episodes and sort by date
-          const futureEpisodes = result.episodes
-            .filter((ep) => ep.airdate && new Date(ep.airdate) >= now)
-            .sort((a, b) => {
-              const dateA = a.airdate ? new Date(a.airdate).getTime() : 0;
-              const dateB = b.airdate ? new Date(b.airdate).getTime() : 0;
-              return dateA - dateB;
-            });
-          episodeMap[show.tvmaze_id] = futureEpisodes;
-        } catch (e) {
-          console.error(`[TVCalendarPage] Failed to load episodes for ${show.show_name}:`, e);
-          episodeMap[show.tvmaze_id] = [];
-        }
-      })
-    );
+    // Fetch uncached shows with rate limiting
+    const fetchPromises = shows
+      .filter(show => loadingSet.has(show.tvmaze_id))
+      .map(show => {
+        return new Promise<void>((resolve) => {
+          queueApiCall(async () => {
+            try {
+              const result = await invoke<{ episodes: UpcomingEpisode[] }>('get_show_details_with_episodes', {
+                tvmazeId: show.tvmaze_id,
+              });
 
-    setShowEpisodes(episodeMap);
+              // Filter future episodes and sort by date
+              const futureEpisodes = result.episodes
+                .filter((ep) => ep.airdate && new Date(ep.airdate) >= now)
+                .sort((a, b) => {
+                  const dateA = a.airdate ? new Date(a.airdate).getTime() : 0;
+                  const dateB = b.airdate ? new Date(b.airdate).getTime() : 0;
+                  return dateA - dateB;
+                });
+
+              // Get next air date
+              const nextAirDate = futureEpisodes.length > 0 ? futureEpisodes[0].airdate || null : null;
+
+              // Update cache
+              episodeCache.current[show.tvmaze_id] = {
+                episodes: futureEpisodes,
+                nextAirDate,
+                lastFetched: Date.now(),
+              };
+
+              episodeMap[show.tvmaze_id] = futureEpisodes;
+            } catch (e) {
+              console.error(`[TVCalendarPage] Failed to load episodes for ${show.show_name}:`, e);
+              // Keep cached data if available, otherwise empty
+              const cached = episodeCache.current[show.tvmaze_id];
+              episodeMap[show.tvmaze_id] = cached?.episodes || [];
+            }
+            resolve();
+          });
+        });
+      });
+
+    await Promise.all(fetchPromises);
+
+    // Wait for queue to finish processing
+    while (apiCallQueue.length > 0 || processingQueue) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Save cache to localStorage
+    saveCacheToStorage(episodeCache.current);
+
+    setShowEpisodes(prev => ({ ...prev, ...episodeMap }));
     setLoadingEpisodes(new Set());
   }
 
@@ -325,6 +490,25 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
   function stripHtml(html: string): string {
     if (!html) return '';
     return html.replace(/<[^>]*>/g, '');
+  }
+
+  // Handle episode click - show episode details
+  async function handleEpisodeClick(episode: CalendarEpisode) {
+    if (!episode.tvmaze_episode_id) {
+      console.log('[TVCalendarPage] No tvmaze_episode_id available for this episode');
+      return;
+    }
+    setSelectedEpisode(episode);
+    setEpisodeDetailsLoading(true);
+    setEpisodeDetails(null);
+    try {
+      const details = await invoke('get_episode_details', { tvmazeEpisodeId: episode.tvmaze_episode_id });
+      setEpisodeDetails(details);
+    } catch (e) {
+      console.error('[TVCalendarPage] Failed to load episode details:', e);
+    } finally {
+      setEpisodeDetailsLoading(false);
+    }
   }
 
   // TVMaze search
@@ -384,7 +568,32 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
   async function manualSync() {
     setSyncing(true);
     try {
-      await invoke<number>('sync_tvmaze_shows');
+      const result = await invoke<{
+        synced_count: number;
+        watchlist_added_count: number;
+        episodes_to_add: AutoAddEpisode[];
+      }>('sync_tvmaze_shows');
+
+      // Add auto-added episodes to watchlist
+      if (result.episodes_to_add && result.episodes_to_add.length > 0) {
+        let addedCount = 0;
+        for (const ep of result.episodes_to_add) {
+          if (ep.channel_id) {
+            // Get channel from IndexedDB
+            const channel = await db.channels.get(ep.channel_id);
+            if (channel) {
+              const added = await addTvEpisodeToWatchlist(ep, channel);
+              if (added) addedCount++;
+            } else {
+              console.warn('[TVCalendarPage] Channel not found for auto-add:', ep.channel_id);
+            }
+          }
+        }
+        if (addedCount > 0) {
+          alert(`Added ${addedCount} episodes to your watchlist`);
+        }
+      }
+
       // Refresh calendar
       const eps = await invoke<CalendarEpisode[]>('get_calendar_episodes', { month: monthKey });
       setEpisodes(eps);
@@ -595,11 +804,16 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                         <div
                           key={i}
                           className="tvcp-episode"
-                          onClick={() => ep.channel_name && onPlayChannel?.(ep.channel_name)}
-                          style={{ cursor: ep.channel_name ? 'pointer' : 'default' }}
-                          title={`${ep.show_name} S${ep.season ?? '?'}E${ep.episode ?? '?'}${ep.channel_name ? ` on ${ep.channel_name}` : ''}`}
+                          onClick={() => handleEpisodeClick(ep)}
+                          style={{ cursor: 'pointer' }}
+                          title={`${ep.show_name} S${ep.season ?? '?'}E${ep.episode ?? '?'}${ep.channel_name ? ` on ${ep.channel_name}` : ''} - Click for details`}
                         >
-                          <span className="tvcp-ep-time">{ep.airtime ?? 'TBA'}</span>
+                          <span className="tvcp-ep-time">
+                            {/* Use airstamp for accurate local timezone conversion */}
+                            {ep.airstamp
+                              ? new Date(ep.airstamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                              : ep.airtime ?? 'TBA'}
+                          </span>
                           <span className="tvcp-ep-show">{ep.show_name}</span>
                         </div>
                       ))}
@@ -718,6 +932,11 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                               channel_id: null,
                               status: show.status ?? null,
                               last_synced: null,
+                              auto_add_to_watchlist: false,
+                              watchlist_reminder_enabled: true,
+                              watchlist_reminder_minutes: 5,
+                              watchlist_autoswitch_enabled: false,
+                              watchlist_autoswitch_seconds: 30,
                             })}
                             style={{ cursor: show ? 'pointer' : 'default' }}
                           >
@@ -739,7 +958,14 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                                 )}
                               </div>
                               <div className="tvcp-upcoming-meta">
-                                {episode.airtime && <span>{episode.airtime}</span>}
+                                {/* Use airstamp for accurate local timezone conversion */}
+                                {(episode.airstamp || episode.airtime) && (
+                                  <span>
+                                    {episode.airstamp
+                                      ? new Date(episode.airstamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                                      : episode.airtime}
+                                  </span>
+                                )}
                                 {episode.runtime && (
                                   <>
                                     <span className="tvcp-dot">•</span>
@@ -894,6 +1120,17 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                                 day: 'numeric',
                                 weekday: 'short'
                               })}
+                              {/* Use airstamp for accurate local timezone conversion */}
+                              {nextEp.airstamp ? (
+                                <span className="tvcp-myshow-upcoming-time">
+                                  {' '}at {new Date(nextEp.airstamp).toLocaleTimeString(undefined, {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              ) : nextEp.airtime ? (
+                                <span className="tvcp-myshow-upcoming-time"> at {nextEp.airtime}</span>
+                              ) : null}
                             </div>
                           )}
                         </div>
@@ -1003,11 +1240,22 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
       {/* Show Details Modal */}
       {selectedShow && (
         <ShowDetailsModal
+          isOpen={true}
           tvmazeId={selectedShow.tvmaze_id}
           showName={selectedShow.show_name}
           channelName={selectedShow.channel_name}
           onClose={() => setSelectedShow(null)}
           onPlayChannel={onPlayChannel}
+          onChannelSet={(newChannelName) => {
+            // Update the selected show
+            setSelectedShow({ ...selectedShow, channel_name: newChannelName });
+            // Update the shows list so the grid reflects the change
+            setShows(prev => prev.map(s =>
+              s.tvmaze_id === selectedShow.tvmaze_id
+                ? { ...s, channel_name: newChannelName }
+                : s
+            ));
+          }}
         />
       )}
 
@@ -1046,6 +1294,95 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Episode Details Modal */}
+      {selectedEpisode && (
+        <div className="tvcp-episode-modal-overlay" onClick={() => { setSelectedEpisode(null); setEpisodeDetails(null); }}>
+          <div className="tvcp-episode-modal" onClick={e => e.stopPropagation()}>
+            <button className="tvcp-episode-modal-close" onClick={() => { setSelectedEpisode(null); setEpisodeDetails(null); }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+
+            {episodeDetailsLoading ? (
+              <div className="tvcp-episode-modal-loading">
+                <div className="tvcp-spinner" />
+                <span>Loading episode details...</span>
+              </div>
+            ) : episodeDetails ? (
+              <div className="tvcp-episode-modal-content">
+                {/* Episode Image */}
+                {episodeDetails.image?.original && (
+                  <div className="tvcp-episode-modal-image">
+                    <img src={episodeDetails.image.original} alt={episodeDetails.name} />
+                  </div>
+                )}
+
+                <div className="tvcp-episode-modal-info">
+                  <h2>{episodeDetails.name}</h2>
+
+                  <div className="tvcp-episode-modal-meta">
+                    {episodeDetails.season && episodeDetails.number && (
+                      <span className="tvcp-episode-modal-se-num">S{episodeDetails.season}E{episodeDetails.number}</span>
+                    )}
+                    {episodeDetails.airdate && (
+                      <span>{new Date(episodeDetails.airdate).toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}</span>
+                    )}
+                    {episodeDetails.airtime && (
+                      <span className="tvcp-episode-modal-time">{episodeDetails.airtime}</span>
+                    )}
+                    {episodeDetails.runtime && (
+                      <span>{episodeDetails.runtime} min</span>
+                    )}
+                  </div>
+
+                  {episodeDetails.summary && (
+                    <div className="tvcp-episode-modal-summary">
+                      {stripHtml(episodeDetails.summary)}
+                    </div>
+                  )}
+
+                  {/* Show Name */}
+                  {episodeDetails._embedded?.show?.name && (
+                    <div className="tvcp-episode-modal-show">
+                      <span>From:</span>
+                      <strong>{episodeDetails._embedded.show.name}</strong>
+                    </div>
+                  )}
+
+                  {/* Play Channel Button */}
+                  {selectedEpisode.channel_name && onPlayChannel && (
+                    <button
+                      className="tvcp-episode-modal-play"
+                      onClick={() => {
+                        onPlayChannel(selectedEpisode.channel_name!);
+                        setSelectedEpisode(null);
+                        setEpisodeDetails(null);
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                      Watch on {selectedEpisode.channel_name}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="tvcp-episode-modal-error">
+                <p>Failed to load episode details</p>
+              </div>
+            )}
           </div>
         </div>
       )}

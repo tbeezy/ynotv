@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState } from 'react';
 import './TVCalendar.css';
 import { TVShowsManager } from './TVShowsManager';
+import { db, addTvEpisodeToWatchlist, type AutoAddEpisode } from '../db';
 
 interface CalendarEpisode {
   airdate: string | null;
@@ -22,6 +23,11 @@ interface TrackedShow {
   channel_id: string | null;
   status: string | null;
   last_synced: string | null;
+  auto_add_to_watchlist: boolean;
+  watchlist_reminder_enabled: boolean;
+  watchlist_reminder_minutes: number;
+  watchlist_autoswitch_enabled: boolean;
+  watchlist_autoswitch_seconds: number;
 }
 
 interface Props {
@@ -76,8 +82,33 @@ export function TVCalendar({ onClose, onPlayChannel }: Props) {
   async function manualSync() {
     setSyncing(true);
     try {
-      const count = await invoke<number>('sync_tvmaze_shows');
-      alert(`Synced ${count} shows`);
+      const result = await invoke<{
+        synced_count: number;
+        watchlist_added_count: number;
+        episodes_to_add: AutoAddEpisode[];
+      }>('sync_tvmaze_shows');
+
+      // Add auto-added episodes to watchlist
+      if (result.episodes_to_add && result.episodes_to_add.length > 0) {
+        let addedCount = 0;
+        for (const ep of result.episodes_to_add) {
+          if (ep.channel_id) {
+            const channel = await db.channels.get(ep.channel_id);
+            if (channel) {
+              const added = await addTvEpisodeToWatchlist(ep, channel);
+              if (added) addedCount++;
+            }
+          }
+        }
+        if (addedCount > 0) {
+          alert(`Synced ${result.synced_count} shows, added ${addedCount} episodes to your watchlist`);
+        } else {
+          alert(`Synced ${result.synced_count} shows`);
+        }
+      } else {
+        alert(`Synced ${result.synced_count} shows`);
+      }
+
       // Refresh current month
       const eps = await invoke<CalendarEpisode[]>('get_calendar_episodes', { month: monthKey });
       setEpisodes(eps);

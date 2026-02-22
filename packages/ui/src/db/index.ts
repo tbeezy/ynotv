@@ -1209,6 +1209,91 @@ export async function addToWatchlist(
   }
 }
 
+/** Add a TV episode to the watchlist (used by auto-add feature) */
+export interface AutoAddEpisode {
+  tvmaze_id: number;
+  episode_id: number;
+  show_name: string;
+  episode_name?: string;
+  season?: number;
+  episode?: number;
+  airdate?: string;
+  airtime?: string;
+  airstamp?: string;
+  runtime?: number;
+  channel_id?: string;
+  reminder_enabled: boolean;
+  reminder_minutes: number;
+  autoswitch_enabled: boolean;
+  autoswitch_seconds: number;
+}
+
+export async function addTvEpisodeToWatchlist(
+  ep: AutoAddEpisode,
+  channel: StoredChannel
+): Promise<boolean> {
+  try {
+    // Calculate start and end times
+    const startTime = ep.airstamp
+      ? new Date(ep.airstamp).getTime()
+      : ep.airdate
+        ? new Date(ep.airdate).getTime()
+        : Date.now();
+
+    const endTime = startTime + (ep.runtime || 60) * 60 * 1000;
+
+    // Create synthetic program ID
+    const programId = `tvmaze_${ep.tvmaze_id}_${ep.episode_id}_${ep.airdate || 'unknown'}`;
+
+    // Check if already in watchlist
+    const existing = await db.watchlist
+      .where('program_id')
+      .equals(programId)
+      .first();
+
+    if (existing) {
+      console.log('[Watchlist] Episode already in watchlist:', ep.episode_name);
+      return false;
+    }
+
+    // Construct title
+    const episodeTitle = ep.episode_name || `Episode ${ep.episode}`;
+    const fullTitle = `*NEW* ${ep.show_name} - ${episodeTitle}`;
+
+    // Construct description
+    let description = '';
+    if (ep.season && ep.episode) {
+      description = `S${ep.season}E${ep.episode}`;
+    }
+
+    const watchlistItem: WatchlistItem = {
+      program_id: programId,
+      channel_id: channel.stream_id,
+      channel_name: channel.name,
+      program_title: fullTitle,
+      description: description,
+      start_time: startTime,
+      end_time: endTime,
+      source_id: channel.source_id,
+      added_at: Date.now(),
+      reminder_enabled: ep.reminder_enabled,
+      reminder_minutes: ep.reminder_minutes,
+      autoswitch_enabled: ep.autoswitch_enabled,
+      autoswitch_seconds_before: ep.autoswitch_seconds,
+      reminder_shown: false,
+      autoswitch_triggered: false
+    };
+
+    await db.watchlist.add(watchlistItem);
+    dbEvents.notify('watchlist', 'add');
+    console.log('[Watchlist] Added TV episode:', fullTitle);
+    return true;
+  } catch (error) {
+    console.error('[Watchlist] Failed to add TV episode:', error);
+    return false;
+  }
+}
+
 /** Update watchlist item options */
 export async function updateWatchlistOptions(
   id: number,

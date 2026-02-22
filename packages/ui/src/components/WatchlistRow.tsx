@@ -170,7 +170,7 @@ export function WatchlistRow({
               {item.program_title}
             </div>
             <div style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.6)' }}>
-              {formatTime(item.start_time)} - {formatTime(item.end_time)}
+              {new Date(item.start_time).toLocaleDateString()} {formatTime(item.start_time)} - {formatTime(item.end_time)}
               {hasReminder && (
                 <span style={{ marginLeft: 8 }} title={`Reminder: ${item.reminder_minutes} min before`}>🔔</span>
               )}

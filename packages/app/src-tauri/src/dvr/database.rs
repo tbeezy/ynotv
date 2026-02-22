@@ -12,6 +12,12 @@ use tracing::{debug, info, warn};
 
 use crate::dvr::models::*;
 
+/// Basic channel info for lookups
+pub struct Channel {
+    pub stream_id: String,
+    pub name: String,
+}
+
 /// Database connection pool for DVR operations
 pub struct DvrDatabase {
     pool: Pool<SqliteConnectionManager>,
@@ -158,33 +164,102 @@ impl DvrDatabase {
         ); // Ignore error if column already exists
         println!("[DVR DB] thumbnail_path migration check complete");
 
+        // Migration: Add airstamp column to tv_episodes for timezone-aware display
+        println!("[DVR DB] Checking for airstamp column migration...");
+        let _ = conn.execute(
+            "ALTER TABLE tv_episodes ADD COLUMN airstamp TEXT",
+            [],
+        ); // Ignore error if column already exists
+        println!("[DVR DB] airstamp migration check complete");
+
+        // Migration: Add tvmaze_episode_id column to tv_episodes for episode detail lookups
+        println!("[DVR DB] Checking for tvmaze_episode_id column migration...");
+        let _ = conn.execute(
+            "ALTER TABLE tv_episodes ADD COLUMN tvmaze_episode_id INTEGER",
+            [],
+        ); // Ignore error if column already exists
+        let _ = conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tv_episodes_tvmaze_ep_id ON tv_episodes(tvmaze_episode_id)",
+            [],
+        );
+        println!("[DVR DB] tvmaze_episode_id migration check complete");
+
+        // Migration: Add auto-add to watchlist columns to tv_favorites
+        println!("[DVR DB] Checking for auto-add watchlist columns migration...");
+        let _ = conn.execute(
+            "ALTER TABLE tv_favorites ADD COLUMN auto_add_to_watchlist INTEGER DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE tv_favorites ADD COLUMN watchlist_reminder_enabled INTEGER DEFAULT 1",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE tv_favorites ADD COLUMN watchlist_reminder_minutes INTEGER DEFAULT 5",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE tv_favorites ADD COLUMN watchlist_autoswitch_enabled INTEGER DEFAULT 0",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE tv_favorites ADD COLUMN watchlist_autoswitch_seconds INTEGER DEFAULT 30",
+            [],
+        );
+        println!("[DVR DB] auto-add watchlist columns migration check complete");
+
+        // Migration: Create table to track episodes auto-added to watchlist (prevents duplicates on sync)
+        println!("[DVR DB] Creating tv_watchlist_added_episodes table...");
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tv_watchlist_added_episodes (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                tvmaze_id           INTEGER NOT NULL,
+                tvmaze_episode_id   INTEGER NOT NULL,
+                added_at            TEXT DEFAULT (datetime('now')),
+                UNIQUE(tvmaze_id, tvmaze_episode_id)
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tv_watchlist_added ON tv_watchlist_added_episodes(tvmaze_id, tvmaze_episode_id)",
+            [],
+        )?;
+        println!("[DVR DB] tv_watchlist_added_episodes table ready");
+
         // TVMaze tables for TV Show Calendar feature
         println!("[DVR DB] Creating TVMaze tables...");
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tv_favorites (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                tvmaze_id    INTEGER UNIQUE NOT NULL,
-                show_name    TEXT NOT NULL,
-                show_image   TEXT,
-                channel_name TEXT,
-                channel_id   TEXT,
-                status       TEXT,
-                last_synced  TEXT,
-                added_at     TEXT DEFAULT (datetime('now'))
+                id                              INTEGER PRIMARY KEY AUTOINCREMENT,
+                tvmaze_id                       INTEGER UNIQUE NOT NULL,
+                show_name                       TEXT NOT NULL,
+                show_image                      TEXT,
+                channel_name                    TEXT,
+                channel_id                      TEXT,
+                status                          TEXT,
+                last_synced                     TEXT,
+                added_at                        TEXT DEFAULT (datetime('now')),
+                auto_add_to_watchlist           INTEGER DEFAULT 0,
+                watchlist_reminder_enabled      INTEGER DEFAULT 1,
+                watchlist_reminder_minutes      INTEGER DEFAULT 5,
+                watchlist_autoswitch_enabled    INTEGER DEFAULT 0,
+                watchlist_autoswitch_seconds    INTEGER DEFAULT 30
             )",
             [],
         )?;
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tv_episodes (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                tvmaze_id    INTEGER NOT NULL,
-                season       INTEGER,
-                episode      INTEGER,
-                episode_name TEXT,
-                airdate      TEXT,
-                airtime      TEXT,
-                runtime      INTEGER,
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                tvmaze_id           INTEGER NOT NULL,
+                tvmaze_episode_id   INTEGER UNIQUE,
+                season              INTEGER,
+                episode             INTEGER,
+                episode_name        TEXT,
+                airdate             TEXT,
+                airtime             TEXT,
+                airstamp            TEXT,
+                runtime             INTEGER,
                 FOREIGN KEY (tvmaze_id) REFERENCES tv_favorites(tvmaze_id)
             )",
             [],
@@ -906,18 +981,25 @@ impl DvrDatabase {
         println!("[TVMaze DB] get_favorites: found {} favorites in DB", count);
 
         let mut stmt = conn.prepare(
-            "SELECT tvmaze_id, show_name, show_image, channel_name, channel_id, status, last_synced
+            "SELECT tvmaze_id, show_name, show_image, channel_name, channel_id, status, last_synced,
+                    auto_add_to_watchlist, watchlist_reminder_enabled, watchlist_reminder_minutes,
+                    watchlist_autoswitch_enabled, watchlist_autoswitch_seconds
              FROM tv_favorites ORDER BY show_name ASC"
         )?;
         let rows = stmt.query_map([], |row| {
             Ok(crate::tvmaze::TrackedShow {
-                tvmaze_id:    row.get(0)?,
-                show_name:    row.get(1)?,
-                show_image:   row.get(2)?,
-                channel_name: row.get(3)?,
-                channel_id:   row.get(4)?,
-                status:       row.get(5)?,
-                last_synced:  row.get(6)?,
+                tvmaze_id:                      row.get(0)?,
+                show_name:                      row.get(1)?,
+                show_image:                     row.get(2)?,
+                channel_name:                   row.get(3)?,
+                channel_id:                     row.get(4)?,
+                status:                         row.get(5)?,
+                last_synced:                    row.get(6)?,
+                auto_add_to_watchlist:          row.get::<_, Option<i64>>(7)?.unwrap_or(0) != 0,
+                watchlist_reminder_enabled:     row.get::<_, Option<i64>>(8)?.unwrap_or(1) != 0,
+                watchlist_reminder_minutes:     row.get::<_, Option<i64>>(9)?.unwrap_or(5) as i32,
+                watchlist_autoswitch_enabled:   row.get::<_, Option<i64>>(10)?.unwrap_or(0) != 0,
+                watchlist_autoswitch_seconds:   row.get::<_, Option<i64>>(11)?.unwrap_or(30) as i32,
             })
         })?;
         let result = rows.collect::<rusqlite::Result<Vec<_>>>().map_err(anyhow::Error::from)?;
@@ -937,14 +1019,14 @@ impl DvrDatabase {
         for (i, ep) in episodes.iter().enumerate() {
             conn.execute(
                 "INSERT INTO tv_episodes
-                 (tvmaze_id, season, episode, episode_name, airdate, airtime, runtime)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                params![tvmaze_id, ep.season, ep.episode, ep.episode_name, ep.airdate, ep.airtime, ep.runtime],
+                 (tvmaze_id, tvmaze_episode_id, season, episode, episode_name, airdate, airtime, airstamp, runtime)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![tvmaze_id, ep.tvmaze_episode_id, ep.season, ep.episode, ep.episode_name, ep.airdate, ep.airtime, ep.airstamp, ep.runtime],
             )?;
             if i < 3 {
                 // Log first 3 episodes for debugging
-                println!("[TVMaze DB] upsert_episodes: inserted ep {}: S{}E{} airdate={}",
-                    i, ep.season.unwrap_or(-1), ep.episode.unwrap_or(-1), ep.airdate.as_deref().unwrap_or("NULL"));
+                println!("[TVMaze DB] upsert_episodes: inserted ep {}: tvmaze_episode_id={} S{}E{} airdate={}",
+                    i, ep.tvmaze_episode_id, ep.season.unwrap_or(-1), ep.episode.unwrap_or(-1), ep.airdate.as_deref().unwrap_or("NULL"));
             }
         }
         println!("[TVMaze DB] upsert_episodes: done");
@@ -1005,7 +1087,7 @@ impl DvrDatabase {
         println!("[TVMaze DB] get_calendar_episodes: found {} episodes matching pattern", ep_count);
 
         let mut stmt = conn.prepare(
-            "SELECT e.airdate, e.airtime, e.episode_name, e.season, e.episode,
+            "SELECT e.tvmaze_episode_id, e.airdate, e.airtime, e.airstamp, e.episode_name, e.season, e.episode,
                     f.show_name, f.channel_name, f.show_image
              FROM tv_episodes e
              JOIN tv_favorites f ON f.tvmaze_id = e.tvmaze_id
@@ -1014,14 +1096,16 @@ impl DvrDatabase {
         )?;
         let rows = stmt.query_map(params![like_pattern], |row| {
             Ok(crate::tvmaze::CalendarEpisode {
-                airdate:      row.get(0)?,
-                airtime:      row.get(1)?,
-                episode_name: row.get(2)?,
-                season:       row.get(3)?,
-                episode:      row.get(4)?,
-                show_name:    row.get(5)?,
-                channel_name: row.get(6)?,
-                show_image:   row.get(7)?,
+                tvmaze_episode_id: row.get(0)?,
+                airdate:           row.get(1)?,
+                airtime:           row.get(2)?,
+                airstamp:          row.get(3)?,
+                episode_name:      row.get(4)?,
+                season:            row.get(5)?,
+                episode:           row.get(6)?,
+                show_name:         row.get(7)?,
+                channel_name:      row.get(8)?,
+                show_image:        row.get(9)?,
             })
         })?;
         let result = rows.collect::<rusqlite::Result<Vec<_>>>().map_err(anyhow::Error::from)?;
@@ -1041,6 +1125,148 @@ impl DvrDatabase {
         let result = rows.collect::<rusqlite::Result<Vec<_>>>().map_err(anyhow::Error::from)?;
         println!("[TVMaze DB] get_running_shows: returning {} shows", result.len());
         Ok(result)
+    }
+
+    pub fn tvmaze_update_channel(
+        &self,
+        tvmaze_id: i64,
+        channel_id: Option<&str>,
+        channel_name: Option<&str>,
+    ) -> Result<()> {
+        println!("[TVMaze DB] update_channel: tvmaze_id={}, channel_id={:?}, channel_name={:?}",
+            tvmaze_id, channel_id, channel_name);
+        let conn = self.get_conn()?;
+
+        // First check if the show exists
+        let exists: bool = conn.query_row(
+            "SELECT 1 FROM tv_favorites WHERE tvmaze_id = ?1",
+            params![tvmaze_id],
+            |_row| Ok(true)
+        ).optional()?.unwrap_or(false);
+        println!("[TVMaze DB] update_channel: show exists={}", exists);
+
+        if !exists {
+            println!("[TVMaze DB] update_channel: ERROR - Show with tvmaze_id={} not found!", tvmaze_id);
+            return Err(anyhow::anyhow!("Show not found in favorites"));
+        }
+
+        let rows_affected = conn.execute(
+            "UPDATE tv_favorites SET channel_id = ?1, channel_name = ?2 WHERE tvmaze_id = ?3",
+            params![channel_id, channel_name, tvmaze_id],
+        )?;
+        println!("[TVMaze DB] update_channel: done, rows_affected={}", rows_affected);
+
+        if rows_affected == 0 {
+            println!("[TVMaze DB] update_channel: WARNING - No rows were updated!");
+        }
+
+        Ok(())
+    }
+
+    pub fn tvmaze_update_watchlist_settings(
+        &self,
+        tvmaze_id: i64,
+        auto_add: bool,
+        reminder_enabled: bool,
+        reminder_minutes: i32,
+        autoswitch_enabled: bool,
+        autoswitch_seconds: i32,
+    ) -> Result<()> {
+        println!("[TVMaze DB] update_watchlist_settings: tvmaze_id={}, auto_add={}",
+            tvmaze_id, auto_add);
+        let conn = self.get_conn()?;
+        conn.execute(
+            "UPDATE tv_favorites SET
+                auto_add_to_watchlist = ?1,
+                watchlist_reminder_enabled = ?2,
+                watchlist_reminder_minutes = ?3,
+                watchlist_autoswitch_enabled = ?4,
+                watchlist_autoswitch_seconds = ?5
+             WHERE tvmaze_id = ?6",
+            params![
+                auto_add as i64,
+                reminder_enabled as i64,
+                reminder_minutes,
+                autoswitch_enabled as i64,
+                autoswitch_seconds,
+                tvmaze_id
+            ],
+        )?;
+        println!("[TVMaze DB] update_watchlist_settings: done");
+        Ok(())
+    }
+
+    /// Check if an episode has already been auto-added to watchlist
+    pub fn tvmaze_is_episode_added_to_watchlist(&self, tvmaze_id: i64, tvmaze_episode_id: i64) -> Result<bool> {
+        let conn = self.get_conn()?;
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM tv_watchlist_added_episodes WHERE tvmaze_id = ?1 AND tvmaze_episode_id = ?2",
+            params![tvmaze_id, tvmaze_episode_id],
+            |r| r.get(0),
+        )?;
+        Ok(count > 0)
+    }
+
+    /// Mark an episode as auto-added to watchlist
+    pub fn tvmaze_mark_episode_added_to_watchlist(&self, tvmaze_id: i64, tvmaze_episode_id: i64) -> Result<()> {
+        let conn = self.get_conn()?;
+        conn.execute(
+            "INSERT OR IGNORE INTO tv_watchlist_added_episodes (tvmaze_id, tvmaze_episode_id) VALUES (?1, ?2)",
+            params![tvmaze_id, tvmaze_episode_id],
+        )?;
+        Ok(())
+    }
+
+    /// Get show's watchlist auto-add settings
+    pub fn tvmaze_get_watchlist_settings(&self, tvmaze_id: i64) -> Result<Option<(bool, bool, i32, bool, i32)>> {
+        let conn = self.get_conn()?;
+        let result = conn.query_row(
+            "SELECT auto_add_to_watchlist, watchlist_reminder_enabled, watchlist_reminder_minutes,
+                    watchlist_autoswitch_enabled, watchlist_autoswitch_seconds
+             FROM tv_favorites WHERE tvmaze_id = ?1",
+            params![tvmaze_id],
+            |row| {
+                Ok((
+                    row.get::<_, Option<i64>>(0)?.unwrap_or(0) != 0,
+                    row.get::<_, Option<i64>>(1)?.unwrap_or(1) != 0,
+                    row.get::<_, Option<i64>>(2)?.unwrap_or(5) as i32,
+                    row.get::<_, Option<i64>>(3)?.unwrap_or(0) != 0,
+                    row.get::<_, Option<i64>>(4)?.unwrap_or(30) as i32,
+                ))
+            },
+        ).optional()?;
+        Ok(result)
+    }
+
+    /// Get channel by stream_id
+    pub fn get_channel_by_id(&self, stream_id: &str) -> Result<Option<Channel>> {
+        let conn = self.get_conn()?;
+        let channel = conn
+            .query_row(
+                "SELECT stream_id, name FROM channels WHERE stream_id = ?1",
+                params![stream_id],
+                |row| {
+                    Ok(Channel {
+                        stream_id: row.get(0)?,
+                        name: row.get(1)?,
+                    })
+                },
+            )
+            .optional()?;
+        Ok(channel)
+    }
+
+    /// Get show's assigned channel_id
+    pub fn tvmaze_get_show_channel(&self, tvmaze_id: i64) -> Result<Option<String>> {
+        let conn = self.get_conn()?;
+        let channel_id: Option<String> = conn
+            .query_row(
+                "SELECT channel_id FROM tv_favorites WHERE tvmaze_id = ?1",
+                params![tvmaze_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        Ok(channel_id)
     }
 }
 

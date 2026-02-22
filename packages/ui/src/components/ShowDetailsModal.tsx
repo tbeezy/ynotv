@@ -1,5 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState } from 'react';
+import { ChannelSelectorModal } from './ChannelSelectorModal';
+import { ShowNotificationsModal } from './ShowNotificationsModal';
+import type { StoredChannel } from '../db';
 import './ShowDetailsModal.css';
 
 interface Episode {
@@ -9,9 +12,9 @@ interface Episode {
   number?: number;
   airdate?: string;
   airtime?: string;
+  airstamp?: string;
   runtime?: number;
   summary?: string;
-  airstamp?: string;
 }
 
 interface ShowDetails {
@@ -75,17 +78,88 @@ interface ShowDetailsWithEpisodes {
 }
 
 interface Props {
+  isOpen: boolean;
   tvmazeId: number;
   showName: string;
   channelName: string | null;
   onClose: () => void;
   onPlayChannel?: (channelName: string) => void;
+  onChannelSet?: (channelName: string | null) => void;
 }
 
-export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onPlayChannel }: Props) {
+export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onClose, onPlayChannel, onChannelSet }: Props) {
   const [data, setData] = useState<ShowDetailsWithEpisodes | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showChannelSelector, setShowChannelSelector] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [currentChannel, setCurrentChannel] = useState<string | null>(channelName);
+  const [notificationSuccess, setNotificationSuccess] = useState<string | null>(null);
+
+  // Auto-add watchlist settings
+  const [autoAddEnabled, setAutoAddEnabled] = useState(false);
+  const [autoAddReminderEnabled, setAutoAddReminderEnabled] = useState(true);
+  const [autoAddReminderMinutes, setAutoAddReminderMinutes] = useState(5);
+  const [autoAddAutoswitchEnabled, setAutoAddAutoswitchEnabled] = useState(false);
+  const [autoAddAutoswitchSeconds, setAutoAddAutoswitchSeconds] = useState(30);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Sync with prop when it changes (e.g., when reopening the modal)
+  useEffect(() => {
+    setCurrentChannel(channelName);
+    setNotificationSuccess(null);
+  }, [channelName]);
+
+  // Load auto-add settings when modal opens
+  useEffect(() => {
+    if (isOpen && tvmazeId) {
+      loadWatchlistSettings();
+    }
+  }, [isOpen, tvmazeId]);
+
+  async function loadWatchlistSettings() {
+    try {
+      const settings = await invoke<{
+        auto_add_to_watchlist: boolean;
+        watchlist_reminder_enabled: boolean;
+        watchlist_reminder_minutes: number;
+        watchlist_autoswitch_enabled: boolean;
+        watchlist_autoswitch_seconds: number;
+      }>('get_show_watchlist_settings', { tvmazeId });
+
+      setAutoAddEnabled(settings.auto_add_to_watchlist);
+      setAutoAddReminderEnabled(settings.watchlist_reminder_enabled);
+      setAutoAddReminderMinutes(settings.watchlist_reminder_minutes);
+      setAutoAddAutoswitchEnabled(settings.watchlist_autoswitch_enabled);
+      setAutoAddAutoswitchSeconds(settings.watchlist_autoswitch_seconds);
+    } catch (e) {
+      console.error('[ShowDetails] Failed to load watchlist settings:', e);
+    }
+  }
+
+  async function saveWatchlistSettings(
+    autoAdd: boolean,
+    reminderEnabled: boolean,
+    reminderMinutes: number,
+    autoswitchEnabled: boolean,
+    autoswitchSeconds: number
+  ) {
+    setSavingSettings(true);
+    try {
+      await invoke('update_show_watchlist_settings', {
+        tvmazeId,
+        autoAddToWatchlist: autoAdd,
+        watchlistReminderEnabled: reminderEnabled,
+        watchlistReminderMinutes: reminderMinutes,
+        watchlistAutoswitchEnabled: autoswitchEnabled,
+        watchlistAutoswitchSeconds: autoswitchSeconds,
+      });
+    } catch (e) {
+      console.error('[ShowDetails] Failed to save watchlist settings:', e);
+    } finally {
+      setSavingSettings(false);
+    }
+  }
 
   useEffect(() => {
     loadShowDetails();
@@ -104,6 +178,18 @@ export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onP
       setError(e.toString());
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleChannelSelect(channel: StoredChannel | null) {
+    try {
+      console.log('[ShowDetails] Setting channel:', { tvmazeId, channelId: channel?.stream_id, channelName: channel?.name });
+      await invoke('set_show_channel', { tvmazeId, channelId: channel?.stream_id || null });
+      console.log('[ShowDetails] Channel set successfully');
+      setCurrentChannel(channel?.name || null);
+      onChannelSet?.(channel?.name || null);
+    } catch (e: any) {
+      console.error('[ShowDetails] Error setting channel:', e);
     }
   }
 
@@ -178,12 +264,25 @@ export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onP
       <div className="sdm-panel" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="sdm-header">
-          <button className="sdm-close-btn" onClick={onClose}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+          <div className="sdm-header-actions">
+            <button
+              className="sdm-notifications-btn"
+              onClick={() => setShowNotificationsModal(true)}
+              title="Set up notifications for upcoming episodes"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span>Notifications</span>
+            </button>
+            <button className="sdm-close-btn" onClick={onClose}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -284,20 +383,155 @@ export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onP
                   </div>
                 )}
 
-                {onPlayChannel && channelName && (
+                {onPlayChannel && currentChannel && (
                   <button
                     className="sdm-play-btn"
                     onClick={() => {
-                      onPlayChannel(channelName);
+                      onPlayChannel(currentChannel);
                       onClose();
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="currentColor">
                       <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
-                    Watch on {channelName}
+                    Watch on {currentChannel}
                   </button>
                 )}
+
+                <button
+                  className="sdm-set-channel-btn"
+                  onClick={() => setShowChannelSelector(true)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                  </svg>
+                  {currentChannel ? 'Change Channel' : 'Set Channel'}
+                </button>
+
+                {/* Auto-add to Watchlist Settings */}
+                <div className="sdm-auto-add-section">
+                  <label className="sdm-auto-add-label">
+                    <input
+                      type="checkbox"
+                      checked={autoAddEnabled}
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        setAutoAddEnabled(enabled);
+                        saveWatchlistSettings(
+                          enabled,
+                          autoAddReminderEnabled,
+                          autoAddReminderMinutes,
+                          autoAddAutoswitchEnabled,
+                          autoAddAutoswitchSeconds
+                        );
+                      }}
+                      disabled={savingSettings}
+                    />
+                    <span className="sdm-auto-add-text">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2v20M2 12h20" />
+                      </svg>
+                      Auto-add new episodes to Watchlist
+                    </span>
+                  </label>
+
+                  {autoAddEnabled && (
+                    <div className="sdm-auto-add-options">
+                      <label className="sdm-auto-add-option">
+                        <input
+                          type="checkbox"
+                          checked={autoAddReminderEnabled}
+                          onChange={(e) => {
+                            const enabled = e.target.checked;
+                            setAutoAddReminderEnabled(enabled);
+                            saveWatchlistSettings(
+                              autoAddEnabled,
+                              enabled,
+                              autoAddReminderMinutes,
+                              autoAddAutoswitchEnabled,
+                              autoAddAutoswitchSeconds
+                            );
+                          }}
+                          disabled={savingSettings}
+                        />
+                        <span>Reminder {autoAddReminderMinutes} min before</span>
+                      </label>
+
+                      {autoAddReminderEnabled && (
+                        <div className="sdm-auto-add-input-row">
+                          <input
+                            type="range"
+                            min="0"
+                            max="60"
+                            value={autoAddReminderMinutes}
+                            onChange={(e) => {
+                              const minutes = parseInt(e.target.value);
+                              setAutoAddReminderMinutes(minutes);
+                            }}
+                            onMouseUp={() => {
+                              saveWatchlistSettings(
+                                autoAddEnabled,
+                                autoAddReminderEnabled,
+                                autoAddReminderMinutes,
+                                autoAddAutoswitchEnabled,
+                                autoAddAutoswitchSeconds
+                              );
+                            }}
+                            disabled={savingSettings}
+                          />
+                          <span>{autoAddReminderMinutes} min</span>
+                        </div>
+                      )}
+
+                      <label className="sdm-auto-add-option">
+                        <input
+                          type="checkbox"
+                          checked={autoAddAutoswitchEnabled}
+                          onChange={(e) => {
+                            const enabled = e.target.checked;
+                            setAutoAddAutoswitchEnabled(enabled);
+                            saveWatchlistSettings(
+                              autoAddEnabled,
+                              autoAddReminderEnabled,
+                              autoAddReminderMinutes,
+                              enabled,
+                              autoAddAutoswitchSeconds
+                            );
+                          }}
+                          disabled={savingSettings}
+                        />
+                        <span>Auto-switch {autoAddAutoswitchSeconds}s before</span>
+                      </label>
+
+                      {autoAddAutoswitchEnabled && (
+                        <div className="sdm-auto-add-input-row">
+                          <input
+                            type="range"
+                            min="0"
+                            max="300"
+                            step="10"
+                            value={autoAddAutoswitchSeconds}
+                            onChange={(e) => {
+                              const seconds = parseInt(e.target.value);
+                              setAutoAddAutoswitchSeconds(seconds);
+                            }}
+                            onMouseUp={() => {
+                              saveWatchlistSettings(
+                                autoAddEnabled,
+                                autoAddReminderEnabled,
+                                autoAddReminderMinutes,
+                                autoAddAutoswitchEnabled,
+                                autoAddAutoswitchSeconds
+                              );
+                            }}
+                            disabled={savingSettings}
+                          />
+                          <span>{autoAddAutoswitchSeconds}s</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -330,11 +564,19 @@ export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onP
                       {nextEpisode.airdate && (
                         <span>{formatDate(nextEpisode.airdate)}</span>
                       )}
-                      {nextEpisode.airtime && (
+                      {/* Use airstamp for accurate local timezone conversion */}
+                      {(nextEpisode.airstamp || nextEpisode.airtime) && (
                         <span className="sdm-dot">•</span>
                       )}
-                      {nextEpisode.airtime && (
-                        <span>{formatTime(nextEpisode.airtime)}</span>
+                      {(nextEpisode.airstamp || nextEpisode.airtime) && (
+                        <span>
+                          {nextEpisode.airstamp
+                            ? new Date(nextEpisode.airstamp).toLocaleTimeString(undefined, {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : formatTime(nextEpisode.airtime)}
+                        </span>
                       )}
                       {nextEpisode.runtime && (
                         <span className="sdm-dot">•</span>
@@ -385,11 +627,19 @@ export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onP
                           {episode.airdate && (
                             <span>{formatDate(episode.airdate)}</span>
                           )}
-                          {episode.airtime && (
+                          {/* Use airstamp for accurate local timezone conversion */}
+                          {(episode.airstamp || episode.airtime) && (
                             <span className="sdm-dot">•</span>
                           )}
-                          {episode.airtime && (
-                            <span>{formatTime(episode.airtime)}</span>
+                          {(episode.airstamp || episode.airtime) && (
+                            <span>
+                              {episode.airstamp
+                                ? new Date(episode.airstamp).toLocaleTimeString(undefined, {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : formatTime(episode.airtime)}
+                            </span>
                           )}
                           {episode.runtime && (
                             <span className="sdm-dot">•</span>
@@ -514,6 +764,41 @@ export function ShowDetailsModal({ tvmazeId, showName, channelName, onClose, onP
             </svg>
             <p>No show details available</p>
             <button className="sdm-retry-btn" onClick={loadShowDetails}>Retry</button>
+          </div>
+        )}
+
+        {showChannelSelector && (
+          <ChannelSelectorModal
+            currentChannelName={currentChannel}
+            networkName={details?.network?.name || null}
+            onSelect={handleChannelSelect}
+            onClose={() => setShowChannelSelector(false)}
+          />
+        )}
+
+        {showNotificationsModal && (
+          <ShowNotificationsModal
+            isOpen={showNotificationsModal}
+            showName={showName}
+            channelName={currentChannel}
+            episodes={episodes}
+            onConfirm={(addedCount) => {
+              setShowNotificationsModal(false);
+              setNotificationSuccess(`Added ${addedCount} episode${addedCount !== 1 ? 's' : ''} to your watchlist`);
+              setTimeout(() => setNotificationSuccess(null), 3000);
+            }}
+            onCancel={() => setShowNotificationsModal(false)}
+          />
+        )}
+
+        {/* Success Toast */}
+        {notificationSuccess && (
+          <div className="sdm-notification-toast">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            {notificationSuccess}
           </div>
         )}
       </div>

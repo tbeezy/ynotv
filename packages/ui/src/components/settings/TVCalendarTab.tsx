@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import './TVCalendarTab.css';
+import { db, addTvEpisodeToWatchlist, type AutoAddEpisode } from '../../db';
 
 export function TVCalendarTab() {
   const [tvCalendarEnabled, setTvCalendarEnabled] = useState(true);
@@ -39,8 +40,27 @@ export function TVCalendarTab() {
     setLoading(true);
     setSyncStatus('Syncing...');
     try {
-      const count = await invoke<number>('sync_tvmaze_shows');
-      setSyncStatus(`Synced ${count} shows successfully`);
+      const result = await invoke<{
+        synced_count: number;
+        watchlist_added_count: number;
+        episodes_to_add: AutoAddEpisode[];
+      }>('sync_tvmaze_shows');
+
+      // Add auto-added episodes to watchlist
+      let addedCount = 0;
+      if (result.episodes_to_add && result.episodes_to_add.length > 0) {
+        for (const ep of result.episodes_to_add) {
+          if (ep.channel_id) {
+            const channel = await db.channels.get(ep.channel_id);
+            if (channel) {
+              const added = await addTvEpisodeToWatchlist(ep, channel);
+              if (added) addedCount++;
+            }
+          }
+        }
+      }
+
+      setSyncStatus(`Synced ${result.synced_count} shows${addedCount > 0 ? `, added ${addedCount} episodes to watchlist` : ''}`);
     } catch (e: any) {
       setSyncStatus(`Sync failed: ${e}`);
     } finally {

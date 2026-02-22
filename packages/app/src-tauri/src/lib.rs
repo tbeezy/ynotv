@@ -1101,21 +1101,117 @@ async fn get_calendar_episodes(
     state.db.tvmaze_get_calendar_episodes(&month).map_err(|e| e.to_string())
 }
 
+#[derive(Debug, Serialize)]
+struct AutoAddEpisode {
+    tvmaze_id: i64,
+    episode_id: i64,
+    show_name: String,
+    episode_name: Option<String>,
+    season: Option<i64>,
+    episode: Option<i64>,
+    airdate: Option<String>,
+    airtime: Option<String>,
+    airstamp: Option<String>,
+    runtime: Option<i64>,
+    channel_id: Option<String>,
+    reminder_enabled: bool,
+    reminder_minutes: i32,
+    autoswitch_enabled: bool,
+    autoswitch_seconds: i32,
+}
+
+#[derive(Debug, Serialize)]
+struct SyncResult {
+    synced_count: u32,
+    watchlist_added_count: u32,
+    episodes_to_add: Vec<AutoAddEpisode>,
+}
+
 #[tauri::command]
 async fn sync_tvmaze_shows(
     state: tauri::State<'_, DvrState>,
-) -> Result<u32, String> {
+) -> Result<SyncResult, String> {
     let shows = state.db.tvmaze_get_running_shows().map_err(|e| e.to_string())?;
     let mut count = 0u32;
-    for (tvmaze_id, _) in shows {
+    let mut watchlist_added = 0u32;
+    let mut episodes_to_add: Vec<AutoAddEpisode> = Vec::new();
+
+    for (tvmaze_id, show_name) in shows {
+        // Get watchlist settings for this show
+        let settings = state.db.tvmaze_get_watchlist_settings(tvmaze_id).ok().flatten();
+        // Get channel info for this show
+        let channel_id = state.db.tvmaze_get_show_channel(tvmaze_id).ok().flatten();
+
         if let Ok(eps) = tvmaze::fetch_episodes(tvmaze_id).await {
+            // Auto-add to watchlist if enabled
+            if let Some((auto_add, reminder_enabled, reminder_minutes, autoswitch_enabled, autoswitch_seconds)) = settings {
+                if auto_add {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis() as i64;
+
+                    for ep in &eps {
+                        // Only add future episodes that haven't been added yet
+                        if let Some(ref airdate) = ep.airdate {
+                            let air_timestamp = chrono::NaiveDate::parse_from_str(airdate, "%Y-%m-%d")
+                                .ok()
+                                .map(|d| d.and_hms_opt(0, 0, 0).unwrap_or_default().and_utc().timestamp_millis())
+                                .unwrap_or(0);
+
+                            if air_timestamp > now {
+                                // Check if already added
+                                match state.db.tvmaze_is_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id) {
+                                    Ok(false) => {
+                                        // Mark as added to prevent duplicates on future syncs
+                                        let _ = state.db.tvmaze_mark_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id);
+                                        watchlist_added += 1;
+                                        println!("[Sync] Auto-added episode {} to watchlist for show {}", ep.tvmaze_episode_id, show_name);
+
+                                        // Add to episodes list for frontend
+                                        episodes_to_add.push(AutoAddEpisode {
+                                            tvmaze_id,
+                                            episode_id: ep.tvmaze_episode_id,
+                                            show_name: show_name.clone(),
+                                            episode_name: ep.episode_name.clone(),
+                                            season: ep.season,
+                                            episode: ep.episode,
+                                            airdate: ep.airdate.clone(),
+                                            airtime: ep.airtime.clone(),
+                                            airstamp: ep.airstamp.clone(),
+                                            runtime: ep.runtime,
+                                            channel_id: channel_id.clone(),
+                                            reminder_enabled,
+                                            reminder_minutes,
+                                            autoswitch_enabled,
+                                            autoswitch_seconds,
+                                        });
+                                    }
+                                    Ok(true) => {
+                                        // Already added, skip
+                                    }
+                                    Err(e) => {
+                                        println!("[Sync] Error checking watchlist status: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             let _ = state.db.tvmaze_upsert_episodes(tvmaze_id, &eps);
             let _ = state.db.tvmaze_update_last_synced(tvmaze_id);
             count += 1;
         }
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
-    Ok(count)
+
+    Ok(SyncResult {
+        synced_count: count,
+        watchlist_added_count: watchlist_added,
+        episodes_to_add,
+    })
 }
 
 #[tauri::command]
@@ -1135,6 +1231,89 @@ async fn get_show_details_with_episodes(tvmaze_id: i64) -> Result<ShowDetailsWit
     println!("[TVMaze Command] get_show_details_with_episodes called for id={}", tvmaze_id);
     let (details, episodes) = tvmaze::fetch_show_details_with_episodes(tvmaze_id).await?;
     Ok(ShowDetailsWithEpisodes { details, episodes })
+}
+
+#[tauri::command]
+async fn set_show_channel(
+    state: tauri::State<'_, DvrState>,
+    tvmaze_id: i64,
+    channel_id: Option<String>,
+) -> Result<(), String> {
+    println!("[TVMaze Command] set_show_channel called for id={:?}, channel_id={:?}", tvmaze_id, channel_id);
+
+    // Get channel name if channel_id is provided
+    let channel_name: Option<String> = if let Some(ref cid) = channel_id {
+        match state.db.get_channel_by_id(cid) {
+            Ok(Some(ch)) => Some(ch.name),
+            Ok(None) => {
+                println!("[TVMaze Command] Channel not found: {}", cid);
+                None
+            }
+            Err(e) => {
+                println!("[TVMaze Command] Error getting channel: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    state.db.tvmaze_update_channel(
+        tvmaze_id,
+        channel_id.as_deref(),
+        channel_name.as_deref(),
+    ).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_show_watchlist_settings(
+    state: tauri::State<'_, DvrState>,
+    tvmaze_id: i64,
+    auto_add: bool,
+    reminder_enabled: bool,
+    reminder_minutes: i32,
+    autoswitch_enabled: bool,
+    autoswitch_seconds: i32,
+) -> Result<(), String> {
+    println!("[TVMaze Command] update_show_watchlist_settings called for id={}", tvmaze_id);
+    state.db.tvmaze_update_watchlist_settings(
+        tvmaze_id,
+        auto_add,
+        reminder_enabled,
+        reminder_minutes,
+        autoswitch_enabled,
+        autoswitch_seconds,
+    ).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_show_watchlist_settings(
+    state: tauri::State<'_, DvrState>,
+    tvmaze_id: i64,
+) -> Result<serde_json::Value, String> {
+    println!("[TVMaze Command] get_show_watchlist_settings called for id={}", tvmaze_id);
+    let settings_opt = state.db.tvmaze_get_watchlist_settings(tvmaze_id).map_err(|e| e.to_string())?;
+
+    // Default settings if show not found
+    let (auto_add, reminder_enabled, reminder_minutes, autoswitch_enabled, autoswitch_seconds) =
+        settings_opt.unwrap_or((false, true, 5, false, 30));
+
+    Ok(serde_json::json!({
+        "auto_add_to_watchlist": auto_add,
+        "watchlist_reminder_enabled": reminder_enabled,
+        "watchlist_reminder_minutes": reminder_minutes,
+        "watchlist_autoswitch_enabled": autoswitch_enabled,
+        "watchlist_autoswitch_seconds": autoswitch_seconds,
+    }))
+}
+
+#[tauri::command]
+async fn get_episode_details(tvmaze_episode_id: i64) -> Result<serde_json::Value, String> {
+    println!("[TVMaze Command] get_episode_details called for episode_id={}", tvmaze_episode_id);
+    let client = reqwest::Client::new();
+    let url = format!("https://api.tvmaze.com/episodes/{}", tvmaze_episode_id);
+    let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
+    resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1383,6 +1562,10 @@ pub fn run() {
             sync_tvmaze_shows,
             get_show_details,
             get_show_details_with_episodes,
+            set_show_channel,
+            get_episode_details,
+            update_show_watchlist_settings,
+            get_show_watchlist_settings,
             // Utility commands
             open_external_url
         ])

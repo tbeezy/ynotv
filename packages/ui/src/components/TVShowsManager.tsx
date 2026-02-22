@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useState, useMemo } from 'react';
 import './TVShowsManager.css';
+import { db, addTvEpisodeToWatchlist, type AutoAddEpisode } from '../db';
 
 interface TrackedShow {
   tvmaze_id: number;
@@ -10,6 +11,11 @@ interface TrackedShow {
   channel_id: string | null;
   status: string | null;
   last_synced: string | null;
+  auto_add_to_watchlist: boolean;
+  watchlist_reminder_enabled: boolean;
+  watchlist_reminder_minutes: number;
+  watchlist_autoswitch_enabled: boolean;
+  watchlist_autoswitch_seconds: number;
 }
 
 interface Props {
@@ -64,7 +70,29 @@ export function TVShowsManager({ onClose, onPlayChannel }: Props) {
 
   async function syncShow(tvmazeId: number) {
     try {
-      await invoke('sync_tvmaze_shows');
+      const result = await invoke<{
+        synced_count: number;
+        watchlist_added_count: number;
+        episodes_to_add: AutoAddEpisode[];
+      }>('sync_tvmaze_shows');
+
+      // Add auto-added episodes to watchlist
+      if (result.episodes_to_add && result.episodes_to_add.length > 0) {
+        let addedCount = 0;
+        for (const ep of result.episodes_to_add) {
+          if (ep.channel_id) {
+            const channel = await db.channels.get(ep.channel_id);
+            if (channel) {
+              const added = await addTvEpisodeToWatchlist(ep, channel);
+              if (added) addedCount++;
+            }
+          }
+        }
+        if (addedCount > 0) {
+          console.log(`[TVShowsManager] Auto-added ${addedCount} episodes to watchlist`);
+        }
+      }
+
       await loadShows();
     } catch (e) {
       console.error('[TVShowsManager] Sync failed:', e);

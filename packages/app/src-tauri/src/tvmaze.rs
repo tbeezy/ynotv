@@ -130,35 +130,44 @@ pub struct TvMazeEpisode {
 
 #[derive(Debug, Serialize)]
 pub struct TrackedShow {
-    pub tvmaze_id:    i64,
-    pub show_name:    String,
-    pub show_image:   Option<String>,
-    pub channel_name: Option<String>,
-    pub channel_id:   Option<String>,
-    pub status:       Option<String>,
-    pub last_synced:  Option<String>,
+    pub tvmaze_id:                      i64,
+    pub show_name:                      String,
+    pub show_image:                     Option<String>,
+    pub channel_name:                   Option<String>,
+    pub channel_id:                     Option<String>,
+    pub status:                         Option<String>,
+    pub last_synced:                    Option<String>,
+    pub auto_add_to_watchlist:          bool,
+    pub watchlist_reminder_enabled:     bool,
+    pub watchlist_reminder_minutes:     i32,
+    pub watchlist_autoswitch_enabled:   bool,
+    pub watchlist_autoswitch_seconds:   i32,
 }
 
 #[derive(Debug, Serialize)]
 pub struct CalendarEpisode {
-    pub airdate:      Option<String>,
-    pub airtime:      Option<String>,
-    pub episode_name: Option<String>,
-    pub season:       Option<i64>,
-    pub episode:      Option<i64>,
-    pub show_name:    String,
-    pub channel_name: Option<String>,
-    pub show_image:   Option<String>,
+    pub tvmaze_episode_id: Option<i64>,
+    pub airdate:           Option<String>,
+    pub airtime:           Option<String>,
+    pub airstamp:          Option<String>,
+    pub episode_name:      Option<String>,
+    pub season:            Option<i64>,
+    pub episode:           Option<i64>,
+    pub show_name:         String,
+    pub channel_name:      Option<String>,
+    pub show_image:        Option<String>,
 }
 
 // Intermediate struct for DB inserts
 pub struct EpisodeRow {
-    pub season:       Option<i64>,
-    pub episode:      Option<i64>,
-    pub episode_name: Option<String>,
-    pub airdate:      Option<String>,
-    pub airtime:      Option<String>,
-    pub runtime:      Option<i64>,
+    pub tvmaze_episode_id: i64,
+    pub season:            Option<i64>,
+    pub episode:           Option<i64>,
+    pub episode_name:      Option<String>,
+    pub airdate:           Option<String>,
+    pub airtime:           Option<String>,
+    pub airstamp:          Option<String>,
+    pub runtime:           Option<i64>,
 }
 
 // HTTP helpers
@@ -182,12 +191,14 @@ pub async fn fetch_episodes(tvmaze_id: i64) -> Result<Vec<EpisodeRow>, String> {
     let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
     let raw: Vec<TvMazeEpisode> = resp.json().await.map_err(|e| e.to_string())?;
     Ok(raw.into_iter().map(|ep| EpisodeRow {
-        season:       ep.season,
-        episode:      ep.number,
-        episode_name: ep.name,
-        airdate:      ep.airdate,
-        airtime:      ep.airtime,
-        runtime:      ep.runtime,
+        tvmaze_episode_id: ep.id,
+        season:            ep.season,
+        episode:           ep.number,
+        episode_name:      ep.name,
+        airdate:           ep.airdate,
+        airtime:           ep.airtime,
+        airstamp:          ep.airstamp,
+        runtime:           ep.runtime,
     }).collect())
 }
 
