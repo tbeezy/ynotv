@@ -10,7 +10,8 @@ A modern, feature-rich FOSS IPTV player built with **Tauri v2** and **React**, d
 
 
 <div align="center">
-<img width="100%" alt="ynoTV Interface" src="https://github.com/user-attachments/assets/bfaed9ac-86d7-4394-b0cb-22ac7d6d059e" />
+<img width="1920" height="1080" alt="93h5U9C" src="https://github.com/user-attachments/assets/f39774fa-eef2-4249-a84f-dbf69d77c755" />
+
 </div>
 
 ---
