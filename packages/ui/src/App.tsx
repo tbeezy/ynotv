@@ -297,9 +297,9 @@ function App() {
   const [activeView, setActiveView] = useState<View>('none');
   const [sportsPreviewEnabled, setSportsPreviewEnabled] = useState(true);
 
-  // Tab Mode: enter when EPG, Sports, or DVR opens; exit when they close
+  // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, or Series opens; exit when they close
   useEffect(() => {
-    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' || activeView === 'settings') {
+    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' || activeView === 'settings' || activeView === 'movies' || activeView === 'series') {
       multiview.enterTabMode(activeView);
     } else {
       multiview.exitTabMode();
