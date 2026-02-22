@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState } from 'react';
 import './TVCalendar.css';
 import { TVShowsManager } from './TVShowsManager';
-import { db, addTvEpisodeToWatchlist, type AutoAddEpisode } from '../db';
+import { db, addTvEpisodeToWatchlist, clearAutoAddedEpisodesForShow, type AutoAddEpisode } from '../db';
 
 interface CalendarEpisode {
   airdate: string | null;
@@ -90,16 +90,31 @@ export function TVCalendar({ onClose, onPlayChannel }: Props) {
 
       // Add auto-added episodes to watchlist
       if (result.episodes_to_add && result.episodes_to_add.length > 0) {
-        let addedCount = 0;
+        // Group episodes by show to clear each show's old entries before adding new ones
+        const episodesByShow = new Map<number, AutoAddEpisode[]>();
         for (const ep of result.episodes_to_add) {
-          if (ep.channel_id) {
-            const channel = await db.channels.get(ep.channel_id);
-            if (channel) {
-              const added = await addTvEpisodeToWatchlist(ep, channel);
-              if (added) addedCount++;
+          const existing = episodesByShow.get(ep.tvmaze_id) || [];
+          existing.push(ep);
+          episodesByShow.set(ep.tvmaze_id, existing);
+        }
+
+        let addedCount = 0;
+        for (const [tvmazeId, episodes] of episodesByShow) {
+          // Clear existing auto-added episodes for this show
+          await clearAutoAddedEpisodesForShow(tvmazeId);
+
+          // Add new episodes
+          for (const ep of episodes) {
+            if (ep.channel_id) {
+              const channel = await db.channels.get(ep.channel_id);
+              if (channel) {
+                const added = await addTvEpisodeToWatchlist(ep, channel);
+                if (added) addedCount++;
+              }
             }
           }
         }
+
         if (addedCount > 0) {
           alert(`Synced ${result.synced_count} shows, added ${addedCount} episodes to your watchlist`);
         } else {

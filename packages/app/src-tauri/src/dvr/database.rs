@@ -1217,6 +1217,17 @@ impl DvrDatabase {
         Ok(())
     }
 
+    /// Clear all tracked episodes for a show (when user clears watchlist)
+    pub fn tvmaze_clear_show_added_episodes(&self, tvmaze_id: i64) -> Result<usize> {
+        let conn = self.get_conn()?;
+        let count = conn.execute(
+            "DELETE FROM tv_watchlist_added_episodes WHERE tvmaze_id = ?1",
+            params![tvmaze_id],
+        )?;
+        println!("[TVMaze DB] Cleared {} tracked episodes for show {}", count, tvmaze_id);
+        Ok(count)
+    }
+
     /// Get show's watchlist auto-add settings
     pub fn tvmaze_get_watchlist_settings(&self, tvmaze_id: i64) -> Result<Option<(bool, bool, i32, bool, i32)>> {
         let conn = self.get_conn()?;

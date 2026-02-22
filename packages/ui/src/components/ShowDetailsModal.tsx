@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { ChannelSelectorModal } from './ChannelSelectorModal';
 import { ShowNotificationsModal } from './ShowNotificationsModal';
-import type { StoredChannel } from '../db';
+import { db, addTvEpisodeToWatchlist, clearAutoAddedEpisodesForShow, type AutoAddEpisode, type StoredChannel } from '../db';
 import './ShowDetailsModal.css';
 
 interface Episode {
@@ -103,6 +103,8 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
   const [autoAddAutoswitchEnabled, setAutoAddAutoswitchEnabled] = useState(false);
   const [autoAddAutoswitchSeconds, setAutoAddAutoswitchSeconds] = useState(30);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [autoAddSuccess, setAutoAddSuccess] = useState<string | null>(null);
+  const prevAutoAddEnabled = useRef(false);
 
   // Sync with prop when it changes (e.g., when reopening the modal)
   useEffect(() => {
@@ -132,6 +134,7 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
       setAutoAddReminderMinutes(settings.watchlist_reminder_minutes);
       setAutoAddAutoswitchEnabled(settings.watchlist_autoswitch_enabled);
       setAutoAddAutoswitchSeconds(settings.watchlist_autoswitch_seconds);
+      prevAutoAddEnabled.current = settings.auto_add_to_watchlist;
     } catch (e) {
       console.error('[ShowDetails] Failed to load watchlist settings:', e);
     }
@@ -154,6 +157,36 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
         watchlistAutoswitchEnabled: autoswitchEnabled,
         watchlistAutoswitchSeconds: autoswitchSeconds,
       });
+
+      // If auto-add was just enabled, immediately add current upcoming episodes
+      if (autoAdd && !prevAutoAddEnabled.current) {
+        console.log('[ShowDetails] Auto-add enabled, fetching current episodes...');
+        const episodesToAdd = await invoke<AutoAddEpisode[]>('add_show_episodes_to_watchlist', { tvmazeId });
+
+        if (episodesToAdd.length > 0) {
+          // Clear existing auto-added episodes for this show to refresh with latest data
+          await clearAutoAddedEpisodesForShow(tvmazeId);
+
+          let addedCount = 0;
+          for (const ep of episodesToAdd) {
+            if (ep.channel_id) {
+              const channel = await db.channels.get(ep.channel_id);
+              if (channel) {
+                const added = await addTvEpisodeToWatchlist(ep, channel);
+                if (added) addedCount++;
+              }
+            }
+          }
+
+          if (addedCount > 0) {
+            setAutoAddSuccess(`Added ${addedCount} upcoming episode${addedCount !== 1 ? 's' : ''} to your watchlist`);
+            setTimeout(() => setAutoAddSuccess(null), 5000);
+          }
+        }
+      }
+
+      // Update the ref to track the new state
+      prevAutoAddEnabled.current = autoAdd;
     } catch (e) {
       console.error('[ShowDetails] Failed to save watchlist settings:', e);
     } finally {
@@ -799,6 +832,16 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
               <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
             {notificationSuccess}
+          </div>
+        )}
+
+        {/* Auto-add Success Toast */}
+        {autoAddSuccess && (
+          <div className="sdm-notification-toast">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2v20M2 12h20" />
+            </svg>
+            {autoAddSuccess}
           </div>
         )}
       </div>

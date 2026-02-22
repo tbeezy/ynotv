@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import './TVCalendarPage.css';
 import { ShowDetailsModal } from './ShowDetailsModal';
-import { db, addTvEpisodeToWatchlist, type StoredChannel, type AutoAddEpisode } from '../db';
+import { db, addTvEpisodeToWatchlist, clearAutoAddedEpisodesForShow, type StoredChannel, type AutoAddEpisode } from '../db';
 
 // Cache storage key for localStorage
 const CACHE_STORAGE_KEY = 'tvmaze_episode_cache';
@@ -576,19 +576,33 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
 
       // Add auto-added episodes to watchlist
       if (result.episodes_to_add && result.episodes_to_add.length > 0) {
-        let addedCount = 0;
+        // Group episodes by show to clear each show's old entries before adding new ones
+        const episodesByShow = new Map<number, AutoAddEpisode[]>();
         for (const ep of result.episodes_to_add) {
-          if (ep.channel_id) {
-            // Get channel from IndexedDB
-            const channel = await db.channels.get(ep.channel_id);
-            if (channel) {
-              const added = await addTvEpisodeToWatchlist(ep, channel);
-              if (added) addedCount++;
-            } else {
-              console.warn('[TVCalendarPage] Channel not found for auto-add:', ep.channel_id);
+          const existing = episodesByShow.get(ep.tvmaze_id) || [];
+          existing.push(ep);
+          episodesByShow.set(ep.tvmaze_id, existing);
+        }
+
+        let addedCount = 0;
+        for (const [tvmazeId, episodes] of episodesByShow) {
+          // Clear existing auto-added episodes for this show
+          await clearAutoAddedEpisodesForShow(tvmazeId);
+
+          // Add new episodes
+          for (const ep of episodes) {
+            if (ep.channel_id) {
+              const channel = await db.channels.get(ep.channel_id);
+              if (channel) {
+                const added = await addTvEpisodeToWatchlist(ep, channel);
+                if (added) addedCount++;
+              } else {
+                console.warn('[TVCalendarPage] Channel not found for auto-add:', ep.channel_id);
+              }
             }
           }
         }
+
         if (addedCount > 0) {
           alert(`Added ${addedCount} episodes to your watchlist`);
         }

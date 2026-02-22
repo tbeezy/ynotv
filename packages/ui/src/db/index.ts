@@ -1245,6 +1245,15 @@ export async function addTvEpisodeToWatchlist(
     // Create synthetic program ID
     const programId = `tvmaze_${ep.tvmaze_id}_${ep.episode_id}_${ep.airdate || 'unknown'}`;
 
+    // Construct title and description
+    const episodeTitle = ep.episode_name || `Episode ${ep.episode}`;
+    const fullTitle = `*NEW* ${ep.show_name} - ${episodeTitle}`;
+
+    let description = '';
+    if (ep.season && ep.episode) {
+      description = `S${ep.season}E${ep.episode}`;
+    }
+
     // Check if already in watchlist
     const existing = await db.watchlist
       .where('program_id')
@@ -1256,16 +1265,7 @@ export async function addTvEpisodeToWatchlist(
       return false;
     }
 
-    // Construct title
-    const episodeTitle = ep.episode_name || `Episode ${ep.episode}`;
-    const fullTitle = `*NEW* ${ep.show_name} - ${episodeTitle}`;
-
-    // Construct description
-    let description = '';
-    if (ep.season && ep.episode) {
-      description = `S${ep.season}E${ep.episode}`;
-    }
-
+    // Add new episode
     const watchlistItem: WatchlistItem = {
       program_id: programId,
       channel_id: channel.stream_id,
@@ -1291,6 +1291,40 @@ export async function addTvEpisodeToWatchlist(
   } catch (error) {
     console.error('[Watchlist] Failed to add TV episode:', error);
     return false;
+  }
+}
+
+/** Clear all auto-added TV episodes for a show (called before sync to refresh data) */
+export async function clearAutoAddedEpisodesForShow(tvmazeId: number): Promise<number> {
+  try {
+    // Find all watchlist items with program_id starting with tvmaze_{tvmazeId}_
+    const all = await db.watchlist.toArray();
+    const prefix = `tvmaze_${tvmazeId}_`;
+    const toDelete = all.filter(item => item.program_id.startsWith(prefix));
+
+    for (const item of toDelete) {
+      if (item.id) {
+        await db.watchlist.delete(item.id);
+      }
+    }
+
+    if (toDelete.length > 0) {
+      dbEvents.notify('watchlist', 'delete');
+      console.log(`[Watchlist] Cleared ${toDelete.length} auto-added episodes for show ${tvmazeId}`);
+    }
+
+    // Also clear backend tracking so episodes can be re-added
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('clear_show_watchlist_tracking', { tvmazeId });
+    } catch (e) {
+      console.error('[Watchlist] Failed to clear backend tracking:', e);
+    }
+
+    return toDelete.length;
+  } catch (error) {
+    console.error('[Watchlist] Failed to clear auto-added episodes:', error);
+    return 0;
   }
 }
 

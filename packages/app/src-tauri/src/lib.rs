@@ -1146,13 +1146,17 @@ async fn sync_tvmaze_shows(
             // Auto-add to watchlist if enabled
             if let Some((auto_add, reminder_enabled, reminder_minutes, autoswitch_enabled, autoswitch_seconds)) = settings {
                 if auto_add {
+                    // Clear tracking table so all upcoming episodes are returned fresh
+                    // Frontend will handle clearing and re-adding to watchlist
+                    let _ = state.db.tvmaze_clear_show_added_episodes(tvmaze_id);
+
                     let now = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap_or_default()
                         .as_millis() as i64;
 
                     for ep in &eps {
-                        // Only add future episodes that haven't been added yet
+                        // Only add future episodes
                         if let Some(ref airdate) = ep.airdate {
                             let air_timestamp = chrono::NaiveDate::parse_from_str(airdate, "%Y-%m-%d")
                                 .ok()
@@ -1160,40 +1164,29 @@ async fn sync_tvmaze_shows(
                                 .unwrap_or(0);
 
                             if air_timestamp > now {
-                                // Check if already added
-                                match state.db.tvmaze_is_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id) {
-                                    Ok(false) => {
-                                        // Mark as added to prevent duplicates on future syncs
-                                        let _ = state.db.tvmaze_mark_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id);
-                                        watchlist_added += 1;
-                                        println!("[Sync] Auto-added episode {} to watchlist for show {}", ep.tvmaze_episode_id, show_name);
+                                // Mark as added for tracking purposes
+                                let _ = state.db.tvmaze_mark_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id);
+                                watchlist_added += 1;
+                                println!("[Sync] Adding episode {} for show {}", ep.tvmaze_episode_id, show_name);
 
-                                        // Add to episodes list for frontend
-                                        episodes_to_add.push(AutoAddEpisode {
-                                            tvmaze_id,
-                                            episode_id: ep.tvmaze_episode_id,
-                                            show_name: show_name.clone(),
-                                            episode_name: ep.episode_name.clone(),
-                                            season: ep.season,
-                                            episode: ep.episode,
-                                            airdate: ep.airdate.clone(),
-                                            airtime: ep.airtime.clone(),
-                                            airstamp: ep.airstamp.clone(),
-                                            runtime: ep.runtime,
-                                            channel_id: channel_id.clone(),
-                                            reminder_enabled,
-                                            reminder_minutes,
-                                            autoswitch_enabled,
-                                            autoswitch_seconds,
-                                        });
-                                    }
-                                    Ok(true) => {
-                                        // Already added, skip
-                                    }
-                                    Err(e) => {
-                                        println!("[Sync] Error checking watchlist status: {}", e);
-                                    }
-                                }
+                                // Add to episodes list for frontend
+                                episodes_to_add.push(AutoAddEpisode {
+                                    tvmaze_id,
+                                    episode_id: ep.tvmaze_episode_id,
+                                    show_name: show_name.clone(),
+                                    episode_name: ep.episode_name.clone(),
+                                    season: ep.season,
+                                    episode: ep.episode,
+                                    airdate: ep.airdate.clone(),
+                                    airtime: ep.airtime.clone(),
+                                    airstamp: ep.airstamp.clone(),
+                                    runtime: ep.runtime,
+                                    channel_id: channel_id.clone(),
+                                    reminder_enabled,
+                                    reminder_minutes,
+                                    autoswitch_enabled,
+                                    autoswitch_seconds,
+                                });
                             }
                         }
                     }
@@ -1212,6 +1205,118 @@ async fn sync_tvmaze_shows(
         watchlist_added_count: watchlist_added,
         episodes_to_add,
     })
+}
+
+/// Immediately add current upcoming episodes for a single show to watchlist
+/// Called when user enables auto-add for a show
+#[tauri::command]
+async fn add_show_episodes_to_watchlist(
+    state: tauri::State<'_, DvrState>,
+    tvmaze_id: i64,
+) -> Result<Vec<AutoAddEpisode>, String> {
+    println!("[TVMaze Command] add_show_episodes_to_watchlist called for id={}", tvmaze_id);
+
+    // Get show name
+    let shows = state.db.tvmaze_get_running_shows().map_err(|e| e.to_string())?;
+    let show_name = shows
+        .into_iter()
+        .find(|(id, _)| *id == tvmaze_id)
+        .map(|(_, name)| name)
+        .unwrap_or_else(|| format!("Show {}", tvmaze_id));
+
+    // Get watchlist settings for this show
+    let settings = state
+        .db
+        .tvmaze_get_watchlist_settings(tvmaze_id)
+        .ok()
+        .flatten()
+        .unwrap_or((false, true, 5, false, 30));
+    let (auto_add, reminder_enabled, reminder_minutes, autoswitch_enabled, autoswitch_seconds) =
+        settings;
+
+    // Get channel info
+    let channel_id = state.db.tvmaze_get_show_channel(tvmaze_id).ok().flatten();
+
+    // Fetch episodes from TVMaze
+    let eps = tvmaze::fetch_episodes(tvmaze_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+
+    // Clear tracking table so all upcoming episodes are returned fresh
+    let _ = state.db.tvmaze_clear_show_added_episodes(tvmaze_id);
+
+    let mut episodes_to_add: Vec<AutoAddEpisode> = Vec::new();
+
+    for ep in &eps {
+        // Only add future episodes
+        if let Some(ref airdate) = ep.airdate {
+            let air_timestamp = chrono::NaiveDate::parse_from_str(airdate, "%Y-%m-%d")
+                .ok()
+                .map(|d| {
+                    d.and_hms_opt(0, 0, 0)
+                        .unwrap_or_default()
+                        .and_utc()
+                        .timestamp_millis()
+                })
+                .unwrap_or(0);
+
+            if air_timestamp > now {
+                // Mark as added for tracking purposes
+                let _ = state
+                    .db
+                    .tvmaze_mark_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id);
+                println!(
+                    "[Add Episodes] Adding episode {} for show {}",
+                    ep.tvmaze_episode_id, show_name
+                );
+
+                // Add to episodes list for frontend
+                episodes_to_add.push(AutoAddEpisode {
+                    tvmaze_id,
+                    episode_id: ep.tvmaze_episode_id,
+                    show_name: show_name.clone(),
+                    episode_name: ep.episode_name.clone(),
+                    season: ep.season,
+                    episode: ep.episode,
+                    airdate: ep.airdate.clone(),
+                    airtime: ep.airtime.clone(),
+                    airstamp: ep.airstamp.clone(),
+                    runtime: ep.runtime,
+                    channel_id: channel_id.clone(),
+                    reminder_enabled,
+                    reminder_minutes,
+                    autoswitch_enabled,
+                    autoswitch_seconds,
+                });
+            }
+        }
+    }
+
+    // Upsert episodes to database
+    let _ = state.db.tvmaze_upsert_episodes(tvmaze_id, &eps);
+    let _ = state.db.tvmaze_update_last_synced(tvmaze_id);
+
+    println!(
+        "[Add Episodes] Returning {} episodes to add for show {}",
+        episodes_to_add.len(),
+        show_name
+    );
+    Ok(episodes_to_add)
+}
+
+/// Clear tracking for a show's episodes (called when user clears watchlist entries)
+#[tauri::command]
+async fn clear_show_watchlist_tracking(
+    state: tauri::State<'_, DvrState>,
+    tvmaze_id: i64,
+) -> Result<usize, String> {
+    println!("[TVMaze Command] clear_show_watchlist_tracking called for id={}", tvmaze_id);
+    state.db.tvmaze_clear_show_added_episodes(tvmaze_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1269,20 +1374,20 @@ async fn set_show_channel(
 async fn update_show_watchlist_settings(
     state: tauri::State<'_, DvrState>,
     tvmaze_id: i64,
-    auto_add: bool,
-    reminder_enabled: bool,
-    reminder_minutes: i32,
-    autoswitch_enabled: bool,
-    autoswitch_seconds: i32,
+    auto_add_to_watchlist: bool,
+    watchlist_reminder_enabled: bool,
+    watchlist_reminder_minutes: i32,
+    watchlist_autoswitch_enabled: bool,
+    watchlist_autoswitch_seconds: i32,
 ) -> Result<(), String> {
-    println!("[TVMaze Command] update_show_watchlist_settings called for id={}", tvmaze_id);
+    println!("[TVMaze Command] update_show_watchlist_settings called for id={} auto_add={}", tvmaze_id, auto_add_to_watchlist);
     state.db.tvmaze_update_watchlist_settings(
         tvmaze_id,
-        auto_add,
-        reminder_enabled,
-        reminder_minutes,
-        autoswitch_enabled,
-        autoswitch_seconds,
+        auto_add_to_watchlist,
+        watchlist_reminder_enabled,
+        watchlist_reminder_minutes,
+        watchlist_autoswitch_enabled,
+        watchlist_autoswitch_seconds,
     ).map_err(|e| e.to_string())
 }
 
@@ -1566,6 +1671,8 @@ pub fn run() {
             get_episode_details,
             update_show_watchlist_settings,
             get_show_watchlist_settings,
+            add_show_episodes_to_watchlist,
+            clear_show_watchlist_tracking,
             // Utility commands
             open_external_url
         ])
