@@ -265,7 +265,8 @@ By using this application, you acknowledge and agree that the developers bear no
 - **[FFmpeg](https://ffmpeg.org)** - Recording and thumbnail generation
 - **[React](https://react.dev)** - UI library
 - **[TMDB](https://www.themoviedb.org)** - Movie/series metadata
-
+- **[TVMaze](https://www.tvmaze.com)** - TV schedule and show metadata
+  
 ---
 
 ## 📄 License
