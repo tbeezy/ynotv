@@ -55,6 +55,20 @@
   border-right: 1px solid var(--border-color, #2a2a2a);
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* Pseudo-element to provide a dark underlay when in preview mode, 
+   ensuring glassmorphism theme colors are visible against the MPV background */
+.sports-hub.with-preview .sports-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-primary, #0f0f0f);
+  z-index: -1;
 }
 
 .sports-sidebar-header {
