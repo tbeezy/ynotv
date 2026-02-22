@@ -55,11 +55,32 @@ interface UpcomingEpisode {
     medium?: string;
     original?: string;
   };
+  // /schedule endpoint has show directly
+  show?: {
+    id: number;
+    name: string;
+    type?: string;
+    language?: string;
+    genres?: string[];
+    status?: string;
+    image?: {
+      medium?: string;
+      original?: string;
+    };
+    network?: {
+      name?: string;
+    };
+    webChannel?: {
+      name?: string;
+    };
+  };
+  // /schedule/web endpoint has it in _embedded
   _embedded?: {
     show: {
       id: number;
       name: string;
       type?: string;
+      language?: string;
       genres?: string[];
       status?: string;
       image?: {
@@ -215,6 +236,9 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
     setUpcomingDate(new Date().toISOString().split('T')[0]);
   };
 
+  // Show types to filter out from Upcoming Shows
+  const EXCLUDED_TYPES = ['Talk Show', 'News', 'Game Show', 'Sports', 'Variety'];
+
   async function loadUpcomingShows() {
     setUpcomingLoading(true);
     setUpcomingError(null);
@@ -225,7 +249,22 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
       if (!response.ok) throw new Error(`Failed to fetch schedule for ${upcomingDate}`);
 
       const episodes: UpcomingEpisode[] = await response.json();
-      setUpcomingEpisodes(episodes);
+
+      // Filter out news, talk shows, and other bloat; keep only English shows
+      const filteredEpisodes = episodes.filter(ep => {
+        const show = ep.show || ep._embedded?.show;
+        if (!show) return false;
+
+        // Filter out excluded show types
+        if (show.type && EXCLUDED_TYPES.includes(show.type)) return false;
+
+        // Filter for English language only
+        if (show.language && show.language !== 'English') return false;
+
+        return true;
+      });
+
+      setUpcomingEpisodes(filteredEpisodes);
     } catch (e: any) {
       console.error('[TVCalendarPage] Failed to load upcoming shows:', e);
       setUpcomingError(e.toString());
@@ -660,7 +699,7 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
             <div className="tvcp-upcoming-day">
               <div className="tvcp-upcoming-episodes">
                 {episodes.map(episode => {
-                      const show = episode._embedded?.show;
+                      const show = episode.show || episode._embedded?.show;
                       const showImage = show?.image?.medium || episode.image?.medium;
                       const isAdding = addingShowId === show?.id;
 
