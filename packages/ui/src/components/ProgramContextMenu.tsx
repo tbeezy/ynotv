@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { scheduleRecording, detectScheduleConflicts, addToWatchlist, db, type DvrSchedule } from '../db';
 import type { StoredProgram, WatchlistOptions } from '../db';
 import { StalkerClient } from '@ynotv/local-adapter';
@@ -198,7 +199,7 @@ export function ProgramContextMenu({
         }
     }
 
-    return (
+    return createPortal(
         <>
             <div
                 ref={menuRef}
@@ -227,6 +228,7 @@ export function ProgramContextMenu({
                 onConfirm={handleWatchlistConfirm}
                 onCancel={() => setShowWatchlistModal(false)}
             />
-        </>
+        </>,
+        document.body
     );
 }

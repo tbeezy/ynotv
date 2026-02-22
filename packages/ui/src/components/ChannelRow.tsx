@@ -78,34 +78,15 @@ export const ChannelRow = memo(function ChannelRow({
     );
   }, [activeRecordings, channel.stream_id]);
 
-  // Get the horizontal offset based on sidebar and categories visibility
-  function getXOffset(): number {
-    const guidePanel = document.querySelector('.guide-panel');
-    if (!guidePanel) return 0;
-
-    const computedStyle = window.getComputedStyle(guidePanel);
-    const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
-    return paddingLeft;
-  }
-
-  // Get the vertical offset based on preview panel height
-  function getYOffset(): number {
-    const topSection = document.querySelector('.guide-top-section');
-    return topSection ? topSection.getBoundingClientRect().height : 0;
-  }
-
   // Handle context menu on programs
   function handleContextMenu(e: React.MouseEvent, program: StoredProgram) {
     e.preventDefault();
     e.stopPropagation();
 
-    const xOffset = getXOffset();
-    const yOffset = getYOffset();
-
     setContextMenu({
       program,
-      x: e.clientX - xOffset,
-      y: e.clientY - yOffset,
+      x: e.clientX,
+      y: e.clientY,
     });
   }
 
@@ -114,12 +95,9 @@ export const ChannelRow = memo(function ChannelRow({
     e.preventDefault();
     e.stopPropagation();
 
-    const xOffset = getXOffset();
-    const yOffset = getYOffset();
-
     setChannelContextMenu({
-      x: e.clientX - xOffset,
-      y: e.clientY - yOffset,
+      x: e.clientX,
+      y: e.clientY,
     });
   }
 

@@ -66,30 +66,10 @@ export const SearchResultRow = memo(function SearchResultRow({
     e.preventDefault();
     e.stopPropagation();
 
-    // Account for preview panel height at top of EPG
-    const topSection = document.querySelector('.guide-top-section');
-    const offset = topSection ? topSection.getBoundingClientRect().height : 0;
-
     setChannelContextMenu({
       x: e.clientX,
-      y: e.clientY - offset,
+      y: e.clientY,
     });
-  }
-
-  // Get the horizontal offset based on sidebar and categories visibility
-  function getXOffset(): number {
-    const guidePanel = document.querySelector('.guide-panel');
-    if (!guidePanel) return 0;
-
-    const computedStyle = window.getComputedStyle(guidePanel);
-    const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
-    return paddingLeft;
-  }
-
-  // Get the vertical offset based on preview panel height
-  function getYOffset(): number {
-    const topSection = document.querySelector('.guide-top-section');
-    return topSection ? topSection.getBoundingClientRect().height : 0;
   }
 
   // Handle context menu on program
@@ -97,13 +77,10 @@ export const SearchResultRow = memo(function SearchResultRow({
     e.preventDefault();
     e.stopPropagation();
 
-    const xOffset = getXOffset();
-    const yOffset = getYOffset();
-
     setProgramContextMenu({
       program,
-      x: e.clientX - xOffset,
-      y: e.clientY - yOffset,
+      x: e.clientX,
+      y: e.clientY,
     });
   }
 

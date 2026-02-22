@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { scheduleRecording, detectScheduleConflicts, type DvrSchedule, db } from '../db';
 import type { StoredChannel } from '../db';
 import { StalkerClient } from '@ynotv/local-adapter';
@@ -353,7 +354,7 @@ export function ChannelContextMenu({
         onClose();
     };
 
-    return (
+    return createPortal(
         <div
             ref={menuRef}
             className="program-context-menu"
@@ -389,6 +390,7 @@ export function ChannelContextMenu({
                 Cancel
             </div>
             <ModalComponent />
-        </div>
+        </div>,
+        document.body
     );
 }

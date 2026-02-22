@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './ProgramContextMenu.css';
 
 interface SourceContextMenuProps {
@@ -72,7 +73,7 @@ export function SourceContextMenu({
         return () => document.removeEventListener('keydown', handleEscape);
     }, [onClose]);
 
-    return (
+    return createPortal(
         <div
             ref={menuRef}
             className="program-context-menu"
@@ -87,6 +88,7 @@ export function SourceContextMenu({
             <div className="context-menu-item" onClick={() => { onEditSource(sourceId); onClose(); }}>
                 ⚙️ Edit Source
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
