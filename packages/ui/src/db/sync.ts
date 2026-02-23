@@ -3,11 +3,12 @@ import { fetchAndParseM3U, XtreamClient, StalkerClient, type XmltvProgram } from
 import type { Source, Channel, Category, Movie, Series } from '@ynotv/core';
 import { useUIStore } from '../stores/uiStore';
 import { bulkOps, type BulkChannel, type BulkCategory } from '../services/bulk-ops';
-import { epgStreaming, type EpgProgressCallback } from '../services/epg-streaming';
+import { epgStreaming, type EpgProgressCallback, type EpgParseResult } from '../services/epg-streaming';
 import { dbEvents } from './sqlite-adapter';
 import { matchAllMoviesLazy, matchAllSeriesLazy } from '../services/title-match';
 
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { invoke } from '@tauri-apps/api/core';
 import { compressEpgDescription, decompressEpgDescription } from '../utils/compression';
 
 // Debug logging helper - logs to console and optionally to debug file
@@ -605,99 +606,52 @@ async function syncEpgFromUrlLegacy(
   }
 }
 
-// Sync EPG for Xtream source using built-in endpoint
+// Sync EPG for Xtream source using RUST STREAMING PARSER (high performance)
 async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: string): Promise<number> {
   if (!source.username || !source.password) return 0;
 
-  console.log(`[EPG] Starting Xtream EPG sync for source: ${source.name || source.id}`);
+  console.log(`[EPG] Starting Xtream EPG sync with RUST STREAMING PARSER for source: ${source.name || source.id}`);
   console.log(`[EPG] Total channels: ${channels.length}`);
 
-  debugLog(`Starting EPG sync for source: ${source.name || source.id}`, 'epg');
-  if (epgUrl) {
-    debugLog(`Using EPG URL: ${epgUrl}`, 'epg');
-  }
+  debugLog(`Starting EPG sync with Rust streaming parser for source: ${source.name || source.id}`, 'epg');
 
   // Use the provided EPG URL or construct from source.url
   const xmltvUrl = epgUrl || `${source.url}/xmltv.php?username=${encodeURIComponent(source.username)}&password=${encodeURIComponent(source.password)}`;
-  console.log(`[EPG] Fetching XMLTV from: ${xmltvUrl.substring(0, 80)}...`);
-  debugLog(`Fetching XMLTV from: ${xmltvUrl}`, 'epg');
+  console.log(`[EPG] Streaming XMLTV from: ${xmltvUrl.substring(0, 80)}...`);
+  debugLog(`Streaming XMLTV from: ${xmltvUrl}`, 'epg');
 
   try {
-    // Fetch full XMLTV data using the same method as M3U sources
-    const xmltvPrograms = await fetchXmltvFromUrls(xmltvUrl);
-    console.log(`[EPG] Received ${xmltvPrograms.length} programs from XMLTV`);
-    debugLog(`Received ${xmltvPrograms.length} programs from XMLTV`, 'epg');
+    // Build channel mappings for Rust parser
+    const channelMappings = channels
+      .filter(ch => ch.epg_channel_id)
+      .map(ch => ({
+        epg_channel_id: ch.epg_channel_id!,
+        stream_id: ch.stream_id,
+      }));
 
-    if (xmltvPrograms.length === 0) {
-      console.warn(`[EPG] No programs found in XMLTV - keeping existing data`);
-      debugLog('No programs found in XMLTV, keeping existing data', 'epg');
-      return 0;
-    }
+    console.log(`[EPG] Channels with epg_channel_id: ${channelMappings.length}/${channels.length}`);
+    debugLog(`${channelMappings.length}/${channels.length} channels have epg_channel_id`, 'epg');
 
-    // Build a map of epg_channel_id -> stream_id for matching
-    const channelMap = new Map<string, string>();
-    let channelsWithEpgId = 0;
-    for (const ch of channels) {
-      if (ch.epg_channel_id) {
-        channelMap.set(ch.epg_channel_id, ch.stream_id);
-        channelsWithEpgId++;
-      }
-    }
+    // Use native Rust streaming parser for maximum performance
+    // This downloads, parses, matches, and inserts all in Rust
+    const result = await invoke<EpgParseResult>('stream_parse_epg', {
+      sourceId: source.id,
+      epgUrl: xmltvUrl,
+      channelMappings,
+    });
 
-    console.log(`[EPG] Channels with epg_channel_id: ${channelsWithEpgId}/${channels.length}`);
+    console.log(`[EPG] Rust streaming parser COMPLETE:`);
+    console.log(`  - Total programs in XML: ${result.total_programs}`);
+    console.log(`  - Matched to channels: ${result.matched_programs}`);
+    console.log(`  - Inserted to DB: ${result.inserted_programs}`);
+    console.log(`  - Duration: ${result.duration_ms}ms`);
 
-    // Log sample channel IDs for debugging
-    if (channelsWithEpgId > 0) {
-      const samples = channels.filter(c => c.epg_channel_id).slice(0, 3);
-      console.log(`[EPG] Sample channel EPG IDs:`, samples.map(c =>
-        `${c.name}: ${c.epg_channel_id}`
-      ).join(', '));
-    }
-
-    // Log sample XMLTV channel IDs for comparison
-    const xmltvSamples = xmltvPrograms.slice(0, 3);
-    console.log(`[EPG] Sample XMLTV channel IDs:`, xmltvSamples.map(p => p.channel_id).join(', '));
-
-    debugLog(`${channelsWithEpgId}/${channels.length} channels have epg_channel_id`, 'epg');
-
-    // Convert XMLTV programs to stored format using shared helper (with compression)
-    const { programs: storedPrograms, unmatchedCount } = buildStoredPrograms(
-      xmltvPrograms, channelMap, source.id,
-      { compressDescriptions: false }
-    );
-
-    debugLog(`Matched ${storedPrograms.length}/${xmltvPrograms.length} programs (${unmatchedCount} unmatched EPG channels)`, 'epg');
-
-    // SAFETY: Only clear old data if we have new data to replace it
-    if (storedPrograms.length === 0) {
-      console.warn(`[EPG] WARNING: No programs matched! EPG channel IDs don't match channel epg_channel_id values`);
-      console.warn(`[EPG] Keeping existing EPG data to avoid data loss`);
-      debugLog('WARNING: No programs matched! Keeping existing EPG data to avoid data loss', 'epg');
-      return 0;
-    }
-
-    // Store programs using optimized bulk operation
-    debugLog('Storing EPG data with optimized bulk operation...', 'epg');
-
-    const bulkPrograms = storedPrograms.map(p => ({
-      id: p.id,
-      stream_id: p.stream_id,
-      title: p.title,
-      description: p.description || '',
-      start: p.start instanceof Date ? p.start.toISOString() : p.start,
-      end: p.end instanceof Date ? p.end.toISOString() : p.end,
-      source_id: p.source_id
-    }));
-
-    const result = await bulkOps.replacePrograms(source.id, bulkPrograms);
-
-    console.log(`[EPG] Xtream EPG sync COMPLETE: ${result.inserted} programs inserted, ${result.deleted} old programs deleted`);
-    debugLog(`EPG sync complete: ${storedPrograms.length} programs stored`, 'epg');
-    return storedPrograms.length;
+    debugLog(`EPG sync complete: ${result.inserted_programs} programs stored (${result.duration_ms}ms)`, 'epg');
+    return result.inserted_programs;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error(`[EPG] Xtream EPG fetch FAILED: ${errMsg}`);
-    debugLog(`EPG fetch FAILED: ${errMsg}`, 'epg');
+    console.error(`[EPG] Rust streaming parser FAILED: ${errMsg}`);
+    debugLog(`EPG streaming parser FAILED: ${errMsg}`, 'epg');
     debugLog('Keeping existing EPG data', 'epg');
     return 0;
   }

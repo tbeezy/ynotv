@@ -76,7 +76,7 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
 
                 if (staleSources.length > 0) {
                     setChannelSyncing(true);
-                    const CONCURRENCY = 5;
+                    const CONCURRENCY = 10;
                     const total = staleSources.length;
                     for (let i = 0; i < total; i += CONCURRENCY) {
                         const batch = staleSources.slice(i, i + CONCURRENCY);
@@ -102,7 +102,7 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
                     }
                     if (staleVod.length > 0) {
                         setVodSyncing(true);
-                        const CONCURRENCY = 5;
+                        const CONCURRENCY = 10;
                         const total = staleVod.length;
                         for (let i = 0; i < total; i += CONCURRENCY) {
                             const batch = staleVod.slice(i, i + CONCURRENCY);

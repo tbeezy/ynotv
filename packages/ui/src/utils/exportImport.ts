@@ -1,4 +1,4 @@
-import { db, type StoredChannel, type StoredCategory } from '../db';
+import { db, type StoredChannel, type StoredCategory, type CustomGroup, type CustomGroupChannel } from '../db';
 import type { Source } from '@ynotv/core';
 import type { AppSettings, ShortcutsMap } from '../types/app';
 import { Bridge } from '../services/tauri-bridge';
@@ -22,9 +22,15 @@ export interface ExportData {
         sourceId: string;
         enabled?: boolean;
     }>;
+    customGroups: Array<{
+        groupId: string;
+        name: string;
+        displayOrder: number;
+        channels: string[]; // stream_ids in order
+    }>;
 }
 
-const EXPORT_VERSION = 2;
+const EXPORT_VERSION = 3;
 
 /**
  * Export all application data to a JSON file
@@ -85,6 +91,24 @@ export async function exportAllData(): Promise<{ success: boolean; filePath?: st
                 enabled: ch.enabled
             }));
 
+        // 5. Get Custom Groups with their channels
+        const allCustomGroups = await db.customGroups.toArray();
+        const allGroupChannels = await db.customGroupChannels.toArray();
+
+        const customGroups = allCustomGroups.map(group => {
+            const groupChans = allGroupChannels
+                .filter(gc => gc.group_id === group.group_id)
+                .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+                .map(gc => gc.stream_id);
+
+            return {
+                groupId: group.group_id,
+                name: group.name,
+                displayOrder: group.display_order,
+                channels: groupChans
+            };
+        });
+
         const exportData: ExportData = {
             version: EXPORT_VERSION,
             timestamp: new Date().toISOString(),
@@ -92,7 +116,8 @@ export async function exportAllData(): Promise<{ success: boolean; filePath?: st
             settings: settingsResult.data || { theme: 'glass-neon' },
             favorites: favoriteData,
             categoryPreferences,
-            channelPreferences
+            channelPreferences,
+            customGroups
         };
 
         const fileName = `ynotv-backup-${new Date().toISOString().split('T')[0]}.json`;
@@ -197,7 +222,38 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
             }
         });
 
-        // 5. Trigger a reload or notify user? e.g., reload window to refresh Stores
+        // 5. Restore Custom Groups
+        if (data.customGroups && data.customGroups.length > 0) {
+            await db.transaction('rw', [db.customGroups, db.customGroupChannels], async () => {
+                // Clear existing custom groups
+                await db.customGroups.clear();
+                await db.customGroupChannels.clear();
+
+                // Restore groups
+                for (const group of data.customGroups!) {
+                    await db.customGroups.add({
+                        group_id: group.groupId,
+                        name: group.name,
+                        display_order: group.displayOrder,
+                        created_at: Date.now()
+                    });
+
+                    // Restore channels in group
+                    if (group.channels && group.channels.length > 0) {
+                        const now = Date.now();
+                        const groupChannels: CustomGroupChannel[] = group.channels.map((streamId, index) => ({
+                            group_id: group.groupId,
+                            stream_id: streamId,
+                            display_order: index,
+                            added_at: now
+                        }));
+                        await db.customGroupChannels.bulkAdd(groupChannels);
+                    }
+                }
+            });
+        }
+
+        // 6. Trigger a reload or notify user? e.g., reload window to refresh Stores
         // For now, we return success and let UI handle the notification/reload prompt.
 
         return { success: true };

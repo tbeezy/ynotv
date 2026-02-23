@@ -27,6 +27,43 @@ const CHANNEL_BUFFER: usize = 4;
 /// Progress update interval (every N batches)
 const PROGRESS_INTERVAL: usize = 5;
 
+/// Parse XMLTV date format: YYYYMMDDHHmmss +0000 -> ISO 8601
+/// Returns the original string if parsing fails
+fn parse_xmltv_date(date_str: &str) -> String {
+    // XMLTV format: YYYYMMDDHHmmss +0000 (timezone is optional)
+    // Examples: "20240223020000 +0000" or "20240223020000"
+    let trimmed = date_str.trim();
+
+    // Try to parse with regex-like approach
+    if trimmed.len() >= 14 {
+        let year = &trimmed[0..4];
+        let month = &trimmed[4..6];
+        let day = &trimmed[6..8];
+        let hour = &trimmed[8..10];
+        let min = &trimmed[10..12];
+        let sec = &trimmed[12..14];
+
+        // Extract timezone if present (format: +0000 or -0500)
+        let tz = if trimmed.len() > 15 {
+            let tz_part = trimmed[15..].trim();
+            if tz_part.len() >= 5 && (tz_part.starts_with('+') || tz_part.starts_with('-')) {
+                // Convert +0000 to +00:00
+                format!("{}{}:{}", &tz_part[0..1], &tz_part[1..3], &tz_part[3..5])
+            } else {
+                "Z".to_string()
+            }
+        } else {
+            "Z".to_string()
+        };
+
+        // Build ISO 8601: YYYY-MM-DDTHH:mm:ss+00:00
+        format!("{}-{}-{}T{}:{}:{}{}", year, month, day, hour, min, sec, tz)
+    } else {
+        // Fallback: return original if it doesn't match expected format
+        trimmed.to_string()
+    }
+}
+
 /// An EPG program parsed from XMLTV
 #[derive(Debug, Clone, Default)]
 pub struct EpgProgram {
@@ -137,6 +174,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     let app_handle_clone = app_handle.clone();
 
     // Spawn parser task that downloads and parses concurrently
+    let parse_start = std::time::Instant::now();
     let parser_task = tokio::spawn(async move {
         parse_download_stream(
             response,
@@ -163,7 +201,13 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
         .context("Parser task panicked")?
         .context("Parser task failed")?;
 
+    let parse_duration_ms = parse_start.elapsed().as_millis() as u64;
     let duration_ms = start_time.elapsed().as_millis() as u64;
+
+    info!(
+        "[EPG Timing] Parse+Download: {}ms, Total: {}ms, DB Insert: {} programs",
+        parse_duration_ms, duration_ms, inserter_result.inserted
+    );
 
     info!(
         "Streaming EPG parse complete for {}: {} programs, {} matched, {} inserted in {}ms",
@@ -223,17 +267,25 @@ async fn parse_download_stream<R: tauri::Runtime>(
         }
     }
 
+    let download_ms = start_time.elapsed().as_millis() as u64;
     info!(
-        "[EPG] Downloaded {} bytes in {} chunks",
+        "[EPG] Downloaded {} bytes in {} chunks in {}ms",
         total_bytes_downloaded,
-        chunks.len()
+        chunks.len(),
+        download_ms
     );
 
-    // Combine chunks for parsing
-    let xml_data: Vec<u8> = chunks.into_iter().flatten().collect();
+    // Combine chunks for parsing (pre-allocate for speed)
+    let combine_start = std::time::Instant::now();
+    let total_size = chunks.iter().map(|c| c.len()).sum::<usize>();
+    let mut xml_data = Vec::with_capacity(total_size);
+    for chunk in chunks {
+        xml_data.extend_from_slice(&chunk);
+    }
+    let combine_ms = combine_start.elapsed().as_millis() as u64;
 
     // Parse and stream batches
-    parse_and_stream_batches(
+    let parse_result = parse_and_stream_batches(
         &xml_data,
         channel_map,
         batch_tx,
@@ -242,7 +294,15 @@ async fn parse_download_stream<R: tauri::Runtime>(
         total_bytes,
         total_bytes_downloaded,
         start_time,
-    ).await
+    ).await?;
+
+    let total_ms = start_time.elapsed().as_millis() as u64;
+    info!(
+        "[EPG Timing] Download: {}ms, Combine: {}ms, Parse+Insert: {}ms, Total: {}ms",
+        download_ms, combine_ms, total_ms - download_ms - combine_ms, total_ms
+    );
+
+    Ok(parse_result)
 }
 
 /// Parse XML and stream batches to inserter
@@ -310,8 +370,8 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
 
                                 match key {
                                     "channel" => program.channel_id = value.to_string(),
-                                    "start" => program.start = value.to_string(),
-                                    "stop" => program.stop = value.to_string(),
+                                    "start" => program.start = parse_xmltv_date(&value),
+                                    "stop" => program.stop = parse_xmltv_date(&value),
                                     _ => {}
                                 }
                             }
