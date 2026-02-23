@@ -59,19 +59,53 @@ struct MpvStatus {
 }
 
 // ============================================================================
+// MPV Helper Functions
+// ============================================================================
+
+/// Get custom MPV parameters from settings store
+async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String> {
+    use tauri_plugin_store::StoreExt;
+
+    match app.store(".settings.dat") {
+        Ok(store) => {
+            if let Some(params) = store.get("mpvParams") {
+                if let Some(params_str) = params.as_str() {
+                    // Parse params - split by newlines and filter empty lines
+                    let args: Vec<String> = params_str
+                        .lines()
+                        .map(|line| line.trim())
+                        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+                        .map(|s| s.to_string())
+                        .collect();
+                    println!("[MPV] Loaded {} custom parameters from settings", args.len());
+                    return args;
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("[MPV] Failed to open settings store: {}", e);
+        }
+    }
+    Vec::new()
+}
+
+// ============================================================================
 // MPV Commands - Unified API
 // ============================================================================
 
 #[tauri::command]
 async fn init_mpv<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    // Load custom MPV parameters from settings
+    let custom_params = get_mpv_params_from_store(&app).await;
+
     #[cfg(target_os = "macos")]
     {
-        mpv_macos::init_mpv(app).await
+        mpv_macos::init_mpv_with_params(app, custom_params).await
     }
     #[cfg(target_os = "windows")]
     {
         let state = app.state::<MpvState>();
-        mpv_windows::init_mpv(app.clone(), state).await
+        mpv_windows::init_mpv_with_params(app.clone(), state, custom_params).await
     }
 }
 

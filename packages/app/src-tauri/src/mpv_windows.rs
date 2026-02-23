@@ -117,7 +117,7 @@ fn get_socket_path() -> String {
 }
 
 /// Spawn MPV embedded in the Tauri window
-async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>) -> Result<(), String> {
+async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>, custom_params: Vec<String>) -> Result<(), String> {
     // Prevent concurrent inits
     {
         let mut init = state.initializing.lock().unwrap();
@@ -161,7 +161,7 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     println!("[MPV Windows] Embedding MPV into HWND: {:?}", hwnd);
 
     // Prepare arguments
-    let args = vec![
+    let mut args = vec![
         format!("--input-ipc-server={}", socket_path),
         format!("--wid={}", hwnd),
         "--title=YNOTV_MPV_MAIN".into(),
@@ -175,6 +175,11 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         "--no-input-cursor".into(),
         "--cursor-autohide=no".into(),
     ];
+
+    // Add custom parameters from settings
+    for param in custom_params {
+        args.push(param);
+    }
 
     // Launch MPV using shell plugin
     let sidecar = app.shell().sidecar("mpv")
@@ -437,6 +442,14 @@ pub async fn send_command<R: Runtime>(
 }
 
 pub async fn init_mpv<R: Runtime>(app: AppHandle<R>, state: tauri::State<'_, MpvState>) -> Result<(), String> {
+    init_mpv_with_params(app, state, Vec::new()).await
+}
+
+pub async fn init_mpv_with_params<R: Runtime>(
+    app: AppHandle<R>,
+    state: tauri::State<'_, MpvState>,
+    custom_params: Vec<String>,
+) -> Result<(), String> {
     let is_running = {
         let proc = state.process.lock().unwrap();
         proc.is_some()
@@ -448,7 +461,7 @@ pub async fn init_mpv<R: Runtime>(app: AppHandle<R>, state: tauri::State<'_, Mpv
         return connect_ipc(&app, &state, &socket_path).await;
     }
 
-    spawn_mpv(&app, &state).await
+    spawn_mpv(&app, &state, custom_params).await
 }
 
 pub async fn load_file<R: Runtime>(app: &AppHandle<R>, url: String) -> Result<(), String> {

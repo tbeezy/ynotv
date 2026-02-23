@@ -16,7 +16,8 @@ export type SettingsTabId =
   | 'theme'
   | 'dvr'
   | 'startup'
-  | 'tv-calendar';
+  | 'tv-calendar'
+  | 'playback';
 
 interface SettingsCategory {
   label: string;
@@ -53,6 +54,7 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
       { id: 'ui', label: 'UI' },
       { id: 'startup', label: 'Startup' },
       { id: 'tv-calendar', label: 'TV Calendar' },
+      { id: 'playback', label: 'Playback' },
       { id: 'security', label: 'Security' },
       { id: 'debug', label: 'Debug' },
       { id: 'shortcuts', label: 'Shortcuts' },

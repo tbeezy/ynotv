@@ -40,6 +40,7 @@ pub async fn launch_mpv<R: Runtime>(
     y: i32,
     width: u32,
     height: u32,
+    custom_params: Vec<String>,
 ) -> Result<(), String> {
     // Clean up any existing socket
     let _ = std::fs::remove_file(IPC_SOCKET);
@@ -49,23 +50,31 @@ pub async fn launch_mpv<R: Runtime>(
 
     let geometry = format!("{}x{}+{}+{}", width, height, x, y);
 
+    // Build args vector
+    let mut args = vec![
+        "--no-osc".to_string(),
+        "--no-input-default-bindings".to_string(),
+        "--keep-open=yes".to_string(),
+        "--idle=yes".to_string(),
+        "--force-window=yes".to_string(),
+        "--ontop=no".to_string(),
+        "--no-border".to_string(),
+        format!("--geometry={}", geometry),
+        format!("--input-ipc-server={}", IPC_SOCKET),
+        "--vo=libmpv".to_string(),
+        "--hwdec=no".to_string(),
+    ];
+
+    // Add custom parameters from settings
+    for param in custom_params {
+        args.push(param);
+    }
+
     // Get the sidecar command
     let sidecar = app.shell().sidecar("mpv")
         .map_err(|e| format!("Failed to create sidecar: {}", e))?;
 
-    let cmd = sidecar.args(&[
-        "--no-osc",
-        "--no-input-default-bindings",
-        "--keep-open=yes",
-        "--idle=yes",
-        "--force-window=yes",
-        "--ontop=no",
-        "--no-border",
-        &format!("--geometry={}", geometry),
-        &format!("--input-ipc-server={}", IPC_SOCKET),
-        "--vo=libmpv",
-        "--hwdec=no",
-    ]);
+    let cmd = sidecar.args(&args);
 
     let (mut rx, child) = cmd.spawn()
         .map_err(|e| format!("Failed to spawn mpv: {}", e))?;
@@ -393,13 +402,21 @@ pub async fn kill_mpv<R: Runtime>(app: &AppHandle<R>) {
 
 /// Initialize MPV with current window position
 pub async fn init_mpv<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    init_mpv_with_params(app, Vec::new()).await
+}
+
+/// Initialize MPV with custom parameters
+pub async fn init_mpv_with_params<R: Runtime>(
+    app: AppHandle<R>,
+    custom_params: Vec<String>,
+) -> Result<(), String> {
     // Get main window position and size
     if let Some(window) = app.get_webview_window("main") {
         let pos = window.outer_position().map_err(|e| e.to_string())?;
         let size = window.outer_size().map_err(|e| e.to_string())?;
-        launch_mpv(&app, pos.x, pos.y, size.width, size.height).await
+        launch_mpv(&app, pos.x, pos.y, size.width, size.height, custom_params).await
     } else {
         // Default position
-        launch_mpv(&app, 0, 0, 1280, 720).await
+        launch_mpv(&app, 0, 0, 1280, 720, custom_params).await
     }
 }

@@ -171,6 +171,7 @@ pub async fn spawn_slot<R: Runtime>(
     let parent_hwnd_raw = get_parent_hwnd(app)?;
     let socket_path = slot_socket_path(slot_id);
 
+    // Secondary slots use default args only - custom params only apply to main MPV
     let args = vec![
         format!("--input-ipc-server={}", socket_path),
         format!("--wid={}", parent_hwnd_raw),
@@ -267,6 +268,7 @@ pub async fn load_slot<R: Runtime>(
 
     if existing_tx.is_none() {
         println!("[SecondaryMPV] Slot {} not found, spawning new instance...", slot_id);
+        // Note: Custom MPV params only apply to main player, not secondary slots
         spawn_slot(app, slot_id, x, y, width, height).await?;
     } else {
         // Slot already exists - reposition it to the new coordinates

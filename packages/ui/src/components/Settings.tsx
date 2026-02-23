@@ -17,6 +17,7 @@ import { ThemeTab } from './settings/ThemeTab';
 import { DvrTab } from './settings/DvrTab';
 import { StartupTab, type SavedLayoutState } from './settings/StartupTab';
 import { TVCalendarTab } from './settings/TVCalendarTab';
+import { PlaybackTab } from './settings/PlaybackTab';
 import type { ShortcutsMap, ThemeId } from '../types/app';
 import './Settings.css';
 
@@ -82,6 +83,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const [reopenLastOnStartup, setReopenLastOnStartup] = useState(false);
   const [savedLayoutState, setSavedLayoutState] = useState<SavedLayoutState | null>(null);
 
+  // Playback settings state
+  const [mpvParams, setMpvParams] = useState<string>('');
+
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
@@ -143,6 +147,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         rememberLastChannels?: boolean;
         reopenLastOnStartup?: boolean;
         savedLayoutState?: SavedLayoutState;
+        mpvParams?: string;
       };
 
       // Load TMDB API key
@@ -206,6 +211,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       setRememberLastChannels(settings.rememberLastChannels ?? false);
       setReopenLastOnStartup(settings.reopenLastOnStartup ?? false);
       setSavedLayoutState(settings.savedLayoutState ?? null);
+
+      // Load playback settings
+      setMpvParams(settings.mpvParams ?? '');
     }
     setSettingsLoaded(true);
   }
@@ -229,6 +237,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const handleSeriesGenresChange = useCallback((genres: number[]) => {
     setSeriesGenresEnabled(genres);
   }, []);
+
+  const handleMpvParamsChange = async (params: string) => {
+    setMpvParams(params);
+    if (window.storage) {
+      await window.storage.updateSettings({ mpvParams: params });
+    }
+  };
 
   const handleShortcutsChange = async (newShortcuts: ShortcutsMap) => {
     setShortcuts(newShortcuts);
@@ -404,6 +419,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         );
       case 'tv-calendar':
         return <TVCalendarTab />;
+      case 'playback':
+        return (
+          <PlaybackTab
+            mpvParams={mpvParams}
+            onMpvParamsChange={handleMpvParamsChange}
+          />
+        );
       default:
         return null;
     }
