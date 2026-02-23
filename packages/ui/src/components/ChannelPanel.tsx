@@ -8,6 +8,7 @@ import { SearchResultRow } from './SearchResultRow';
 import { WatchlistRow } from './WatchlistRow';
 import { ChannelManager } from './settings/ChannelManager';
 import { FavoriteManager } from './settings/FavoriteManager';
+import { CustomGroupManager } from './CustomGroupManager';
 
 import { useChannelSortOrder } from '../stores/uiStore';
 import type { StoredChannel, StoredProgram, WatchlistItem } from '../db';
@@ -102,6 +103,9 @@ export function ChannelPanel({
   // State for channel manager modal
   const [managingCategory, setManagingCategory] = useState<{ id: string; name: string; sourceId: string } | null>(null);
   const [managingFavorites, setManagingFavorites] = useState(false);
+
+  // State for custom group manager
+  const [managingCustomGroup, setManagingCustomGroup] = useState<{ id: string; name: string } | null>(null);
 
   // Ref for measuring the grid container width
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -349,6 +353,27 @@ export function ChannelPanel({
   // Check if we can manage channels (not for virtual categories like favorites/recent)
   const canManageChannels = categoryId && !categoryId.startsWith('__') && sourceId;
 
+  // Check if current category is a custom group and get its name
+  const [isCustomGroup, setIsCustomGroup] = useState(false);
+  const [customGroupName, setCustomGroupName] = useState('Custom Group');
+  useEffect(() => {
+    async function checkCustomGroup() {
+      if (!categoryId) {
+        setIsCustomGroup(false);
+        setCustomGroupName('Custom Group');
+        return;
+      }
+      const group = await db.customGroups.get(categoryId);
+      setIsCustomGroup(!!group);
+      if (group) {
+        setCustomGroupName(group.name);
+      } else {
+        setCustomGroupName('Custom Group');
+      }
+    }
+    checkCustomGroup();
+  }, [categoryId]);
+
   // Format time
   const formatTime = useCallback((date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -391,6 +416,9 @@ export function ChannelPanel({
     channels.find(c => c.stream_id === selectedChannelId) || channels[0] || null,
     [channels, selectedChannelId]);
 
+  // Track if we have a channel to show (handles watchlist/favorites where selectedChannelId is set but channels array is loading)
+  const hasSelectedChannel = selectedChannelId !== null || selectedChannel !== null;
+
   // Handle Channel Click: Preview vs Fullscreen
   const handleChannelClick = (channel: StoredChannel) => {
     if (selectedChannelId === channel.stream_id) {
@@ -399,6 +427,8 @@ export function ChannelPanel({
     } else {
       // Select for preview and play immediately
       setSelectedChannelId(channel.stream_id);
+      // Also update last channel ref immediately for resize effect
+      lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
     }
   };
@@ -419,6 +449,8 @@ export function ChannelPanel({
     } else {
       // Select for preview and play immediately
       setSelectedChannelId(channel.stream_id);
+      // Also update last channel ref immediately for resize effect
+      lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
     }
   };
@@ -433,6 +465,8 @@ export function ChannelPanel({
       } else {
         // Select for preview and play immediately
         setSelectedChannelId(channel.stream_id);
+        // Also update last channel ref immediately for resize effect
+        lastChannelIdRef.current = channel.stream_id;
         onPlayChannel(channel);
       }
     }
@@ -508,6 +542,15 @@ export function ChannelPanel({
 
   // Ref for the video preview container
   const previewRef = useRef<HTMLDivElement>(null);
+  // Track last channel ID to maintain resize when channel data is loading
+  const lastChannelIdRef = useRef<string | null>(null);
+
+  // Update last channel ID when selected channel changes
+  useEffect(() => {
+    if (selectedChannel?.stream_id) {
+      lastChannelIdRef.current = selectedChannel.stream_id;
+    }
+  }, [selectedChannel?.stream_id]);
 
   // Handle Video Resizing for Preview Mode via ResizeObserver
   // This ensures we exactly match the CSS dimensions regardless of resolution or layout state
@@ -515,7 +558,10 @@ export function ChannelPanel({
     // if (!window.mpv) return; // Bridge handles this
 
     const updateVideoPosition = () => {
-      if (!previewRef.current || !selectedChannel || !visible) {
+      // Use last known channel ID if current selection is null but we have one cached
+      const effectiveChannelId = selectedChannel?.stream_id || lastChannelIdRef.current;
+
+      if (!previewRef.current || !effectiveChannelId || !visible) {
         if (!visible) {
           // Exit Preview Mode
           Bridge.setProperty('video-zoom', 0);
@@ -583,9 +629,10 @@ export function ChannelPanel({
       window.removeEventListener('resize', updateVideoPosition);
       cancelAnimationFrame(animationFrameId);
     };
-    // Only re-run when layout changes (sidebar/category visibility), not when channel changes
-    // Use stream_id to avoid re-running when the same channel object is recreated
-  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id]);
+    // Re-run when layout changes (sidebar/category visibility) or when visibility/selection changes
+    // Include selectedChannelId to trigger resize when returning to view with a selection
+    // Include isWatchlistMode and categoryId to handle special view modes
+  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id, selectedChannelId, isWatchlistMode, categoryId]);
 
   return (
     <div
@@ -596,7 +643,10 @@ export function ChannelPanel({
       <div className="guide-top-section">
         <div className="guide-preview-pane" ref={previewRef}>
           {/* The actual video is rendered by MPV "under" this transparent div */}
-          {!selectedChannel && <div className="guide-preview-placeholder">Select a channel</div>}
+          {/* Only show placeholder when truly no channel is selected (not in watchlist/favorites mode with a selection) */}
+          {!selectedChannel && !selectedChannelId && !isWatchlistMode && categoryId !== '__favorites__' && categoryId !== '__recent__' && (
+            <div className="guide-preview-placeholder">Select a channel</div>
+          )}
           {/* Show Error Overlay if there is an error */}
           {error && (
             <VideoErrorOverlay error={error} isSmall />
@@ -668,10 +718,10 @@ export function ChannelPanel({
                 {canManageChannels && (
                   <button
                     className="guide-manage-channels-btn"
-                    onClick={handleManageChannels}
-                    title="Manage channels in this category"
+                    onClick={isCustomGroup ? () => setManagingCustomGroup({ id: categoryId!, name: customGroupName }) : handleManageChannels}
+                    title={isCustomGroup ? "Manage custom group" : "Manage channels in this category"}
                   >
-                    📺 Manage Channels
+                    {isCustomGroup ? '📂 Manage Custom Group' : '📺 Manage Channels'}
                   </button>
                 )}
               </>
@@ -984,6 +1034,15 @@ export function ChannelPanel({
         <FavoriteManager
           onClose={() => setManagingFavorites(false)}
           onChange={() => setFavoritesVersion(v => v + 1)}
+        />
+      )}
+
+      {/* Custom Group Manager Modal */}
+      {managingCustomGroup && (
+        <CustomGroupManager
+          groupId={managingCustomGroup.id}
+          groupName={managingCustomGroup.name}
+          onClose={() => setManagingCustomGroup(null)}
         />
       )}
     </div>

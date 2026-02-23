@@ -39,14 +39,39 @@ function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceI
     useEffect(() => {
         let isMounted = true;
         if (!query || query.length < 3) { setResults([]); return; }
-        db.channels.whereRaw('name LIKE ?', [`%${query}%`]).limit(200).toArray().then(all => {
-            const filtered = all.filter(c => {
-                if (c.enabled === false) return false;
-                if (enabledSourceIds && !enabledSourceIds.has(String(c.source_id))) return false;
-                return true;
-            }).slice(0, 100);
-            if (isMounted) setResults(filtered);
-        }).catch(() => { if (isMounted) setResults([]); });
+
+        async function search() {
+            try {
+                // Get enabled category IDs for category filtering
+                let enabledCategoryIds: Set<string> | null = null;
+                if (enabledSourceIds && enabledSourceIds.size > 0) {
+                    const allCategories = await db.categories.toArray();
+                    enabledCategoryIds = new Set(
+                        allCategories
+                            .filter(c => enabledSourceIds.has(String(c.source_id)) && c.enabled !== false)
+                            .map(c => c.category_id)
+                    );
+                }
+
+                const all = await db.channels.whereRaw('name LIKE ?', [`%${query}%`]).limit(200).toArray();
+                const filtered = all.filter(c => {
+                    if (c.enabled === false) return false;
+                    if (enabledSourceIds && !enabledSourceIds.has(String(c.source_id))) return false;
+                    // Filter out channels that don't belong to any enabled category
+                    if (enabledCategoryIds && enabledCategoryIds.size > 0) {
+                        const catIds = parseCategoryIds(c.category_ids);
+                        const hasEnabledCategory = catIds.some(id => enabledCategoryIds!.has(id));
+                        if (!hasEnabledCategory) return false;
+                    }
+                    return true;
+                }).slice(0, 100);
+                if (isMounted) setResults(filtered);
+            } catch {
+                if (isMounted) setResults([]);
+            }
+        }
+
+        search();
         return () => { isMounted = false; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [query, enabledSourceIdsKey]);

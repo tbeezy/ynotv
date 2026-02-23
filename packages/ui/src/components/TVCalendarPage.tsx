@@ -214,6 +214,9 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
   const [episodeDetails, setEpisodeDetails] = useState<any | null>(null);
   const [episodeDetailsLoading, setEpisodeDetailsLoading] = useState(false);
 
+  // Sync success modal state
+  const [syncModalMessage, setSyncModalMessage] = useState<string | null>(null);
+
   // Upcoming episodes for tracked shows
   const [showEpisodes, setShowEpisodes] = useState<Record<number, UpcomingEpisode[]>>({});
   const [loadingEpisodes, setLoadingEpisodes] = useState<Set<number>>(new Set());
@@ -604,7 +607,7 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
         }
 
         if (addedCount > 0) {
-          alert(`Added ${addedCount} episodes to your watchlist`);
+          setSyncModalMessage(`Added ${addedCount} episode${addedCount !== 1 ? 's' : ''} to your watchlist`);
         }
       }
 
@@ -1397,6 +1400,31 @@ export function TVCalendarPage({ onClose, onPlayChannel }: Props) {
                 <p>Failed to load episode details</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Sync Success Modal */}
+      {syncModalMessage && (
+        <div className="tvcp-delete-modal-overlay" onClick={() => setSyncModalMessage(null)}>
+          <div className="tvcp-delete-modal" onClick={e => e.stopPropagation()}>
+            <div className="tvcp-delete-modal-icon" style={{ color: '#4ade80' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <h3>Sync Complete</h3>
+            <p>{syncModalMessage}</p>
+            <div className="tvcp-delete-modal-actions">
+              <button
+                className="tvcp-delete-modal-confirm"
+                onClick={() => setSyncModalMessage(null)}
+                style={{ background: '#4ade80' }}
+              >
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}

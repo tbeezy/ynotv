@@ -146,6 +146,13 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
       } else if (categoryId === '__favorites__') {
         // Use SQL WHERE for better performance
         results = await db.channels.whereRaw('(is_favorite = 1 OR is_favorite = true)').toArray();
+        // Sort by fav_order (nulls last, then by name for items without order)
+        results.sort((a, b) => {
+          if (a.fav_order != null && b.fav_order != null) return a.fav_order - b.fav_order;
+          if (a.fav_order != null) return -1;
+          if (b.fav_order != null) return 1;
+          return a.name.localeCompare(b.name);
+        });
       } else if (!categoryId) {
         // All Channels view
         if (enabledSourceIds) {

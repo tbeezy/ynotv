@@ -9,6 +9,7 @@ import { useModal } from './Modal';
 import { createCustomGroup, deleteCustomGroup } from '../services/custom-groups';
 import { CustomGroupManager } from './CustomGroupManager';
 import { CategoryManager } from './settings/CategoryManager';
+import { FavoriteManager } from './settings/FavoriteManager';
 import { SourceContextMenu } from './SourceContextMenu';
 import './CategoryStrip.css';
 
@@ -43,7 +44,7 @@ const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
 );
 
 // Favorites button component
-function FavoritesButton({ selectedCategoryId, onSelectCategory }: { selectedCategoryId: string | null; onSelectCategory: (categoryId: string | null) => void }) {
+function FavoritesButton({ selectedCategoryId, onSelectCategory, onContextMenu }: { selectedCategoryId: string | null; onSelectCategory: (categoryId: string | null) => void; onContextMenu?: (e: React.MouseEvent) => void }) {
   const favoriteCount = useLiveQuery(
     async () => {
       return await db.channels.countWhere('(is_favorite = 1 OR is_favorite = true)');
@@ -54,6 +55,7 @@ function FavoritesButton({ selectedCategoryId, onSelectCategory }: { selectedCat
     <button
       className={`category-item ${selectedCategoryId === '__favorites__' ? 'selected' : ''}`}
       onClick={() => onSelectCategory('__favorites__')}
+      onContextMenu={onContextMenu}
     >
       <span className="category-name">⭐ Favorites</span>
       <span className="category-count">{favoriteCount ?? 0}</span>
@@ -142,6 +144,10 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   const [sourceContextMenu, setSourceContextMenu] = useState<{ x: number, y: number, sourceId: string, sourceName: string } | null>(null);
   const [managingCategorySource, setManagingCategorySource] = useState<{ id: string, name: string } | null>(null);
 
+  // Favorites Context Menu additions
+  const [favoritesContextMenu, setFavoritesContextMenu] = useState<{ x: number, y: number } | null>(null);
+  const [managingFavorites, setManagingFavorites] = useState(false);
+
   const customGroups = useLiveQuery(
     () => db.customGroups.orderBy('display_order').toArray()
   );
@@ -181,6 +187,11 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   const handleSourceContextMenu = (e: React.MouseEvent, sourceId: string, sourceName: string) => {
     e.preventDefault();
     setSourceContextMenu({ x: e.clientX, y: e.clientY, sourceId, sourceName });
+  };
+
+  const handleFavoritesContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setFavoritesContextMenu({ x: e.clientX, y: e.clientY });
   };
 
   // Fetch source names to resolve IDs
@@ -261,6 +272,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
         <FavoritesButton
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={onSelectCategory}
+          onContextMenu={handleFavoritesContextMenu}
         />
 
         {/* "Watchlist" option */}
@@ -400,6 +412,49 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
             if (onEditSource) {
               onEditSource(id);
             }
+          }}
+        />
+      )}
+
+      {/* Favorites Context Menu */}
+      {favoritesContextMenu && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            top: favoritesContextMenu.y,
+            left: favoritesContextMenu.x,
+            zIndex: 2000,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--surface-border)',
+            borderRadius: '6px',
+            padding: '4px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+          }}
+        >
+          <div
+            onClick={() => {
+              setManagingFavorites(true);
+              setFavoritesContextMenu(null);
+            }}
+            style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--text-primary)' }}
+          >
+            ⭐ Manage Favorites
+          </div>
+          {/* Overlay to close menu on click outside */}
+          <div
+            style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1 }}
+            onClick={() => setFavoritesContextMenu(null)}
+          />
+        </div>
+      )}
+
+      {/* Favorite Manager Modal */}
+      {managingFavorites && (
+        <FavoriteManager
+          onClose={() => setManagingFavorites(false)}
+          onChange={() => {
+            // Refresh categories - the useChannels hook will pick up the new order
           }}
         />
       )}
