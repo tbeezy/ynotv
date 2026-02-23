@@ -1,284 +1,256 @@
-# ynoTV 📺
+# ynoTV
 
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org)
-[![License](https://img.shields.io/badge/License-AGPL%20v3-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-blue)]()
+[![License](https://img.shields.io/badge/License-AGPL%20v3-green.svg)](./LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-blue)](./README.md)
 
-A modern, feature-rich FOSS IPTV player built with **Tauri v2** and **React**, delivering a premium viewing experience with an elegant interface. This was made with the help of AI.
+A feature-rich, open source IPTV player for Windows built on [Tauri v2](https://tauri.app) and [mpv](https://mpv.io). ynoTV is a media player — it does not provide, host, or distribute any content or stream sources.
+Built with the help of AI.
 
-
-<div align="center">
-<img width="1920" height="1080" alt="93h5U9C" src="https://github.com/user-attachments/assets/f39774fa-eef2-4249-a84f-dbf69d77c755" />
-
-</div>
+![ynoTV Screenshot](https://private-user-images.githubusercontent.com/20613081/553270221-f39774fa-eef2-4249-a84f-dbf69d77c755.png)
 
 ---
 
-## ✨ Features
+## Table of Contents
 
-### 📡 Playlist Management
-- **Multi-format Support** — M3U/M3U8 playlists, Xtream Codes API, and Stalker Portal integration
-- **EPG Integration** — Built-in EPG support with separate EPG source configuration
-- **Backup Credentials** — Add backup MAC addresses or credentials to any provider with one-click switching
-- **Custom User Agents** — Per-source user agent configuration for maximum compatibility
-- **Source Overview** — View channel, movie, and series counts for each playlist at a glance
-- **Connection Monitoring** — Real-time active/max connection status and expiration dates
-- **Playlist Control** — Enable, disable, and reorder playlists with ease
-- **Category Management** — Enable/disable categories and reorganize your channel list
-
-### 📺 User Interface
-- **Full EPG Guide** — Comprehensive electronic program guide with integrated video preview
-- **Intuitive Navigation** — Single click to watch, double-click for fullscreen
-- **Quick Favorites** — One-click to add any channel to your favorites
-- **Custom Groups** — Create personalized channel groups for quick access
-
-### 🔍 Search
-- **Lightning Fast** — SQLite-powered search for instant results
-- **Comprehensive** — Search across channel names and EPG program data
-
-### ⏰ Watchlist & Reminders
-- **EPG Watchlist** — Add any program to your watchlist directly from the guide
-- **Smart Notifications** — Popup reminders with customizable timing and auto-tune options
-- **Auto Channel Swap** — Can set to automatically switch to the channel when your watchlist program begins
-
-### ⏺️ DVR Recording
-- **Quick Record** — One-click recording on the currently playing channel
-- **Scheduled Recordings** — Set recordings at specific times for a channel without EPG
-- **EPG Recording** — Record programs directly from the guide
-- **In-App Playback** — Watch all your recordings without leaving the app
-
-### 🏈 Sports Hub
-- **Live Scoreboards** — Real-time scores for major sports leagues with detailed game information
-- **Channel Integration** — View the channel source for each match and instantly search for it
-
-### 📅 TV Calendar
-- **Show Tracking** — Search and track your favorite TV shows from TVMaze's comprehensive database
-- **Episode Calendar** — View upcoming episodes on a monthly calendar with show posters and episode details
-- **Smart Sync** — Automatic daily sync keeps episode data fresh with manual sync option
-- **Channel Assignment** — Link shows to your IPTV channels for one-click watching
-- **Auto-Add to Watchlist** — Future episodes automatically added to your watchlist with custom reminder and auto-switch settings
-- **Episode Details** — Click any episode to see full details including summary, air time (timezone-aware), and season/episode info
-- **Show Management** — Organize tracked shows by status, channel, or recently synced
-
-### 🖼️ Multiview
-- **Flexible Layouts** — Picture-in-picture mode or up to 4 simultaneous streams
-- **Quick Swap** — Easily exchange feeds between main and secondary windows
-- **Independent Audio** — Control volume and mute for each channel individually
-
-### 🎨 Personalization
-- **40+ Built-in Themes** — Dark, light, glassmorphism, gradients, and vibrant neon options for every taste
-- **Import/Export** — Backup and restore all your settings with ease
+- [Features](#features)
+- [Building from Source](#building-from-source)
+- [Data & File Locations](#data--file-locations)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Disclaimer](#disclaimer)
+- [Credits](#credits)
+- [License](#license)
 
 ---
 
-## 🎮 Keyboard Shortcuts
+## Features
 
-<p align="center">
-  <em>All shortcuts are fully customizable in Settings → Shortcuts</em>
-</p>
+### Playlist Management
 
-### 🎬 Playback Controls
-| Action | Default | Description |
-|--------|---------|-------------|
-| Play / Pause | `Space` | Toggle playback state |
-| Mute / Unmute | `M` | Toggle audio mute |
-| Seek Forward | `→` | Seek forward in current stream |
-| Seek Backward | `←` | Seek backward in current stream |
-| Toggle Fullscreen | `F` | Enter or exit fullscreen mode |
+ynoTV supports M3U/M3U8 playlists, Xtream Codes API, and Stalker Portal integration out of the box. Each source can be configured with its own user agent for maximum compatibility, and backup MAC addresses or credentials can be attached to any provider with one-click switching between them.
 
-### 🧭 Navigation
-| Action | Default | Description |
-|--------|---------|-------------|
-| Channel Up | `↑` | Switch to previous channel |
-| Channel Down | `↓` | Switch to next channel |
+The source overview displays channel, movie, and series counts per playlist at a glance, alongside real-time connection monitoring showing active/max connections and expiration dates. Playlists and categories can be enabled, disabled, and reordered freely.
 
-### 🖥️ Interface Views
-| Action | Default | Description |
-|--------|---------|-------------|
-| Toggle Live TV | `L` | Open/Close Live TV view (Guide + Categories) |
-| Toggle Guide | `G` | Show/Hide the EPG guide panel |
-| Toggle Categories | `C` | Show/Hide the categories sidebar |
-| Toggle TV Calendar | `T` | Open/Close the TV Calendar for tracked shows |
-| Toggle DVR | `R` | Open/Close DVR view for recordings |
-| Toggle Sports | `U` | Open/Close Sports Hub with live scores |
-| Toggle Settings | `,` | Open/Close Settings panel |
-| Toggle Stats | `I` | Show/Hide playback statistics overlay |
-| Focus Search | `S` | Focus the search input in the title bar |
-| Close / Back | `Esc` | Close current view or go back |
+Built-in EPG support allows a separate EPG source to be configured independently of your playlist provider.
 
-### 🎨 Layout Modes
-| Action | Default | Description |
-|--------|---------|-------------|
-| Main View | `1` | Single main channel view |
-| Picture in Picture | `2` | Main channel with small secondary window |
-| Big + Bottom Bar | `3` | Large main view with horizontal channel bar |
-| 2×2 Grid | `4` | Four channel multiview grid |
+### Playback
 
-### 🔊 Audio & Subtitles
-| Action | Default | Description |
-|--------|---------|-------------|
-| Audio Track Menu | `A` | Open audio track selection modal |
-| Subtitle Menu | `J` | Open subtitle track selection modal |
-| Cycle Audio Track | `A` | Legacy: cycle through audio tracks directly |
-| Cycle Subtitle | `J` | Legacy: cycle through subtitle tracks directly |
+Video playback is powered by mpv, providing broad format compatibility and hardware acceleration. The interface supports single-click to watch and double-click for fullscreen, with one-click favorites and the ability to create custom channel groups.
+
+### Search
+
+Channel and EPG program search is backed by SQLite for fast, responsive results across large playlists.
+
+### Watchlist and Reminders
+
+Programs can be added to a watchlist directly from the EPG guide. Popup reminders fire at a configurable lead time before a program begins, with an option to automatically switch to the channel when the program starts.
+
+### DVR Recording
+
+Recordings can be started instantly on the currently playing channel, scheduled for a specific time on any channel, or set directly from the EPG guide. All recordings are available for in-app playback without leaving the application.
+
+### Sports Hub
+
+Live scoreboards display real-time scores for major sports leagues with detailed game information. Each match shows the associated channel source, with a direct search to find and tune to it immediately.
+
+### TV Calendar
+
+Shows are tracked through the [TVMaze](https://www.tvmaze.com) database. Upcoming episodes appear on a monthly calendar with show posters and episode details, automatically synced daily. Shows can be linked to an IPTV channel for one-click watching, and future episodes can be automatically added to the watchlist with configurable reminder and auto-switch settings.
+
+### Multiview
+
+ynoTV supports picture-in-picture mode and up to four simultaneous streams in a 2x2 grid. Each stream has independent volume and mute controls, and feeds can be swapped between windows at any time.
+
+### Themes and Personalization
+
+Over 40 built-in themes are included, spanning dark, light, glassmorphism, gradient, and neon styles. All settings, including keyboard shortcuts, can be exported and restored via a backup file.
 
 ---
 
 <details>
-<summary>## 🛠️ Building from Source</summary>
+<summary>## Building from Source</summary>
 
 ### Prerequisites
 
-- **Node.js**: 20.x or higher
-- **pnpm**: 10.x or higher (`npm install -g pnpm`)
-- **Rust**: Latest stable (for Tauri backend)
-- **Git**: For cloning
+- Node.js 20.x or higher
+- pnpm 10.x or higher — install with `npm install -g pnpm`
+- Rust (latest stable) — required for the Tauri backend
+- Git
 
-**Platform-specific requirements:**
-
-**Windows:**
+**Windows additional requirements:**
 - Visual Studio 2022 with C++ build tools
 - Windows 10 SDK
-```
 
-### Build Instructions
+### Instructions
 
-**1. Clone Repository:**
+**1. Clone the repository**
+
 ```bash
-git clone https://github.com/yourusername/ynotv.git
+git clone https://github.com/tbeezy/ynotv.git
 cd ynotv
 ```
 
-**2. Install Dependencies:**
+**2. Install dependencies**
+
 ```bash
 pnpm install
 ```
 
-**3. Setup Sidecars (mpv & FFmpeg binaries):**
+**3. Download mpv and FFmpeg sidecars**
+
 ```bash
-# Download mpv for all platforms
+# Download mpv binaries
 bash scripts/download-mpv-tauri.sh
 
-# Download FFmpeg for all platforms
+# Download FFmpeg binaries
 cd packages/app
 node scripts/download-ffmpeg.js
 cd ../..
 ```
 
-**4. Development Mode:**
-```bash
-# Start development server with hot reload
+**4. Run in development mode**
 
+```bash
 pnpm tauri dev
 ```
 
-**5. Build for Production:**
+**5. Build for production**
+
 ```bash
 pnpm tauri build
 ```
 
-**Output location:**
+Build output is located at:
+
 ```
 packages/app/src-tauri/target/release/bundle/
 ```
-
 
 </details>
 
 ---
 
 <details>
-<summary>## 📁 Data Location</summary>
+<summary>## Data & File Locations</summary>
 
-### Configuration & Settings
+### Configuration
 
-**Windows:**
 ```
 %APPDATA%\com.ynotv.app\
-├── settings.json          # Sources, shortcuts, preferences
-└── .windows-state.json    # Window state
+├── settings.json          # Sources, shortcuts, and preferences
+└── .windows-state.json    # Window size and position
 ```
-
 
 ### Database (SQLite)
 
-**Location:** `app.db`
-
-**Windows:**
 ```
 %LOCALAPPDATA%\com.ynotv.app\app.db
 ```
 
-
-**Database contains:**
-- Channels and categories
-- EPG programs (7-day window)
-- VOD movies and series
-- Watchlist and reminders
-- DVR schedules and recordings
-- Channel metadata (resolution, fps, audio)
-- Source sync timestamps
+The database stores channels, categories, EPG programs (7-day window), VOD movies and series, watchlist entries, reminders, DVR schedules and recordings, channel metadata, and source sync timestamps.
 
 ### Logs
 
-**Enable Debug Logging:**
-Settings → Debug → Enable debug logging
+Debug logging can be enabled in Settings > Debug. Log output is written to:
 
-**Log Locations:**
-
-**Windows:**
 ```
 %APPDATA%\com.ynotv.app\logs\app.log
 ```
 
 ### DVR Recordings
 
-Default: Configurable in Settings → DVR
+The recording directory is configurable in Settings > DVR. The default location is:
 
-**Windows:**
 ```
 %USERPROFILE%\Videos\ynoTV Recordings\
 ```
+
 </details>
 
 ---
 
-## ⚠️ Disclaimer
+## Keyboard Shortcuts
 
+All shortcuts are fully customizable in Settings > Shortcuts.
 
-This application is a media player only. It does not provide, host, distribute, or facilitate access to any streaming services, broadcast content, channel lists, or IPTV subscriptions of any kind.
-All content, streams, and playlists are sourced, configured, and managed solely by the end user. The developers of this application have no knowledge of, control over, or responsibility for any third-party content accessed through the application.
-It is the sole responsibility of the user to ensure that any content they choose to access complies with the laws and regulations applicable in their jurisdiction. The developers do not condone, encourage, or support the use of this application to access unlicensed, unauthorized, or otherwise illegal content.
-By using this application, you acknowledge and agree that the developers bear no liability for how the application is used.
+### Playback
+
+| Action | Default |
+|---|---|
+| Play / Pause | `Space` |
+| Mute / Unmute | `M` |
+| Seek Forward | `Right Arrow` |
+| Seek Backward | `Left Arrow` |
+| Toggle Fullscreen | `F` |
+
+### Navigation
+
+| Action | Default |
+|---|---|
+| Channel Up | `Up Arrow` |
+| Channel Down | `Down Arrow` |
+
+### Interface
+
+| Action | Default |
+|---|---|
+| Toggle Live TV | `L` |
+| Toggle EPG Guide | `G` |
+| Toggle Categories | `C` |
+| Toggle TV Calendar | `T` |
+| Toggle DVR | `R` |
+| Toggle Sports Hub | `U` |
+| Toggle Settings | `,` |
+| Toggle Playback Stats | `I` |
+| Focus Search | `S` |
+| Close / Back | `Esc` |
+
+### Layout Modes
+
+| Layout | Default |
+|---|---|
+| Single main view | `1` |
+| Picture-in-picture | `2` |
+| Main + bottom bar | `3` |
+| 2x2 grid multiview | `4` |
+
+### Audio and Subtitles
+
+| Action | Default |
+|---|---|
+| Audio track selection | `A` |
+| Subtitle track selection | `J` |
 
 ---
 
-## 🙏 Credits
+## Disclaimer
 
-**ynoTV** builds upon excellent open-source projects:
+ynoTV is a media player only. It does not provide, host, distribute, or facilitate access to any streaming services, broadcast content, channel lists, or IPTV subscriptions of any kind.
 
-- **[sbtlTV](https://github.com/thesubtleties/sbtlTV)** - Foundation
-- **[Tauri](https://tauri.app)** - Desktop application framework
-- **[mpv](https://mpv.io)** - Video playback engine
-- **[FFmpeg](https://ffmpeg.org)** - Recording and thumbnail generation
-- **[React](https://react.dev)** - UI library
-- **[TMDB](https://www.themoviedb.org)** - Movie/series metadata
-- **[TVMaze](https://www.tvmaze.com)** - TV schedule and show metadata
-  
----
+All content, streams, and playlists are sourced, configured, and managed solely by the end user. The developers have no knowledge of, control over, or responsibility for any third-party content accessed through the application.
 
-## 📄 License
+Users are solely responsible for ensuring that any content they access complies with the laws and regulations applicable in their jurisdiction. The developers do not condone or support the use of this application to access unlicensed or unauthorized content.
 
-[GNU Affero General Public License v3.0](LICENSE)
+Metadata displayed within the application is sourced from publicly available third-party databases including TVMaze and TMDB. ynoTV does not claim ownership of this metadata.
 
 ---
 
-<div align="center">
+## Credits
 
-Made with ❤️ for IPTV enthusiasts
+ynoTV builds on the following open source projects and services:
 
-**[⭐ Star this repo](https://github.com/tbeezy/ynotv)** if you find it useful!
+- [sbtlTV](https://github.com/thesubtleties/sbtlTV) — original foundation
+- [Tauri](https://tauri.app) — desktop application framework
+- [mpv](https://mpv.io) — video playback engine
+- [FFmpeg](https://ffmpeg.org) — recording and thumbnail generation
+- [React](https://react.dev) — UI library
+- [TVMaze](https://www.tvmaze.com) — TV schedule and show metadata
+- [TMDB](https://www.themoviedb.org) — movie and series metadata
 
-</div>
+---
+
+## License
+
+[GNU Affero General Public License v3.0](./LICENSE)
