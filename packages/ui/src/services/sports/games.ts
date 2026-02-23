@@ -46,9 +46,20 @@ export async function getGameSummary(eventId: string, leagueId: string): Promise
     boxscore?: {
       teams?: Array<{
         team: { id: string; displayName: string; abbreviation: string; logos?: Array<{ href: string }> };
+        // NFL/NBA: flat array of { label, displayValue }
+        // MLB: nested categories { name, displayName, stats: [{ name, displayName, displayValue }] }
         statistics?: Array<{
-          label: string;
-          displayValue: string;
+          label?: string;
+          displayValue?: string;
+          name?: string;
+          displayName?: string;
+          stats?: Array<{
+            name: string;
+            displayName: string;
+            shortDisplayName?: string;
+            displayValue: string;
+            value?: number;
+          }>;
         }>;
       }>;
       players?: Array<{
@@ -178,10 +189,29 @@ function buildGameSummaryTeam(
 
 function extractTeamStats(teamId: string, boxscore?: any): TeamStatistics[] {
   const team = boxscore?.teams?.find((t: any) => t.team.id === teamId);
-  return team?.statistics?.map((s: any) => ({
-    label: s.label,
-    displayValue: s.displayValue,
-  })) || [];
+  if (!team?.statistics) return [];
+
+  // Handle MLB-style nested statistics (categories with nested stats array)
+  // Each category has: name, displayName, stats[]
+  // Each stat in stats[] has: name, displayName, displayValue, value
+  const stats: TeamStatistics[] = [];
+  for (const category of team.statistics) {
+    if (category.stats && Array.isArray(category.stats)) {
+      for (const stat of category.stats) {
+        stats.push({
+          label: stat.displayName || stat.shortDisplayName || stat.name,
+          displayValue: stat.displayValue ?? String(stat.value ?? '-'),
+        });
+      }
+    } else if (category.label && category.displayValue !== undefined) {
+      // Handle flat format (NFL/NBA style): { label, displayValue }
+      stats.push({
+        label: category.label,
+        displayValue: category.displayValue,
+      });
+    }
+  }
+  return stats;
 }
 
 function extractPlayerStats(teamId: string, boxscore?: any, rosters?: any): PlayerStatCategory[] {
