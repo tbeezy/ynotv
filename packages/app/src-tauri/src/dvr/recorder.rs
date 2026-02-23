@@ -57,21 +57,35 @@ pub struct RecordingManager {
 
 impl RecordingManager {
     /// Create a new recording manager
+    /// FFmpeg is optional - if not found, recording functionality will be disabled
     pub fn new(
         app_handle: &tauri::AppHandle,
         db: Arc<DvrDatabase>,
     ) -> Result<Self> {
-        // Find FFmpeg binary
-        let ffmpeg_path = find_ffmpeg(app_handle)?;
-        info!("Using FFmpeg: {:?}", ffmpeg_path);
+        // Find FFmpeg binary (optional)
+        let ffmpeg_path = match find_ffmpeg(app_handle) {
+            Ok(path) => {
+                info!("Using FFmpeg: {:?}", path);
+                path
+            }
+            Err(e) => {
+                println!("[RecordingManager] WARNING: FFmpeg not found: {}", e);
+                println!("[RecordingManager] Recording functionality will be disabled");
+                // Use a placeholder path - recording will fail later if attempted
+                PathBuf::from("ffmpeg")
+            }
+        };
 
         // Get default storage path
         let default_storage = get_default_storage_path()?;
         info!("Default storage: {:?}", default_storage);
 
-        // Ensure storage directory exists
-        std::fs::create_dir_all(&default_storage)
-            .context("Failed to create storage directory")?;
+        // Ensure storage directory exists (only if FFmpeg is available)
+        if ffmpeg_path.exists() || which::which(&ffmpeg_path).is_ok() {
+            if let Err(e) = std::fs::create_dir_all(&default_storage) {
+                println!("[RecordingManager] WARNING: Could not create storage directory: {}", e);
+            }
+        }
 
         // Create event channel
         let (event_tx, mut event_rx) = mpsc::channel::<RecordingEvent>(100);
@@ -100,6 +114,13 @@ impl RecordingManager {
 
     /// Record a scheduled program
     pub async fn record(&self, schedule: Schedule) -> Result<()> {
+        // Check if FFmpeg is available
+        if !self.ffmpeg_path.exists() && which::which(&self.ffmpeg_path).is_err() {
+            return Err(anyhow::anyhow!(
+                "FFmpeg is not available. Please install FFmpeg to use recording functionality."
+            ));
+        }
+
         // Check if this is a Stalker source that needs real-time URL resolution
         // Stalker sources have stream_url containing .m3u8, or we need to check the channel's direct_url
         let is_hls = schedule.stream_url.as_ref().map(|u| u.contains(".m3u8")).unwrap_or(false);

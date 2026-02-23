@@ -54,8 +54,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Streaming EPG parser dependencies
 quick-xml = { version = "0.36", features = ["serialize"] }
-tokio-util = { version = "0.7", features = ["io"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
+tokio-stream = "0.1"
 futures-util = "0.3"
+bytes = "1"
 
 # HTTP client for TMDB caching and EPG streaming
 reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }

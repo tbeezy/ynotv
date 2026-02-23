@@ -5481,6 +5481,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]
@@ -6953,6 +6954,7 @@ name = "ynotv"
 version = "1.0.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "camino",
  "chrono",
  "dirs",
@@ -6982,6 +6984,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tokio-cron-scheduler",
+ "tokio-stream",
  "tokio-util",
  "tracing",
  "tracing-appender",

@@ -280,7 +280,7 @@ impl DvrDatabase {
         Ok(())
     }
 
-    /// Configure WAL mode for concurrent access
+    /// Configure WAL mode for concurrent access and optimize for bulk operations
     fn configure_wal_mode(&self) -> Result<()> {
         println!("[DVR DB] configure_wal_mode starting...");
         let conn = self.get_conn()?;
@@ -293,18 +293,38 @@ impl DvrDatabase {
             conn.query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))?;
         println!("[DVR DB] journal_mode = {}", journal_mode);
 
-        // Note: Other PRAGMAs omitted due to inconsistent behavior between
-        // SQLite versions. The defaults are acceptable for DVR functionality.
-        // journal_mode=WAL is the critical one for concurrent access.
+        // Optimize for bulk insert performance on modern hardware
+        // These are best-effort - if they fail, we still proceed
+        println!("[DVR DB] Setting performance pragmas (best effort)...");
 
-        info!("Database journal mode: {}", journal_mode);
+        // Reduce fsync frequency for better write performance (safe with WAL)
+        if let Err(e) = conn.execute("PRAGMA synchronous = NORMAL", []) {
+            println!("[DVR DB] Warning: Could not set synchronous = NORMAL: {}", e);
+        }
+
+        // Use memory for temp storage (faster than disk)
+        if let Err(e) = conn.execute("PRAGMA temp_store = MEMORY", []) {
+            println!("[DVR DB] Warning: Could not set temp_store = MEMORY: {}", e);
+        }
+
+        // Larger cache size for better performance (64MB)
+        if let Err(e) = conn.execute("PRAGMA cache_size = -64000", []) {
+            println!("[DVR DB] Warning: Could not set cache_size: {}", e);
+        }
+
+        // Allow WAL file to grow large before checkpointing
+        if let Err(e) = conn.execute("PRAGMA wal_autocheckpoint = 10000", []) {
+            println!("[DVR DB] Warning: Could not set wal_autocheckpoint: {}", e);
+        }
+
+        info!("Database journal mode: {}, optimized for bulk operations", journal_mode);
 
         if journal_mode != "wal" {
             warn!("WAL mode not enabled, got: {}", journal_mode);
         }
 
         println!(
-            "[DVR DB] WAL mode configured successfully: {}",
+            "[DVR DB] WAL mode configured successfully: {} (optimized for bulk inserts)",
             journal_mode
         );
         Ok(())

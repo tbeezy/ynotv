@@ -734,18 +734,28 @@ export async function clearAllCachedData(): Promise<void> {
   // means BEGIN/COMMIT may run on different connections, causing "no transaction active" errors.
   // .clear() uses the writeLock mutex so each DELETE runs safely and notifies reactive queries.
 
-  // Delete dvr_schedules first: it has NOT NULL FK refs to channels and sourcesMeta (no cascade),
-  // so deleting it before those tables prevents FK constraint errors.
-  await db.dvrSchedules.clear();
-  await db.dvrRecordings.clear();
+  // IMPORTANT: Delete in order of foreign key dependencies (children first, parents last)
+  // dvr_recordings -> dvr_schedules (FK on schedule_id)
+  // dvr_schedules -> channels, sourcesMeta (FK on source_id, channel_id)
+  // programs -> channels (implicit FK on stream_id)
+  // custom_group_channels -> channels, custom_groups
 
+  // 1. Delete child tables with FK dependencies first
+  await db.dvrRecordings.clear();      // Has FK to dvr_schedules
+
+  // 2. Delete parent tables that are referenced by others
+  await db.dvrSchedules.clear();       // Referenced by dvr_recordings, refs channels/sourcesMeta
+  await db.programs.clear();           // References channels
+
+  // 3. Delete main entity tables (no incoming FKs)
   await db.channels.clear();
   await db.categories.clear();
   await db.sourcesMeta.clear();
-  await db.programs.clear();
+
+  // 4. Delete VOD tables
+  await db.vodEpisodes.clear();        // Has FK to vodSeries
   await db.vodMovies.clear();
   await db.vodSeries.clear();
-  await db.vodEpisodes.clear();
   await db.vodCategories.clear();
 }
 
