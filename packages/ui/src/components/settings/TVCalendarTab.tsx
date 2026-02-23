@@ -133,7 +133,7 @@ export function TVCalendarTab() {
             onClick={handleManualSync}
             disabled={loading || !tvCalendarEnabled}
           >
-            {loading ? 'Syncing...' : '🔄 Sync Now'}
+            {loading ? 'Syncing...' : 'Sync Now'}
           </button>
         </div>
 
@@ -142,17 +142,6 @@ export function TVCalendarTab() {
             {syncStatus}
           </div>
         )}
-
-        <div className="tv-calendar-info">
-          <h4>How it works</h4>
-          <ul>
-            <li>Right-click any program in the EPG and select &quot;Track Show&quot;</li>
-            <li>Search for the show and select the correct one from TVMaze</li>
-            <li>The show and all its episodes will be saved locally</li>
-            <li>View upcoming episodes in the TV Calendar</li>
-            <li>Click an episode to switch to that channel</li>
-          </ul>
-        </div>
       </div>
     </div>
   );
