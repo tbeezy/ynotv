@@ -663,7 +663,7 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
     // Convert XMLTV programs to stored format using shared helper (with compression)
     const { programs: storedPrograms, unmatchedCount } = buildStoredPrograms(
       xmltvPrograms, channelMap, source.id,
-      { compressDescriptions: true }
+      { compressDescriptions: false }
     );
 
     debugLog(`Matched ${storedPrograms.length}/${xmltvPrograms.length} programs (${unmatchedCount} unmatched EPG channels)`, 'epg');
