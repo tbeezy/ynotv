@@ -280,7 +280,7 @@ export class StalkerClient {
      * Ensure we have a valid token (renew if expired)
      * Uses promise-based locking to prevent concurrent token refresh operations
      */
-    private async ensureToken(): Promise<void> {
+    async ensureToken(): Promise<void> {
         // If a refresh is already in progress, wait for it to complete
         if (this.tokenRefreshPromise) {
             console.log('[Stalker] Token refresh already in progress, waiting...');
