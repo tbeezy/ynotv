@@ -94,9 +94,10 @@ const VOD_MOVIE_FIELDS = [
 const VOD_SERIES_FIELDS = [
   'series_id', 'source_id', 'category_ids', 'name', 'tmdb_id', 'added',
   'popularity', 'backdrop_path', 'imdb_id', 'match_attempted',
-  '_stalker_category', 'cover', 'plot', 'cast', 'director', 'genre',
+  '_stalker_category', '_stalker_raw_id', 'cover', 'plot', 'cast', 'director', 'genre',
   'releaseDate', 'rating', 'youtube_trailer', 'episode_run_time',
-  'title', 'last_modified', 'year', 'stream_type'
+  'title', 'last_modified', 'year', 'stream_type', 'stream_icon', 'direct_url',
+  'rating_5based', 'category_id'
 ];
 
 // ─── Shared EPG helper ────────────────────────────────────────────────────────
@@ -180,6 +181,8 @@ function sanitizeMovie(movie: any, existingMovie?: any): any {
   clean.imdb_id = existingMovie?.imdb_id ?? clean.imdb_id;
   clean.popularity = existingMovie?.popularity ?? clean.popularity;
   clean.match_attempted = existingMovie?.match_attempted ?? clean.match_attempted;
+  clean.backdrop_path = existingMovie?.backdrop_path ?? clean.backdrop_path;
+  clean.stream_icon = clean.stream_icon || existingMovie?.stream_icon; // Preserve source poster if exists
 
   return clean;
 }
@@ -214,6 +217,8 @@ function sanitizeSeries(series: any, existingSeries?: any): any {
   clean.popularity = existingSeries?.popularity ?? clean.popularity;
   clean.backdrop_path = existingSeries?.backdrop_path ?? clean.backdrop_path; // Preserve if source doesn't provide
   clean.match_attempted = existingSeries?.match_attempted ?? clean.match_attempted;
+  clean.stream_icon = clean.stream_icon || existingSeries?.stream_icon; // Preserve source poster if exists
+  clean.cover = clean.cover || existingSeries?.cover; // Preserve source cover if exists
 
   return clean;
 }
@@ -1409,7 +1414,10 @@ export async function getSyncStatus(): Promise<SourceMeta[]> {
 
 // Sync VOD movies for a single source (Xtream or Stalker)
 // Uses safe update pattern: fetch new data first, only update if successful
-export async function syncVodMovies(source: Source): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
+export async function syncVodMovies(
+  source: Source,
+  sharedClient?: XtreamClient | StalkerClient
+): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
   if (!['xtream', 'stalker'].includes(source.type)) {
     return { count: 0, categoryCount: 0 };
   }
@@ -1421,7 +1429,7 @@ export async function syncVodMovies(source: Source): Promise<{ count: number; ca
   try {
     if (source.type === 'xtream') {
       if (!source.username || !source.password) return { count: 0, categoryCount: 0 };
-      const client = new XtreamClient(
+      const client = sharedClient instanceof XtreamClient ? sharedClient : new XtreamClient(
         { baseUrl: source.url, username: source.username, password: source.password, userAgent: source.user_agent },
         source.id
       );
@@ -1429,7 +1437,7 @@ export async function syncVodMovies(source: Source): Promise<{ count: number; ca
       movies = await client.getVodStreams();
     } else if (source.type === 'stalker') {
       if (!source.mac) return { count: 0, categoryCount: 0 };
-      const client = new StalkerClient(
+      const client = sharedClient instanceof StalkerClient ? sharedClient : new StalkerClient(
         { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
         source.id
       );
@@ -1552,7 +1560,10 @@ export async function syncVodMovies(source: Source): Promise<{ count: number; ca
 
 // Sync VOD series for a single source (Xtream or Stalker)
 // Uses safe update pattern: fetch new data first, only update if successful
-export async function syncVodSeries(source: Source): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
+export async function syncVodSeries(
+  source: Source,
+  sharedClient?: XtreamClient | StalkerClient
+): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
   if (!['xtream', 'stalker'].includes(source.type)) {
     return { count: 0, categoryCount: 0 };
   }
@@ -1565,7 +1576,7 @@ export async function syncVodSeries(source: Source): Promise<{ count: number; ca
     if (source.type === 'xtream') {
       if (!source.username || !source.password) return { count: 0, categoryCount: 0 };
       debugLog(`Initializing Xtream client (UA: ${source.user_agent || 'default'})`, 'sync');
-      const client = new XtreamClient(
+      const client = sharedClient instanceof XtreamClient ? sharedClient : new XtreamClient(
         { baseUrl: source.url, username: source.username, password: source.password, userAgent: source.user_agent },
         source.id
       );
@@ -1574,7 +1585,7 @@ export async function syncVodSeries(source: Source): Promise<{ count: number; ca
     } else if (source.type === 'stalker') {
       if (!source.mac) return { count: 0, categoryCount: 0 };
       debugLog(`Initializing Stalker client (UA: ${source.user_agent || 'default'})`, 'sync');
-      const client = new StalkerClient(
+      const client = sharedClient instanceof StalkerClient ? sharedClient : new StalkerClient(
         { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
         source.id
       );
@@ -1765,9 +1776,22 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
 // Sync all VOD content for a source
 export async function syncVodForSource(source: Source): Promise<VodSyncResult> {
   try {
+    // For Stalker sources, create a shared client to avoid token conflicts
+    // from parallel handshakes invalidating each other's tokens
+    let sharedClient: XtreamClient | StalkerClient | undefined;
+    if (source.type === 'stalker' && source.mac) {
+      sharedClient = new StalkerClient(
+        { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
+        source.id
+      );
+      // Do initial handshake once before parallel operations
+      await (sharedClient as StalkerClient).ensureToken();
+      console.log('[VOD Sync] Created shared StalkerClient for token reuse');
+    }
+
     const [moviesResult, seriesResult] = await Promise.all([
-      syncVodMovies(source),
-      syncVodSeries(source),
+      syncVodMovies(source, sharedClient),
+      syncVodSeries(source, sharedClient),
     ]);
 
     await bulkOps.updateSourceMeta({

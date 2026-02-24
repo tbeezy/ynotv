@@ -159,7 +159,13 @@ export class StalkerClient {
         }
 
         // Extract from expected key (usually 'js')
-        let extracted = data[expectedKey] || data;
+        let extracted = data[expectedKey] ?? data;
+
+        // Handle falsy values (false, null, undefined) as empty
+        if (extracted === false || extracted === null || extracted === undefined) {
+            console.warn(`[Stalker] ${expectedKey} field is ${extracted}, returning empty list`);
+            return [];
+        }
 
         // If extracted is an object (not array), it might be:
         // 1. Empty response: {} -> return []
@@ -191,6 +197,29 @@ export class StalkerClient {
      */
     private isStalkerPortalEndpoint(): boolean {
         return this.config.baseUrl.includes('/stalker_portal');
+    }
+
+    /**
+     * Resolve relative screenshot/poster URL to absolute URL
+     * Stalker returns relative paths like "/stalker_portal/screenshots/..."
+     */
+    private resolvePosterUrl(screenshotUri: string | boolean | undefined): string {
+        if (!screenshotUri || typeof screenshotUri !== 'string') {
+            return '';
+        }
+
+        // Already absolute URL
+        if (screenshotUri.match(/^https?:\/\//i)) {
+            return screenshotUri;
+        }
+
+        // Relative path - prepend base URL origin
+        if (screenshotUri.startsWith('/')) {
+            const baseUrl = new URL(this.config.baseUrl);
+            return `${baseUrl.origin}${screenshotUri}`;
+        }
+
+        return screenshotUri;
     }
 
     private generateMetrics(): string {
@@ -620,8 +649,9 @@ export class StalkerClient {
         const catId = categoryId ? categoryId.replace(`${this.sourceId}_vod_`, '').replace(`${this.sourceId}_`, '') : '*';
 
         // Fetch pages in parallel batches of 4 for faster loading
+        // Note: Stalker uses 0-indexed pages (p=0 is first page)
         const allItems: any[] = [];
-        let page = 1;
+        let page = 0;
         let hasMore = true;
         const BATCH_SIZE = 4;
 
@@ -683,7 +713,7 @@ export class StalkerClient {
             stream_id: `${this.sourceId}_vod_${item.id}`,
             name: item.name,
             title: item.name,
-            stream_icon: item.screenshot_uri || '',
+            stream_icon: this.resolvePosterUrl(item.screenshot_uri),
             rating: item.rating_kinopoisk || item.rating_imdb || '',
 
             // Metadata from provider
@@ -705,21 +735,22 @@ export class StalkerClient {
 
     async getSeriesCategories(): Promise<Category[]> {
         await this.ensureToken();
-        // This portal uses type='series' to fetch series categories (not type='vod')
-        const rawData = await this.fetchStalker<any>('get_categories', 'series');
-        const categories = this.safeJsonList<StalkerGenre>(rawData);
+        // Try type='series' first for series categories
+        let rawData = await this.fetchStalker<any>('get_categories', 'series');
+        let categories = this.safeJsonList<StalkerGenre>(rawData);
 
         console.log(`[Stalker] Fetched ${categories.length} raw series categories`);
 
-        // FIXED: Series and Movies share the same categories in Stalker portals.
-        // The distinction is made at the content level via the 'is_series' flag, not category names.
-        // Some portals use keywords like 'tv', 'series', but many don't (e.g., "VOD - NETFLIX [MULTISUB]").
-        // So we should return ALL VOD categories as potential series categories.
-        const filteredData = categories;
+        // If no series categories returned, fall back to VOD categories
+        // Many portals share categories between movies and series
+        if (categories.length === 0) {
+            console.log('[Stalker] No series categories found, falling back to VOD categories');
+            rawData = await this.fetchStalker<any>('get_categories', 'vod');
+            categories = this.safeJsonList<StalkerGenre>(rawData);
+            console.log(`[Stalker] Fetched ${categories.length} VOD categories as fallback for series`);
+        }
 
-        console.log(`[Stalker] Returning ${filteredData.length} series categories (all VOD categories)`);
-
-        return filteredData.map(cat => ({
+        return categories.map(cat => ({
             category_id: `${this.sourceId}_series_${cat.id}`,
             category_name: cat.title,
             parent_id: 0,
@@ -737,8 +768,9 @@ export class StalkerClient {
         const catId = categoryId ? categoryId.replace(`${this.sourceId}_series_`, '').replace(`${this.sourceId}_`, '') : '*';
 
         // Fetch pages in parallel batches of 4 for faster loading
+        // Note: Stalker uses 0-indexed pages (p=0 is first page)
         const allItems: any[] = [];
-        let page = 1;
+        let page = 0;
         let hasMore = true;
         const BATCH_SIZE = 4;
 
@@ -788,12 +820,20 @@ export class StalkerClient {
 
         console.log(`[Stalker] Fetched ${allItems.length} total series items from ${page} page(s)`);
 
-        return allItems.map(item => ({
+        // Filter for series only (is_series="1" or is_series=1 or is_series=true)
+        const filteredSeries = allItems.filter((item: any) => {
+            const isSeries = item.is_series;
+            return isSeries === "1" || isSeries === 1 || isSeries === true;
+        });
+
+        console.log(`[Stalker] Filtered to ${filteredSeries.length} series (excluding movies)`);
+
+        return filteredSeries.map(item => ({
             stream_id: `${this.sourceId}_series_${item.id}`, // Required for Channel type
             series_id: `${this.sourceId}_series_${item.id}`, // PRIMARY KEY for vodSeries table
             name: item.name,
-            stream_icon: item.screenshot_uri || '',
-            cover: item.screenshot_uri || '', // Required for series
+            stream_icon: this.resolvePosterUrl(item.screenshot_uri),
+            cover: this.resolvePosterUrl(item.screenshot_uri), // Required for series
             rating: item.rating_kinopoisk || item.rating_imdb || '',
 
             // Metadata from provider

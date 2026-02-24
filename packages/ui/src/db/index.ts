@@ -460,10 +460,13 @@ class YnotvDatabase extends SqliteDatabase {
         year TEXT,
         cast TEXT,
         plot TEXT,
+        genre TEXT,
         duration_secs INTEGER,
         duration TEXT,
-        stream_icon TEXT, 
-        direct_url TEXT
+        stream_icon TEXT,
+        direct_url TEXT,
+        release_date TEXT,
+        title TEXT
       )`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_vodMovies_source ON vodMovies(source_id)`);
     // Add index on category_ids for faster category filtering (LIKE queries benefit from index)
@@ -500,7 +503,13 @@ class YnotvDatabase extends SqliteDatabase {
         episode_run_time TEXT,
         title TEXT,
         last_modified TEXT,
-        stream_type TEXT
+        year TEXT,
+        stream_type TEXT,
+        stream_icon TEXT,
+        direct_url TEXT,
+        rating_5based REAL,
+        category_id TEXT,
+        _stalker_raw_id TEXT
       )`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_vodSeries_source ON vodSeries(source_id)`);
     // Add index on category_ids for faster category filtering
@@ -660,6 +669,19 @@ class YnotvDatabase extends SqliteDatabase {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_custom_group_channels_group ON custom_group_channels(group_id)`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_custom_group_channels_stream ON custom_group_channels(stream_id)`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_custom_group_channels_order ON custom_group_channels(group_id, display_order)`);
+
+    // Migration: Add missing columns for optimized bulk operations (VOD sync fix)
+    // These columns were added after initial schema creation for faster bulk upserts
+    try { await db.execute(`ALTER TABLE vodMovies ADD COLUMN genre TEXT`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodMovies ADD COLUMN release_date TEXT`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodMovies ADD COLUMN title TEXT`); } catch (e) {}
+
+    try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN year TEXT`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN stream_icon TEXT`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN direct_url TEXT`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN rating_5based REAL`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN category_id TEXT`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN _stalker_raw_id TEXT`); } catch (e) {}
 
     console.log('[DB] Schema initialization complete');
   }
