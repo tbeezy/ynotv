@@ -220,18 +220,38 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         }));
       }
 
-      // Sort based on preference
+      // Sort: manually-reordered channels (display_order set) always come first in their
+      // saved position. Channels with no display_order fall back to the sortOrder preference.
+      const hasAnyManualOrder = results.some(ch => ch.display_order != null);
+
+      if (hasAnyManualOrder) {
+        return results.sort((a, b) => {
+          const aHas = a.display_order != null;
+          const bHas = b.display_order != null;
+          if (aHas && bHas) return a.display_order! - b.display_order!;
+          if (aHas) return -1; // manually ordered items first
+          if (bHas) return 1;
+          // Both unordered — fall back to the configured sortOrder
+          if (sortOrder === 'number') {
+            const aNum = a.channel_num;
+            const bNum = b.channel_num;
+            if (aNum !== undefined && bNum !== undefined) return aNum - bNum;
+            if (aNum !== undefined) return -1;
+            if (bNum !== undefined) return 1;
+          }
+          return a.name.localeCompare(b.name);
+        });
+      }
+
+      // No manual ordering at all — use sortOrder preference
       if (sortOrder === 'number') {
-        // Sort by channel_num, with channels lacking a number at the end (alphabetically)
         return results.sort((a, b) => {
           const aNum = a.channel_num;
           const bNum = b.channel_num;
-          if (aNum !== undefined && bNum !== undefined) {
-            return aNum - bNum;
-          }
-          if (aNum !== undefined) return -1; // a has number, b doesn't
-          if (bNum !== undefined) return 1;  // b has number, a doesn't
-          return a.name.localeCompare(b.name); // both lack numbers, sort alphabetically
+          if (aNum !== undefined && bNum !== undefined) return aNum - bNum;
+          if (aNum !== undefined) return -1;
+          if (bNum !== undefined) return 1;
+          return a.name.localeCompare(b.name);
         });
       }
       // Default: alphabetical
