@@ -12,7 +12,10 @@ Built with the help of AI.
 
 [Documentation](https://tbeezy.github.io/ynotvdoc)
 
-[![Watch the video](https://i.imgur.com/mmkM4mX.png)]([https://streamable.com/your-video-id](https://streamable.com/jxjq9n))
+[![Watch the video](https://i.imgur.com/mmkM4mX.png)](https://streamable.com/jxjq9n)
+
+[Video Demonstration](https://streamable.com/jxjq9n)
+
 ---
 
 ## Table of Contents
