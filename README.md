@@ -7,11 +7,12 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue)](./README.md)
 [![Chat Server](https://img.shields.io/badge/chat-discord-7289da.svg)](https://discord.gg/e5eGa5QETB)
 
-A feature-rich, open source IPTV player for Windows built on [Tauri v2](https://tauri.app) and [mpv](https://mpv.io). ynoTV is a media player — it does not provide, host, or distribute any content or stream sources.
+A feature-rich, open source IPTV player for Windows built on [Tauri v2](https://tauri.app) and [mpv](https://mpv.io). Was made for my personal use with features I wanted.
 Built with the help of AI.
+[Documentation](https://tbeezy.github.io/ynotvdoc/)
 
-![ynoTV Screenshot](https://i.imgur.com/mmkM4mX.png)
-
+![ynoTV Screenshot](https://private-user-images.githubusercontent.com/20613081/553270221-f39774fa-eef2-4249-a84f-dbf69d77c755.png)
+[Video Demonstration](https://streamable.com/jxjq9n)
 ---
 
 ## Table of Contents
