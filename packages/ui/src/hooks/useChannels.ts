@@ -124,6 +124,8 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
     async () => {
       if (options?.skip) return [];
       let results: StoredChannel[];
+      // Set to true in branches that manage their own ordering so the final sort is skipped
+      let orderingIsFixed = false;
 
       // Handle virtual categories
       if (categoryId === '__recent__') {
@@ -142,6 +144,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
           results = recentEntries
             .map(entry => channelMap.get(entry.streamId))
             .filter((ch): ch is StoredChannel => ch !== undefined);
+          orderingIsFixed = true;
         }
       } else if (categoryId === '__favorites__') {
         // Use SQL WHERE for better performance
@@ -153,6 +156,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
           if (b.fav_order != null) return 1;
           return a.name.localeCompare(b.name);
         });
+        orderingIsFixed = true;
       } else if (!categoryId) {
         // All Channels view
         if (enabledSourceIds) {
@@ -185,6 +189,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
               .map(m => channelMap.get(m.stream_id))
               .filter((ch): ch is StoredChannel => ch !== undefined);
           }
+          orderingIsFixed = true; // order comes from customGroupChannels.display_order
         } else {
           // Channels in this category - uses index
           results = await db.channels.where('category_ids').equals(categoryId).toArray();
@@ -220,8 +225,12 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         }));
       }
 
-      // Sort: manually-reordered channels (display_order set) always come first in their
-      // saved position. Channels with no display_order fall back to the sortOrder preference.
+      // Virtual categories and custom groups self-order; skip the sort below for them.
+      if (orderingIsFixed) {
+        return results;
+      }
+
+      // Standard category: respect display_order if any channels have been manually ordered.
       const hasAnyManualOrder = results.some(ch => ch.display_order != null);
 
       if (hasAnyManualOrder) {
@@ -231,7 +240,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
           if (aHas && bHas) return a.display_order! - b.display_order!;
           if (aHas) return -1; // manually ordered items first
           if (bHas) return 1;
-          // Both unordered — fall back to the configured sortOrder
+          // Both unordered — fall back to sortOrder
           if (sortOrder === 'number') {
             const aNum = a.channel_num;
             const bNum = b.channel_num;
@@ -243,7 +252,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         });
       }
 
-      // No manual ordering at all — use sortOrder preference
+      // No manual ordering — use sortOrder preference
       if (sortOrder === 'number') {
         return results.sort((a, b) => {
           const aNum = a.channel_num;
