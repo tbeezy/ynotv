@@ -10,7 +10,7 @@
 A feature-rich, open source IPTV player for Windows built on [Tauri v2](https://tauri.app) and [mpv](https://mpv.io). ynoTV is a media player — it does not provide, host, or distribute any content or stream sources.
 Built with the help of AI.
 
-![ynoTV Screenshot](https://private-user-images.githubusercontent.com/20613081/553270221-f39774fa-eef2-4249-a84f-dbf69d77c755.png)
+![ynoTV Screenshot](https://i.imgur.com/mmkM4mX.png)
 
 ---
 
