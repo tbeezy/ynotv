@@ -5,6 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/License-AGPL%20v3-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue)](./README.md)
+[![Chat Server](https://img.shields.io/badge/chat-discord-7289da.svg)](https://discord.gg/e5eGa5QETB)
 
 A feature-rich, open source IPTV player for Windows built on [Tauri v2](https://tauri.app) and [mpv](https://mpv.io). ynoTV is a media player — it does not provide, host, or distribute any content or stream sources.
 Built with the help of AI.
