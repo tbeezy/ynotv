@@ -72,6 +72,10 @@ ynoTV supports picture-in-picture mode and up to four simultaneous streams in a 
 
 Over 40 built-in themes are included, spanning dark, light, glassmorphism, gradient, and neon styles. All settings, including keyboard shortcuts, can be exported and restored via a backup file.
 
+### Known Bugs
+
+Currently dragging the window with multiview on will cause video to bug, press any hotkey to fix
+
 ---
 
 <details>
