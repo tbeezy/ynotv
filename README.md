@@ -257,6 +257,7 @@ ynoTV builds on the following open source projects and services:
 - [React](https://react.dev) — UI library
 - [TVMaze](https://www.tvmaze.com) — TV schedule and show metadata
 - [TMDB](https://www.themoviedb.org) — movie and series metadata
+- [MY-1 Mac Stalker Player](https://github.com/Cyogenus/IPTV-MAC-STALKER-PLAYER-BY-MY-1) - Stalker integration
 
 ---
 
