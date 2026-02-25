@@ -25,6 +25,17 @@ function debugLog(message: string, category = 'sync'): void {
   }
 }
 
+// Helper to detect and fix duplicated URLs (e.g., "urlurl" -> "url")
+function fixDuplicatedUrl(url: string | undefined): string | undefined {
+  if (!url || url.length < 2) return url;
+  const half = url.length / 2;
+  if (url.substring(0, half) === url.substring(half)) {
+    console.log(`[Sync] Detected duplicated URL, fixing: ${url.substring(0, half)}`);
+    return url.substring(0, half);
+  }
+  return url;
+}
+
 export interface SyncResult {
   success: boolean;
   channelCount: number;
@@ -450,7 +461,8 @@ async function syncEpgFromUrl(
   onProgress?: EpgProgressCallback
 ): Promise<number> {
   console.log(`[EPG] Starting M3U EPG sync for source: ${source.name}`);
-  console.log(`[EPG] EPG URL: ${epgUrl}`);
+  console.log(`[EPG] EPG URL received: ${epgUrl}`);
+  console.log(`[EPG] EPG URL length: ${epgUrl.length}`);
   console.log(`[EPG] Total channels: ${channels.length}`);
   debugLog(`Starting M3U EPG sync with streaming parser`, 'epg');
 
@@ -825,14 +837,34 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     let epgUrl: string | undefined;
 
     if (source.type === 'm3u') {
-      // M3U source - fetch and parse
-      debugLog(`Fetching M3U from: ${source.url}`, 'sync');
-      onProgress?.('Fetching M3U playlist...');
-      const result = await fetchAndParseM3U(source.url, source.id, source.user_agent);
-      channels = result.channels;
-      categories = result.categories;
-      epgUrl = result.epgUrl ?? undefined;
-      debugLog(`M3U parsed: ${channels.length} channels, ${categories.length} categories`, 'sync');
+      // Check if this is a local imported file (not a remote URL)
+      if (source.url.startsWith('imported:')) {
+        // Local imported M3U - channels are already in DB, just fetch existing
+        debugLog(`Local imported M3U detected: ${source.url}`, 'sync');
+        onProgress?.('Loading local playlist...');
+
+        // Get existing channels from database
+        const existingChannels = await db.channels.where('source_id').equals(source.id).toArray();
+        const existingCategories = await db.categories.where('source_id').equals(source.id).toArray();
+
+        // Get EPG URL from source meta if available
+        const sourceMeta = await db.sourcesMeta.get(source.id);
+
+        channels = existingChannels as Channel[];
+        categories = existingCategories as Category[];
+        epgUrl = sourceMeta?.epg_url;
+
+        debugLog(`Loaded ${channels.length} channels from local import`, 'sync');
+      } else {
+        // Remote M3U URL - fetch and parse
+        debugLog(`Fetching M3U from: ${source.url}`, 'sync');
+        onProgress?.('Fetching M3U playlist...');
+        const result = await fetchAndParseM3U(source.url, source.id, source.user_agent);
+        channels = result.channels;
+        categories = result.categories;
+        epgUrl = result.epgUrl ?? undefined;
+        debugLog(`M3U parsed: ${channels.length} channels, ${categories.length} categories`, 'sync');
+      }
     } else if (source.type === 'xtream') {
       // Xtream source - use client
       if (!source.username || !source.password) {
@@ -1163,6 +1195,9 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     const shouldLoadEpg = source.auto_load_epg ?? (source.type === 'xtream');
 
     console.log(`[EPG] EPG sync decision for ${source.name}: auto_load_epg=${source.auto_load_epg}, shouldLoadEpg=${shouldLoadEpg}`);
+    console.log(`[EPG] Debug - epgUrl (from sourceMeta/M3U): ${epgUrl || 'undefined'}`);
+    console.log(`[EPG] Debug - source.epg_url (manual override, raw): ${source.epg_url || 'undefined'}`);
+    console.log(`[EPG] Debug - source.epg_url (manual override, fixed): ${fixDuplicatedUrl(source.epg_url) || 'undefined'}`);
 
     if (shouldLoadEpg && source.type === 'xtream' && source.username && source.password) {
       // Xtream: use built-in EPG endpoint (or override if provided)
@@ -1193,11 +1228,13 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     }
 
     // If user provided a manual EPG URL override, use that
-    if (source.epg_url && !shouldLoadEpg) {
+    const fixedEpgUrl = fixDuplicatedUrl(source.epg_url);
+    if (fixedEpgUrl && !shouldLoadEpg) {
       debugLog('Syncing EPG from manual URL override...', 'epg');
+      console.log(`[EPG] Debug - About to call syncEpgFromUrl with manual URL: ${fixedEpgUrl}`);
       onProgress?.('Updating EPG (manual URL)...');
       console.time('sync-epg-manual');
-      programCount = await syncEpgFromUrl(source, source.epg_url, channels);
+      programCount = await syncEpgFromUrl(source, fixedEpgUrl, channels);
       console.timeEnd('sync-epg-manual');
       debugLog(`Manual EPG sync complete: ${programCount} programs`, 'epg');
     }

@@ -104,6 +104,12 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     }
     const result = await window.storage.getSources();
     if (result.data) {
+      // Debug: Check for duplicated EPG URLs
+      result.data.forEach((source: Source) => {
+        if (source.epg_url && source.epg_url.length > 100) {
+          console.log(`[Settings] Source ${source.name} has long epg_url (${source.epg_url.length} chars):`, source.epg_url.substring(0, 100) + '...');
+        }
+      });
       setSources(result.data);
     }
   }

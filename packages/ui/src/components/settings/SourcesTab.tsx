@@ -225,6 +225,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
   }
 
   function handleEdit(source: Source) {
+    console.log('[SourcesTab] handleEdit - source.epg_url:', source.epg_url, 'length:', source.epg_url?.length);
     setFormData({
       name: source.name,
       type: source.type as SourceType, // Use the actual type directly
@@ -312,6 +313,17 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
 
     const sourceId = editingId || crypto.randomUUID();
 
+    // Helper to detect and fix duplicated URLs (e.g., "urlurl" -> "url")
+    function fixDuplicatedUrl(url: string): string {
+      if (!url || url.length < 2) return url;
+      const half = url.length / 2;
+      if (url.substring(0, half) === url.substring(half)) {
+        console.log('[SourcesTab] Detected duplicated URL, fixing:', url.substring(0, half));
+        return url.substring(0, half);
+      }
+      return url;
+    }
+
     const source: Source = {
       id: sourceId,
       name: formData.name.trim(),
@@ -322,7 +334,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
       password: formData.type === 'xtream' ? formData.password.trim() : undefined,
       mac: formData.type === 'stalker' ? formData.mac.trim() : undefined,
       auto_load_epg: formData.autoLoadEpg,
-      epg_url: formData.epgUrl.trim() || undefined,
+      epg_url: fixDuplicatedUrl(formData.epgUrl.trim()) || undefined,
       user_agent: formData.userAgent.trim() || undefined,
       epg_timeshift_hours: formData.epgTimeshiftHours || undefined,
       backup_macs: formData.type === 'stalker' && formData.backupMacs.length > 0 ? formData.backupMacs : undefined,
@@ -331,6 +343,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
     };
 
     console.log('[SourcesTab] Saving source with UA:', source.user_agent);
+    console.log('[SourcesTab] Saving source epg_url:', source.epg_url, 'length:', source.epg_url?.length);
 
     // If swap occurred, trigger resync after save
     const needsResync = formData.pendingSwap;
@@ -527,6 +540,8 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
     }
 
     if (!source) return;
+
+    console.log('[SourcesTab] handleSourceSync - source.epg_url:', source.epg_url, 'length:', source.epg_url?.length);
 
     setSyncingSourceId(sourceId);
     setSyncStatusMsg('Starting...');
