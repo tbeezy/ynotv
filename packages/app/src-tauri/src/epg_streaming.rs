@@ -126,6 +126,9 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
 
     info!("Channel map has {} entries", channel_map.len());
 
+    // Check if URL is gzipped
+    let is_gzipped = epg_url.ends_with(".gz");
+
     // Create HTTP client with optimized settings
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(30))
@@ -183,6 +186,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
             app_handle_clone,
             source_id_clone,
             total_bytes,
+            is_gzipped,
         ).await
     });
 
@@ -238,6 +242,7 @@ struct StreamingParserResult {
 }
 
 /// Parse EPG by downloading chunks and parsing incrementally
+/// Handles both plain XML and gzipped XML (.xml.gz)
 async fn parse_download_stream<R: tauri::Runtime>(
     response: reqwest::Response,
     channel_map: HashMap<String, String>,
@@ -245,6 +250,7 @@ async fn parse_download_stream<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     source_id: String,
     total_bytes: Option<u64>,
+    is_gzipped: bool,
 ) -> Result<StreamingParserResult> {
     let start_time = std::time::Instant::now();
 
@@ -278,10 +284,26 @@ async fn parse_download_stream<R: tauri::Runtime>(
     // Combine chunks for parsing (pre-allocate for speed)
     let combine_start = std::time::Instant::now();
     let total_size = chunks.iter().map(|c| c.len()).sum::<usize>();
-    let mut xml_data = Vec::with_capacity(total_size);
+    let mut compressed_data = Vec::with_capacity(total_size);
     for chunk in chunks {
-        xml_data.extend_from_slice(&chunk);
+        compressed_data.extend_from_slice(&chunk);
     }
+
+    // Decompress if gzipped
+    let xml_data: Vec<u8> = if is_gzipped {
+        use flate2::read::GzDecoder;
+        use std::io::Read;
+
+        let mut decoder = GzDecoder::new(&compressed_data[..]);
+        let mut decompressed = Vec::new();
+        decoder.read_to_end(&mut decompressed)
+            .context("Failed to decompress gzipped EPG")?;
+        info!("[EPG] Decompressed {} bytes to {} bytes", compressed_data.len(), decompressed.len());
+        decompressed
+    } else {
+        compressed_data
+    };
+
     let combine_ms = combine_start.elapsed().as_millis() as u64;
 
     // Parse and stream batches
@@ -297,9 +319,10 @@ async fn parse_download_stream<R: tauri::Runtime>(
     ).await?;
 
     let total_ms = start_time.elapsed().as_millis() as u64;
+    let timing_label = if is_gzipped { "Combine+Decompress" } else { "Combine" };
     info!(
-        "[EPG Timing] Download: {}ms, Combine: {}ms, Parse+Insert: {}ms, Total: {}ms",
-        download_ms, combine_ms, total_ms - download_ms - combine_ms, total_ms
+        "[EPG Timing] Download: {}ms, {}: {}ms, Parse+Insert: {}ms, Total: {}ms",
+        download_ms, timing_label, combine_ms, total_ms - download_ms - combine_ms, total_ms
     );
 
     Ok(parse_result)
