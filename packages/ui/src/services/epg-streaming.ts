@@ -19,6 +19,7 @@ import { bulkOps } from './bulk-ops';
 export interface ChannelMapping {
   epg_channel_id: string;
   stream_id: string;
+  channel_name: string;  // Fallback for fuzzy matching
 }
 
 export interface EpgParseProgress {
@@ -158,15 +159,17 @@ export async function parseEpgFile(
 /**
  * Create channel mappings from channels array
  * Extracts epg_channel_id from channels and maps to stream_id
+ * Includes channel_name as fallback for fuzzy matching
  */
 export function createChannelMappings(
-  channels: Array<{ stream_id: string; epg_channel_id?: string }>
+  channels: Array<{ stream_id: string; epg_channel_id?: string; name?: string }>
 ): ChannelMapping[] {
   return channels
-    .filter((ch) => ch.epg_channel_id)
+    .filter((ch) => ch.epg_channel_id || ch.name)
     .map((ch) => ({
-      epg_channel_id: ch.epg_channel_id!,
+      epg_channel_id: ch.epg_channel_id || ch.name || '',
       stream_id: ch.stream_id,
+      channel_name: ch.name || '',
     }));
 }
 

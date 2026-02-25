@@ -110,6 +110,14 @@ export interface StoredProgram {
   source_id: string;
 }
 
+// EPG channel entry (from XMLTV for fallback matching)
+export interface StoredEpgChannel {
+  id: string;           // Channel ID from XMLTV (e.g., "bbc1")
+  display_name: string; // Human-readable name (e.g., "BBC One")
+  icon_url?: string;    // Optional channel logo
+  source_id: string;    // Which source this EPG came from
+}
+
 // Channel metadata (video properties)
 export interface ChannelMetadata {
   stream_id: string;          // Primary key (FK to channels)
@@ -226,6 +234,7 @@ class YnotvDatabase extends SqliteDatabase {
   sourcesMeta: SqliteTable<SourceMeta, string>;
   prefs: SqliteTable<UserPrefs, string>;
   programs: SqliteTable<StoredProgram, string>;
+  epgChannels: SqliteTable<StoredEpgChannel, string>;
   vodMovies: SqliteTable<StoredMovie, string>;
   vodSeries: SqliteTable<StoredSeries, string>;
   vodEpisodes: SqliteTable<StoredEpisode, string>;
@@ -249,6 +258,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.sourcesMeta = new SqliteTable('sourcesMeta', 'source_id', this.dbPromise);
     this.prefs = new SqliteTable('prefs', 'key', this.dbPromise);
     this.programs = new SqliteTable('programs', 'id', this.dbPromise);
+    this.epgChannels = new SqliteTable('epg_channels', 'id', this.dbPromise);
     this.vodMovies = new SqliteTable('vodMovies', 'stream_id', this.dbPromise);
     this.vodSeries = new SqliteTable('vodSeries', 'series_id', this.dbPromise);
     this.vodEpisodes = new SqliteTable('vodEpisodes', 'id', this.dbPromise);
@@ -274,6 +284,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.sourcesMeta.updateDbPromise(this.dbPromise);
     this.prefs.updateDbPromise(this.dbPromise);
     this.programs.updateDbPromise(this.dbPromise);
+    this.epgChannels.updateDbPromise(this.dbPromise);
     this.vodMovies.updateDbPromise(this.dbPromise);
     this.vodSeries.updateDbPromise(this.dbPromise);
     this.vodEpisodes.updateDbPromise(this.dbPromise);
@@ -441,6 +452,16 @@ class YnotvDatabase extends SqliteDatabase {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_programs_source ON programs(source_id)`);
     // Index for fast title search (LIKE queries)
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_programs_title ON programs(title COLLATE NOCASE)`);
+
+    // EPG Channels (for fallback matching when tvg-id doesn't match)
+    await db.execute(`CREATE TABLE IF NOT EXISTS epg_channels (
+        id TEXT PRIMARY KEY,
+        display_name TEXT,
+        icon_url TEXT,
+        source_id TEXT
+      )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_epg_channels_source ON epg_channels(source_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_epg_channels_name ON epg_channels(display_name COLLATE NOCASE)`);
 
     // VOD Movies
     await db.execute(`CREATE TABLE IF NOT EXISTS vodMovies (

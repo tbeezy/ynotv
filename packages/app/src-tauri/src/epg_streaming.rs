@@ -7,6 +7,7 @@
 //! - Handles large EPG files (>50MB) efficiently
 //! - Uses minimal memory (doesn't load entire XML into RAM)
 //! - Optimized for modern multi-core hardware
+//! - Supports multiple channels sharing the same tvg-id (primary + backup streams)
 
 use std::collections::HashMap;
 use anyhow::{Context, Result};
@@ -74,11 +75,13 @@ pub struct EpgProgram {
     pub stop: String,   // ISO 8601 format
 }
 
-/// Channel mapping from EPG channel ID to stream_id
+/// Channel mapping from EPG channel ID to stream_id(s)
+/// Supports multiple stream_ids for channels sharing the same tvg-id
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChannelMapping {
     pub epg_channel_id: String,
     pub stream_id: String,
+    pub channel_name: String,
 }
 
 /// Progress update sent to frontend
@@ -106,6 +109,33 @@ pub struct EpgParseResult {
     pub bytes_processed: u64,
 }
 
+/// Build a channel lookup map that supports multiple stream_ids per epg_channel_id
+/// This allows primary + backup streams to all get the same EPG data
+fn build_channel_lookup(mappings: Vec<ChannelMapping>) -> HashMap<String, Vec<String>> {
+    let mut lookup: HashMap<String, Vec<String>> = HashMap::new();
+
+    for mapping in mappings {
+        let stream_id = mapping.stream_id;
+
+        if !mapping.epg_channel_id.is_empty() {
+            lookup
+                .entry(mapping.epg_channel_id.trim().to_string())
+                .or_default()
+                .push(stream_id.clone());
+        }
+
+        // Also add name-based lookup for fallback
+        if !mapping.channel_name.is_empty() {
+            lookup
+                .entry(mapping.channel_name.trim().to_string())
+                .or_default()
+                .push(stream_id);
+        }
+    }
+
+    lookup
+}
+
 /// Stream and parse EPG XML from URL with true streaming and pipelining
 pub async fn stream_parse_epg<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
@@ -118,13 +148,10 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
 
     info!("Starting TRUE streaming EPG parse for source {} from {}", source_id, epg_url);
 
-    // Build channel lookup map
-    let channel_map: HashMap<String, String> = channel_mappings
-        .into_iter()
-        .map(|m| (m.epg_channel_id, m.stream_id))
-        .collect();
+    // Build channel lookup map (supports multiple stream_ids per epg_channel_id)
+    let channel_lookup = build_channel_lookup(channel_mappings);
 
-    info!("Channel map has {} entries", channel_map.len());
+    info!("Channel lookup has {} entries", channel_lookup.len());
 
     // Check if URL is gzipped
     let is_gzipped = epg_url.ends_with(".gz");
@@ -172,7 +199,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     let (batch_tx, batch_rx) = mpsc::channel::<Vec<EpgProgram>>(CHANNEL_BUFFER);
 
     // Clone for parser task
-    let channel_map_clone = channel_map.clone();
+    let channel_lookup_clone = channel_lookup.clone();
     let source_id_clone = source_id.clone();
     let app_handle_clone = app_handle.clone();
 
@@ -181,7 +208,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     let parser_task = tokio::spawn(async move {
         parse_download_stream(
             response,
-            channel_map_clone,
+            channel_lookup_clone,
             batch_tx,
             app_handle_clone,
             source_id_clone,
@@ -245,7 +272,7 @@ struct StreamingParserResult {
 /// Handles both plain XML and gzipped XML (.xml.gz)
 async fn parse_download_stream<R: tauri::Runtime>(
     response: reqwest::Response,
-    channel_map: HashMap<String, String>,
+    channel_lookup: HashMap<String, Vec<String>>,
     batch_tx: mpsc::Sender<Vec<EpgProgram>>,
     app_handle: tauri::AppHandle<R>,
     source_id: String,
@@ -309,7 +336,7 @@ async fn parse_download_stream<R: tauri::Runtime>(
     // Parse and stream batches
     let parse_result = parse_and_stream_batches(
         &xml_data,
-        channel_map,
+        channel_lookup,
         batch_tx,
         app_handle,
         source_id,
@@ -331,7 +358,7 @@ async fn parse_download_stream<R: tauri::Runtime>(
 /// Parse XML and stream batches to inserter
 async fn parse_and_stream_batches<R: tauri::Runtime>(
     xml_data: &[u8],
-    channel_map: HashMap<String, String>,
+    channel_lookup: HashMap<String, Vec<String>>,
     batch_tx: mpsc::Sender<Vec<EpgProgram>>,
     app_handle: tauri::AppHandle<R>,
     source_id: String,
@@ -423,24 +450,29 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
 
                 match name.as_str() {
                     "programme" => {
-                        if let Some(mut program) = current_program.take() {
+                        if let Some(program) = current_program.take() {
                             total_programs += 1;
 
-                            // Check if channel is in our mapping
-                            if let Some(stream_id) = channel_map.get(&program.channel_id) {
-                                matched_programs += 1;
-                                // Replace channel_id with stream_id
-                                program.channel_id = stream_id.clone();
-                                batch.push(program);
+                            // Check if channel is in our lookup (fast O(1) lookup)
+                            if let Some(stream_ids) = channel_lookup.get(&program.channel_id) {
+                                matched_programs += stream_ids.len();
 
-                                // Send batch when full
-                                if batch.len() >= BATCH_SIZE {
-                                    let batch_to_send = std::mem::take(&mut batch);
-                                    batch.reserve(BATCH_SIZE);
+                                // Add a copy of the program for each matching stream_id
+                                // This allows primary + backup streams to all get EPG data
+                                for stream_id in stream_ids {
+                                    let mut program_copy = program.clone();
+                                    program_copy.channel_id = stream_id.clone();
+                                    batch.push(program_copy);
 
-                                    if batch_tx.send(batch_to_send).await.is_err() {
-                                        warn!("Batch channel closed, stopping parser");
-                                        break;
+                                    // Send batch when full
+                                    if batch.len() >= BATCH_SIZE {
+                                        let batch_to_send = std::mem::take(&mut batch);
+                                        batch.reserve(BATCH_SIZE);
+
+                                        if batch_tx.send(batch_to_send).await.is_err() {
+                                            warn!("Batch channel closed, stopping parser");
+                                            break;
+                                        }
                                     }
                                 }
                             } else {
@@ -649,7 +681,13 @@ async fn insert_programs_batch(
             source_id,
         ]) {
             Ok(_) => inserted += 1,
-            Err(e) => warn!("Failed to insert program for stream {}: {}", stream_id, e),
+            Err(e) => {
+                // Silently ignore duplicates - they happen when multiple channels share tvg-id
+                // and have the same program at the same time
+                if !e.to_string().contains("UNIQUE constraint failed") {
+                    warn!("Failed to insert program for stream {}: {}", stream_id, e);
+                }
+            }
         }
     }
 
@@ -729,11 +767,8 @@ pub async fn parse_epg_file<R: tauri::Runtime>(
     file.read_to_end(&mut xml_data).await
         .context("Failed to read EPG file")?;
 
-    // Build channel lookup map
-    let channel_map: HashMap<String, String> = channel_mappings
-        .into_iter()
-        .map(|m| (m.epg_channel_id, m.stream_id))
-        .collect();
+    // Build channel lookup map (supports multiple stream_ids per epg_channel_id)
+    let channel_lookup = build_channel_lookup(channel_mappings);
 
     // Delete old programs first
     let deleted_count = delete_programs_for_source(db, &source_id)?;
@@ -743,7 +778,7 @@ pub async fn parse_epg_file<R: tauri::Runtime>(
     let (batch_tx, batch_rx) = mpsc::channel::<Vec<EpgProgram>>(CHANNEL_BUFFER);
 
     // Clone for parser
-    let channel_map_clone = channel_map.clone();
+    let channel_lookup_clone = channel_lookup.clone();
     let source_id_clone = source_id.clone();
     let app_handle_clone = app_handle.clone();
 
@@ -751,7 +786,7 @@ pub async fn parse_epg_file<R: tauri::Runtime>(
     let parser_task = tokio::spawn(async move {
         parse_and_stream_batches(
             &xml_data,
-            channel_map_clone,
+            channel_lookup_clone,
             batch_tx,
             app_handle_clone,
             source_id_clone,

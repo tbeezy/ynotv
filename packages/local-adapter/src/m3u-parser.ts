@@ -13,6 +13,72 @@
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import type { Channel, Category } from '@ynotv/core';
 
+/**
+ * Generate a stable hash from a string (DJB2 algorithm)
+ * Returns a short alphanumeric hash for use in IDs
+ */
+function stableHash(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i); // hash * 33 + c
+  }
+  // Convert to base36 (alphanumeric) and take first 8 chars
+  return Math.abs(hash).toString(36).substring(0, 8);
+}
+
+/**
+ * Generate a stable stream_id for a channel
+ * Uses tvg-id if available, otherwise falls back to URL hash
+ * This ensures favorites, custom groups, and EPG remain matched after re-sync
+ */
+function generateStableStreamId(
+  sourceId: string,
+  tvgId: string,
+  url: string,
+  seenIds: Set<string>
+): string {
+  // Sanitize tvg-id for use in ID (remove special chars)
+  const sanitizedTvgId = tvgId ? tvgId.replace(/[^a-zA-Z0-9._-]/g, '_') : '';
+
+  // Try using tvg-id first
+  if (sanitizedTvgId) {
+    const baseId = `${sourceId}_${sanitizedTvgId}`;
+
+    // If this tvg-id hasn't been seen yet, use it directly
+    if (!seenIds.has(baseId)) {
+      seenIds.add(baseId);
+      return baseId;
+    }
+
+    // Tvg-id collision - add URL hash suffix to make it unique but stable
+    // This handles cases like multiple ESPN backup channels with same tvg-id
+    const urlHash = stableHash(url);
+    const uniqueId = `${baseId}_${urlHash}`;
+    seenIds.add(uniqueId);
+    return uniqueId;
+  }
+
+  // No tvg-id - use URL hash for stable ID
+  const urlHash = stableHash(url);
+  const fallbackId = `${sourceId}_url_${urlHash}`;
+
+  // Handle rare case of URL hash collision
+  if (!seenIds.has(fallbackId)) {
+    seenIds.add(fallbackId);
+    return fallbackId;
+  }
+
+  // Extremely rare: hash collision - add counter
+  let counter = 1;
+  let finalId = `${fallbackId}_${counter}`;
+  while (seenIds.has(finalId)) {
+    counter++;
+    finalId = `${fallbackId}_${counter}`;
+  }
+  seenIds.add(finalId);
+  return finalId;
+}
+
 
 
 export interface M3UParseResult {
@@ -43,6 +109,9 @@ export function parseM3U(content: string, sourceId: string): M3UParseResult {
   let currentMetadata: ExtInfMetadata | null = null;
   let channelCounter = 0;
 
+  // Track seen stream_ids to handle duplicates (e.g., multiple channels with same tvg-id)
+  const seenStreamIds = new Set<string>();
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -70,6 +139,19 @@ export function parseM3U(content: string, sourceId: string): M3UParseResult {
     if (currentMetadata && (line.startsWith('http://') || line.startsWith('https://') || line.startsWith('rtmp://'))) {
       channelCounter++;
 
+      // Generate stable stream_id that persists across re-syncs
+      const streamId = generateStableStreamId(
+        sourceId,
+        currentMetadata.tvgId,
+        line,
+        seenStreamIds
+      );
+
+      // DEBUG: Log first few channels to verify stable ID generation
+      if (channels.length < 5) {
+        console.log(`[M3U DEBUG] Channel ${channels.length}: tvgId="${currentMetadata.tvgId}" -> stream_id="${streamId}"`);
+      }
+
       // Create category if needed
       const categoryId = createCategoryId(sourceId, currentMetadata.groupTitle);
       if (currentMetadata.groupTitle && !categoriesMap.has(categoryId)) {
@@ -80,9 +162,9 @@ export function parseM3U(content: string, sourceId: string): M3UParseResult {
         });
       }
 
-      // Create channel
+      // Create channel with stable stream_id
       const channel: Channel = {
-        stream_id: `${sourceId}_${channelCounter}`,
+        stream_id: streamId,
         name: currentMetadata.displayName || currentMetadata.tvgName || `Channel ${channelCounter}`,
         stream_icon: currentMetadata.tvgLogo || '',
         epg_channel_id: currentMetadata.tvgId || '',

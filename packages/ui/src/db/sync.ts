@@ -464,18 +464,28 @@ async function syncEpgFromUrl(
   console.log(`[EPG] EPG URL received: ${epgUrl}`);
   console.log(`[EPG] EPG URL length: ${epgUrl.length}`);
   console.log(`[EPG] Total channels: ${channels.length}`);
+
+  // DEBUG: Check sample channel stream_ids
+  console.log(`[EPG] DEBUG - Sample channel stream_ids:`, channels.slice(0, 3).map(ch => ({
+    name: ch.name,
+    stream_id: ch.stream_id,
+    epg_channel_id: ch.epg_channel_id
+  })));
+
   debugLog(`Starting M3U EPG sync with streaming parser`, 'epg');
 
   try {
     // Create channel mappings for Rust parser
+    // Include all channels (even without epg_channel_id) for name-based fallback matching
     const channelMappings = channels
-      .filter((ch) => ch.epg_channel_id)
+      .filter((ch) => ch.epg_channel_id || ch.name)
       .map((ch) => ({
-        epg_channel_id: ch.epg_channel_id!,
+        epg_channel_id: ch.epg_channel_id || ch.name || '',
         stream_id: ch.stream_id,
+        channel_name: ch.name || '',
       }));
 
-    console.log(`[EPG] Channels with epg_channel_id: ${channelMappings.length}/${channels.length}`);
+    console.log(`[EPG] Channels with EPG mapping (tvg-id or name): ${channelMappings.length}/${channels.length}`);
 
     // Log sample mappings for debugging
     if (channelMappings.length > 0) {
@@ -485,14 +495,14 @@ async function syncEpgFromUrl(
     }
 
     debugLog(
-      `${channelMappings.length}/${channels.length} channels have epg_channel_id`,
+      `${channelMappings.length}/${channels.length} channels have EPG mapping (tvg-id or name)`,
       'epg'
     );
 
     if (channelMappings.length === 0) {
-      console.warn(`[EPG] WARNING: No channels have epg_channel_id - EPG sync skipped!`);
-      console.warn(`[EPG] This means your M3U playlist doesn't have tvg-id attributes for channels.`);
-      debugLog('No channels with EPG IDs, skipping EPG sync', 'epg');
+      console.warn(`[EPG] WARNING: No channels available for EPG matching - EPG sync skipped!`);
+      console.warn(`[EPG] This means your M3U playlist doesn't have tvg-id attributes or channel names.`);
+      debugLog('No channels for EPG matching, skipping EPG sync', 'epg');
       return 0;
     }
 
@@ -644,9 +654,10 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
       .map(ch => ({
         epg_channel_id: ch.epg_channel_id!,
         stream_id: ch.stream_id,
+        channel_name: ch.name || '',
       }));
 
-    console.log(`[EPG] Channels with epg_channel_id: ${channelMappings.length}/${channels.length}`);
+    console.log(`[EPG] Channels with EPG mapping (tvg-id or name): ${channelMappings.length}/${channels.length}`);
     debugLog(`${channelMappings.length}/${channels.length} channels have epg_channel_id`, 'epg');
 
     // Use native Rust streaming parser for maximum performance

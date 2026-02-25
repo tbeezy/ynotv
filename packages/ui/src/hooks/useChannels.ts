@@ -662,6 +662,9 @@ export function useCurrentProgram(streamId: string | null): StoredProgram | null
     async () => {
       if (!streamId) return null;
       const now = new Date();
+      // Debug logging for EPG troubleshooting
+      console.log(`[useCurrentProgram] Querying for streamId: ${streamId}, now: ${now.toISOString()}`);
+
       // Find program where start <= now < end
       const prog = await db.programs
         .where('stream_id')
@@ -670,11 +673,23 @@ export function useCurrentProgram(streamId: string | null): StoredProgram | null
         .first();
 
       if (prog) {
+        console.log(`[useCurrentProgram] Found program for ${streamId}: ${prog.title}`);
         // Decompress description if needed
         return {
           ...prog,
           description: decompressEpgDescription(prog.description) ?? prog.description,
         };
+      } else {
+        // Debug: check if ANY programs exist for this stream_id
+        const allProgs = await db.programs.where('stream_id').equals(streamId).toArray();
+        console.log(`[useCurrentProgram] No current program for ${streamId}. Total programs for this channel: ${allProgs.length}`);
+        if (allProgs.length > 0) {
+          console.log(`[useCurrentProgram] Sample programs:`, allProgs.slice(0, 3).map(p => ({
+            title: p.title,
+            start: p.start,
+            end: p.end
+          })));
+        }
       }
       return null;
     },
@@ -812,6 +827,13 @@ export function useAllPrograms(streamIds: string[]): Map<string, StoredProgram[]
           .anyOf(chunk)
           .toArray();
         allPrograms.push(...chunkPrograms);
+      }
+
+      // Debug logging for EPG troubleshooting
+      if (allPrograms.length > 0) {
+        console.log(`[useAllPrograms] Loaded ${allPrograms.length} programs for ${streamIds.length} channels`);
+        console.log(`[useAllPrograms] Sample stream_ids queried:`, streamIds.slice(0, 3));
+        console.log(`[useAllPrograms] Sample program stream_ids:`, allPrograms.slice(0, 3).map(p => p.stream_id));
       }
 
       // Group by stream_id, decompress descriptions, and sort by start time
