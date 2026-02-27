@@ -325,6 +325,15 @@ function App() {
     }
   }, [activeView, multiview]);
 
+  // Ensure video software scaling is reset when completely exiting tab views
+  useEffect(() => {
+    if (activeView === 'none') {
+      Bridge.setProperty('video-zoom', 0).catch(() => { });
+      Bridge.setProperty('video-align-x', 0).catch(() => { });
+      Bridge.setProperty('video-align-y', 0).catch(() => { });
+    }
+  }, [activeView]);
+
 
 
   const [categoriesOpen, setCategoriesOpen] = useState(false);
