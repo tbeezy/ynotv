@@ -203,14 +203,56 @@
   background: var(--bg-primary, #0f0f0f);
 }
 
-.sports-preview-pane {
-  flex: 1;
-  /* Takes top 50% implicitly due to column layout */
+/* Top layer layout equivalent to EPG guide-top-section */
+.sports-top-section {
+  display: flex;
+  width: 100%;
+  /* Height determined by children (aspect-ratio of preview pane) */
   background: transparent;
-  pointer-events: none;
-  min-height: 40vh;
-  /* Ensure the video hole maintains a decent size */
-  flex-shrink: 0;
+  border-bottom: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
+}
+
+.sports-preview-pane {
+  flex: 0 0 42%;
+  /* Match the 42% width ratio used by ChannelPanel's guide-preview-pane */
+  /* Enforce a 16:9 box so App.tsx's math perfectly bounds the native MPV aspect ratio */
+  aspect-ratio: 16 / 9;
+  background: transparent;
+  border-right: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sports-info-pane {
+  flex: 1;
+  background: var(--bg-overlay, rgba(0, 0, 0, 0.95));
+  backdrop-filter: blur(var(--glass-blur, 20px));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 20px));
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sports-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sports-info-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary, white);
+}
+
+.sports-info-desc {
+  font-size: 1rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  margin: 0;
 }
 
 /* Scrollbar handled by .sports-hub parent */

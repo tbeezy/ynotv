@@ -202,9 +202,20 @@ export function useMultiview() {
         await Promise.all(ops);
     }, []);
 
-    /** Re-sync on resize */
+    /** Re-sync on resize and window move */
     useEffect(() => {
         const onResize = () => {
+            // When in tab mode, keep secondaries hidden off-screen
+            if (isTabModeRef.current) {
+                // Primary MPV should be fullscreen for software scaling preview
+                invoke('mpv_set_geometry', { x: 0, y: 0, width: 0, height: 0 }).catch(() => { });
+                // Keep secondary MPVs hidden off-screen
+                const hideOps = slotsRef.current.filter(s => s.active).map(s =>
+                    invoke('multiview_reposition_slot', { slotId: s.id, x: -10000, y: -10000, width: 1, height: 1 })
+                );
+                Promise.all(hideOps).catch(() => { });
+                return;
+            }
             const m = layoutRef.current;
             if (m === 'main') return;
             // Primary MPV (main feed)
@@ -213,7 +224,36 @@ export function useMultiview() {
             repositionSecondarySlots(m);
         };
         window.addEventListener('resize', onResize);
-        return () => window.removeEventListener('resize', onResize);
+
+        // Listen for window move events to keep MPVs positioned correctly while dragging
+        let unlistenMove: (() => void) | null = null;
+        import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+            const appWindow = getCurrentWindow();
+            appWindow.onMoved(() => {
+                // If in tab mode, we MUST actively suppress secondaries off-screen so OS dragging doesn't snap them fullscreen
+                if (isTabModeRef.current) {
+                    const hideOps = slotsRef.current.filter(s => s.active).map(s =>
+                        invoke('multiview_reposition_slot', { slotId: s.id, x: -10000, y: -10000, width: 1, height: 1 })
+                    );
+                    Promise.all(hideOps).catch(() => { });
+                    return;
+                }
+
+                const m = layoutRef.current;
+                if (m === 'main') return;
+                // Primary MPV (main feed)
+                syncMpvGeometry(m);
+                // Secondary MPVs (slots 2/3/4)
+                repositionSecondarySlots(m);
+            }).then(unlisten => {
+                unlistenMove = unlisten;
+            }).catch(() => { /* ignore if not available */ });
+        }).catch(() => { /* ignore if Tauri API not available */ });
+
+        return () => {
+            window.removeEventListener('resize', onResize);
+            if (unlistenMove) unlistenMove();
+        };
     }, [syncMpvGeometry, repositionSecondarySlots]);
 
     const notifyMainLoaded = useCallback((channelName: string, channelUrl: string) => {

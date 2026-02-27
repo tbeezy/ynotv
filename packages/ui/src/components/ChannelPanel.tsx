@@ -562,12 +562,6 @@ export function ChannelPanel({
       const effectiveChannelId = selectedChannel?.stream_id || lastChannelIdRef.current;
 
       if (!previewRef.current || !effectiveChannelId || !visible) {
-        if (!visible) {
-          // Exit Preview Mode
-          Bridge.setProperty('video-zoom', 0);
-          Bridge.setProperty('video-align-x', 0);
-          Bridge.setProperty('video-align-y', 0);
-        }
         return;
       }
 

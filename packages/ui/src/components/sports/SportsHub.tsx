@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { SportsEvent, SportsTeam, SportsLeague, SportsTabId } from '@ynotv/core';
+import { Bridge } from '../../services/tauri-bridge';
 import {
   getLeaguesBySport,
   getAvailableSports,
@@ -23,6 +24,7 @@ interface SportsHubProps {
 }
 
 export function SportsHub({ onClose, onSearchChannels, previewEnabled, onTogglePreview }: SportsHubProps) {
+  const previewRef = useRef<HTMLDivElement>(null);
   const activeTab = useSportsSelectedTab();
   const setActiveTab = useSetSportsSelectedTab();
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
@@ -41,6 +43,93 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
         .finally(() => setLoading(false));
     }
   }, [selectedSport]);
+
+  // Handle Video Resizing for Preview Mode via ResizeObserver explicitly when component mounts
+  useEffect(() => {
+    let isSyncing = false;
+
+    const updateVideoPosition = async () => {
+      if (!previewRef.current || !previewEnabled) {
+        if (!previewEnabled) {
+          Bridge.setProperty('video-zoom', 0).catch(() => { });
+          Bridge.setProperty('video-align-x', 0).catch(() => { });
+          Bridge.setProperty('video-align-y', 0).catch(() => { });
+        }
+        return;
+      }
+
+      if (isSyncing) return;
+      isSyncing = true;
+
+      const rect = previewRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        isSyncing = false;
+        return;
+      }
+
+      const windowW = window.innerWidth;
+      const windowH = window.innerHeight;
+
+      const scale = rect.width / windowW;
+      const zoom = Math.log2(scale);
+
+      const targetCenterX = rect.left + (rect.width / 2);
+      const shiftX = targetCenterX - (windowW / 2);
+      const availSpaceX = windowW - rect.width;
+      const alignX = Math.abs(availSpaceX) < 1 ? 0 : (2 * shiftX) / availSpaceX;
+
+      const topOffset = rect.top;
+      const availSpaceY = windowH - rect.height;
+      const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * topOffset) / availSpaceY - 1;
+
+      try {
+        await Bridge.setProperty('video-zoom', zoom);
+        await Bridge.setProperty('video-align-x', alignX);
+        await Bridge.setProperty('video-align-y', alignY);
+      } catch (e) {
+        console.warn('[SportsPreview] Geometry Sync Failed', e);
+      } finally {
+        isSyncing = false;
+      }
+    };
+
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(updateVideoPosition);
+    });
+
+    if (previewRef.current) {
+      observer.observe(previewRef.current);
+      updateVideoPosition();
+    }
+
+    window.addEventListener('resize', updateVideoPosition);
+
+    let animationFrameId: number;
+    const startTime = performance.now();
+    const DURATION = 500;
+
+    const animate = () => {
+      updateVideoPosition();
+      if (performance.now() - startTime < DURATION) {
+        animationFrameId = requestAnimationFrame(animate);
+      }
+    };
+
+    if (previewEnabled) {
+      animate();
+    }
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateVideoPosition);
+      cancelAnimationFrame(animationFrameId);
+
+      // Cleanup zoom when the entire SportsHub unmounts or preview toggles explicitly
+      Bridge.setProperty('video-zoom', 0).catch(() => { });
+      Bridge.setProperty('video-align-x', 0).catch(() => { });
+      Bridge.setProperty('video-align-y', 0).catch(() => { });
+    };
+  }, [previewEnabled]);
 
   const handleSearchChannels = useCallback((channelName: string) => {
     if (onSearchChannels) {
@@ -224,7 +313,15 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
 
         <div className="sports-content-wrapper">
           {previewEnabled && (
-            <div className="sports-preview-pane" />
+            <div className="sports-top-section">
+              <div className="sports-preview-pane" ref={previewRef} />
+              <div className="sports-info-pane">
+                <div className="sports-info-content">
+                  <h2 className="sports-info-title">Sports Hub</h2>
+                  <p className="sports-info-desc">Live scores, schedules, and more</p>
+                </div>
+              </div>
+            </div>
           )}
           <div className="sports-content">
             {renderContent()}
