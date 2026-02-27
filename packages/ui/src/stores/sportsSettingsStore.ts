@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { db } from '../db';
+// Import from sports config to ensure consistency across the app
+import { DEFAULT_LIVE_LEAGUES } from '../services/sports/config';
 
 export interface LeagueConfig {
   id: string;
@@ -47,7 +49,8 @@ export const ALL_LEAGUES: LeagueConfig[] = [
   { id: 'indycar', name: 'IndyCar', sport: 'racing', category: 'racing' },
 ];
 
-export const DEFAULT_LIVE_LEAGUES = ['nfl', 'college-football', 'nba', 'mens-college-basketball', 'mlb', 'nhl', 'soccer-eng.1', 'soccer-uefa.champions', 'soccer-usa.1', 'ufc'];
+// Note: DEFAULT_LIVE_LEAGUES is imported from '../services/sports/config'
+// These are local defaults for other sections:
 export const DEFAULT_UPCOMING_LEAGUES = ['nfl', 'college-football', 'nba', 'mens-college-basketball', 'mlb', 'nhl', 'soccer-eng.1', 'soccer-esp.1', 'soccer-ger.1', 'soccer-ita.1', 'soccer-uefa.champions', 'soccer-usa.1', 'ufc', 'f1'];
 export const DEFAULT_NEWS_LEAGUES = ['nfl', 'nba', 'mlb', 'nhl', 'soccer-eng.1'];
 

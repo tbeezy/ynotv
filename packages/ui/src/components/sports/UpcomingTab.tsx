@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import type { SportsEvent } from '@ynotv/core';
 import {
-  getUpcomingEvents,
   formatEventDate,
 } from '../../services/sports';
 import { useSportsSettingsStore } from '../../stores/sportsSettingsStore';
+import { useUpcomingSports } from '../../hooks/useUpcomingSports';
 import { GameCard } from './GameCard';
 import { GameDetail } from './GameDetail';
 import { GameCardSkeleton } from './LoadingSkeleton';
@@ -15,12 +15,9 @@ interface UpcomingTabProps {
 }
 
 export function UpcomingTab({ onSearchChannels }: UpcomingTabProps) {
-  const [events, setEvents] = useState<SportsEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<SportsEvent | null>(null);
   const [daysAhead, setDaysAhead] = useState(3);
-  
+
   const { upcomingLeagues, loaded, loadSettings } = useSportsSettingsStore();
 
   useEffect(() => {
@@ -29,24 +26,16 @@ export function UpcomingTab({ onSearchChannels }: UpcomingTabProps) {
     }
   }, [loaded, loadSettings]);
 
-  const loadEvents = useCallback(async () => {
-    if (!loaded) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getUpcomingEvents(daysAhead, upcomingLeagues);
-      setEvents(data);
-    } catch (err) {
-      console.error('[Upcoming] Failed to load:', err);
-      setError('Failed to load upcoming games. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [daysAhead, upcomingLeagues, loaded]);
+  // Use cached hook for upcoming events
+  const { events, loading, error, refresh } = useUpcomingSports({
+    daysAhead,
+    leagues: upcomingLeagues,
+    enabled: loaded,
+  });
 
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+  const loadEvents = () => {
+    refresh();
+  };
 
   const handleChannelClick = (channelName: string) => {
     if (onSearchChannels) {

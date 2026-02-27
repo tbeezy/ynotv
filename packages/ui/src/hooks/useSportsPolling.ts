@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { SportsEvent } from '@ynotv/core';
 import { getLiveScores } from '../services/sports';
+import { DEFAULT_LIVE_LEAGUES } from '../services/sports/config';
 
 interface UseSportsPollingOptions {
   pollingInterval?: number;
@@ -17,16 +18,34 @@ interface UseSportsPollingResult {
   isPolling: boolean;
 }
 
-// Global cache to persist data across component mounts
+// Global cache to persist data across component mounts and navigation
+// Store on window to survive module reloads in dev mode
 interface SportsCache {
   events: SportsEvent[];
   lastUpdated: Date | null;
   leagues: string[] | undefined;
 }
-const sportsCache: SportsCache = {
-  events: [],
-  lastUpdated: null,
-  leagues: undefined,
+
+const getSportsCache = (): SportsCache => {
+  const w = window as unknown as { __sportsCache?: SportsCache };
+  if (!w.__sportsCache) {
+    console.log('[SportsPolling] Creating new cache on window');
+    w.__sportsCache = {
+      events: [],
+      lastUpdated: null,
+      leagues: undefined,
+    };
+  }
+  return w.__sportsCache;
+};
+
+// Global flag to prevent multiple hook instances from fetching simultaneously
+const isGlobalFetching = (): boolean => {
+  return !!(window as unknown as { __sportsFetching?: boolean }).__sportsFetching;
+};
+
+const setGlobalFetching = (value: boolean): void => {
+  (window as unknown as { __sportsFetching?: boolean }).__sportsFetching = value;
 };
 
 // How long cache is considered fresh (5 minutes if no live games, 30s if live)
@@ -40,14 +59,21 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     // Initialize from cache if available and fresh — even if leagues don't match yet
     // (leagues may still be loading from settings). We prefer showing stale data
     // over an empty flash while the real fetch runs in the background.
-    if (sportsCache.events.length > 0) {
-      return sportsCache.events;
+    const cache = getSportsCache();
+    if (cache.events.length > 0) {
+      return cache.events;
     }
     return [];
   });
-  const [loading, setLoading] = useState(sportsCache.events.length === 0);
+  const [loading, setLoading] = useState(() => {
+    const cache = getSportsCache();
+    return cache.events.length === 0;
+  });
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(sportsCache.lastUpdated);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(() => {
+    const cache = getSportsCache();
+    return cache.lastUpdated;
+  });
   const [isPolling, setIsPolling] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -55,10 +81,29 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
 
   const hasLiveGames = events.some(e => e.status === 'live');
 
+  // Normalize leagues for comparison (undefined = default leagues)
+  const normalizedLeagues = leagues ?? DEFAULT_LIVE_LEAGUES;
+
+  // Sync with cache on mount (in case cache was populated by another instance)
+  useEffect(() => {
+    const cache = getSportsCache();
+    if (cache.events.length > 0 && events.length === 0) {
+      console.log('[SportsPolling] Syncing state from cache on mount:', cache.events.length, 'events');
+      setEvents(cache.events);
+      setLastUpdated(cache.lastUpdated);
+      setLoading(false);
+    }
+  }, []);
+
   const fetchData = useCallback(async (isManualRefresh = false) => {
     if (isRefreshingRef.current && !isManualRefresh) return;
+    if (!isManualRefresh && isGlobalFetching()) {
+      console.log('[SportsPolling] Another instance is already fetching, skipping');
+      return;
+    }
 
     isRefreshingRef.current = true;
+    setGlobalFetching(true);
 
     if (isManualRefresh) {
       setLoading(true);
@@ -67,45 +112,124 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     setError(null);
 
     try {
-      const data = await getLiveScores(leagues);
+      // Use normalized leagues (undefined becomes DEFAULT_LIVE_LEAGUES)
+      const data = await getLiveScores(normalizedLeagues);
+
+      // Read the LATEST cache state directly from window (not the closure variable)
+      // This ensures we see any updates from other instances
+      const latestCache = (window as unknown as { __sportsCache?: SportsCache }).__sportsCache;
+      const currentCacheEvents = latestCache?.events ?? [];
+
+      // Don't update if we got empty data and cache already has data
+      // (unless it's a manual refresh)
+      if (data.length === 0 && currentCacheEvents.length > 0 && !isManualRefresh) {
+        console.log('[SportsPolling] Skipping empty response, keeping', currentCacheEvents.length, 'cached events');
+        return;
+      }
+
+      // Update React state
       setEvents(data);
       setLastUpdated(new Date());
-      // Update global cache
-      sportsCache.events = data;
-      sportsCache.lastUpdated = new Date();
-      sportsCache.leagues = leagues;
-      console.log('[SportsPolling] Fetched', data.length, 'events,', data.filter(e => e.status === 'live').length, 'live');
+
+      // Update global cache - but ONLY if we have data or this is a manual refresh
+      // This prevents emptying the cache when API returns no data temporarily
+      if (data.length > 0 || isManualRefresh || currentCacheEvents.length === 0) {
+        const cache = getSportsCache();
+        cache.events = data;
+        cache.lastUpdated = new Date();
+        cache.leagues = normalizedLeagues;
+        console.log('[SportsPolling] Updated cache with', data.length, 'events,', data.filter(e => e.status === 'live').length, 'live');
+      } else {
+        console.log('[SportsPolling] NOT updating cache - empty data and existing cache has', currentCacheEvents.length, 'events');
+      }
     } catch (err) {
       console.error('[SportsPolling] Failed to fetch:', err);
       setError('Failed to load scores. Retrying...');
     } finally {
       setLoading(false);
       isRefreshingRef.current = false;
+      setGlobalFetching(false);
     }
-  }, [leagues]);
+  }, [normalizedLeagues]);
 
   const refresh = useCallback(async () => {
     await fetchData(true);
   }, [fetchData]);
 
+// Helper to compare leagues arrays (order-independent)
+function leaguesEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+}
+
   // Check if cache is fresh enough to skip initial fetch
   const isCacheFresh = useCallback(() => {
-    if (!sportsCache.lastUpdated) return false;
-    const age = Date.now() - sportsCache.lastUpdated.getTime();
-    const hasLive = sportsCache.events.some(e => e.status === 'live');
-    return age < (hasLive ? CACHE_FRESH_LIVE : CACHE_FRESH_NO_LIVE);
+    const cache = getSportsCache();
+    if (!cache.lastUpdated) return false;
+    const age = Date.now() - cache.lastUpdated.getTime();
+    const hasLive = cache.events.some(e => e.status === 'live');
+    const freshDuration = hasLive ? CACHE_FRESH_LIVE : CACHE_FRESH_NO_LIVE;
+    const isFresh = age < freshDuration;
+    console.log('[SportsPolling] Cache check:', {
+      age: Math.round(age / 1000) + 's',
+      hasLive,
+      freshDuration: Math.round(freshDuration / 1000) + 's',
+      isFresh,
+    });
+    return isFresh;
   }, []);
 
   // Initial fetch - only if cache is empty, stale, or leagues changed
   useEffect(() => {
-    const leaguesChanged = JSON.stringify(sportsCache.leagues) !== JSON.stringify(leagues);
-    if (sportsCache.events.length > 0 && isCacheFresh() && !leaguesChanged) {
+    const cache = getSportsCache();
+    // Normalize cached leagues for comparison
+    const cachedLeaguesNormalized = cache.leagues ?? DEFAULT_LIVE_LEAGUES;
+    const leaguesChanged = !leaguesEqual(cachedLeaguesNormalized, normalizedLeagues);
+
+    const cacheExists = cache.events.length > 0;
+    const fresh = isCacheFresh();
+
+    console.log('[SportsPolling] Initial fetch check:', {
+      cacheExists,
+      eventsCount: cache.events.length,
+      windowCacheExists: !!(window as unknown as { __sportsCache?: SportsCache }).__sportsCache,
+      isFresh: fresh,
+      leaguesChanged,
+      cachedLeaguesCount: cachedLeaguesNormalized?.length,
+      currentLeaguesCount: normalizedLeagues?.length,
+      cachedLeagues: cachedLeaguesNormalized?.slice(0, 3),
+      currentLeagues: normalizedLeagues?.slice(0, 3),
+    });
+
+    if (cacheExists && fresh && !leaguesChanged) {
       console.log('[SportsPolling] Using cached data');
       return;
     }
+
+    if (!cacheExists) {
+      console.log('[SportsPolling] No cache, fetching...');
+    } else if (!fresh) {
+      const age = Date.now() - (cache.lastUpdated?.getTime() || 0);
+      console.log('[SportsPolling] Cache stale (age: ' + Math.round(age/1000) + 's), fetching...');
+    } else if (leaguesChanged) {
+      console.log('[SportsPolling] Leagues changed, fetching...');
+    }
+
     // Cache hit but leagues changed — fetch silently in background (don't flash empty)
-    fetchData();
-  }, [fetchData, isCacheFresh, leagues]);
+    // Small delay to allow any in-flight requests from other instances to complete
+    const timer = setTimeout(() => {
+      const latestCache = getSportsCache();
+      if (latestCache.events.length > 0 && isCacheFresh() && !leaguesChanged) {
+        console.log('[SportsPolling] Cache populated by another instance, using cached data');
+        return;
+      }
+      fetchData();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [fetchData, isCacheFresh, normalizedLeagues]);
 
   // Polling effect
   useEffect(() => {
@@ -148,11 +272,24 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
   // Visibility change handler - refresh when tab becomes visible only if cache is stale
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && lastUpdated) {
-        // Only refresh if cache is stale
-        if (!isCacheFresh()) {
-          console.log('[SportsPolling] Tab visible, cache stale, refreshing...');
+      if (!document.hidden) {
+        const cache = getSportsCache();
+        // Check the GLOBAL CACHE directly, not React state
+        // This ensures we don't refetch just because component remounted
+        if (!cache.lastUpdated) {
+          console.log('[SportsPolling] Tab visible, no cache exists, fetching...');
           fetchData();
+          return;
+        }
+        const age = Date.now() - cache.lastUpdated.getTime();
+        const hasLive = cache.events.some(e => e.status === 'live');
+        const isFresh = age < (hasLive ? CACHE_FRESH_LIVE : CACHE_FRESH_NO_LIVE);
+
+        if (!isFresh) {
+          console.log('[SportsPolling] Tab visible, cache stale (age: ' + Math.round(age/1000) + 's), refreshing...');
+          fetchData();
+        } else {
+          console.log('[SportsPolling] Tab visible, cache fresh (age: ' + Math.round(age/1000) + 's), skipping fetch');
         }
       }
     };
@@ -162,7 +299,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [lastUpdated, isCacheFresh, fetchData]);
+  }, [fetchData]);
 
   return {
     events,

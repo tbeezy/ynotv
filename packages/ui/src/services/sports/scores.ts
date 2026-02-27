@@ -32,8 +32,9 @@ export async function getScoreboard(sportKey: string, date?: Date): Promise<Spor
 export async function getLiveScores(leagues?: string[]): Promise<SportsEvent[]> {
   const allEvents: SportsEvent[] = [];
   const targetLeagues = leagues || DEFAULT_LIVE_LEAGUES;
-  
+
   const now = new Date();
+  // Use LOCAL date for "today" - games should show based on user's local date
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
@@ -57,23 +58,30 @@ export async function getLiveScores(leagues?: string[]): Promise<SportsEvent[]> 
 
   // Filter to only show:
   // 1. Live games (status === 'live')
-  // 2. Games scheduled for today
+  // 2. Games scheduled for today (local date)
   // 3. Finished games that ended within the last 6 hours
   const filteredEvents = allEvents.filter(event => {
     if (event.status === 'live') return true;
-    
-    const eventTime = event.startTime.getTime();
-    
-    // Show scheduled games for today only
+
+    // Convert event time to local date for comparison
+    // This ensures games show on the user's local "today", not UTC "today"
+    const eventLocalDate = new Date(
+      event.startTime.getFullYear(),
+      event.startTime.getMonth(),
+      event.startTime.getDate()
+    );
+    const todayLocalDate = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate());
+
+    // Show scheduled games for today only (local date comparison)
     if (event.status === 'scheduled') {
-      return eventTime >= todayStart.getTime() && eventTime <= todayEnd.getTime();
+      return eventLocalDate.getTime() === todayLocalDate.getTime();
     }
-    
-    // Show finished games from the last 6 hours
+
+    // Show finished games from the last 6 hours (local time for recency)
     if (event.status === 'finished') {
-      return eventTime >= sixHoursAgo.getTime();
+      return event.startTime.getTime() >= sixHoursAgo.getTime();
     }
-    
+
     return false;
   });
 
