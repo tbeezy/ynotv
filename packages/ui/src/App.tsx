@@ -325,7 +325,7 @@ function App() {
     }
   }, [activeView, multiview]);
 
-  // Sports Preview Pane Geometry Sync
+  // Sports Preview Pane Geometry Sync (hole punch approach)
   useEffect(() => {
     let observer: ResizeObserver;
     let fallbackTimer: ReturnType<typeof setTimeout>;
@@ -345,10 +345,6 @@ function App() {
             width: Math.round(rect.width * d),
             height: Math.round(rect.height * d),
           });
-          const { Bridge } = await import('./services/tauri-bridge');
-          await Bridge.setProperty('video-zoom', 0);
-          await Bridge.setProperty('video-align-x', 0);
-          await Bridge.setProperty('video-align-y', 0);
         } catch (e) {
           console.warn('[SportsPreview] Geometry Sync Failed', e);
         }
@@ -386,12 +382,26 @@ function App() {
       };
 
       window.addEventListener('resize', onResize);
+
+      // Listen for window move events to re-sync MPV position while dragging
+      let unlistenMove: (() => void) | null = null;
+      import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+        const appWindow = getCurrentWindow();
+        appWindow.onMoved(() => {
+          const pane = document.querySelector('.sports-preview-pane');
+          if (pane) syncPane(pane);
+        }).then(unlisten => {
+          unlistenMove = unlisten;
+        }).catch(() => { /* ignore if not available */ });
+      }).catch(() => { /* ignore if Tauri API not available */ });
+
       return () => {
         window.removeEventListener('resize', onResize);
         mutObserver.disconnect();
         if (observer) observer.disconnect();
         clearTimeout(fallbackTimer);
-        // Release the geometry lock so Live TV / Guide Software Scaling can start from a clean 100% natively
+        if (unlistenMove) unlistenMove();
+        // Release the geometry lock so Live TV / Guide can use full window
         import('@tauri-apps/api/core').then(({ invoke }) => {
           invoke('mpv_set_geometry', { x: 0, y: 0, width: 0, height: 0 }).catch(() => { });
         });

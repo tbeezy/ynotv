@@ -216,9 +216,11 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
       </aside>
 
       <main className="sports-main">
-        <header className="sports-main-header">
-          <h1 className="sports-main-title">{getTabLabel(activeTab)}</h1>
-        </header>
+        {!previewEnabled && (
+          <header className="sports-main-header">
+            <h1 className="sports-main-title">{getTabLabel(activeTab)}</h1>
+          </header>
+        )}
 
         <div className="sports-content-wrapper">
           {previewEnabled && (
