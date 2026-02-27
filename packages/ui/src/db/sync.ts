@@ -995,6 +995,14 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
       return { success: false, channelCount: 0, categoryCount: 0, programCount: 0, error: 'Source deleted' };
     }
 
+    // If vod_only is enabled, skip channel and category sync entirely
+    if (source.vod_only) {
+      debugLog(`Source ${source.name} is VOD-only, skipping ${channels.length} channels and ${categories.length} categories`, 'sync');
+      onProgress?.('VOD-only source: skipping channels and categories...');
+      channels = [];
+      categories = [];
+    }
+
     // Apply preserved settings to new data
     debugLog(`Applying preserved settings: ${favoriteChannelsSet.size} favorites, ${categorySettingsMap.size} category settings`, 'sync');
     onProgress?.('Applying settings...');
@@ -1201,11 +1209,11 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     });
     debugLog('Channels and categories stored successfully', 'sync');
 
-    // Fetch EPG if enabled
+    // Fetch EPG if enabled (skip for VOD-only sources)
     let programCount = 0;
-    const shouldLoadEpg = source.auto_load_epg ?? (source.type === 'xtream');
+    const shouldLoadEpg = !source.vod_only && (source.auto_load_epg ?? (source.type === 'xtream'));
 
-    console.log(`[EPG] EPG sync decision for ${source.name}: auto_load_epg=${source.auto_load_epg}, shouldLoadEpg=${shouldLoadEpg}`);
+    console.log(`[EPG] EPG sync decision for ${source.name}: vod_only=${source.vod_only}, auto_load_epg=${source.auto_load_epg}, shouldLoadEpg=${shouldLoadEpg}`);
     console.log(`[EPG] Debug - epgUrl (from sourceMeta/M3U): ${epgUrl || 'undefined'}`);
     console.log(`[EPG] Debug - source.epg_url (manual override, raw): ${source.epg_url || 'undefined'}`);
     console.log(`[EPG] Debug - source.epg_url (manual override, fixed): ${fixDuplicatedUrl(source.epg_url) || 'undefined'}`);
@@ -1238,9 +1246,9 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
       debugLog(`M3U EPG sync complete: ${programCount} programs`, 'epg');
     }
 
-    // If user provided a manual EPG URL override, use that
+    // If user provided a manual EPG URL override, use that (skip for VOD-only sources)
     const fixedEpgUrl = fixDuplicatedUrl(source.epg_url);
-    if (fixedEpgUrl && !shouldLoadEpg) {
+    if (fixedEpgUrl && !shouldLoadEpg && !source.vod_only) {
       debugLog('Syncing EPG from manual URL override...', 'epg');
       console.log(`[EPG] Debug - About to call syncEpgFromUrl with manual URL: ${fixedEpgUrl}`);
       onProgress?.('Updating EPG (manual URL)...');

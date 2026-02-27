@@ -34,6 +34,7 @@ interface SourceFormData {
   password: string;
   mac: string;
   autoLoadEpg: boolean;
+  vodOnly: boolean;
   epgUrl: string;
   userAgent: string;
   epgTimeshiftHours: number;
@@ -51,6 +52,7 @@ const emptyForm: SourceFormData = {
   password: '',
   mac: '',
   autoLoadEpg: true,
+  vodOnly: false,
   epgUrl: '',
   userAgent: '',
   epgTimeshiftHours: 0,
@@ -234,6 +236,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
       password: source.password || '',
       mac: source.mac || '',
       autoLoadEpg: source.auto_load_epg ?? (source.type === 'xtream'),
+      vodOnly: source.vod_only ?? false,
       epgUrl: source.epg_url || '',
       userAgent: source.user_agent || '',
       epgTimeshiftHours: source.epg_timeshift_hours || 0,
@@ -334,6 +337,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
       password: formData.type === 'xtream' ? formData.password.trim() : undefined,
       mac: formData.type === 'stalker' ? formData.mac.trim() : undefined,
       auto_load_epg: formData.autoLoadEpg,
+      vod_only: formData.vodOnly,
       epg_url: fixDuplicatedUrl(formData.epgUrl.trim()) || undefined,
       user_agent: formData.userAgent.trim() || undefined,
       epg_timeshift_hours: formData.epgTimeshiftHours || undefined,
@@ -1198,6 +1202,21 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
                 <span className="hint">XMLTV format EPG URL</span>
               </div>
             )}
+
+            {/* VOD Only Setting */}
+            <div className="form-group vod-settings">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={formData.vodOnly}
+                  onChange={(e) => setFormData({ ...formData, vodOnly: e.target.checked })}
+                />
+                VOD/Series Only
+              </label>
+              <span className="hint">
+                Skip channel sync - only sync Movies and Series from this source
+              </span>
+            </div>
 
             <div className="form-group">
               <label>EPG Time Offset (hours)</label>

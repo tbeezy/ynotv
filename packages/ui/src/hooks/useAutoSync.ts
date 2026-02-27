@@ -68,7 +68,8 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
                 }
 
                 // ── Channel / EPG sync ──────────────────────────────────────────────
-                const enabledSources = result.data.filter((s: any) => s.enabled);
+                // Filter out VOD-only sources from channel sync
+                const enabledSources = result.data.filter((s: any) => s.enabled && !s.vod_only);
                 const staleSources: any[] = [];
                 for (const source of enabledSources) {
                     if (await isEpgStale(source.id, epgRefreshHours)) staleSources.push(source);

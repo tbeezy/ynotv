@@ -19,6 +19,7 @@ export interface Source {
   mac?: string;           // Stalker only
   epg_url?: string;       // Auto-detected or manual override
   auto_load_epg?: boolean; // Auto-fetch EPG from source (default: true for xtream)
+  vod_only?: boolean;     // Only sync VOD/Series, skip channels (default: false)
   user_agent?: string;    // Custom User-Agent for requests
   epg_timeshift_hours?: number; // EPG time offset in hours (e.g., -1, 0, +1)
   backup_macs?: string[];  // Stalker backup MAC addresses
