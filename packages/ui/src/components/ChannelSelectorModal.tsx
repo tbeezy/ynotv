@@ -45,6 +45,8 @@ function SearchResults({ query, selectedChannelId, onSelect, enabledSourceIdsKey
 
     async function search() {
       try {
+        console.log('[ChannelSelectorModal] Searching for:', query);
+
         // Get enabled category IDs for category filtering
         let enabledCategoryIds: Set<string> | null = null;
         if (enabledSourceIds && enabledSourceIds.size > 0) {
@@ -57,20 +59,38 @@ function SearchResults({ query, selectedChannelId, onSelect, enabledSourceIdsKey
           );
         }
 
-        const all = await db.channels.whereRaw('name LIKE ?', [`%${query}%`]).limit(200).toArray();
+        // Use case-insensitive search by lowercasing both sides
+        // Also filter by enabled sources to avoid searching disabled source channels
+        const searchTerm = query.toLowerCase();
+        let all: StoredChannel[];
+        if (enabledSourceIds && enabledSourceIds.size > 0) {
+          const sourceList = Array.from(enabledSourceIds);
+          const placeholders = sourceList.map(() => '?').join(',');
+          all = await db.channels.whereRaw(
+            `LOWER(name) LIKE ? AND source_id IN (${placeholders})`,
+            [`%${searchTerm}%`, ...sourceList]
+          ).limit(200).toArray();
+        } else {
+          all = await db.channels.whereRaw('LOWER(name) LIKE ?', [`%${searchTerm}%`]).limit(200).toArray();
+        }
+        console.log('[ChannelSelectorModal] Raw results:', all.length, 'for query:', query);
+
         const filtered = all.filter(c => {
           if (c.enabled === false) return false;
-          if (enabledSourceIds && !enabledSourceIds.has(String(c.source_id))) return false;
+          // Source filtering is now done in SQL query
           // Filter out channels that don't belong to any enabled category
           if (enabledCategoryIds && enabledCategoryIds.size > 0) {
             const catIds = parseCategoryIds(c.category_ids);
-            const hasEnabledCategory = catIds.some(id => enabledCategoryIds!.has(id));
+            // Convert to strings for comparison since category_ids may be numbers in JSON
+            const hasEnabledCategory = catIds.some(id => enabledCategoryIds!.has(String(id)));
             if (!hasEnabledCategory) return false;
           }
           return true;
         }).slice(0, 100);
+        console.log('[ChannelSelectorModal] Filtered results:', filtered.length, 'for query:', query);
         if (isMounted) setResults(filtered);
-      } catch {
+      } catch (err) {
+        console.error('[ChannelSelectorModal] Search error:', err);
         if (isMounted) setResults([]);
       }
     }
