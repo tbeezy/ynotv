@@ -193,17 +193,25 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
     const handleSave = useCallback(async () => {
         try {
             isSavingRef.current = true;
-            await db.transaction('rw', [db.channels, db.categories], async () => {
-                for (let i = 0; i < channels.length; i++) {
-                    await db.channels.update(channels[i].stream_id, {
-                        enabled: channels[i].enabled,
-                        display_order: i,
-                    });
-                }
-                await db.categories.update(categoryId, {
-                    filter_words: filterWords
-                });
+
+            // 1. Prepare items for SQLite bulkPut
+            const channelsToUpdate: StoredChannel[] = channels.map((ch, i) => ({
+                ...ch,
+                enabled: ch.enabled !== false,
+                is_favorite: ch.is_favorite ?? false,
+                display_order: i,
+            }));
+
+            // 2. Perform fast bulk replacement natively
+            if (channelsToUpdate.length > 0) {
+                await db.channels.bulkPut(channelsToUpdate);
+            }
+
+            // 3. Perform atomic operation for category filter words
+            await db.categories.update(categoryId, {
+                filter_words: filterWords
             });
+
             await new Promise(resolve => setTimeout(resolve, 300));
             if (onChange) await onChange();
             onClose();

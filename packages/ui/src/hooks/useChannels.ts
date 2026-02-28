@@ -831,9 +831,9 @@ export function useAllPrograms(streamIds: string[]): Map<string, StoredProgram[]
 
       // Debug logging for EPG troubleshooting
       if (allPrograms.length > 0) {
-        console.log(`[useAllPrograms] Loaded ${allPrograms.length} programs for ${streamIds.length} channels`);
-        console.log(`[useAllPrograms] Sample stream_ids queried:`, streamIds.slice(0, 3));
-        console.log(`[useAllPrograms] Sample program stream_ids:`, allPrograms.slice(0, 3).map(p => p.stream_id));
+        // console.log(`[useAllPrograms] Loaded ${allPrograms.length} programs for ${streamIds.length} channels`);
+        // console.log(`[useAllPrograms] Sample stream_ids queried:`, streamIds.slice(0, 3));
+        // console.log(`[useAllPrograms] Sample program stream_ids:`, allPrograms.slice(0, 3).map(p => p.stream_id));
       }
 
       // Group by stream_id, decompress descriptions, and sort by start time
