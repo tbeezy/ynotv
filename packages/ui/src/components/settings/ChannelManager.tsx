@@ -82,9 +82,12 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
                 if (b.display_order != null) return 1;
                 // Fall back to the sort order preference
                 if (sortOrder === 'number') {
-                    const numA = a.channel_num ?? Infinity;
-                    const numB = b.channel_num ?? Infinity;
-                    if (numA !== numB) return numA - numB;
+                    const numA = a.channel_num;
+                    const numB = b.channel_num;
+                    // Match EPG behavior from useChannels.ts
+                    if (numA !== undefined && numB !== undefined) return numA - numB;
+                    if (numA !== undefined) return -1; // a has number → comes first
+                    if (numB !== undefined) return 1;  // b has number → comes first
                 }
 
                 return a.name.localeCompare(b.name);
