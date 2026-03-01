@@ -29,6 +29,7 @@ interface ChannelPanelProps {
   sidebarExpanded: boolean;
   showSidebar?: boolean;
   onPlayChannel: (channel: StoredChannel) => void;
+  onPlayCatchup?: (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number) => void;
   onClose: () => void;
   error?: string | null;
   isSearchMode?: boolean;
@@ -50,6 +51,7 @@ export function ChannelPanel({
   sidebarExpanded,
   showSidebar = true,
   onPlayChannel,
+  onPlayCatchup,
   onClose,
   error,
   isSearchMode,
@@ -993,6 +995,7 @@ export function ChannelPanel({
                   pixelsPerHour={pixelsPerHour}
                   visibleHours={visibleHours}
                   onPlay={() => handleChannelClick(channel)}
+                  onPlayCatchup={onPlayCatchup}
                   onFavoriteToggle={handleFavoriteToggle}
                   categoryId={categoryId}
                   activeRecordings={activeRecordings}

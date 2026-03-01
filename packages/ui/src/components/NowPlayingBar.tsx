@@ -22,6 +22,13 @@ interface NowPlayingBarProps {
   duration: number;
   isVod?: boolean;
   vodInfo?: VodPlayInfo | null;
+  isCatchup?: boolean;
+  catchupInfo?: {
+    channelId: string;
+    programTitle: string;
+    startTime: number;
+    duration: number; // in minutes
+  } | null;
   onTogglePlay: () => void;
   onStop: () => void;
   onToggleMute: () => void;
@@ -62,6 +69,8 @@ export function NowPlayingBar({
   duration,
   isVod,
   vodInfo,
+  isCatchup,
+  catchupInfo,
   onTogglePlay,
   onStop,
   onToggleMute,
@@ -216,27 +225,27 @@ export function NowPlayingBar({
 
   // Handle click to seek
   const handleProgressClick = useCallback((e: React.MouseEvent) => {
-    if (!isVod || !onSeek) return;
+    if ((!isVod && !isCatchup) || !onSeek) return;
     const seekTo = getSeekPosition(e.clientX);
     onSeek(seekTo);
-  }, [isVod, onSeek, getSeekPosition]);
+  }, [isVod, isCatchup, onSeek, getSeekPosition]);
 
   // Handle mouse move for hover tooltip
   const handleProgressMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isVod) return;
+    if (!isVod && !isCatchup) return;
     setHoverPosition(getSeekPosition(e.clientX));
-  }, [isVod, getSeekPosition]);
+  }, [isVod, isCatchup, getSeekPosition]);
 
   // Handle drag start
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!isVod || !onSeek) return;
+    if ((!isVod && !isCatchup) || !onSeek) return;
     e.preventDefault();
     setIsDragging(true);
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const seekTo = getSeekPosition(clientX);
     onSeek(seekTo);
-  }, [isVod, onSeek, getSeekPosition]);
+  }, [isVod, isCatchup, onSeek, getSeekPosition]);
 
   // Handle drag (mouse/touch move while dragging)
   useEffect(() => {
@@ -302,6 +311,16 @@ export function NowPlayingBar({
                       </span>
                     )}
                   </>
+                ) : isCatchup && catchupInfo ? (
+                  <>
+                    <span className="npb-channel-name" title={channel.name}>
+                      {channel.name} <span className="npb-catchup-badge" style={{ fontSize: '0.7em', backgroundColor: '#e5a00d', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle', marginLeft: '6px' }}>CATCHUP</span>
+                    </span>
+                    <MetadataBadge streamId={channel.stream_id} variant="detailed" />
+                    <span className="npb-program-title" title={catchupInfo.programTitle}>
+                      {catchupInfo.programTitle}
+                    </span>
+                  </>
                 ) : (
                   <>
                     <span className="npb-channel-name" title={channel.name}>
@@ -335,8 +354,8 @@ export function NowPlayingBar({
 
           {/* Row 2: Progress and controls */}
           <div className="npb-row npb-controls-row">
-            {/* Progress section - VOD vs Live TV */}
-            {isVod ? (
+            {/* Progress section - VOD/Catchup vs Live TV */}
+            {isVod || isCatchup ? (
               <div className="npb-progress-section npb-progress-vod">
                 <span className="npb-time-elapsed">{formatTime(position)}</span>
                 <div

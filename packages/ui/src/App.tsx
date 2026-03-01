@@ -281,6 +281,14 @@ function App() {
 
   const [currentChannel, setCurrentChannel] = useState<StoredChannel | null>(null);
   const [vodInfo, setVodInfo] = useState<VodPlayInfo | null>(null);
+  const [catchupInfo, setCatchupInfo] = useState<{
+    channelId: string;
+    programTitle: string;
+    startTime: number;
+    duration: number;
+  } | null>(null);
+
+  const isCatchup = catchupInfo !== null;
 
   // Debug: Log error state changes
   useEffect(() => {
@@ -784,12 +792,70 @@ function App() {
     // UI state updated via mpv status callback
   };
 
+  const handlePlayChannel = (channel: StoredChannel) => {
+    // Clear out any vod or catchup info since we are playing live TV
+    setVodInfo(null);
+    setCatchupInfo(null);
+    // Add to recently viewed
+    addToRecentChannels(channel);
+    handleLoadStream(channel);
+  };
+
+  const handlePlayCatchup = async (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number) => {
+    debugLog(`handlePlayCatchup: ${channel.name} - ${programTitle}`);
+    setError(null);
+    setVodInfo(null);
+
+    // Formulate the timeshift url if it is Xtream
+    let playUrl = channel.direct_url;
+    let userAgent: string | undefined;
+
+    if (window.storage && channel.source_id) {
+      try {
+        const sourceRes = await window.storage.getSource(channel.source_id);
+        const source = sourceRes.data;
+        if (source) {
+          userAgent = source.user_agent;
+          if (source.type === 'xtream') {
+            const { XtreamClient } = await import('@ynotv/local-adapter');
+            const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
+            playUrl = XtreamClient.buildTimeshiftUrl(
+              rawStreamId,
+              source.url,
+              source.username || '',
+              source.password || '',
+              durationMinutes,
+              new Date(startTimeMs)
+            );
+          }
+        }
+      } catch (e) {
+        console.error('Failed to resolve catchup source:', e);
+      }
+    }
+
+    const result = await tryLoadWithFallbacks(playUrl, false, userAgent);
+    if (!result.success) {
+      setError(result.error ?? 'Failed to load catchup stream');
+    } else {
+      setCurrentChannel(channel);
+      setCatchupInfo({ channelId: channel.stream_id, programTitle, startTime: startTimeMs, duration: durationMinutes });
+      setPlaying(true);
+      setActiveView('none');
+    }
+  };
+
+  // Ref for play channel handler (for up/down navigation)
+  const handlePlayChannelRef = useRef(handlePlayChannel);
+  useEffect(() => { handlePlayChannelRef.current = handlePlayChannel; }, [handlePlayChannel]);
+
   const handleStop = async () => {
     debugLog('handleStop called');
     await Bridge.stop();
     debugLog('handleStop: Bridge.stop() completed');
     setPlaying(false);
     setCurrentChannel(null);
+    setCatchupInfo(null);
   };
 
   const handleSeek = async (seconds: number) => {
@@ -833,17 +899,6 @@ function App() {
   const handleShowAudioModal = () => {
     setShowAudioModal(true);
   };
-
-  // Play a channel
-  const handlePlayChannel = (channel: StoredChannel) => {
-    // Add to recently viewed
-    addToRecentChannels(channel);
-    handleLoadStream(channel);
-  };
-
-  // Ref for play channel handler (for up/down navigation)
-  const handlePlayChannelRef = useRef(handlePlayChannel);
-  useEffect(() => { handlePlayChannelRef.current = handlePlayChannel; }, [handlePlayChannel]);
 
   // Background timer for watchlist reminders and autoswitch
   useEffect(() => {
@@ -1468,6 +1523,8 @@ function App() {
         duration={duration}
         isVod={currentChannel?.stream_id === 'vod' || currentChannel?.stream_id?.startsWith('recording_')}
         vodInfo={vodInfo}
+        isCatchup={isCatchup}
+        catchupInfo={catchupInfo}
         onTogglePlay={handleTogglePlay}
         onStop={handleStop}
         onToggleMute={handleToggleMute}
@@ -1544,6 +1601,7 @@ function App() {
         sidebarExpanded={sidebarExpanded}
         showSidebar={showSidebar}
         onPlayChannel={handlePlayChannel}
+        onPlayCatchup={handlePlayCatchup}
         onClose={() => {
           setActiveView('none');
           setCategoriesOpen(false);

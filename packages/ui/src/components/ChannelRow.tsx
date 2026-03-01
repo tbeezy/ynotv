@@ -22,6 +22,7 @@ interface ChannelRowProps {
   pixelsPerHour: number;
   visibleHours: number;
   onPlay: () => void;
+  onPlayCatchup?: (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number) => void;
   onFavoriteToggle?: () => void;
   categoryId?: string | null;
   activeRecordings?: RecordingInfo[];
@@ -39,6 +40,7 @@ export const ChannelRow = memo(function ChannelRow({
   pixelsPerHour,
   visibleHours,
   onPlay,
+  onPlayCatchup,
   onFavoriteToggle,
   categoryId,
   activeRecordings = [],
@@ -167,18 +169,22 @@ export const ChannelRow = memo(function ChannelRow({
             );
             const isProgramRecording = matchingRecording?.isRecording ?? false;
             const isProgramScheduled = matchingRecording?.isScheduled ?? false;
+            const isCatchupAvailable = Boolean(channel.tv_archive) || channel.tv_archive === 1;
 
             return (
               <ProgramBlock
                 key={program.id}
                 program={program}
+                channel={channel}
                 windowStart={windowStart}
                 windowEnd={windowEnd}
                 pixelsPerHour={pixelsPerHour}
                 onClick={onPlay}
+                onPlayCatchup={onPlayCatchup}
                 onContextMenu={(e) => handleContextMenu(e, program)}
                 isRecording={isProgramRecording}
                 isScheduled={isProgramScheduled}
+                isCatchupAvailable={isCatchupAvailable}
               />
             );
           })

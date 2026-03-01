@@ -92,7 +92,8 @@
 }
 
 .program-block.is-recording .program-block-title {
-  padding-right: 40px; /* Make room for the recording indicator */
+  padding-right: 40px;
+  /* Make room for the recording indicator */
 }
 
 /* Scheduled state styling */
@@ -106,5 +107,22 @@
 }
 
 .program-block.is-scheduled .program-block-title {
-  padding-right: 40px; /* Make room for the scheduled indicator */
+  padding-right: 40px;
+  /* Make room for the scheduled indicator */
+}
+
+/* Catchup available styling */
+.program-block.catchup-available {
+  border-left-color: #e5a00d;
+}
+
+.program-block.catchup-available:hover {
+  background: rgba(229, 160, 13, 0.15);
+}
+
+.program-block.catchup-available .program-block-title::before {
+  content: '↺ ';
+  color: #e5a00d;
+  font-size: 1.1em;
+  vertical-align: middle;
 }

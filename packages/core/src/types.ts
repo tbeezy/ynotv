@@ -28,7 +28,7 @@ export interface Source {
     password: string;
   }>;
   display_order?: number;
-enabled: boolean;
+  enabled: boolean;
 }
 
 export interface XtreamSource extends Source {
@@ -66,7 +66,7 @@ export interface Channel {
   source_id: string;
 
   // Optional metadata
-  tv_archive?: boolean;   // Has catchup/timeshift
+  tv_archive?: boolean | number;   // Has catchup/timeshift
   is_adult?: boolean;
   channel_num?: number;   // Channel order (Xtream num / M3U tvg-chno)
 }

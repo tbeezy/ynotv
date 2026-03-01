@@ -1,17 +1,20 @@
 import { useMemo, memo } from 'react';
 import { RecordingIndicator } from './RecordingIndicator';
-import type { StoredProgram } from '../db';
+import type { StoredProgram, StoredChannel } from '../db';
 import './ProgramBlock.css';
 
 interface ProgramBlockProps {
   program: StoredProgram;
+  channel?: StoredChannel;
   windowStart: Date;
   windowEnd: Date;
   pixelsPerHour: number;
   onClick?: () => void;
+  onPlayCatchup?: (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   isRecording?: boolean;
   isScheduled?: boolean;
+  isCatchupAvailable?: boolean;
 }
 
 interface ProgramStyle {
@@ -61,13 +64,16 @@ function getProgramStyle(
 
 export const ProgramBlock = memo(function ProgramBlock({
   program,
+  channel,
   windowStart,
   windowEnd,
   pixelsPerHour,
   onClick,
+  onPlayCatchup,
   onContextMenu,
   isRecording = false,
   isScheduled = false,
+  isCatchupAvailable = false,
 }: ProgramBlockProps) {
   const style = useMemo(
     () => getProgramStyle(program, windowStart, windowEnd, pixelsPerHour),
@@ -79,11 +85,22 @@ export const ProgramBlock = memo(function ProgramBlock({
   const progStartMs = program.start instanceof Date ? program.start.getTime() : new Date(program.start).getTime();
   const progEndMs = program.end instanceof Date ? program.end.getTime() : new Date(program.end).getTime();
   const isCurrent = progStartMs <= now.getTime() && progEndMs > now.getTime();
+  const isPast = progEndMs < now.getTime();
 
   // Format time for tooltip
   const formatTime = (date: Date | string) => {
     const d = date instanceof Date ? date : new Date(date);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleProgramClick = () => {
+    // If program is in the past and catchup is available, play catchup
+    if (isPast && isCatchupAvailable && onPlayCatchup && channel) {
+      const durationMins = Math.round((progEndMs - progStartMs) / 60000);
+      onPlayCatchup(channel, program.title, progStartMs, durationMins);
+    } else if (onClick) {
+      onClick(); // Default (plays live channel)
+    }
   };
 
   if (!style.visible) {
@@ -99,14 +116,15 @@ export const ProgramBlock = memo(function ProgramBlock({
 
   return (
     <div
-      className={`program-block ${isCurrent ? 'current' : ''} ${isRecording ? 'is-recording' : ''} ${isScheduled ? 'is-scheduled' : ''}`}
+      className={`program-block ${isCurrent ? 'current' : ''} ${isPast ? 'past' : ''} ${isRecording ? 'is-recording' : ''} ${isScheduled ? 'is-scheduled' : ''} ${isCatchupAvailable && isPast ? 'catchup-available' : ''}`}
       style={{
         left: `${style.left}px`,
         width: `${style.width}px`,
+        cursor: (isCatchupAvailable && isPast) || isCurrent ? 'pointer' : 'default'
       }}
-      onClick={onClick}
+      onClick={handleProgramClick}
       onContextMenu={onContextMenu}
-      title={`${program.title}\n${formatTime(program.start)} - ${formatTime(program.end)}${program.description ? `\n\n${program.description}` : ''}`}
+      title={`${program.title}\n${formatTime(program.start)} - ${formatTime(program.end)}${program.description ? `\n\n${program.description}` : ''}${isCatchupAvailable && isPast ? '\n\nClick to play Catchup archive' : ''}`}
     >
       {showRecordingIndicator && (
         <div className="program-recording-indicator">

@@ -95,6 +95,9 @@ interface ExtInfMetadata {
   tvgChno: number | null;  // Channel number for ordering
   groupTitle: string;
   displayName: string;
+  tvArchive: boolean;
+  catchupDays?: number;
+  catchupSource?: string;
 }
 
 /**
@@ -171,6 +174,7 @@ export function parseM3U(content: string, sourceId: string): M3UParseResult {
         category_ids: categoryId ? [categoryId] : [],
         direct_url: line,
         source_id: sourceId,
+        tv_archive: currentMetadata.tvArchive ? 1 : 0,
         ...(currentMetadata.tvgChno !== null && { channel_num: currentMetadata.tvgChno }),
       };
 
@@ -220,6 +224,7 @@ function parseExtInf(line: string): ExtInfMetadata {
     tvgChno: null,
     groupTitle: '',
     displayName: '',
+    tvArchive: false,
   };
 
   // Remove #EXTINF: prefix
@@ -262,6 +267,27 @@ function parseExtInf(line: string): ExtInfMetadata {
   const groupTitleMatch = attrPart.match(/group-title="([^"]*)"/i);
   if (groupTitleMatch) {
     metadata.groupTitle = groupTitleMatch[1];
+  }
+
+  // Extract catchup tags
+  const catchupMatch = attrPart.match(/catchup="([^"]*)"/i);
+  if (catchupMatch && catchupMatch[1].length > 0) {
+    metadata.tvArchive = true;
+  }
+
+  const catchupDaysMatch = attrPart.match(/catchup-days="([^"]*)"/i);
+  if (catchupDaysMatch) {
+    const days = parseInt(catchupDaysMatch[1], 10);
+    if (!isNaN(days) && days > 0) {
+      metadata.tvArchive = true;
+      metadata.catchupDays = days;
+    }
+  }
+
+  const catchupSourceMatch = attrPart.match(/catchup-source="([^"]*)"/i);
+  if (catchupSourceMatch && catchupSourceMatch[1].length > 0) {
+    metadata.tvArchive = true;
+    metadata.catchupSource = catchupSourceMatch[1];
   }
 
   // Extract tvg-chno (channel number for ordering)

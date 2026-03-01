@@ -63,6 +63,32 @@ export class XtreamClient {
     this.sourceId = sourceId;
   }
 
+  /**
+   * Helper to build a timeshift URL for playing catchup content
+   */
+  static buildTimeshiftUrl(
+    streamId: string | number,
+    baseUrl: string,
+    username: string,
+    password: string,
+    durationMinutes: number,
+    startTime: Date,
+    extension: string = 'ts'
+  ): string {
+    const formattedBase = baseUrl.replace(/\/+$/, '');
+
+    // Format start time exactly as "YYYY-MM-DD:HH-MM"
+    const year = startTime.getFullYear();
+    const month = String(startTime.getMonth() + 1).padStart(2, '0');
+    const day = String(startTime.getDate()).padStart(2, '0');
+    const hour = String(startTime.getHours()).padStart(2, '0');
+    const minute = String(startTime.getMinutes()).padStart(2, '0');
+    const formattedStartTime = `${year}-${month}-${day}:${hour}-${minute}`;
+
+    // http://<server>/timeshift/<username>/<password>/<duration>/<YYYY-MM-DD:HH-MM>/<stream_id>.<extension>
+    return `${formattedBase}/timeshift/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${durationMinutes}/${formattedStartTime}/${streamId}.${extension}`;
+  }
+
   // ===========================================================================
   // API Helpers
   // ===========================================================================
