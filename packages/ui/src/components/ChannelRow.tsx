@@ -140,7 +140,12 @@ export const ChannelRow = memo(function ChannelRow({
           )}
         </div>
         <div className="guide-channel-name-container">
-          <span className="guide-channel-name" title={channel.name}>{channel.name}</span>
+          <span className="guide-channel-name" title={channel.name}>
+            {channel.name}
+            {(Boolean(channel.tv_archive) || channel.tv_archive === 1) && (
+              <span style={{ color: '#e5a00d', marginLeft: '4px', fontSize: '1.1em', verticalAlign: 'middle' }}>↺</span>
+            )}
+          </span>
         </div>
         <div className="channel-row-metadata">
           <MetadataBadge streamId={channel.stream_id} variant="detailed" />

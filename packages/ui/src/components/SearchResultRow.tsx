@@ -159,7 +159,12 @@ export const SearchResultRow = memo(function SearchResultRow({
           )}
         </div>
         <div className="guide-channel-name-container">
-          <span className="guide-channel-name" title={channel.name}>{channel.name}</span>
+          <span className="guide-channel-name" title={channel.name}>
+            {channel.name}
+            {(Boolean(channel.tv_archive) || channel.tv_archive === 1) && (
+              <span style={{ color: '#e5a00d', marginLeft: '4px', fontSize: '1.1em', verticalAlign: 'middle' }}>↺</span>
+            )}
+          </span>
           {channel.channel_num && (
             <span className="guide-channel-number">Ch. {channel.channel_num}</span>
           )}

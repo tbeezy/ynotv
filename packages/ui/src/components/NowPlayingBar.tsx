@@ -44,6 +44,8 @@ interface NowPlayingBarProps {
   onToggleFullscreen: () => void;
   onShowSubtitleModal: () => void;
   onShowAudioModal: () => void;
+  onCatchupSeek?: (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number, seekSeconds: number) => void;
+  onGoToLive?: () => void;
 }
 
 // Format seconds to "H:MM:SS" or "M:SS"
@@ -86,6 +88,8 @@ export function NowPlayingBar({
   onToggleFullscreen,
   onShowSubtitleModal,
   onShowAudioModal,
+  onCatchupSeek,
+  onGoToLive,
 }: NowPlayingBarProps) {
   // Modal state
   const [showSubtitleModal, setShowSubtitleModal] = useState(false);
@@ -225,36 +229,98 @@ export function NowPlayingBar({
 
   // Handle click to seek
   const handleProgressClick = useCallback((e: React.MouseEvent) => {
-    if ((!isVod && !isCatchup) || !onSeek) return;
-    const seekTo = getSeekPosition(e.clientX);
-    onSeek(seekTo);
-  }, [isVod, isCatchup, onSeek, getSeekPosition]);
+    const isLiveCatchup = !isVod && !isCatchup && currentProgram && (Boolean(channel?.tv_archive) || channel?.tv_archive === 1);
+
+    if (isVod || isCatchup) {
+      if (!onSeek) return;
+      const seekTo = getSeekPosition(e.clientX);
+      onSeek(seekTo);
+    } else if (isLiveCatchup && onCatchupSeek && channel) {
+      if (!progressBarRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+      const startMs = new Date(currentProgram.start).getTime();
+      const endMs = new Date(currentProgram.end).getTime();
+      const durationMins = Math.round((endMs - startMs) / 60000);
+      const seekSeconds = ratio * (durationMins * 60);
+
+      onCatchupSeek(channel, currentProgram.title, startMs, durationMins, seekSeconds);
+    }
+  }, [isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition]);
 
   // Handle mouse move for hover tooltip
   const handleProgressMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isVod && !isCatchup) return;
-    setHoverPosition(getSeekPosition(e.clientX));
-  }, [isVod, isCatchup, getSeekPosition]);
+    const isLiveCatchup = !isVod && !isCatchup && currentProgram && (Boolean(channel?.tv_archive) || channel?.tv_archive === 1);
+    if (!isVod && !isCatchup && !isLiveCatchup) return;
+
+    if (isLiveCatchup) {
+      if (!progressBarRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const startMs = new Date(currentProgram.start).getTime();
+      const endMs = new Date(currentProgram.end).getTime();
+      const durationSecs = (endMs - startMs) / 1000;
+      setHoverPosition(ratio * durationSecs);
+    } else {
+      setHoverPosition(getSeekPosition(e.clientX));
+    }
+  }, [isVod, isCatchup, channel, currentProgram, getSeekPosition]);
 
   // Handle drag start
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if ((!isVod && !isCatchup) || !onSeek) return;
-    e.preventDefault();
-    setIsDragging(true);
+    const isLiveCatchup = !isVod && !isCatchup && currentProgram && (Boolean(channel?.tv_archive) || channel?.tv_archive === 1);
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const seekTo = getSeekPosition(clientX);
-    onSeek(seekTo);
-  }, [isVod, isCatchup, onSeek, getSeekPosition]);
-
-  // Handle drag (mouse/touch move while dragging)
-  useEffect(() => {
-    if (!isDragging || !onSeek) return;
-
-    const handleMove = (e: MouseEvent | TouchEvent) => {
+    if (isVod || isCatchup) {
+      if (!onSeek) return;
+      e.preventDefault();
+      setIsDragging(true);
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const seekTo = getSeekPosition(clientX);
       onSeek(seekTo);
+    } else if (isLiveCatchup && onCatchupSeek && channel) {
+      e.preventDefault();
+      setIsDragging(true);
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+
+      if (!progressBarRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+
+      const startMs = new Date(currentProgram.start).getTime();
+      const endMs = new Date(currentProgram.end).getTime();
+      const durationMins = Math.round((endMs - startMs) / 60000);
+      const seekSeconds = ratio * (durationMins * 60);
+
+      onCatchupSeek(channel, currentProgram.title, startMs, durationMins, seekSeconds);
+    }
+  }, [isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition]);
+
+  // Handle drag (mouse/touch move while dragging)
+  useEffect(() => {
+    const isLiveCatchup = !isVod && !isCatchup && currentProgram && (Boolean(channel?.tv_archive) || channel?.tv_archive === 1);
+
+    if (!isDragging) return;
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+
+      if (isVod || isCatchup) {
+        if (!onSeek) return;
+        const seekTo = getSeekPosition(clientX);
+        onSeek(seekTo);
+      } else if (isLiveCatchup && onCatchupSeek && channel) {
+        if (!progressBarRef.current) return;
+        const rect = progressBarRef.current.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+
+        const startMs = new Date(currentProgram.start).getTime();
+        const endMs = new Date(currentProgram.end).getTime();
+        const durationMins = Math.round((endMs - startMs) / 60000);
+        const seekSeconds = ratio * (durationMins * 60);
+
+        onCatchupSeek(channel, currentProgram.title, startMs, durationMins, seekSeconds);
+      }
     };
 
     const handleEnd = () => {
@@ -272,7 +338,7 @@ export function NowPlayingBar({
       document.removeEventListener('touchmove', handleMove);
       document.removeEventListener('touchend', handleEnd);
     };
-  }, [isDragging, onSeek, getSeekPosition]);
+  }, [isDragging, isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition]);
 
   // VOD progress calculation
   const vodProgress = duration > 0 ? (position / duration) * 100 : 0;
@@ -386,18 +452,68 @@ export function NowPlayingBar({
                   )}
                 </div>
                 <span className="npb-time-remaining">-{formatTime(vodRemaining)}</span>
+
+                {isCatchup && onGoToLive && (
+                  <button
+                    className="npb-btn npb-live-btn"
+                    onClick={() => {
+                      onGoToLive();
+                    }}
+                    title="Go to Live"
+                  >
+                    Go Live
+                  </button>
+                )}
               </div>
             ) : (
               <div className="npb-progress-section">
-                <div className="npb-progress-bar">
-                  <div
-                    className="npb-progress-fill"
-                    style={{ width: currentProgram ? `${progress}%` : '0%' }}
-                  />
-                </div>
-                <span className="npb-time-remaining">
-                  {timeRemaining || '--'}
-                </span>
+                {(Boolean(channel?.tv_archive) || channel?.tv_archive === 1) && currentProgram ? (
+                  // Live Catchup
+                  <>
+                    <span className="npb-time-elapsed">{formatTime((progress / 100) * ((new Date(currentProgram.end).getTime() - new Date(currentProgram.start).getTime()) / 1000))}</span>
+                    <div
+                      ref={progressBarRef}
+                      className={`npb-progress-bar npb-progress-interactive ${isHovering || isDragging ? 'active' : ''}`}
+                      onClick={handleProgressClick}
+                      onMouseEnter={() => setIsHovering(true)}
+                      onMouseLeave={() => setIsHovering(false)}
+                      onMouseMove={handleProgressMouseMove}
+                      onMouseDown={handleDragStart}
+                      onTouchStart={handleDragStart}
+                    >
+                      <div
+                        className="npb-progress-fill"
+                        style={{ width: `${progress}%` }}
+                      />
+                      <div
+                        className={`npb-scrubber-handle ${isDragging ? 'dragging' : ''}`}
+                        style={{ left: `${progress}%` }}
+                      />
+                      {isHovering && !isDragging && (
+                        <div
+                          className="npb-time-tooltip"
+                          style={{ left: `${(hoverPosition / ((new Date(currentProgram.end).getTime() - new Date(currentProgram.start).getTime()) / 1000)) * 100}%` }}
+                        >
+                          {formatTime(hoverPosition)}
+                        </div>
+                      )}
+                    </div>
+                    <span className="npb-time-remaining">{timeRemaining || '--'}</span>
+                  </>
+                ) : (
+                  // Regular Live
+                  <>
+                    <div className="npb-progress-bar">
+                      <div
+                        className="npb-progress-fill"
+                        style={{ width: currentProgram ? `${progress}%` : '0%' }}
+                      />
+                    </div>
+                    <span className="npb-time-remaining">
+                      {timeRemaining || '--'}
+                    </span>
+                  </>
+                )}
               </div>
             )}
 

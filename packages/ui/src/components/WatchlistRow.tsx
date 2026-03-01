@@ -137,7 +137,7 @@ export function WatchlistRow({
           <FavoriteButton
             streamId={channel.stream_id}
             isFavorite={!!channel.is_favorite}
-            onToggle={() => {}}
+            onToggle={() => { }}
           />
           <div className="guide-channel-logo">
             {channel.stream_icon ? (
@@ -156,6 +156,9 @@ export function WatchlistRow({
             <span className="guide-channel-name" title={channel.name}>
               {isLive && <span className="live-indicator">●</span>}
               {channel.name}
+              {(Boolean(channel.tv_archive) || channel.tv_archive === 1) && (
+                <span style={{ color: '#e5a00d', marginLeft: '4px', fontSize: '1.1em', verticalAlign: 'middle' }}>↺</span>
+              )}
             </span>
             {channel.channel_num && (
               <span className="guide-channel-number">Ch. {channel.channel_num}</span>

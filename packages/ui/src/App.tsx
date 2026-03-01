@@ -851,6 +851,22 @@ function App() {
   const handlePlayChannelRef = useRef(handlePlayChannel);
   useEffect(() => { handlePlayChannelRef.current = handlePlayChannel; }, [handlePlayChannel]);
 
+  const handleCatchupSeek = async (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number, seekSeconds: number) => {
+    // Optimistically update seeking state so UI reacts instantly
+    seekingRef.current = true;
+
+    // First, ask handlePlayCatchup to transition our playback
+    await handlePlayCatchup(channel, programTitle, startTimeMs, durationMinutes);
+
+    // After the stream is loaded, jump to the given time offset.
+    // The player state sets position to 0 initially, so we tell mpv directly
+    await Bridge.seek(seekSeconds);
+    setPosition(seekSeconds);
+
+    // Free the flag
+    setTimeout(() => { seekingRef.current = false; }, 200);
+  };
+
   const handleStop = async () => {
     debugLog('handleStop called');
     await Bridge.stop();
@@ -1542,6 +1558,8 @@ function App() {
         onToggleFullscreen={handleToggleFullscreen}
         onShowSubtitleModal={handleShowSubtitleModal}
         onShowAudioModal={handleShowAudioModal}
+        onGoToLive={() => currentChannel && handlePlayChannelRef.current(currentChannel)}
+        onCatchupSeek={handleCatchupSeek}
       />
 
       {/* Track Selection Modals */}
