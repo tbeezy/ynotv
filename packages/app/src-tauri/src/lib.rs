@@ -1504,12 +1504,83 @@ fn save_window_state(app: &tauri::AppHandle) {
             x: pos.x,
             y: pos.y,
         };
+        // Save to window_state.json for position restoration
         if let Some(path) = window_state_path(app) {
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
             if let Ok(json) = serde_json::to_string(&state) {
                 let _ = std::fs::write(&path, json);
+            }
+        }
+        // Also update the startupWidth/startupHeight in tauri-plugin-store
+        // so Settings -> UI shows the last closed size as the default
+        update_startup_size_in_store(app, size.width, size.height);
+    }
+}
+
+/// Update the startupWidth and startupHeight in the tauri-plugin-store
+/// so the Settings UI reflects the last closed window size
+/// Uses the proper tauri-plugin-store API to ensure cache consistency
+fn update_startup_size_in_store(app: &tauri::AppHandle, width: u32, height: u32) {
+    use tauri_plugin_store::StoreExt;
+
+    // Load the store using the proper API
+    let store = app.store(".settings.dat");
+    match store {
+        Ok(store) => {
+            // Get current settings or create empty object
+            let current_settings: serde_json::Value = store
+                .get("settings")
+                .unwrap_or_else(|| serde_json::json!({}));
+
+            // Merge the new size into settings
+            let mut settings_obj = current_settings.as_object().cloned().unwrap_or_default();
+            settings_obj.insert("startupWidth".to_string(), serde_json::json!(width));
+            settings_obj.insert("startupHeight".to_string(), serde_json::json!(height));
+
+            // Save back to store
+            store.set("settings", serde_json::json!(settings_obj));
+
+            // IMPORTANT: Save to disk immediately
+            if let Err(e) = store.save() {
+                println!("[WindowState] Failed to save store: {}", e);
+            } else {
+                println!("[WindowState] Successfully saved store with size: {}x{}", width, height);
+            }
+
+            // Drop the store to release the lock
+            drop(store);
+        }
+        Err(e) => {
+            println!("[WindowState] Failed to open store: {}", e);
+            // Fallback: try direct file manipulation
+            fallback_update_store_file(app, width, height);
+        }
+    }
+}
+
+/// Fallback method using direct file manipulation if the store API fails
+fn fallback_update_store_file(app: &tauri::AppHandle, width: u32, height: u32) {
+    if let Ok(app_data_dir) = app.path().app_data_dir() {
+        let store_path = app_data_dir.join(".settings.dat");
+
+        let contents = std::fs::read_to_string(&store_path).unwrap_or_else(|_| "{}".to_string());
+
+        if let Ok(mut store_data) = serde_json::from_str::<serde_json::Value>(&contents) {
+            if let Some(obj) = store_data.as_object_mut() {
+                let settings = obj.entry("settings".to_string())
+                    .or_insert_with(|| serde_json::json!({}))
+                    .as_object_mut();
+
+                if let Some(settings_obj) = settings {
+                    settings_obj.insert("startupWidth".to_string(), serde_json::json!(width));
+                    settings_obj.insert("startupHeight".to_string(), serde_json::json!(height));
+                }
+
+                if let Ok(updated_json) = serde_json::to_string_pretty(&store_data) {
+                    let _ = std::fs::write(&store_path, updated_json);
+                }
             }
         }
     }
@@ -1532,6 +1603,25 @@ fn restore_window_state(app: &tauri::AppHandle) {
                     }
                     println!("[WindowState] Restored: {}x{} at ({}, {})",
                         state.width, state.height, state.x, state.y);
+                }
+            }
+        }
+    }
+}
+
+/// Restore only window position (not size) - used when UI controls the startup size
+fn restore_window_position(app: &tauri::AppHandle) {
+    if let Some(path) = window_state_path(app) {
+        if let Ok(json) = std::fs::read_to_string(&path) {
+            if let Ok(state) = serde_json::from_str::<WindowState>(&json) {
+                if let Some(window) = app.get_webview_window("main") {
+                    // Apply position only (only if non-zero — avoids placing off-screen on first run)
+                    if state.x != 0 || state.y != 0 {
+                        let _ = window.set_position(tauri::Position::Physical(
+                            tauri::PhysicalPosition { x: state.x, y: state.y }
+                        ));
+                        println!("[WindowState] Restored position: ({}, {})", state.x, state.y);
+                    }
                 }
             }
         }
@@ -1613,8 +1703,12 @@ pub fn run() {
                 });
             }
 
-            // Restore saved window geometry (size + position)
-            restore_window_state(app.handle());
+            // Restore saved window position only (not size - size is controlled by UI settings)
+            // Position is restored so the window opens in the same place it was closed
+            restore_window_position(app.handle());
+
+            // Note: Window size is applied by the frontend after settings are loaded
+            // to ensure the user-defined startupWidth/startupHeight from Settings -> UI is respected
 
             Ok(())
         })

@@ -202,9 +202,16 @@ export function useMultiview() {
         await Promise.all(ops);
     }, []);
 
-    /** Re-sync on resize and window move */
+    /** Re-sync on resize and window move - only when in multiview mode */
     useEffect(() => {
-        const onResize = () => {
+        // Only enable resize/move handlers when in a multiview layout (not 'main')
+        if (layoutRef.current === 'main') return;
+
+        let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+        let moveTimeout: ReturnType<typeof setTimeout> | null = null;
+        let pendingSync = false;
+
+        const handleSync = () => {
             // When in tab mode, keep secondaries hidden off-screen
             if (isTabModeRef.current) {
                 // Primary MPV should be fullscreen for software scaling preview
@@ -216,45 +223,49 @@ export function useMultiview() {
                 Promise.all(hideOps).catch(() => { });
                 return;
             }
+
             const m = layoutRef.current;
             if (m === 'main') return;
+
             // Primary MPV (main feed)
             syncMpvGeometry(m);
             // Secondary MPVs (slots 2/3/4)
             repositionSecondarySlots(m);
         };
-        window.addEventListener('resize', onResize);
 
-        // Listen for window move events to keep MPVs positioned correctly while dragging
+        // Debounced handler - only triggers ONCE after resize finishes
+        // Using a long timeout (400ms) to ensure user has stopped resizing
+        const scheduleSync = () => {
+            pendingSync = true;
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                pendingSync = false;
+                handleSync();
+            }, 400); // 400ms - only trigger once resize fully settles
+        };
+
+        window.addEventListener('resize', scheduleSync);
+
+        // Listen for window move events to keep MPVs positioned correctly after dragging
         let unlistenMove: (() => void) | null = null;
         import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
             const appWindow = getCurrentWindow();
             appWindow.onMoved(() => {
-                // If in tab mode, we MUST actively suppress secondaries off-screen so OS dragging doesn't snap them fullscreen
-                if (isTabModeRef.current) {
-                    const hideOps = slotsRef.current.filter(s => s.active).map(s =>
-                        invoke('multiview_reposition_slot', { slotId: s.id, x: -10000, y: -10000, width: 1, height: 1 })
-                    );
-                    Promise.all(hideOps).catch(() => { });
-                    return;
-                }
-
-                const m = layoutRef.current;
-                if (m === 'main') return;
-                // Primary MPV (main feed)
-                syncMpvGeometry(m);
-                // Secondary MPVs (slots 2/3/4)
-                repositionSecondarySlots(m);
+                if (moveTimeout) clearTimeout(moveTimeout);
+                moveTimeout = setTimeout(handleSync, 150); // 150ms debounce for move
             }).then(unlisten => {
                 unlistenMove = unlisten;
             }).catch(() => { /* ignore if not available */ });
         }).catch(() => { /* ignore if Tauri API not available */ });
 
         return () => {
-            window.removeEventListener('resize', onResize);
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            if (moveTimeout) clearTimeout(moveTimeout);
+            window.removeEventListener('resize', scheduleSync);
             if (unlistenMove) unlistenMove();
         };
-    }, [syncMpvGeometry, repositionSecondarySlots]);
+        // Re-bind when layout changes to/from multiview modes
+    }, [layout, syncMpvGeometry, repositionSecondarySlots]);
 
     const notifyMainLoaded = useCallback((channelName: string, channelUrl: string) => {
         mainSlotRef.current = { channelName, channelUrl };

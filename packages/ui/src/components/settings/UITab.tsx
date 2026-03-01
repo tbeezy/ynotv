@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 interface UITabProps {
   settings: {
@@ -44,6 +45,25 @@ function WindowSizeSettings({ width, height, onChange }: { width: number; height
     setTimeout(() => setStatus(''), 2000);
   };
 
+  const handleUseCurrentSize = async () => {
+    try {
+      const appWindow = getCurrentWindow();
+      const size = await appWindow.outerSize();
+      // Convert from physical pixels to logical pixels
+      const factor = await appWindow.scaleFactor();
+      const logicalWidth = Math.round(size.width / factor);
+      const logicalHeight = Math.round(size.height / factor);
+
+      setLocalWidth(logicalWidth);
+      setLocalHeight(logicalHeight);
+      onChange(logicalWidth, logicalHeight);
+      setStatus('saved');
+      setTimeout(() => setStatus(''), 2000);
+    } catch (err) {
+      console.error('Failed to get current window size:', err);
+    }
+  };
+
   return (
     <div className="form-group" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
@@ -73,13 +93,21 @@ function WindowSizeSettings({ width, height, onChange }: { width: number; height
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
         <button
           className="sync-btn"
           onClick={handleApply}
           style={{ padding: '0.5rem 1.5rem', background: '#00d4ff', color: 'black', fontWeight: 600 }}
         >
           {status === 'saved' ? 'Saved!' : 'Apply'}
+        </button>
+
+        <button
+          className="sync-btn secondary"
+          onClick={handleUseCurrentSize}
+          style={{ background: 'rgba(255,255,255,0.15)' }}
+        >
+          Use Current Size
         </button>
 
         <button
@@ -92,7 +120,7 @@ function WindowSizeSettings({ width, height, onChange }: { width: number; height
       </div>
 
       <p className="form-hint" style={{ marginTop: '0.75rem' }}>
-        Default: 1920 x 1080. Changes apply on next restart.
+        Window size is automatically saved when you close the app. Default: 1920 x 1080.
       </p>
     </div>
   );

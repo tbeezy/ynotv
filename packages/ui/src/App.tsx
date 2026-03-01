@@ -470,31 +470,43 @@ function App() {
   const titleBarSearchRef = useRef<HTMLInputElement>(null);
 
 
-  // Initialize window size on startup
+  // Initialize window size on startup from Tauri store settings
   useEffect(() => {
     const initWindowSize = async () => {
       try {
-        const stored = localStorage.getItem('app-settings');
-        if (stored) {
-          const settings = JSON.parse(stored);
-          const width = settings.startupWidth || 1920;
-          const height = settings.startupHeight || 1080;
+        if (!window.storage) {
+          console.log('[App] window.storage not available');
+          return;
+        }
 
-          // Apply startup size immediately
-          try {
-            const appWindow = getCurrentWindow();
+        const result = await window.storage.getSettings();
+        console.log('[App] Got settings from store:', result);
+        const settings = result.data || {};
+        console.log('[App] Settings object:', JSON.stringify(settings, null, 2));
+        const width = settings.startupWidth || 1920;
+        const height = settings.startupHeight || 1080;
+        console.log(`[App] Applying startup size: ${width}x${height}`);
 
-            // If maximized, unmaximize first
-            const isMaximized = await appWindow.isMaximized();
-            if (isMaximized) {
-              await appWindow.unmaximize();
-            }
+        // Apply startup size immediately
+        try {
+          const appWindow = getCurrentWindow();
 
-            await appWindow.setSize(new LogicalSize(width, height));
-            await appWindow.center();
-          } catch (innerErr) {
-            console.error('[App] Resize error:', innerErr);
+          // Get current size before change
+          const currentSize = await appWindow.outerSize();
+          console.log(`[App] Current window size: ${currentSize.width}x${currentSize.height}`);
+
+          // If maximized, unmaximize first
+          const isMaximized = await appWindow.isMaximized();
+          if (isMaximized) {
+            await appWindow.unmaximize();
           }
+
+          await appWindow.setSize(new LogicalSize(width, height));
+          console.log('[App] Window size applied successfully');
+          // Don't center - let the Rust side restore position from window_state.json
+          // await appWindow.center();
+        } catch (innerErr) {
+          console.error('[App] Resize error:', innerErr);
         }
       } catch (err) {
         console.error('[App] Failed to resize window on startup:', err);
