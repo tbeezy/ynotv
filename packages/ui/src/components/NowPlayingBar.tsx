@@ -261,21 +261,25 @@ export function NowPlayingBar({
       const durationSecs = Math.max(1, (Date.now() - startMs) / 1000);
       setHoverPosition(ratio * durationSecs);
     } else {
-      setHoverPosition(getSeekPosition(e.clientX));
+      if (!progressBarRef.current || duration <= 0) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      setHoverPosition(ratio * duration);
     }
-  }, [isVod, isCatchup, channel, currentProgram, getSeekPosition]);
+  }, [isVod, isCatchup, channel, currentProgram, duration]);
 
   // Handle drag start
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const isLiveCatchup = !isVod && !isCatchup && currentProgram && (Boolean(channel?.tv_archive) || channel?.tv_archive === 1);
 
     if (isVod || isCatchup) {
-      if (!onSeek) return;
       e.preventDefault();
       setIsDragging(true);
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const seekTo = getSeekPosition(clientX);
-      onSeek(seekTo);
+      if (!progressBarRef.current || duration <= 0) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      setHoverPosition(ratio * duration);
     } else if (isLiveCatchup && onCatchupSeek && channel) {
       e.preventDefault();
       setIsDragging(true);
@@ -286,10 +290,8 @@ export function NowPlayingBar({
       const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 
       const startMs = new Date(currentProgram.start).getTime();
-      const elapsedMins = Math.max(1, Math.ceil((Date.now() - startMs) / 60000));
-      const seekSeconds = ratio * (elapsedMins * 60);
-
-      onCatchupSeek(channel, currentProgram.title, startMs, elapsedMins, seekSeconds);
+      const durationSecs = Math.max(1, (Date.now() - startMs) / 1000);
+      setHoverPosition(ratio * durationSecs);
     }
   }, [isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition]);
 
@@ -300,32 +302,55 @@ export function NowPlayingBar({
     if (!isDragging) return;
 
     const handleMove = (e: MouseEvent | TouchEvent) => {
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      try {
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
 
-      if (isVod || isCatchup) {
-        if (!onSeek) return;
-        const seekTo = getSeekPosition(clientX);
-        onSeek(seekTo);
-      } else if (isLiveCatchup && onCatchupSeek && channel) {
-        if (!progressBarRef.current) return;
-        const rect = progressBarRef.current.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        if (isVod || isCatchup) {
+          if (!progressBarRef.current || duration <= 0) return;
+          const rect = progressBarRef.current.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+          setHoverPosition(ratio * duration);
+        } else if (isLiveCatchup && onCatchupSeek && channel) {
+          if (!progressBarRef.current) return;
+          const rect = progressBarRef.current.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 
-        const startMs = new Date(currentProgram.start).getTime();
-        const durationMins = Math.max(1, Math.ceil((Date.now() - startMs) / 60000));
-        const seekSeconds = ratio * (durationMins * 60);
-
-        onCatchupSeek(channel, currentProgram.title, startMs, durationMins, seekSeconds);
-      }
+          const startMs = new Date(currentProgram.start).getTime();
+          const durationSecs = Math.max(1, (Date.now() - startMs) / 1000);
+          setHoverPosition(ratio * durationSecs);
+        }
+      } catch (err) { /* ignore */ }
     };
 
-    const handleEnd = () => {
+    const handleEnd = (e: MouseEvent | TouchEvent) => {
       setIsDragging(false);
+      try {
+        const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
+
+        if (isVod || isCatchup) {
+          if (onSeek) {
+            if (!progressBarRef.current || duration <= 0) return;
+            const rect = progressBarRef.current.getBoundingClientRect();
+            const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            onSeek(ratio * duration);
+          }
+        } else if (isLiveCatchup && onCatchupSeek && channel) {
+          if (!progressBarRef.current) return;
+          const rect = progressBarRef.current.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+
+          const startMs = new Date(currentProgram.start).getTime();
+          const elapsedMins = Math.max(1, Math.ceil((Date.now() - startMs) / 60000));
+          const seekSeconds = ratio * (elapsedMins * 60);
+
+          onCatchupSeek(channel, currentProgram.title, startMs, elapsedMins, seekSeconds);
+        }
+      } catch (err) { /* ignore */ }
     };
 
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleEnd);
-    document.addEventListener('touchmove', handleMove);
+    document.addEventListener('touchmove', handleMove, { passive: false });
     document.addEventListener('touchend', handleEnd);
 
     return () => {
@@ -334,7 +359,7 @@ export function NowPlayingBar({
       document.removeEventListener('touchmove', handleMove);
       document.removeEventListener('touchend', handleEnd);
     };
-  }, [isDragging, isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition]);
+  }, [isDragging, isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition, duration]);
 
   // VOD progress calculation
   const vodProgress = duration > 0 ? (position / duration) * 100 : 0;

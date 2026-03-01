@@ -259,7 +259,7 @@ function App() {
     if (pendingCatchupSeekRef.current !== null && duration > 0 && playing) {
       const targetSeek = pendingCatchupSeekRef.current;
       pendingCatchupSeekRef.current = null;
-      Bridge.seek(targetSeek).catch(console.error);
+      Bridge.seek(targetSeek).catch(e => console.warn('[App] Deferred seek failed:', e));
       setPosition(targetSeek);
     }
   }, [duration, playing]);
@@ -894,7 +894,11 @@ function App() {
   const handleSeek = async (seconds: number) => {
     seekingRef.current = true;
     setPosition(seconds); // Optimistic update
-    await Bridge.seek(seconds);
+    try {
+      await Bridge.seek(seconds);
+    } catch (e) {
+      console.warn('[App] Seek command failed:', e);
+    }
     // Brief delay before accepting mpv updates again
     setTimeout(() => { seekingRef.current = false; }, 200);
   };
