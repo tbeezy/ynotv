@@ -241,11 +241,10 @@ export function NowPlayingBar({
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 
       const startMs = new Date(currentProgram.start).getTime();
-      const endMs = new Date(currentProgram.end).getTime();
-      const durationMins = Math.round((endMs - startMs) / 60000);
-      const seekSeconds = ratio * (durationMins * 60);
+      const elapsedMins = Math.max(1, Math.ceil((Date.now() - startMs) / 60000));
+      const seekSeconds = ratio * (elapsedMins * 60);
 
-      onCatchupSeek(channel, currentProgram.title, startMs, durationMins, seekSeconds);
+      onCatchupSeek(channel, currentProgram.title, startMs, elapsedMins, seekSeconds);
     }
   }, [isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition]);
 
@@ -259,8 +258,7 @@ export function NowPlayingBar({
       const rect = progressBarRef.current.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const startMs = new Date(currentProgram.start).getTime();
-      const endMs = new Date(currentProgram.end).getTime();
-      const durationSecs = (endMs - startMs) / 1000;
+      const durationSecs = Math.max(1, (Date.now() - startMs) / 1000);
       setHoverPosition(ratio * durationSecs);
     } else {
       setHoverPosition(getSeekPosition(e.clientX));
@@ -288,11 +286,10 @@ export function NowPlayingBar({
       const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 
       const startMs = new Date(currentProgram.start).getTime();
-      const endMs = new Date(currentProgram.end).getTime();
-      const durationMins = Math.round((endMs - startMs) / 60000);
-      const seekSeconds = ratio * (durationMins * 60);
+      const elapsedMins = Math.max(1, Math.ceil((Date.now() - startMs) / 60000));
+      const seekSeconds = ratio * (elapsedMins * 60);
 
-      onCatchupSeek(channel, currentProgram.title, startMs, durationMins, seekSeconds);
+      onCatchupSeek(channel, currentProgram.title, startMs, elapsedMins, seekSeconds);
     }
   }, [isVod, isCatchup, currentProgram, channel, onSeek, onCatchupSeek, getSeekPosition]);
 
@@ -315,8 +312,7 @@ export function NowPlayingBar({
         const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 
         const startMs = new Date(currentProgram.start).getTime();
-        const endMs = new Date(currentProgram.end).getTime();
-        const durationMins = Math.round((endMs - startMs) / 60000);
+        const durationMins = Math.max(1, Math.ceil((Date.now() - startMs) / 60000));
         const seekSeconds = ratio * (durationMins * 60);
 
         onCatchupSeek(channel, currentProgram.title, startMs, durationMins, seekSeconds);
@@ -470,7 +466,7 @@ export function NowPlayingBar({
                 {(Boolean(channel?.tv_archive) || channel?.tv_archive === 1) && currentProgram ? (
                   // Live Catchup
                   <>
-                    <span className="npb-time-elapsed">{formatTime((progress / 100) * ((new Date(currentProgram.end).getTime() - new Date(currentProgram.start).getTime()) / 1000))}</span>
+                    <span className="npb-time-elapsed">{formatTime(Math.max(0, (Date.now() - new Date(currentProgram.start).getTime()) / 1000))}</span>
                     <div
                       ref={progressBarRef}
                       className={`npb-progress-bar npb-progress-interactive ${isHovering || isDragging ? 'active' : ''}`}
@@ -483,22 +479,22 @@ export function NowPlayingBar({
                     >
                       <div
                         className="npb-progress-fill"
-                        style={{ width: `${progress}%` }}
+                        style={{ width: `100%` }}
                       />
                       <div
                         className={`npb-scrubber-handle ${isDragging ? 'dragging' : ''}`}
-                        style={{ left: `${progress}%` }}
+                        style={{ left: `100%` }}
                       />
                       {isHovering && !isDragging && (
                         <div
                           className="npb-time-tooltip"
-                          style={{ left: `${(hoverPosition / ((new Date(currentProgram.end).getTime() - new Date(currentProgram.start).getTime()) / 1000)) * 100}%` }}
+                          style={{ left: `${(hoverPosition / Math.max(1, (Date.now() - new Date(currentProgram.start).getTime()) / 1000)) * 100}%` }}
                         >
                           {formatTime(hoverPosition)}
                         </div>
                       )}
                     </div>
-                    <span className="npb-time-remaining">{timeRemaining || '--'}</span>
+                    <span className="npb-time-remaining">-0:00</span>
                   </>
                 ) : (
                   // Regular Live

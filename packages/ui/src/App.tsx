@@ -252,6 +252,18 @@ function App() {
     syncMpvGeometryRef.current = () => multiview.syncMpvGeometry();
   }, [multiview]);
 
+  // Pending seek ref for deferred scrubbing
+  const pendingCatchupSeekRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (pendingCatchupSeekRef.current !== null && duration > 0 && playing) {
+      const targetSeek = pendingCatchupSeekRef.current;
+      pendingCatchupSeekRef.current = null;
+      Bridge.seek(targetSeek).catch(console.error);
+      setPosition(targetSeek);
+    }
+  }, [duration, playing]);
+
   // Set up the restore callback now that multiview is initialized
   onLoadMainChannelRef.current = (channelName: string, channelUrl: string) => {
     // Create a minimal channel object for UI state
@@ -819,12 +831,17 @@ function App() {
           if (source.type === 'xtream') {
             const { XtreamClient } = await import('@ynotv/local-adapter');
             const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
+
+            // Re-calculate the maximum allowed duration matching EPG start to Now
+            const endMs = startTimeMs + (durationMinutes * 60000);
+            const actualDurationMinutes = Math.ceil((Math.min(endMs, Date.now()) - startTimeMs) / 60000);
+
             playUrl = XtreamClient.buildTimeshiftUrl(
               rawStreamId,
               source.url,
               source.username || '',
               source.password || '',
-              durationMinutes,
+              actualDurationMinutes,
               new Date(startTimeMs)
             );
           }
@@ -855,15 +872,13 @@ function App() {
     // Optimistically update seeking state so UI reacts instantly
     seekingRef.current = true;
 
+    // Defer the seek call until MPV reports it has loaded the file
+    pendingCatchupSeekRef.current = seekSeconds;
+
     // First, ask handlePlayCatchup to transition our playback
     await handlePlayCatchup(channel, programTitle, startTimeMs, durationMinutes);
 
-    // After the stream is loaded, jump to the given time offset.
-    // The player state sets position to 0 initially, so we tell mpv directly
-    await Bridge.seek(seekSeconds);
-    setPosition(seekSeconds);
-
-    // Free the flag
+    // Free the flag shortly after so other controls are unblocked
     setTimeout(() => { seekingRef.current = false; }, 200);
   };
 
