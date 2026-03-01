@@ -842,6 +842,8 @@ function App() {
       setCatchupInfo({ channelId: channel.stream_id, programTitle, startTime: startTimeMs, duration: durationMinutes });
       setPlaying(true);
       setActiveView('none');
+      setCategoriesOpen(false);
+      setSidebarExpanded(false);
     }
   };
 

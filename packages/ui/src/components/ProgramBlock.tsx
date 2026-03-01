@@ -94,8 +94,8 @@ export const ProgramBlock = memo(function ProgramBlock({
   };
 
   const handleProgramClick = () => {
-    // If program is in the past and catchup is available, play catchup
-    if (isPast && isCatchupAvailable && onPlayCatchup && channel) {
+    // If program is in the past or current and catchup is available, play catchup
+    if ((isPast || isCurrent) && isCatchupAvailable && onPlayCatchup && channel) {
       const durationMins = Math.round((progEndMs - progStartMs) / 60000);
       onPlayCatchup(channel, program.title, progStartMs, durationMins);
     } else if (onClick) {
@@ -116,15 +116,15 @@ export const ProgramBlock = memo(function ProgramBlock({
 
   return (
     <div
-      className={`program-block ${isCurrent ? 'current' : ''} ${isPast ? 'past' : ''} ${isRecording ? 'is-recording' : ''} ${isScheduled ? 'is-scheduled' : ''} ${isCatchupAvailable && isPast ? 'catchup-available' : ''}`}
+      className={`program-block ${isCurrent ? 'current' : ''} ${isPast ? 'past' : ''} ${isRecording ? 'is-recording' : ''} ${isScheduled ? 'is-scheduled' : ''} ${isCatchupAvailable && (isPast || isCurrent) ? 'catchup-available' : ''}`}
       style={{
         left: `${style.left}px`,
         width: `${style.width}px`,
-        cursor: (isCatchupAvailable && isPast) || isCurrent ? 'pointer' : 'default'
+        cursor: (isCatchupAvailable && (isPast || isCurrent)) || isCurrent ? 'pointer' : 'default'
       }}
       onClick={handleProgramClick}
       onContextMenu={onContextMenu}
-      title={`${program.title}\n${formatTime(program.start)} - ${formatTime(program.end)}${program.description ? `\n\n${program.description}` : ''}${isCatchupAvailable && isPast ? '\n\nClick to play Catchup archive' : ''}`}
+      title={`${program.title}\n${formatTime(program.start)} - ${formatTime(program.end)}${program.description ? `\n\n${program.description}` : ''}${isCatchupAvailable && (isPast || isCurrent) ? '\n\nClick to play Catchup archive' : ''}`}
     >
       {showRecordingIndicator && (
         <div className="program-recording-indicator">
