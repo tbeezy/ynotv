@@ -68,19 +68,37 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
 
     match app.store(".settings.dat") {
         Ok(store) => {
+            let mut args: Vec<String> = Vec::new();
+
+            // Load user-defined MPV params
             if let Some(params) = store.get("mpvParams") {
                 if let Some(params_str) = params.as_str() {
-                    // Parse params - split by newlines and filter empty lines
-                    let args: Vec<String> = params_str
+                    let custom_args: Vec<String> = params_str
                         .lines()
                         .map(|line| line.trim())
                         .filter(|line| !line.is_empty() && !line.starts_with('#'))
                         .map(|s| s.to_string())
                         .collect();
-                    println!("[MPV] Loaded {} custom parameters from settings", args.len());
-                    return args;
+                    println!("[MPV] Loaded {} custom parameters from settings", custom_args.len());
+                    args.extend(custom_args);
                 }
             }
+
+            // Inject timeshift back-buffer arg if enabled
+            let ts_enabled = store.get("timeshiftEnabled")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
+            if ts_enabled {
+                let cache_bytes = store.get("timeshiftCacheBytes")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1_073_741_824); // default 1 GB
+                let flag = format!("--demuxer-max-back-bytes={}", cache_bytes);
+                println!("[MPV] TimeShift enabled — injecting: {}", flag);
+                args.push(flag);
+            }
+
+            return args;
         }
         Err(e) => {
             eprintln!("[MPV] Failed to open settings store: {}", e);

@@ -46,6 +46,15 @@ interface NowPlayingBarProps {
   onShowAudioModal: () => void;
   onCatchupSeek?: (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number, seekSeconds: number) => void;
   onGoToLive?: () => void;
+  timeshiftEnabled?: boolean;
+  timeshiftState?: {
+    cacheStart: number;
+    cacheEnd: number;
+    timePos: number;
+    behindLive: number;
+    cachedDuration: number;
+  } | null;
+  onTimeshiftCatchUp?: () => void;
 }
 
 // Format seconds to "H:MM:SS" or "M:SS"
@@ -90,7 +99,12 @@ export function NowPlayingBar({
   onShowAudioModal,
   onCatchupSeek,
   onGoToLive,
+  timeshiftEnabled,
+  timeshiftState,
+  onTimeshiftCatchUp,
 }: NowPlayingBarProps) {
+  // scrubMode: 'timeshift' | 'epgcatchup' — local toggle when channel supports both
+  const [scrubMode, setScrubMode] = useState<'timeshift' | 'epgcatchup'>('timeshift');
   // Modal state
   const [showSubtitleModal, setShowSubtitleModal] = useState(false);
   const [showAudioModal, setShowAudioModal] = useState(false);
@@ -488,53 +502,138 @@ export function NowPlayingBar({
               </div>
             ) : (
               <div className="npb-progress-section">
-                {(Boolean(channel?.tv_archive) || channel?.tv_archive === 1) && currentProgram ? (
-                  // Live Catchup
-                  <>
-                    <span className="npb-time-elapsed">{formatTime(Math.max(0, (Date.now() - new Date(currentProgram.start).getTime()) / 1000))}</span>
-                    <div
-                      ref={progressBarRef}
-                      className={`npb-progress-bar npb-progress-interactive ${isHovering || isDragging ? 'active' : ''}`}
-                      onClick={handleProgressClick}
-                      onMouseEnter={() => setIsHovering(true)}
-                      onMouseLeave={() => setIsHovering(false)}
-                      onMouseMove={handleProgressMouseMove}
-                      onMouseDown={handleDragStart}
-                      onTouchStart={handleDragStart}
-                    >
-                      <div
-                        className="npb-progress-fill"
-                        style={{ width: `100%` }}
-                      />
-                      <div
-                        className={`npb-scrubber-handle ${isDragging ? 'dragging' : ''}`}
-                        style={{ left: `100%` }}
-                      />
-                      {isHovering && !isDragging && (
-                        <div
-                          className="npb-time-tooltip"
-                          style={{ left: `${(hoverPosition / Math.max(1, (Date.now() - new Date(currentProgram.start).getTime()) / 1000)) * 100}%` }}
-                        >
-                          {formatTime(hoverPosition)}
+                {(() => {
+                  const hasTimeshiftData = timeshiftEnabled && timeshiftState && timeshiftState.cachedDuration > 1;
+                  const hasEpgCatchup = (Boolean(channel?.tv_archive) || channel?.tv_archive === 1) && currentProgram;
+                  const showTimeshiftScrubber = hasTimeshiftData && (!hasEpgCatchup || scrubMode === 'timeshift');
+                  const showEpgCatchupScrubber = hasEpgCatchup && (!hasTimeshiftData || scrubMode === 'epgcatchup');
+
+                  if (showTimeshiftScrubber && timeshiftState) {
+                    const { cacheStart, cacheEnd, timePos, behindLive, cachedDuration } = timeshiftState;
+                    const playheadPct = Math.max(0, Math.min(100, ((timePos - cacheStart) / cachedDuration) * 100));
+                    const isLive = behindLive < 5;
+
+                    const handleTimeshiftClick = (e: React.MouseEvent<HTMLDivElement>) => {
+                      if (!progressBarRef.current || !onSeek) return;
+                      const rect = progressBarRef.current.getBoundingClientRect();
+                      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                      const targetPos = cacheStart + ratio * cachedDuration;
+                      onSeek(Math.min(Math.max(targetPos, cacheStart), cacheEnd - 1));
+                    };
+
+                    const handleTimeshiftMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+                      if (!progressBarRef.current) return;
+                      const rect = progressBarRef.current.getBoundingClientRect();
+                      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                      setHoverPosition(cacheStart + ratio * cachedDuration);
+                    };
+
+                    return (
+                      <>
+                        <span className="npb-time-elapsed">{formatTime(timePos - cacheStart)}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, alignItems: 'stretch' }}>
+                          <div
+                            ref={progressBarRef}
+                            className={`npb-progress-bar npb-progress-interactive ${isHovering ? 'active' : ''}`}
+                            onClick={handleTimeshiftClick}
+                            onMouseEnter={() => setIsHovering(true)}
+                            onMouseLeave={() => setIsHovering(false)}
+                            onMouseMove={handleTimeshiftMouseMove}
+                          >
+                            <div className="npb-progress-fill" style={{ width: `${playheadPct}%` }} />
+                            <div className="npb-scrubber-handle" style={{ left: `${playheadPct}%` }} />
+                            {isHovering && (
+                              <div
+                                className="npb-time-tooltip"
+                                style={{ left: `${((hoverPosition - cacheStart) / cachedDuration) * 100}%` }}
+                              >
+                                {formatTime(hoverPosition - cacheStart)}
+                              </div>
+                            )}
+                            {/* Live edge marker */}
+                            <div className="npb-live-edge-marker" />
+                          </div>
+                          {/* Below-bar row: cached duration + mode toggle + live state */}
+                          <div className="npb-timeshift-meta">
+                            <span className="npb-timeshift-window">↩ {formatTime(cachedDuration)} buffered</span>
+                            {hasEpgCatchup && (
+                              <button
+                                className="npb-scrub-mode-btn"
+                                onClick={() => setScrubMode('epgcatchup')}
+                                title="Switch to EPG Catchup mode"
+                              >
+                                ⏱ EPG Catchup
+                              </button>
+                            )}
+                            {isLive ? (
+                              <span className="npb-live-badge">● LIVE</span>
+                            ) : (
+                              <span className="npb-behind-live">−{formatTime(behindLive)} behind live</span>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <span className="npb-time-remaining">-0:00</span>
-                  </>
-                ) : (
-                  // Regular Live
-                  <>
-                    <div className="npb-progress-bar">
-                      <div
-                        className="npb-progress-fill"
-                        style={{ width: currentProgram ? `${progress}%` : '0%' }}
-                      />
-                    </div>
-                    <span className="npb-time-remaining">
-                      {timeRemaining || '--'}
-                    </span>
-                  </>
-                )}
+                        <span className="npb-time-remaining">−{formatTime(behindLive)}</span>
+                        {!isLive && onTimeshiftCatchUp && (
+                          <button className="npb-btn npb-live-btn" onClick={onTimeshiftCatchUp} title="Catch up to live">
+                            ⏭ Live
+                          </button>
+                        )}
+                      </>
+                    );
+                  } else if (showEpgCatchupScrubber && currentProgram) {
+                    return (
+                      <>
+                        {hasTimeshiftData && (
+                          <button
+                            className="npb-scrub-mode-btn npb-scrub-mode-btn--back"
+                            onClick={() => setScrubMode('timeshift')}
+                            title="Switch back to TimeShift mode"
+                          >
+                            ⏮ TimeShift
+                          </button>
+                        )}
+                        <span className="npb-time-elapsed">{formatTime(Math.max(0, (Date.now() - new Date(currentProgram.start).getTime()) / 1000))}</span>
+                        <div
+                          ref={progressBarRef}
+                          className={`npb-progress-bar npb-progress-interactive ${isHovering || isDragging ? 'active' : ''}`}
+                          onClick={handleProgressClick}
+                          onMouseEnter={() => setIsHovering(true)}
+                          onMouseLeave={() => setIsHovering(false)}
+                          onMouseMove={handleProgressMouseMove}
+                          onMouseDown={handleDragStart}
+                          onTouchStart={handleDragStart}
+                        >
+                          <div className="npb-progress-fill" style={{ width: `100%` }} />
+                          <div className={`npb-scrubber-handle ${isDragging ? 'dragging' : ''}`} style={{ left: `100%` }} />
+                          {isHovering && !isDragging && (
+                            <div
+                              className="npb-time-tooltip"
+                              style={{ left: `${(hoverPosition / Math.max(1, (Date.now() - new Date(currentProgram.start).getTime()) / 1000)) * 100}%` }}
+                            >
+                              {formatTime(hoverPosition)}
+                            </div>
+                          )}
+                        </div>
+                        <span className="npb-time-remaining">-0:00</span>
+                      </>
+                    );
+                  } else {
+                    // Regular live (no timeshift, no epg catchup)
+                    return (
+                      <>
+                        <div className="npb-progress-bar">
+                          <div
+                            className="npb-progress-fill"
+                            style={{ width: currentProgram ? `${progress}%` : '0%' }}
+                          />
+                        </div>
+                        <span className="npb-time-remaining">
+                          {timeRemaining || '--'}
+                        </span>
+                      </>
+                    );
+                  }
+                })()}
               </div>
             )}
 

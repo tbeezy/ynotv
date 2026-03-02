@@ -332,6 +332,25 @@ async fn connect_ipc<R: Runtime>(
                                             "mute" => status.muted = data.as_bool().unwrap_or(false),
                                             "time-pos" => status.position = data.as_f64().unwrap_or(0.0),
                                             "duration" => status.duration = data.as_f64().unwrap_or(0.0),
+                                            "demuxer-cache-state" => {
+                                                // Emit timeshift-update event for frontend scrubber
+                                                if let Some(obj) = data.as_object() {
+                                                    let cache_start = obj.get("cache-start").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                                    let cache_end = obj.get("cache-end").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                                    let cached_duration = (cache_end - cache_start).max(0.0);
+                                                    let behind_live = (cache_end - status.position).max(0.0);
+                                                    if cached_duration > 0.0 {
+                                                        let ts_state = serde_json::json!({
+                                                            "cacheStart": cache_start,
+                                                            "cacheEnd": cache_end,
+                                                            "timePos": status.position,
+                                                            "behindLive": behind_live,
+                                                            "cachedDuration": cached_duration,
+                                                        });
+                                                        let _ = app_handle.emit("timeshift-update", ts_state);
+                                                    }
+                                                }
+                                            }
                                             _ => {}
                                         }
                                         let _ = app_handle.emit("mpv-status", status.clone());
@@ -386,6 +405,7 @@ async fn connect_ipc<R: Runtime>(
     let _ = send_command_internal(state, "observe_property", vec![json!(3), json!("mute")]).await;
     let _ = send_command_internal(state, "observe_property", vec![json!(4), json!("time-pos")]).await;
     let _ = send_command_internal(state, "observe_property", vec![json!(5), json!("duration")]).await;
+    let _ = send_command_internal(state, "observe_property", vec![json!(6), json!("demuxer-cache-state")]).await;
 
     let _ = app.emit("mpv-ready", true);
     Ok(())

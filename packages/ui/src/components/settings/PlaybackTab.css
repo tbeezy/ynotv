@@ -145,3 +145,160 @@
 .clear-btn:hover {
   background: rgba(255, 80, 80, 0.15);
 }
+
+/* ─── TimeShift Settings ────────────────────────────────────── */
+
+.timeshift-settings {
+  margin-top: 16px;
+}
+
+.timeshift-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  gap: 16px;
+}
+
+.timeshift-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.timeshift-toggle-label {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.timeshift-toggle-sub {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.82rem;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.25s;
+}
+
+.toggle-switch input:checked+.toggle-slider {
+  background: rgba(0, 212, 255, 0.7);
+}
+
+.toggle-switch input:checked+.toggle-slider::before {
+  transform: translateX(20px);
+}
+
+/* Cache presets */
+.timeshift-presets-label {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.timeshift-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.timeshift-preset-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.timeshift-preset-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+.timeshift-preset-btn.active {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.5);
+  color: #00d4ff;
+}
+
+/* Estimate table */
+.timeshift-estimate-table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.timeshift-estimate-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.timeshift-estimate-table td {
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.timeshift-estimate-table tr:last-child td {
+  border-bottom: none;
+}
+
+.timeshift-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(255, 180, 0, 0.07);
+  border: 1px solid rgba(255, 180, 0, 0.2);
+  border-radius: 8px;
+  color: rgba(255, 200, 80, 0.9);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}

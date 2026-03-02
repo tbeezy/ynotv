@@ -50,6 +50,7 @@ import './themes.css';
 import { DEFAULT_SHORTCUTS } from './constants/shortcuts';
 import { useMpvListeners } from './hooks/useMpvListeners';
 import { useAutoSync } from './hooks/useAutoSync';
+import { useTimeshift } from './hooks/useTimeshift';
 
 // Helper to check stream status if mpv fails
 
@@ -171,6 +172,8 @@ function App() {
   const [reopenLastOnStartup, setReopenLastOnStartup] = useState(false);
   const [savedLayoutState, setSavedLayoutState] = useState<SavedLayoutState | null>(null);
   const [layoutSettingsLoaded, setLayoutSettingsLoaded] = useState(false);
+  // Timeshift settings (loaded from store)
+  const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
 
   // Load layout persistence settings on mount
   useEffect(() => {
@@ -200,6 +203,7 @@ function App() {
         if (result.data) {
           setRememberLastChannels(result.data.rememberLastChannels ?? false);
           setReopenLastOnStartup(result.data.reopenLastOnStartup ?? false);
+          setTimeshiftEnabled(result.data.timeshiftEnabled ?? false);
 
           // Use localStorage state if available (more recent), otherwise use Tauri storage
           const layoutState = localStorageState || result.data.savedLayoutState || null;
@@ -254,6 +258,9 @@ function App() {
 
   // Pending seek ref for deferred scrubbing
   const pendingCatchupSeekRef = useRef<number | null>(null);
+
+  // TimeShift — subscribe to demuxer-cache-state events emitted from Rust
+  const timeshiftState = useTimeshift(timeshiftEnabled);
 
   useEffect(() => {
     if (pendingCatchupSeekRef.current !== null && duration > 0 && playing) {
@@ -1591,6 +1598,13 @@ function App() {
         onShowAudioModal={handleShowAudioModal}
         onGoToLive={() => currentChannel && handlePlayChannelRef.current(currentChannel)}
         onCatchupSeek={handleCatchupSeek}
+        timeshiftEnabled={timeshiftEnabled}
+        timeshiftState={timeshiftState}
+        onTimeshiftCatchUp={() => {
+          if (timeshiftState) {
+            handleSeek(Math.max(0, timeshiftState.cacheEnd - 2));
+          }
+        }}
       />
 
       {/* Track Selection Modals */}

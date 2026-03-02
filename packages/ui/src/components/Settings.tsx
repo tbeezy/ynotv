@@ -85,6 +85,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
   // Playback settings state
   const [mpvParams, setMpvParams] = useState<string>('');
+  const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
+  const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824);
 
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -154,6 +156,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         reopenLastOnStartup?: boolean;
         savedLayoutState?: SavedLayoutState;
         mpvParams?: string;
+        timeshiftEnabled?: boolean;
+        timeshiftCacheBytes?: number;
       };
 
       // Load TMDB API key
@@ -220,6 +224,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
       // Load playback settings
       setMpvParams(settings.mpvParams ?? '');
+      setTimeshiftEnabled(settings.timeshiftEnabled ?? false);
+      setTimeshiftCacheBytes(settings.timeshiftCacheBytes ?? 1_073_741_824);
     }
     setSettingsLoaded(true);
   }
@@ -248,6 +254,14 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     setMpvParams(params);
     if (window.storage) {
       await window.storage.updateSettings({ mpvParams: params });
+    }
+  };
+
+  const handleTimeshiftChange = async (enabled: boolean, cacheBytes: number) => {
+    setTimeshiftEnabled(enabled);
+    setTimeshiftCacheBytes(cacheBytes);
+    if (window.storage) {
+      await window.storage.updateSettings({ timeshiftEnabled: enabled, timeshiftCacheBytes: cacheBytes });
     }
   };
 
@@ -430,6 +444,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
           <PlaybackTab
             mpvParams={mpvParams}
             onMpvParamsChange={handleMpvParamsChange}
+            timeshiftEnabled={timeshiftEnabled}
+            timeshiftCacheBytes={timeshiftCacheBytes}
+            onTimeshiftChange={handleTimeshiftChange}
           />
         );
       default:
