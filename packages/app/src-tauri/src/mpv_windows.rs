@@ -168,6 +168,7 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         "--force-window=immediate".into(),
         "--idle=yes".into(),
         "--keep-open=yes".into(),
+        "--cache=yes".into(),
         "--no-osc".into(),
         "--no-osd-bar".into(),
         "--osd-level=0".into(),

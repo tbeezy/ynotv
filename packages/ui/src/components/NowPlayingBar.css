@@ -159,6 +159,7 @@
   gap: 10px;
   flex: 1;
   min-width: 0;
+  min-height: 40px;
 }
 
 .npb-progress-bar {
@@ -589,6 +590,60 @@
 }
 
 /* ─── TimeShift Scrubber ─────────────────────────────────────── */
+
+/* Container for timeshift scrubber */
+.npb-ts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+/* The timeshift scrubber bar - infinite style like YouTube Live */
+.npb-ts-scrubber {
+  position: relative;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: visible;
+  transition: height 0.15s ease;
+}
+
+.npb-ts-scrubber:hover {
+  height: 10px;
+}
+
+/* Fill showing progress within cache window */
+.npb-ts-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #00d4ff, #00a8cc);
+  border-radius: 4px;
+  transition: width 0.1s linear;
+}
+
+/* Scrubber handle - always visible for TimeShift */
+.npb-ts-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.npb-ts-scrubber:hover .npb-ts-handle {
+  transform: translate(-50%, -50%) scale(1.1);
+}
 
 /* Meta row below the timeshift scrubber bar */
 .npb-timeshift-meta {

@@ -531,17 +531,17 @@ export function NowPlayingBar({
                     return (
                       <>
                         <span className="npb-time-elapsed">{formatTime(timePos - cacheStart)}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, alignItems: 'stretch' }}>
+                        <div className="npb-ts-container">
                           <div
                             ref={progressBarRef}
-                            className={`npb-progress-bar npb-progress-interactive ${isHovering ? 'active' : ''}`}
+                            className="npb-ts-scrubber"
                             onClick={handleTimeshiftClick}
                             onMouseEnter={() => setIsHovering(true)}
                             onMouseLeave={() => setIsHovering(false)}
                             onMouseMove={handleTimeshiftMouseMove}
                           >
-                            <div className="npb-progress-fill" style={{ width: `${playheadPct}%` }} />
-                            <div className="npb-scrubber-handle" style={{ left: `${playheadPct}%` }} />
+                            <div className="npb-ts-fill" style={{ width: `${playheadPct}%` }} />
+                            <div className="npb-ts-handle" style={{ left: `${playheadPct}%` }} />
                             {isHovering && (
                               <div
                                 className="npb-time-tooltip"
