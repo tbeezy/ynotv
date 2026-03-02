@@ -18,6 +18,7 @@ import { DvrTab } from './settings/DvrTab';
 import { StartupTab, type SavedLayoutState } from './settings/StartupTab';
 import { TVCalendarTab } from './settings/TVCalendarTab';
 import { PlaybackTab } from './settings/PlaybackTab';
+import { CacheTab } from './settings/CacheTab';
 import type { ShortcutsMap, ThemeId } from '../types/app';
 import './Settings.css';
 
@@ -444,6 +445,11 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
           <PlaybackTab
             mpvParams={mpvParams}
             onMpvParamsChange={handleMpvParamsChange}
+          />
+        );
+      case 'cache':
+        return (
+          <CacheTab
             timeshiftEnabled={timeshiftEnabled}
             timeshiftCacheBytes={timeshiftCacheBytes}
             onTimeshiftChange={handleTimeshiftChange}
