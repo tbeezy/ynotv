@@ -89,13 +89,22 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
+            println!("[MPV] TimeShift enabled from store: {}", ts_enabled);
+
             if ts_enabled {
                 let cache_bytes = store.get("timeshiftCacheBytes")
                     .and_then(|v| v.as_u64())
                     .unwrap_or(1_073_741_824); // default 1 GB
                 let flag = format!("--demuxer-max-back-bytes={}", cache_bytes);
+                println!("[MPV] TimeShift cache bytes from store: {}", cache_bytes);
                 println!("[MPV] TimeShift enabled — injecting: {}", flag);
                 args.push(flag);
+            }
+
+            // Log all args being returned
+            println!("[MPV] All params being passed to MPV:");
+            for (i, arg) in args.iter().enumerate() {
+                println!("[MPV]   [{}]: {}", i, arg);
             }
 
             return args;
@@ -112,9 +121,33 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
 // ============================================================================
 
 #[tauri::command]
-async fn init_mpv<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<(), String> {
+    // Debug: Print stack trace to find who's calling init_mpv
+    println!("[MPV] init_mpv called with {} args", args.len());
+    for (i, arg) in args.iter().enumerate() {
+        println!("[MPV]   Arg[{}]: {}", i, arg);
+    }
+
     // Load custom MPV parameters from settings
-    let custom_params = get_mpv_params_from_store(&app).await;
+    let mut custom_params = get_mpv_params_from_store(&app).await;
+
+    // Merge frontend-provided args (for timeshift settings from loaded state)
+    // Frontend args are added after store params so they take precedence
+    if !args.is_empty() {
+        println!("[MPV] Merging {} frontend-provided args", args.len());
+        for arg in &args {
+            println!("[MPV]   Frontend arg: {}", arg);
+            // Remove any existing arg with same prefix to avoid duplicates
+            let prefix = arg.split('=').next().unwrap_or(arg);
+            custom_params.retain(|p| !p.starts_with(prefix));
+            custom_params.push(arg.clone());
+        }
+    }
+
+    println!("[MPV] Final params for MPV:");
+    for (i, param) in custom_params.iter().enumerate() {
+        println!("[MPV]   [{}]: {}", i, param);
+    }
 
     #[cfg(target_os = "macos")]
     {
@@ -337,6 +370,33 @@ async fn mpv_kill<R: Runtime>(app: AppHandle<R>) {
     {
         mpv_windows::kill_mpv(&app).await;
     }
+}
+
+/// Debug command to get all cache-related MPV properties
+#[tauri::command]
+async fn mpv_get_cache_debug<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    use serde_json::json;
+
+    let mut result = serde_json::Map::new();
+
+    // Get demuxer-max-back-bytes (the cache size setting)
+    let max_bytes = mpv_get_property(app.clone(), "demuxer-max-back-bytes".to_string()).await;
+    result.insert("demuxer-max-back-bytes".to_string(), max_bytes.unwrap_or(json!(null)));
+
+    // Get demuxer-max-bytes
+    let max_bytes_fwd = mpv_get_property(app.clone(), "demuxer-max-bytes".to_string()).await;
+    result.insert("demuxer-max-bytes".to_string(), max_bytes_fwd.unwrap_or(json!(null)));
+
+    // Get cache property
+    let cache_enabled = mpv_get_property(app.clone(), "cache".to_string()).await;
+    result.insert("cache".to_string(), cache_enabled.unwrap_or(json!(null)));
+
+    // Get demuxer-cache-state
+    let cache_state = mpv_get_property(app.clone(), "demuxer-cache-state".to_string()).await;
+    result.insert("demuxer-cache-state".to_string(), cache_state.unwrap_or(json!(null)));
+
+    println!("[MPV Debug] Cache settings: {:?}", result);
+    Ok(serde_json::Value::Object(result))
 }
 
 #[tauri::command]
@@ -1759,6 +1819,7 @@ pub fn run() {
             mpv_sync_window,
             mpv_set_geometry,
             mpv_kill,
+            mpv_get_cache_debug,
             // Multiview secondary MPV commands
             multiview_load_slot,
             multiview_stop_slot,

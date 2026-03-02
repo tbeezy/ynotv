@@ -113,8 +113,18 @@ export const Bridge = {
     isTauri: true,
 
     // MPV Controls
-    async initMpv() {
-        const result = await invoke('init_mpv', { args: [] });
+    async initMpv(timeshiftEnabled?: boolean, timeshiftCacheBytes?: number) {
+        console.log('[Bridge.initMpv] Called with:', { timeshiftEnabled, timeshiftCacheBytes });
+        console.trace('[Bridge.initMpv] Stack trace:');
+
+        // Build args array with cache settings if provided
+        const args: string[] = [];
+        if (timeshiftEnabled && timeshiftCacheBytes && timeshiftCacheBytes > 0) {
+            args.push('--cache=yes');
+            args.push(`--demuxer-max-back-bytes=${timeshiftCacheBytes}`);
+        }
+        console.log('[Bridge.initMpv] Invoking init_mpv with args:', args);
+        const result = await invoke('init_mpv', { args });
         // On macOS, also start window sync for hole punch mode
         const isMacOS = navigator.platform.toLowerCase().includes('mac');
         if (isMacOS) {

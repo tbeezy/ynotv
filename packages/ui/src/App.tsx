@@ -174,6 +174,7 @@ function App() {
   const [layoutSettingsLoaded, setLayoutSettingsLoaded] = useState(false);
   // Timeshift settings (loaded from store)
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
+  const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824); // Default 1GB
 
   // Load layout persistence settings on mount
   useEffect(() => {
@@ -204,6 +205,7 @@ function App() {
           setRememberLastChannels(result.data.rememberLastChannels ?? false);
           setReopenLastOnStartup(result.data.reopenLastOnStartup ?? false);
           setTimeshiftEnabled(result.data.timeshiftEnabled ?? false);
+          setTimeshiftCacheBytes(result.data.timeshiftCacheBytes ?? 1_073_741_824);
 
           // Use localStorage state if available (more recent), otherwise use Tauri storage
           const layoutState = localStorageState || result.data.savedLayoutState || null;
@@ -231,6 +233,10 @@ function App() {
       setMpvReadyState(true);
       syncMpvGeometryRef.current();
     },
+    // Pass timeshift settings from loaded state - wait for settings to load before initializing MPV
+    timeshiftEnabled,
+    timeshiftCacheBytes,
+    settingsLoaded: layoutSettingsLoaded,
   });
   const {
     mpvReady, playing, volume, muted, position, duration, error,

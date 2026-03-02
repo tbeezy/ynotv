@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import './PlaybackTab.css';
 
 const CACHE_PRESETS = [
@@ -19,12 +21,23 @@ interface CacheTabProps {
 }
 
 export function CacheTab({ timeshiftEnabled, timeshiftCacheBytes, onTimeshiftChange }: CacheTabProps) {
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+
   const handleTimeshiftToggle = (enabled: boolean) => {
     onTimeshiftChange(enabled, timeshiftCacheBytes);
   };
 
   const handlePreset = (bytes: number) => {
     onTimeshiftChange(timeshiftEnabled, bytes);
+  };
+
+  const checkMpvCache = async () => {
+    try {
+      const result = await invoke('mpv_get_cache_debug') as Record<string, unknown>;
+      setDebugInfo(JSON.stringify(result, null, 2));
+    } catch (e) {
+      setDebugInfo(`Error: ${e}`);
+    }
   };
 
   return (
@@ -93,8 +106,33 @@ export function CacheTab({ timeshiftEnabled, timeshiftCacheBytes, onTimeshiftCha
               </table>
 
               <p className="timeshift-note">
-                ⚠️ Changes take effect the next time a channel is opened. Buffer lives only in RAM and is reset on channel change.
+                ⚠️ Changes take effect on next restart. Buffer lives only in RAM and is reset on channel change.
               </p>
+
+              {/* Debug section */}
+              <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+                <button
+                  className="sync-btn"
+                  onClick={checkMpvCache}
+                  style={{ maxWidth: '200px' }}
+                >
+                  Check MPV Cache Settings
+                </button>
+                {debugInfo && (
+                  <pre style={{
+                    marginTop: '12px',
+                    padding: '12px',
+                    background: 'rgba(0,0,0,0.3)',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    overflow: 'auto',
+                    maxHeight: '300px',
+                    color: 'rgba(255,255,255,0.8)'
+                  }}>
+                    {debugInfo}
+                  </pre>
+                )}
+              </div>
             </>
           )}
         </div>

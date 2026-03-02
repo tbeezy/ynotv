@@ -22,6 +22,9 @@ export interface MpvState {
 
 interface UseMpvListenersOptions {
     onReady?: () => void;
+    timeshiftEnabled?: boolean;
+    timeshiftCacheBytes?: number;
+    settingsLoaded?: boolean; // Wait for settings before initializing MPV
 }
 
 /**
@@ -49,6 +52,18 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
             setError('mpv API not available');
             return;
         }
+
+        // Don't initialize MPV until settings are loaded from store
+        // This ensures timeshift settings are available before MPV starts
+        if (!options.settingsLoaded) {
+            console.log('[useMpvListeners] Waiting for settings to load before initializing MPV...');
+            return;
+        }
+
+        console.log('[useMpvListeners] Settings loaded, initializing MPV with timeshift:', {
+            enabled: options.timeshiftEnabled,
+            cacheBytes: options.timeshiftCacheBytes
+        });
 
         let unlistenFns: (() => void)[] = [];
 
@@ -101,11 +116,16 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
             ];
 
             // Init MPV after listeners are registered to catch the ready event
-            Bridge.initMpv();
+            // Pass timeshift settings from frontend state (already loaded from store)
+            Bridge.initMpv(options.timeshiftEnabled, options.timeshiftCacheBytes);
         });
 
         return () => { unlistenFns.forEach(fn => fn()); };
-    }, []); // Run once on mount
+    }, [
+        options.settingsLoaded,
+        options.timeshiftEnabled,
+        options.timeshiftCacheBytes
+    ]); // Re-run when settings load or change
 
     return {
         mpvReady, playing, volume, muted, position, duration, error,

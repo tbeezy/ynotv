@@ -178,8 +178,16 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     ];
 
     // Add custom parameters from settings
-    for param in custom_params {
-        args.push(param);
+    println!("[MPV Windows] Adding {} custom params to args", custom_params.len());
+    for param in &custom_params {
+        println!("[MPV Windows]   Adding param: {}", param);
+        args.push(param.clone());
+    }
+
+    // Log final args list
+    println!("[MPV Windows] Final MPV args count: {}", args.len());
+    for (i, arg) in args.iter().enumerate() {
+        println!("[MPV Windows]   Arg[{}]: {}", i, arg);
     }
 
     // Launch MPV using shell plugin
@@ -309,6 +317,7 @@ async fn connect_ipc<R: Runtime>(
 
     tauri::async_runtime::spawn(async move {
         let mut line = String::new();
+        let mut cache_log_counter: u32 = 0;
         let mut status = MpvStatus {
             playing: false,
             volume: 100.0,
@@ -340,6 +349,12 @@ async fn connect_ipc<R: Runtime>(
                                                     let cache_end = obj.get("cache-end").and_then(|v| v.as_f64()).unwrap_or(0.0);
                                                     let cached_duration = (cache_end - cache_start).max(0.0);
                                                     let behind_live = (cache_end - status.position).max(0.0);
+                                                    // Debug: print cache state periodically (every ~30 events ~ 10-15 seconds)
+                                                    cache_log_counter += 1;
+                                                    if cached_duration > 0.0 && cache_log_counter % 30 == 0 {
+                                                        println!("[MPV] Cache state: start={:.1}s, end={:.1}s, duration={:.1}s, behind_live={:.1}s, time_pos={:.1}s",
+                                                            cache_start, cache_end, cached_duration, behind_live, status.position);
+                                                    }
                                                     if cached_duration > 0.0 {
                                                         let ts_state = serde_json::json!({
                                                             "cacheStart": cache_start,
