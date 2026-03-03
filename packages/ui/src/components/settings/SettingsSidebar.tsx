@@ -18,7 +18,8 @@ export type SettingsTabId =
   | 'startup'
   | 'tv-calendar'
   | 'playback'
-  | 'cache';
+  | 'cache'
+  | 'about';
 
 interface SettingsCategory {
   label: string;
@@ -62,6 +63,7 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
       { id: 'shortcuts', label: 'Shortcuts' },
       { id: 'export-import', label: 'Export / Import' },
       { id: 'dvr', label: 'DVR' },
+      { id: 'about', label: 'About' },
     ],
   },
 ];

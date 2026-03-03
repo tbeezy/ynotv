@@ -26,11 +26,21 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZGRERENzgyRkQ3MkE3REMKUldUY3AzTDlndGZkYjZhdVB0QmpTellTMUU3VGdTcXFORWlXbzduMWMrd2V2dk4rR2xKWW95T0kK",
+      "endpoints": [
+        "https://github.com/tbeezy/ynotv/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "nsis",
-      "msi",
       "deb",
       "rpm",
       "appimage",

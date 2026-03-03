@@ -3,6 +3,7 @@ import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
+import { checkForUpdates, checkForUpdatesSilent } from './services/updater';
 import type { ShortcutsMap, ShortcutAction } from './types/app';
 import { Settings } from './components/Settings';
 import type { SettingsTabId } from './components/settings/SettingsSidebar';
@@ -51,6 +52,8 @@ import { DEFAULT_SHORTCUTS } from './constants/shortcuts';
 import { useMpvListeners } from './hooks/useMpvListeners';
 import { useAutoSync } from './hooks/useAutoSync';
 import { useTimeshift } from './hooks/useTimeshift';
+import { UpdateModal } from './components/UpdateModal';
+import { registerUpdateModal } from './services/updater';
 
 // Helper to check stream status if mpv fails
 
@@ -175,6 +178,14 @@ function App() {
   // Timeshift settings (loaded from store)
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
   const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824); // Default 1GB
+
+  // Update modal state
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+
+  // Register update modal callback
+  useEffect(() => {
+    registerUpdateModal(setUpdateModalOpen);
+  }, []);
 
   // Load layout persistence settings on mount
   useEffect(() => {
@@ -542,6 +553,17 @@ function App() {
     };
 
     initDvr();
+  }, []);
+
+  // Check for app updates on startup (wait a bit for app to fully load)
+  useEffect(() => {
+    const checkUpdates = async () => {
+      // Wait 5 seconds after app loads before checking for updates
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      await checkForUpdatesSilent();
+    };
+
+    checkUpdates();
   }, []);
 
   // Listen for DVR events
@@ -1789,6 +1811,12 @@ function App() {
         notifications={watchlistNotifications}
         onSwitch={handleWatchlistSwitch}
         onDismiss={handleWatchlistDismiss}
+      />
+
+      {/* Update Modal */}
+      <UpdateModal
+        isOpen={updateModalOpen}
+        onClose={() => setUpdateModalOpen(false)}
       />
 
     </div>

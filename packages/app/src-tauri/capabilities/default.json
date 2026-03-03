@@ -51,11 +51,14 @@
     "core:window:allow-start-dragging",
     "sql:default",
     "sql:allow-execute",
-    "sql:allow-select"
+    "sql:allow-select",
+    "updater:default",
+    "process:default"
   ],
   "commands": {
     "allow": [
-      "bulk_insert"
+      "bulk_insert",
+      "open_external_url"
     ]
   }
 }

@@ -1,0 +1,23 @@
+{
+  "version": "v1.5.6",
+  "notes": "Test update - bug fixes and improvements",
+  "pub_date": "2026-03-02T18:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "test-signature-placeholder-replace-with-actual-signature",
+      "url": "https://github.com/tbeezy/ynotv/releases/download/v1.5.6/ynoTV_1.5.6_x64-setup.exe"
+    },
+    "darwin-x86_64": {
+      "signature": "test-signature-placeholder-replace-with-actual-signature",
+      "url": "https://github.com/tbeezy/ynotv/releases/download/v1.5.6/ynoTV_1.5.6_x64.app.tar.gz"
+    },
+    "darwin-aarch64": {
+      "signature": "test-signature-placeholder-replace-with-actual-signature",
+      "url": "https://github.com/tbeezy/ynotv/releases/download/v1.5.6/ynoTV_1.5.6_aarch64.app.tar.gz"
+    },
+    "linux-x86_64": {
+      "signature": "test-signature-placeholder-replace-with-actual-signature",
+      "url": "https://github.com/tbeezy/ynotv/releases/download/v1.5.6/ynoTV_1.5.6_amd64.AppImage"
+    }
+  }
+}

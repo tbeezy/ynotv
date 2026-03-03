@@ -1,6 +1,6 @@
 [package]
 name = "ynotv"
-version = "1.0.0"
+version = "1.5.7"
 description = "A Tauri App"
 authors = ["tbeezy"]
 edition = "2021"
@@ -31,6 +31,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
 
 # DVR dependencies
