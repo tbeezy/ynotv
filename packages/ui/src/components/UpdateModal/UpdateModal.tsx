@@ -172,7 +172,7 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
                 You're running the latest version of ynoTV!
               </p>
               <p className="update-modal-version-text">
-                Current version: v{update?.currentVersion || '1.5.4'}
+                Current version: v{update?.currentVersion || '1.5.7'}
               </p>
               <div className="update-modal-actions">
                 <button className="update-modal-btn primary" onClick={handleClose}>
