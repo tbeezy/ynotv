@@ -60,6 +60,10 @@ Recordings can be started instantly on the currently playing channel, scheduled 
 
 Live scoreboards display real-time scores for major sports leagues with detailed game information. Each match shows the associated channel source, with a direct search to find and tune to it immediately.
 
+### EPG Catchup/ Cache Time Shift
+
+Supports providers that provides channels with Catchup/Time Shift. Also has an option to use MPV's --demuxer-max-back-bytes flag to provide instant replay/cache of the channel you're watching with its own scrub bar.
+
 ### TV Calendar
 
 Shows are tracked through the [TVMaze](https://www.tvmaze.com) database. Upcoming episodes appear on a monthly calendar with show posters and episode details, automatically synced daily. Shows can be linked to an IPTV channel for one-click watching, and future episodes can be automatically added to the watchlist with configurable reminder and auto-switch settings.
