@@ -91,6 +91,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const [mpvParams, setMpvParams] = useState<string>('');
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
   const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824);
+  const [liveBufferOffset, setLiveBufferOffset] = useState(0);
 
   // LiveTV settings state
   const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
@@ -166,6 +167,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         mpvParams?: string;
         timeshiftEnabled?: boolean;
         timeshiftCacheBytes?: number;
+        liveBufferOffset?: number;
         epgDarkenCurrent?: boolean;
       };
 
@@ -235,6 +237,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       setMpvParams(settings.mpvParams ?? '');
       setTimeshiftEnabled(settings.timeshiftEnabled ?? false);
       setTimeshiftCacheBytes(settings.timeshiftCacheBytes ?? 1_073_741_824);
+      setLiveBufferOffset(settings.liveBufferOffset ?? 0);
 
       // Load LiveTV settings
       const darkenCurrent = settings.epgDarkenCurrent ?? false;
@@ -274,11 +277,21 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     }
   };
 
-  const handleTimeshiftChange = async (enabled: boolean, cacheBytes: number) => {
+  const handleTimeshiftChange = async (enabled: boolean, cacheBytes: number, bufferOffset?: number) => {
     setTimeshiftEnabled(enabled);
     setTimeshiftCacheBytes(cacheBytes);
+    if (bufferOffset !== undefined) {
+      setLiveBufferOffset(bufferOffset);
+    }
     if (window.storage) {
-      await window.storage.updateSettings({ timeshiftEnabled: enabled, timeshiftCacheBytes: cacheBytes });
+      const settings: { timeshiftEnabled: boolean; timeshiftCacheBytes: number; liveBufferOffset?: number } = {
+        timeshiftEnabled: enabled,
+        timeshiftCacheBytes: cacheBytes,
+      };
+      if (bufferOffset !== undefined) {
+        settings.liveBufferOffset = bufferOffset;
+      }
+      await window.storage.updateSettings(settings);
     }
   };
 
@@ -490,6 +503,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
           <CacheTab
             timeshiftEnabled={timeshiftEnabled}
             timeshiftCacheBytes={timeshiftCacheBytes}
+            liveBufferOffset={liveBufferOffset}
             onTimeshiftChange={handleTimeshiftChange}
           />
         );

@@ -179,6 +179,7 @@ function App() {
   // Timeshift settings (loaded from store)
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
   const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824); // Default 1GB
+  const [liveBufferOffset, setLiveBufferOffset] = useState(0); // Default 0 seconds behind live
   // Search settings
   const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
 
@@ -220,6 +221,7 @@ function App() {
           setReopenLastOnStartup(result.data.reopenLastOnStartup ?? false);
           setTimeshiftEnabled(result.data.timeshiftEnabled ?? false);
           setTimeshiftCacheBytes(result.data.timeshiftCacheBytes ?? 1_073_741_824);
+          setLiveBufferOffset(result.data.liveBufferOffset ?? 0);
           setIncludeSourceInSearch(result.data.includeSourceInSearch ?? false);
 
           // Apply EPG darken current setting on load
@@ -1334,7 +1336,7 @@ function App() {
         timeshiftState={timeshiftState}
         onTimeshiftCatchUp={() => {
           if (timeshiftState) {
-            handleSeek(Math.max(0, timeshiftState.cacheEnd - 2));
+            handleSeek(Math.max(0, timeshiftState.cacheEnd - liveBufferOffset));
           }
         }}
       />
