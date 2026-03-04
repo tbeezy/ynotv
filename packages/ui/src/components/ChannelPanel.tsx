@@ -45,6 +45,8 @@ interface ChannelPanelProps {
   onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
   // Search display props
   includeSourceInSearch?: boolean;
+  // Current playing channel for syncing preview
+  currentChannel?: StoredChannel | null;
 }
 
 export function ChannelPanel({
@@ -67,6 +69,7 @@ export function ChannelPanel({
   currentLayout,
   onSendToSlot,
   includeSourceInSearch,
+  currentChannel,
 }: ChannelPanelProps) {
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);
@@ -454,6 +457,15 @@ export function ChannelPanel({
 
   // Selected channel for preview/info (defaults to first channel or current)
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+
+  // Sync selectedChannelId with currentChannel when it changes externally
+  // (watchlist notification, autoswitch, calendar, multiview swap)
+  useEffect(() => {
+    if (currentChannel?.stream_id && currentChannel.stream_id !== selectedChannelId) {
+      setSelectedChannelId(currentChannel.stream_id);
+      lastChannelIdRef.current = currentChannel.stream_id;
+    }
+  }, [currentChannel?.stream_id]);
 
   // Derive selected channel object
   const selectedChannel = useMemo(() =>

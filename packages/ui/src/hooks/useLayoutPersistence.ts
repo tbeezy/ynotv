@@ -274,6 +274,8 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
           channelName: slot.channelName,
           channelUrl: slot.channelUrl,
         };
+        // Notify parent that main channel changed (for preview panel sync)
+        onLoadMainChannel?.(slot.channelName || '', slot.channelUrl);
       }
 
       await baseSwapWithMain(slotId, currentSlots);
@@ -291,7 +293,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
         await saveStateWithRefs();
       }
     },
-    [baseSwapWithMain, enabled, saveStateWithRefs]
+    [baseSwapWithMain, enabled, saveStateWithRefs, onLoadMainChannel]
   );
 
   /**

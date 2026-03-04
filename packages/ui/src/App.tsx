@@ -264,7 +264,7 @@ function App() {
   } = mpv;
 
   // Ref for the restore callback (avoid circular dependency)
-  const onLoadMainChannelRef = useRef<(name: string, url: string) => void>(() => { });
+  const onLoadMainChannelRef = useRef<(name: string, url: string) => void | Promise<void>>(() => { });
 
   // Multiview with persistence
   const multiview = useLayoutPersistence({
@@ -297,9 +297,18 @@ function App() {
   }, [duration, playing]);
 
   // Set up the restore callback now that multiview is initialized
-  onLoadMainChannelRef.current = (channelName: string, channelUrl: string) => {
-    // Create a minimal channel object for UI state
-    const restoredChannel: StoredChannel = {
+  onLoadMainChannelRef.current = async (channelName: string, channelUrl: string) => {
+    // Try to find the actual channel from database for proper UI state
+    let channel: StoredChannel | null = null;
+    try {
+      const channels = await db.channels.whereRaw('name = ?', [channelName]).toArray();
+      channel = channels.find(c => c.direct_url === channelUrl) || channels[0] || null;
+    } catch (e) {
+      console.warn('[App] Failed to lookup channel:', e);
+    }
+
+    // Use the actual channel if found, otherwise create a minimal one
+    const restoredChannel: StoredChannel = channel || {
       stream_id: `restored_${Date.now()}`,
       source_id: 'restored',
       name: channelName,
@@ -1726,6 +1735,7 @@ function App() {
         currentLayout={multiview.layout}
         onSendToSlot={multiview.sendToSlot}
         includeSourceInSearch={includeSourceInSearch}
+        currentChannel={currentChannel}
       />
 
       {/* Settings Panel */}
