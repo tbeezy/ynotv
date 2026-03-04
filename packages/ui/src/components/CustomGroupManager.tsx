@@ -31,9 +31,10 @@ interface SearchResultsProps {
     onRemove: (streamId: string) => void;
     enabledSourceIdsKey: string;
     enabledSourceIds: Set<string> | undefined;
+    sources: any[];
 }
 
-function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceIdsKey, enabledSourceIds }: SearchResultsProps) {
+function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceIdsKey, enabledSourceIds, sources }: SearchResultsProps) {
     const [results, setResults] = useState<StoredChannel[] | undefined>();
 
     useEffect(() => {
@@ -100,19 +101,40 @@ function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceI
     if (!results) return <div className="cgm-empty">Searching…</div>;
     if (results.length === 0) return <div className="cgm-empty">No results for "{query}"</div>;
 
+    // Group results by source
+    const sourceNameMap = new Map(sources.map(s => [s.id, s.name]));
+    const groupedBySource = new Map<string, StoredChannel[]>();
+
+    for (const ch of results) {
+        const sourceChannels = groupedBySource.get(ch.source_id) || [];
+        sourceChannels.push(ch);
+        groupedBySource.set(ch.source_id, sourceChannels);
+    }
+
     return (
         <div className="tree-root">
-            {results.map(ch => {
-                const inGroup = groupChannelIds.has(ch.stream_id);
-                return (
-                    <div key={ch.stream_id} className={`channel-node${inGroup ? ' in-group' : ''}`}
-                        onClick={() => inGroup ? onRemove(ch.stream_id) : onAdd(ch)}>
-                        <span className="cgm-check">{inGroup ? '✓' : '+'}</span>
-                        {ch.stream_icon && <img src={ch.stream_icon} className="channel-node-logo" alt="" />}
-                        <span className="channel-node-label">{ch.name}</span>
+            {Array.from(groupedBySource.entries()).map(([sourceId, channels]) => (
+                <div key={sourceId} className="tree-node source-wrapper">
+                    <div className="tree-node-header source-node">
+                        <span className="node-icon">▼</span>
+                        <span>{sourceNameMap.get(sourceId) || 'Unknown Source'}</span>
+                        <span className="cgm-count">{channels.length}</span>
                     </div>
-                );
-            })}
+                    <div className="node-children">
+                        {channels.map(ch => {
+                            const inGroup = groupChannelIds.has(ch.stream_id);
+                            return (
+                                <div key={ch.stream_id} className={`channel-node${inGroup ? ' in-group' : ''}`}
+                                    onClick={() => inGroup ? onRemove(ch.stream_id) : onAdd(ch)}>
+                                    <span className="cgm-check">{inGroup ? '✓' : '+'}</span>
+                                    {ch.stream_icon && <img src={ch.stream_icon} className="channel-node-logo" alt="" />}
+                                    <span className="channel-node-label">{ch.name}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
@@ -161,11 +183,11 @@ function TreeView({ sourcesAndCategories, searchQuery, expandedNodes, toggleNode
 
     if (!sourcesAndCategories) return <div className="cgm-empty">Loading sources…</div>;
 
-    if (searchQuery.length > 2) {
-        return <SearchResults query={searchQuery} groupChannelIds={groupChannelIds} onAdd={onAdd} onRemove={onRemove} enabledSourceIdsKey={enabledSourceIdsKey} enabledSourceIds={enabledSourceIds} />;
-    }
-
     const { sources, categories } = sourcesAndCategories;
+
+    if (searchQuery.length > 2) {
+        return <SearchResults query={searchQuery} groupChannelIds={groupChannelIds} onAdd={onAdd} onRemove={onRemove} enabledSourceIdsKey={enabledSourceIdsKey} enabledSourceIds={enabledSourceIds} sources={sources} />;
+    }
     return (
         <div className="tree-root">
             {sources.map((source: any) => {
