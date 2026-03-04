@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { Virtuoso } from 'react-virtuoso';
 import { useChannels, useCategories, useAllPrograms } from '../hooks/useChannels';
 import { useTimeGrid } from '../hooks/useTimeGrid';
@@ -42,6 +43,8 @@ interface ChannelPanelProps {
   // Multiview props
   currentLayout?: string;
   onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
+  // Search display props
+  includeSourceInSearch?: boolean;
 }
 
 export function ChannelPanel({
@@ -63,6 +66,7 @@ export function ChannelPanel({
   onWatchlistRefresh,
   currentLayout,
   onSendToSlot,
+  includeSourceInSearch,
 }: ChannelPanelProps) {
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);
@@ -79,6 +83,31 @@ export function ChannelPanel({
 
   // Get active recordings for showing indicators
   const { recordings: activeRecordings } = useActiveRecordings(5000);
+
+  // Cached source name map to avoid repeated Tauri calls
+  const { version: sourceVersion } = useSourceVersion();
+  const sourceNameMapRef = useRef<Map<string, string>>(new Map());
+  const lastSourceVersionRef = useRef<number>(-1);
+
+  // Fetch source names only when version changes
+  useEffect(() => {
+    if (lastSourceVersionRef.current === sourceVersion) return;
+    if (!includeSourceInSearch || !window.storage) return;
+
+    async function fetchSourceNames() {
+      const result = await window.storage.getSources();
+      if (result.data) {
+        const map = new Map<string, string>();
+        for (const source of result.data) {
+          map.set(source.id, source.name);
+        }
+        sourceNameMapRef.current = map;
+        lastSourceVersionRef.current = sourceVersion;
+      }
+    }
+
+    fetchSourceNames();
+  }, [sourceVersion, includeSourceInSearch]);
 
   // State for search results programs
   const [searchChannelPrograms, setSearchChannelPrograms] = useState<Map<string, StoredProgram[]>>(new Map());
@@ -273,6 +302,10 @@ export function ChannelPanel({
         for (const streamId of uniqueStreamIds) {
           const channel = await db.channels.get(streamId);
           if (channel) {
+            // Add source_name if includeSourceInSearch is enabled (using cached map)
+            if (includeSourceInSearch) {
+              channel.source_name = sourceNameMapRef.current.get(channel.source_id) || undefined;
+            }
             programChannelsMap.set(streamId, channel);
 
             // Get all matching programs for this channel
@@ -287,7 +320,7 @@ export function ChannelPanel({
     }
 
     fetchSearchData();
-  }, [isSearchMode, searchChannels, searchPrograms]);
+  }, [isSearchMode, searchChannels, searchPrograms, includeSourceInSearch]);
 
   // Fetch data for watchlist
   useEffect(() => {
@@ -886,6 +919,7 @@ export function ChannelPanel({
                       activeRecordings={activeRecordings}
                       currentLayout={currentLayout}
                       onSendToSlot={onSendToSlot}
+                      includeSourceInSearch={includeSourceInSearch}
                     />
                   ))}
                 </div>
@@ -952,6 +986,7 @@ export function ChannelPanel({
                                   onPlay={() => handleSearchChannelClick(channel)}
                                   onFavoriteToggle={refreshSearchResults}
                                   activeRecordings={activeRecordings}
+                                  includeSourceInSearch={includeSourceInSearch}
                                 />
                               ))}
                             </div>
@@ -975,6 +1010,7 @@ export function ChannelPanel({
                                   onPlay={() => handleSearchChannelClick(channel)}
                                   onFavoriteToggle={refreshSearchResults}
                                   activeRecordings={activeRecordings}
+                                  includeSourceInSearch={includeSourceInSearch}
                                 />
                               ))}
                             </div>

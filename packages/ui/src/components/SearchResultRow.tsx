@@ -19,6 +19,7 @@ interface SearchResultRowProps {
   activeRecordings?: RecordingInfo[];
   currentLayout?: string;
   onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
+  includeSourceInSearch?: boolean;
 }
 
 // Width of the channel info column (must match ChannelPanel)
@@ -49,6 +50,7 @@ export const SearchResultRow = memo(function SearchResultRow({
   activeRecordings = [],
   currentLayout,
   onSendToSlot,
+  includeSourceInSearch,
 }: SearchResultRowProps) {
   const now = new Date();
 
@@ -167,6 +169,16 @@ export const SearchResultRow = memo(function SearchResultRow({
           </span>
           {channel.channel_num && (
             <span className="guide-channel-number">Ch. {channel.channel_num}</span>
+          )}
+          {includeSourceInSearch && channel.source_name && (
+            <span className="guide-channel-source" style={{
+              fontSize: '0.75rem',
+              color: 'rgba(255, 255, 255, 0.5)',
+              marginTop: '2px',
+              display: 'block'
+            }}>
+              {channel.source_name}
+            </span>
           )}
         </div>
       </div>

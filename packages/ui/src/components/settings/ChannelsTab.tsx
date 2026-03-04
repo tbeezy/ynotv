@@ -1,13 +1,23 @@
 import { useSetChannelSortOrder } from '../../stores/uiStore';
+import './PlaybackTab.css'; // Reuse existing tab styles for toggle
 
 interface ChannelsTabProps {
   channelSortOrder: 'alphabetical' | 'number';
   onChannelSortOrderChange: (order: 'alphabetical' | 'number') => void;
+  includeSourceInSearch: boolean;
+  onIncludeSourceInSearchChange: (enabled: boolean) => void;
+}
+
+async function saveIncludeSourceInSearch(enabled: boolean) {
+  if (!window.storage) return;
+  await window.storage.updateSettings({ includeSourceInSearch: enabled });
 }
 
 export function ChannelsTab({
   channelSortOrder,
   onChannelSortOrderChange,
+  includeSourceInSearch,
+  onIncludeSourceInSearchChange,
 }: ChannelsTabProps) {
   const setChannelSortOrder = useSetChannelSortOrder();
 
@@ -46,6 +56,39 @@ export function ChannelsTab({
           "Channel Number" uses the order from your provider (Xtream num or M3U tvg-chno).
           Channels without a number will appear at the end, sorted alphabetically.
         </p>
+      </div>
+
+      <div className="settings-section" style={{ marginTop: '24px' }}>
+        <div className="section-header">
+          <h3>Search</h3>
+        </div>
+
+        <p className="section-description">
+          Configure how channel search works.
+        </p>
+
+        <div className="timeshift-settings">
+          <div className="timeshift-toggle-row">
+            <div className="timeshift-toggle-info">
+              <span className="timeshift-toggle-label">Include Source name in search</span>
+              <span className="timeshift-toggle-sub">
+                When enabled, search will also match against source names, and the source name will be displayed in search results.
+                This helps distinguish between channels with the same name from different sources.
+              </span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={includeSourceInSearch}
+                onChange={(e) => {
+                onIncludeSourceInSearchChange(e.target.checked);
+                saveIncludeSourceInSearch(e.target.checked);
+              }}
+              />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   );

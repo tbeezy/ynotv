@@ -64,6 +64,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
   // Channel display state
   const [channelSortOrder, setChannelSortOrder] = useState<'alphabetical' | 'number'>('alphabetical');
+  const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
 
   // Shortcuts state
   const [shortcuts, setShortcuts] = useState<ShortcutsMap>({});
@@ -151,6 +152,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         allowLanSources?: boolean;
         debugLoggingEnabled?: boolean;
         channelSortOrder?: 'alphabetical' | 'number';
+        includeSourceInSearch?: boolean;
         tmdbMatchingEnabled?: boolean;
         shortcuts?: ShortcutsMap;
         channelFontSize?: number;
@@ -202,8 +204,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       setDebugLoggingEnabled(settings.debugLoggingEnabled ?? false);
 
       // Load channel display settings
-      // Load channel display settings
       setChannelSortOrder(settings.channelSortOrder ?? 'alphabetical');
+      setIncludeSourceInSearch(settings.includeSourceInSearch ?? false);
 
       // Load shortcuts
       if (settings.shortcuts) {
@@ -349,6 +351,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     }
   };
 
+  const handleIncludeSourceInSearchChange = async (value: boolean) => {
+    setIncludeSourceInSearch(value);
+    if (window.storage) {
+      await window.storage.updateSettings({ includeSourceInSearch: value });
+    }
+  };
+
   function renderTabContent() {
     switch (activeTab) {
       case 'sources':
@@ -385,6 +394,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
           <ChannelsTab
             channelSortOrder={channelSortOrder}
             onChannelSortOrderChange={setChannelSortOrder}
+            includeSourceInSearch={includeSourceInSearch}
+            onIncludeSourceInSearchChange={handleIncludeSourceInSearchChange}
           />
         );
       case 'movies':

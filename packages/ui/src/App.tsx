@@ -178,6 +178,8 @@ function App() {
   // Timeshift settings (loaded from store)
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
   const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824); // Default 1GB
+  // Search settings
+  const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
 
   // Update modal state
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -217,6 +219,7 @@ function App() {
           setReopenLastOnStartup(result.data.reopenLastOnStartup ?? false);
           setTimeshiftEnabled(result.data.timeshiftEnabled ?? false);
           setTimeshiftCacheBytes(result.data.timeshiftCacheBytes ?? 1_073_741_824);
+          setIncludeSourceInSearch(result.data.includeSourceInSearch ?? false);
 
           // Apply EPG darken current setting on load
           if (result.data.epgDarkenCurrent) {
@@ -422,7 +425,7 @@ function App() {
   }, [searchQuery]);
 
   // Fetch search results
-  const searchChannels = useChannelSearch(debouncedSearchQuery, 200);
+  const searchChannels = useChannelSearch(debouncedSearchQuery, 200, includeSourceInSearch);
   const searchPrograms = useProgramSearch(debouncedSearchQuery, 200);
 
   // Fetch watchlist when in watchlist mode or when refresh is triggered
@@ -1722,6 +1725,7 @@ function App() {
         onWatchlistRefresh={() => setWatchlistRefreshTrigger(v => v + 1)}
         currentLayout={multiview.layout}
         onSendToSlot={multiview.sendToSlot}
+        includeSourceInSearch={includeSourceInSearch}
       />
 
       {/* Settings Panel */}

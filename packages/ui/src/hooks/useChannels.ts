@@ -3,9 +3,10 @@ import { db, getLastCategory, setLastCategory } from '../db';
 import type { StoredChannel, StoredCategory, SourceMeta, StoredProgram } from '../db';
 import { decompressEpgDescription } from '../utils/compression';
 import { getRecentChannels, onRecentChannelsUpdate } from '../utils/recentChannels';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { applyFilterWords } from './useFilterWords';
+import type { Source } from '@ynotv/core';
 
 // Hook to get enabled source IDs (for filtering data from disabled sources)
 // Returns null during loading to avoid hiding all data
@@ -23,6 +24,42 @@ export function useEnabledSources(): Set<string> | null {
   if (sources === undefined || sources === null) return null;
 
   return new Set(sources.map(s => s.id));
+}
+
+// Cached source names map to avoid repeated Tauri calls
+let cachedSourceNameMap: Map<string, string> | null = null;
+let cachedSourceVersion = -1;
+
+// Hook to get source name map - cached to avoid repeated Tauri calls
+function useSourceNameMap(): Map<string, string> | null {
+  const { version } = useSourceVersion();
+  const [sourceMap, setSourceMap] = useState<Map<string, string> | null>(cachedSourceNameMap);
+
+  useEffect(() => {
+    // Return cached version if still valid
+    if (cachedSourceNameMap && cachedSourceVersion === version) {
+      setSourceMap(cachedSourceNameMap);
+      return;
+    }
+
+    async function fetchSources() {
+      if (!window.storage) return;
+      const result = await window.storage.getSources();
+      if (result.data) {
+        const map = new Map<string, string>();
+        for (const source of result.data) {
+          map.set(source.id, source.name);
+        }
+        cachedSourceNameMap = map;
+        cachedSourceVersion = version;
+        setSourceMap(map);
+      }
+    }
+
+    fetchSources();
+  }, [version]);
+
+  return sourceMap;
 }
 
 // Hook to get all categories across all sources (filtered by enabled sources and categories)
@@ -332,8 +369,9 @@ function parseCategoryIds(categoryIdsJson: string | string[] | number[] | undefi
 }
 
 // Hook to search channels by name - only searches enabled categories
-export function useChannelSearch(query: string, limit = 50) {
+export function useChannelSearch(query: string, limit = 50, includeSourceInSearch = false) {
   const enabledSourceIds = useEnabledSources();
+  const sourceNameMap = useSourceNameMap();
 
   const channels = useLiveQuery(
     async () => {
@@ -361,23 +399,62 @@ export function useChannelSearch(query: string, limit = 50) {
 
       if (enabledCategoryIds.size === 0) return [];
 
+      // Get source name matches for search (using cached map)
+      let sourceNameMatches: string[] = [];
+      if (includeSourceInSearch && sourceNameMap) {
+        for (const [sourceId, sourceName] of sourceNameMap.entries()) {
+          if (sourceName.toLowerCase().includes(query.toLowerCase())) {
+            sourceNameMatches.push(sourceId);
+          }
+        }
+      }
+
       // Search channels that match the name and belong to an enabled category
       // json_each lets SQLite expand the category_ids JSON array inline
       const categoryPlaceholders = Array.from(enabledCategoryIds).map(() => '?').join(',');
-      const filteredChannels = await dbInstance.select(
-        `SELECT DISTINCT c.*
-         FROM channels c, json_each(c.category_ids) AS cat
-         WHERE c.name LIKE ?
-         AND c.source_id IN (${sourcePlaceholders})
-         AND (c.enabled IS NULL OR c.enabled != 0)
-         AND cat.value IN (${categoryPlaceholders})
-         LIMIT ?`,
-        [`%${query}%`, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
-      );
+
+      let filteredChannels: any[];
+
+      if (includeSourceInSearch && sourceNameMatches.length > 0) {
+        // Include channels where name matches OR source_id matches the source name search
+        const sourceMatchPlaceholders = sourceNameMatches.map(() => '?').join(',');
+        filteredChannels = await dbInstance.select(
+          `SELECT DISTINCT c.*
+           FROM channels c
+           CROSS JOIN json_each(c.category_ids) AS cat
+           WHERE (c.name LIKE ? OR c.source_id IN (${sourceMatchPlaceholders}))
+           AND c.source_id IN (${sourcePlaceholders})
+           AND (c.enabled IS NULL OR c.enabled != 0)
+           AND cat.value IN (${categoryPlaceholders})
+           LIMIT ?`,
+          [`%${query}%`, ...sourceNameMatches, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
+        );
+      } else {
+        // Original search - only by channel name
+        filteredChannels = await dbInstance.select(
+          `SELECT DISTINCT c.*
+           FROM channels c
+           CROSS JOIN json_each(c.category_ids) AS cat
+           WHERE c.name LIKE ?
+           AND c.source_id IN (${sourcePlaceholders})
+           AND (c.enabled IS NULL OR c.enabled != 0)
+           AND cat.value IN (${categoryPlaceholders})
+           LIMIT ?`,
+          [`%${query}%`, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
+        );
+      }
+
+      // Add source_name to channels if includeSourceInSearch is enabled
+      if (includeSourceInSearch && sourceNameMap) {
+        filteredChannels = filteredChannels.map(ch => ({
+          ...ch,
+          source_name: sourceNameMap.get(ch.source_id) || undefined
+        }));
+      }
 
       return filteredChannels as StoredChannel[];
     },
-    [query, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+    [query, limit, includeSourceInSearch, sourceNameMap, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
   );
   return channels ?? [];
 }

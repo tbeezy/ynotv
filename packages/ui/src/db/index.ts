@@ -27,6 +27,9 @@ export interface StoredChannel extends Omit<Channel, 'stream_icon' | 'epg_channe
   xmltv_id?: string;
   series_no?: number;
   live?: number;
+
+  // Optional source name (populated during search for display purposes)
+  source_name?: string;
 }
 
 // Extended category with channel count
