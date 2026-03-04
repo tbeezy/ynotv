@@ -15,6 +15,7 @@
   transition: background 0.15s ease, border-color 0.15s ease;
   box-sizing: border-box;
   min-width: 0;
+  z-index: 10;
 }
 
 .program-block:hover {

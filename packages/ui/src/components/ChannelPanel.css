@@ -56,17 +56,64 @@
 }
 
 
-.guide-current-time-indicator::after {
-  content: '';
+/* Current Time Indicator - Vertical line with dot */
+.guide-current-time-indicator {
   position: absolute;
   top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent-primary, #00d4ff) 0%, var(--accent-primary, #00d4ff) 100%);
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* Time Header - ensure proper stacking context */
+.guide-time-header {
+  position: relative;
+  z-index: 5;
+}
+
+/* Time header specific styling for the indicator */
+.guide-time-header .guide-current-time-indicator {
+  position: absolute;
+  top: 28px; /* Position at bottom of time header (height is 32px) */
+  left: 0;
+  height: 8px;
+  width: 2px;
+  background: transparent;
+  z-index: 100;
+}
+
+.guide-time-header .guide-current-time-indicator::before {
+  content: '';
+  position: absolute;
+  top: -3px;
   left: 50%;
   transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  background-color: #ff3b30;
-  border-radius: 50%;
-  box-shadow: 0 0 4px rgba(255, 59, 48, 0.6);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--accent-primary, #00d4ff);
+  pointer-events: none;
+  z-index: 101;
+}
+
+/* Channel rows area - extends through the grid */
+.guide-channels .guide-current-time-indicator,
+.guide-content .guide-current-time-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent-primary, rgba(0, 212, 255, 0.6)) 0%, rgba(0, 212, 255, 0.3) 100%);
+  z-index: 200; /* Above EPG program blocks */
+  pointer-events: none;
+}
+
+.guide-channels .guide-current-time-indicator::before,
+.guide-content .guide-current-time-indicator::before {
+  display: none; /* Hide dot in channel rows, only show in header */
 }
 
 /* Split Layout Styles */

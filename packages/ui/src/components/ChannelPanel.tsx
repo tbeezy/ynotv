@@ -195,6 +195,15 @@ export function ChannelPanel({
     return () => clearInterval(timer);
   }, []);
 
+  // Calculate current time indicator position
+  const currentTimeIndicatorPosition = useMemo(() => {
+    const hoursFromStart = (currentTime.getTime() - windowStart.getTime()) / (1000 * 60 * 60);
+    const position = hoursFromStart * pixelsPerHour;
+    // Only show if within visible window
+    if (position < 0 || position > availableWidth) return null;
+    return position;
+  }, [currentTime, windowStart, pixelsPerHour, availableWidth]);
+
   // Keyboard navigation
   useEffect(() => {
     if (!visible) return;
@@ -753,6 +762,13 @@ export function ChannelPanel({
                   </span>
                 );
               })}
+              {/* Current time indicator */}
+              {currentTimeIndicatorPosition !== null && (
+                <div
+                  className="guide-current-time-indicator"
+                  style={{ left: currentTimeIndicatorPosition }}
+                />
+              )}
             </div>
           </div>
         )}
@@ -1010,6 +1026,13 @@ export function ChannelPanel({
                   </div>
                 ),
               }}
+            />
+          )}
+          {/* Current time indicator - spans through all channel rows */}
+          {!isSearchMode && !isWatchlistMode && currentTimeIndicatorPosition !== null && (
+            <div
+              className="guide-current-time-indicator"
+              style={{ left: currentTimeIndicatorPosition + CHANNEL_COLUMN_WIDTH }}
             />
           )}
         </div>
