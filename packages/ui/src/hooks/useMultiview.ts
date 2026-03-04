@@ -14,6 +14,7 @@ export interface ViewerSlot {
 export interface MainSlot {
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
 }
 
 const EMPTY_SLOTS: ViewerSlot[] = [
@@ -123,7 +124,7 @@ export function secondaryRect(slotId: 2 | 3 | 4, mode: LayoutMode): { x: number;
 export function useMultiview() {
     const [layout, setLayout] = useState<LayoutMode>('main');
     const [slots, setSlots] = useState<ViewerSlot[]>(EMPTY_SLOTS.map(s => ({ ...s })));
-    const mainSlotRef = useRef<MainSlot>({ channelName: null, channelUrl: null });
+    const mainSlotRef = useRef<MainSlot>({ channelName: null, channelUrl: null, sourceName: null });
     const layoutRef = useRef<LayoutMode>('main');
     const slotsRef = useRef<ViewerSlot[]>(slots);
 
@@ -268,8 +269,8 @@ export function useMultiview() {
         // Re-bind when layout changes to/from multiview modes
     }, [layout, syncMpvGeometry, repositionSecondarySlots]);
 
-    const notifyMainLoaded = useCallback((channelName: string, channelUrl: string) => {
-        mainSlotRef.current = { channelName, channelUrl };
+    const notifyMainLoaded = useCallback((channelName: string, channelUrl: string, sourceName?: string | null) => {
+        mainSlotRef.current = { channelName, channelUrl, sourceName: sourceName || null };
     }, []);
 
     // Tracks the URL currently loaded in each secondary MPV's process
@@ -391,13 +392,14 @@ export function useMultiview() {
         const prevMain = { ...mainSlotRef.current };
         const newMainUrl = slot.channelUrl;
         const newMainName = slot.channelName;
+        const newMainSourceName = slot.sourceName;
 
         if (isTabModeRef.current && savedStateRef.current) {
             // Update saved state for deferred loading of new secondary assignment
             if (prevMain.channelUrl) {
                 savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
                     s.id === slotId
-                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: null, active: true }
+                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: prevMain.sourceName, active: true }
                         : s
                 );
             } else {
@@ -410,20 +412,20 @@ export function useMultiview() {
             setSlots(prev => prev.map(s =>
                 s.id === slotId
                     ? (prevMain.channelUrl
-                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: null, active: true }
+                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: prevMain.sourceName, active: true }
                         : { ...s, channelName: null, channelUrl: null, sourceName: null, active: false })
                     : s
             ));
 
             // Still change the primary MPV, because primary MPV runs in background of Tab UI
             await invoke('mpv_load', { url: newMainUrl });
-            mainSlotRef.current = { channelName: newMainName, channelUrl: newMainUrl };
+            mainSlotRef.current = { channelName: newMainName, channelUrl: newMainUrl, sourceName: newMainSourceName };
             return;
         }
 
         // Load the slot's stream into primary MPV
         await invoke('mpv_load', { url: newMainUrl });
-        mainSlotRef.current = { channelName: newMainName, channelUrl: newMainUrl };
+        mainSlotRef.current = { channelName: newMainName, channelUrl: newMainUrl, sourceName: newMainSourceName };
 
         // Put the old main stream into the secondary slot
         if (prevMain.channelUrl) {
@@ -436,7 +438,7 @@ export function useMultiview() {
             activeUrlsRef.current[slotId] = prevMain.channelUrl;
             setSlots(prev => prev.map(s =>
                 s.id === slotId
-                    ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: null, active: true }
+                    ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: prevMain.sourceName, active: true }
                     : s
             ));
         } else {

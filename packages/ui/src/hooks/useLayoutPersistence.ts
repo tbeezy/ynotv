@@ -14,6 +14,7 @@ export interface SavedLayoutState {
   mainChannel: {
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
   };
   slots: {
     id: 2 | 3 | 4;
@@ -30,7 +31,7 @@ interface UseLayoutPersistenceOptions {
   initialSavedState?: SavedLayoutState | null;
   settingsLoaded?: boolean;
   mpvReady?: boolean;
-  onLoadMainChannel?: (channelName: string, channelUrl: string) => void;
+  onLoadMainChannel?: (channelName: string, channelUrl: string, sourceName?: string | null) => void;
 }
 
 /**
@@ -168,9 +169,9 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
    * Notify that main channel loaded - tracks for persistence
    */
   const notifyMainLoaded = useCallback(
-    (channelName: string, channelUrl: string) => {
-      baseNotifyMainLoaded(channelName, channelUrl);
-      mainSlotRef.current = { channelName, channelUrl };
+    (channelName: string, channelUrl: string, sourceName?: string | null) => {
+      baseNotifyMainLoaded(channelName, channelUrl, sourceName);
+      mainSlotRef.current = { channelName, channelUrl, sourceName: sourceName || null };
 
       // Save state immediately
       if (enabled) {
@@ -274,9 +275,10 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
         mainSlotRef.current = {
           channelName: slot.channelName,
           channelUrl: slot.channelUrl,
+          sourceName: slot.sourceName,
         };
         // Notify parent that main channel changed (for preview panel sync)
-        onLoadMainChannel?.(slot.channelName || '', slot.channelUrl);
+        onLoadMainChannel?.(slot.channelName || '', slot.channelUrl, slot.sourceName);
       }
 
       await baseSwapWithMain(slotId, currentSlots);
@@ -288,7 +290,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
             ...s,
             channelName: oldMain.channelName,
             channelUrl: oldMain.channelUrl,
-            sourceName: null, // Main slot doesn't track source name
+            sourceName: oldMain.sourceName,
             active: !!oldMain.channelUrl
           } : s
         );
@@ -339,12 +341,15 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       if (state.mainChannel.channelUrl) {
         console.log(
           '[useLayoutPersistence] Restoring main channel:',
-          state.mainChannel.channelName
+          state.mainChannel.channelName,
+          'source:',
+          state.mainChannel.sourceName
         );
         if (onLoadMainChannel) {
           onLoadMainChannel(
             state.mainChannel.channelName || '',
-            state.mainChannel.channelUrl
+            state.mainChannel.channelUrl,
+            state.mainChannel.sourceName
           );
         } else {
           await invoke('mpv_load', { url: state.mainChannel.channelUrl }).catch(
@@ -354,7 +359,8 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
         mainSlotRef.current = { ...state.mainChannel };
         baseNotifyMainLoaded(
           state.mainChannel.channelName || '',
-          state.mainChannel.channelUrl
+          state.mainChannel.channelUrl,
+          state.mainChannel.sourceName
         );
       }
 

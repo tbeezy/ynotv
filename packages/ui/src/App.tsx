@@ -264,7 +264,7 @@ function App() {
   } = mpv;
 
   // Ref for the restore callback (avoid circular dependency)
-  const onLoadMainChannelRef = useRef<(name: string, url: string) => void | Promise<void>>(() => { });
+  const onLoadMainChannelRef = useRef<(name: string, url: string, sourceName?: string | null) => void | Promise<void>>(() => { });
 
   // Multiview with persistence
   const multiview = useLayoutPersistence({
@@ -273,7 +273,7 @@ function App() {
     initialSavedState: savedLayoutState,
     settingsLoaded: layoutSettingsLoaded,
     mpvReady: mpvReadyState,
-    onLoadMainChannel: (name, url) => onLoadMainChannelRef.current(name, url),
+    onLoadMainChannel: (name, url, sourceName) => onLoadMainChannelRef.current(name, url, sourceName),
   });
 
   // Update the ref so onReady can call the latest syncMpvGeometry
@@ -297,7 +297,7 @@ function App() {
   }, [duration, playing]);
 
   // Set up the restore callback now that multiview is initialized
-  onLoadMainChannelRef.current = async (channelName: string, channelUrl: string) => {
+  onLoadMainChannelRef.current = async (channelName: string, channelUrl: string, sourceName?: string | null) => {
     // Try to find the actual channel from database for proper UI state
     let channel: StoredChannel | null = null;
     try {
@@ -328,8 +328,8 @@ function App() {
     setPlaying(true);
     setActiveView('none');
 
-    // Also notify multiview so swap logic works
-    multiview.notifyMainLoaded(channelName, channelUrl);
+    // Also notify multiview so swap logic works (preserve sourceName)
+    multiview.notifyMainLoaded(channelName, channelUrl, sourceName);
   };
 
   const [currentChannel, setCurrentChannel] = useState<StoredChannel | null>(null);
@@ -835,8 +835,20 @@ function App() {
         : channel;
       setCurrentChannel(resolvedChannel);
       setPlaying(true);
+      // Look up source name for multiview display
+      let sourceName: string | null = null;
+      if (channel.source_id && window.storage) {
+        try {
+          const sourceRes = await window.storage.getSource(channel.source_id);
+          if (sourceRes.data) {
+            sourceName = sourceRes.data.name;
+          }
+        } catch (e) {
+          console.warn('[App] Failed to get source name:', e);
+        }
+      }
       // Notify multiview hook what's now in MPV (needed for swap logic)
-      multiview.notifyMainLoaded(channel.name, result.url);
+      multiview.notifyMainLoaded(channel.name, result.url, sourceName);
 
       // Capture video metadata after successful load
       import('./services/video-metadata').then(({ captureAndSaveMetadata }) => {
