@@ -48,7 +48,8 @@ function WindowSizeSettings({ width, height, onChange }: { width: number; height
   const handleUseCurrentSize = async () => {
     try {
       const appWindow = getCurrentWindow();
-      const size = await appWindow.outerSize();
+      // Use innerSize to match what we save and apply (inner size, not outer)
+      const size = await appWindow.innerSize();
       // Convert from physical pixels to logical pixels
       const factor = await appWindow.scaleFactor();
       const logicalWidth = Math.round(size.width / factor);

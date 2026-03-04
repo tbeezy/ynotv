@@ -1564,7 +1564,8 @@ fn save_window_state(app: &tauri::AppHandle) {
         if window.is_fullscreen().unwrap_or(false) {
             return;
         }
-        let size = match window.outer_size() {
+        // Use inner_size to match what setSize() sets in the frontend
+        let size = match window.inner_size() {
             Ok(s) => s,
             Err(_) => return,
         };
