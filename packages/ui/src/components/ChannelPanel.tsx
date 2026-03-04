@@ -215,11 +215,7 @@ export function ChannelPanel({
     goToNow,
   } = useTimeGrid({ availableWidth });
 
-  // Get stream IDs for programs lookup
-  const streamIds = useMemo(() => channels.map((ch) => ch.stream_id), [channels]);
-
-  // Fetch ALL programs at once (no lazy loading by time window)
-  const programs = useAllPrograms(streamIds);
+  // Programs will be fetched after selectedChannel is defined (see below)
 
   // Update current time every minute
   useEffect(() => {
@@ -457,6 +453,19 @@ export function ChannelPanel({
 
   // Selected channel for preview/info - stores the full channel object
   const [selectedChannel, setSelectedChannel] = useState<StoredChannel | null>(null);
+
+  // Get stream IDs for programs lookup
+  // Include selectedChannel (from currentChannel prop) in case it's from a different category/source
+  const streamIds = useMemo(() => {
+    const ids = channels.map((ch) => ch.stream_id);
+    if (selectedChannel?.stream_id && !ids.includes(selectedChannel.stream_id)) {
+      ids.push(selectedChannel.stream_id);
+    }
+    return ids;
+  }, [channels, selectedChannel?.stream_id]);
+
+  // Fetch ALL programs at once (no lazy loading by time window)
+  const programs = useAllPrograms(streamIds);
 
   // Sync selectedChannel with currentChannel when it changes externally
   // (watchlist notification, autoswitch, calendar, multiview swap)
