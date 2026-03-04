@@ -27,7 +27,7 @@ interface ChannelRowProps {
   categoryId?: string | null;
   activeRecordings?: RecordingInfo[];
   currentLayout?: string;
-  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
 }
 
 export const ChannelRow = memo(function ChannelRow({

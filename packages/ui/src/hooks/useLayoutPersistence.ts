@@ -19,6 +19,7 @@ export interface SavedLayoutState {
     id: 2 | 3 | 4;
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
     active: boolean;
   }[];
 }
@@ -229,8 +230,8 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
           // Only restore slots that aren't already active
           for (const slot of slotsToRestore) {
             if (!currentlyActiveSlots.has(slot.id)) {
-              console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName);
-              await baseSendToSlot(slot.id, slot.channelName || '', slot.channelUrl || '');
+              console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName, 'source:', slot.sourceName);
+              await baseSendToSlot(slot.id, slot.channelName || '', slot.channelUrl || '', slot.sourceName || null);
               await new Promise((r) => setTimeout(r, 200));
             }
           }
@@ -244,16 +245,16 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
    * Send a channel to a slot with persistence
    */
   const sendToSlot = useCallback(
-    async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => {
-      console.log('[useLayoutPersistence] sendToSlot:', slotId, channelName);
+    async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => {
+      console.log('[useLayoutPersistence] sendToSlot:', slotId, channelName, sourceName);
 
-      await baseSendToSlot(slotId, channelName, channelUrl);
+      await baseSendToSlot(slotId, channelName, channelUrl, sourceName);
 
       // Save state after loading
       if (enabled) {
         // Manually update slotsRef so we don't save stale React state before the next render tick
         slotsRef.current = slotsRef.current.map(s =>
-          s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
+          s.id === slotId ? { ...s, channelName, channelUrl, sourceName, active: true } : s
         );
         await saveStateWithRefs();
       }
@@ -287,6 +288,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
             ...s,
             channelName: oldMain.channelName,
             channelUrl: oldMain.channelUrl,
+            sourceName: null, // Main slot doesn't track source name
             active: !!oldMain.channelUrl
           } : s
         );
@@ -306,7 +308,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       if (enabled) {
         // Zero out target slot manually before save tick
         slotsRef.current = slotsRef.current.map(s =>
-          s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+          s.id === slotId ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s
         );
         await saveStateWithRefs();
       }
@@ -365,11 +367,12 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       console.log('[useLayoutPersistence] Restoring', slotsToRestore.length, 'slots:', slotsToRestore.map(s => ({ id: s.id, name: s.channelName })));
 
       for (const slot of slotsToRestore) {
-        console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName);
+        console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName, 'source:', slot.sourceName);
         await baseSendToSlot(
           slot.id,
           slot.channelName || '',
           slot.channelUrl || '',
+          slot.sourceName || null, // Pass sourceName for display in mini media bar
           true // force - bypass tab mode check during restore
         );
         // Wait between slots for React to render mini media bars

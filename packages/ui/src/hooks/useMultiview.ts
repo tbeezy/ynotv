@@ -7,6 +7,7 @@ export interface ViewerSlot {
     id: 2 | 3 | 4;
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
     active: boolean;
 }
 
@@ -16,9 +17,9 @@ export interface MainSlot {
 }
 
 const EMPTY_SLOTS: ViewerSlot[] = [
-    { id: 2, channelName: null, channelUrl: null, active: false },
-    { id: 3, channelName: null, channelUrl: null, active: false },
-    { id: 4, channelName: null, channelUrl: null, active: false },
+    { id: 2, channelName: null, channelUrl: null, sourceName: null, active: false },
+    { id: 3, channelName: null, channelUrl: null, sourceName: null, active: false },
+    { id: 4, channelName: null, channelUrl: null, sourceName: null, active: false },
 ];
 
 // Height of the bottom bar in bigbottom layout (must match CSS)
@@ -313,7 +314,7 @@ export function useMultiview() {
             if (ops.length > 0) await Promise.all(ops);
 
             // Wipe them from state
-            setSlots(prev => prev.map(s => (s.id === 3 || s.id === 4) ? { ...s, channelName: null, channelUrl: null, active: false } : s));
+            setSlots(prev => prev.map(s => (s.id === 3 || s.id === 4) ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s));
             activeUrlsRef.current[3] = null;
             activeUrlsRef.current[4] = null;
         }
@@ -331,14 +332,14 @@ export function useMultiview() {
     }, [syncMpvGeometry, repositionSecondarySlots]);
 
     /** Load a stream URL into a secondary MPV slot */
-    const sendToSlot = useCallback(async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, force: boolean = false) => {
+    const sendToSlot = useCallback(async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName: string | null = null, force: boolean = false) => {
         if (isTabModeRef.current && savedStateRef.current && !force) {
             console.log(`[useMultiview] Deferring load for slot ${slotId} while a full-screen tab is open`);
             savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
-                s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
+                s.id === slotId ? { ...s, channelName, channelUrl, sourceName, active: true } : s
             );
             setSlots(prev => prev.map(s =>
-                s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
+                s.id === slotId ? { ...s, channelName, channelUrl, sourceName, active: true } : s
             ));
             return;
         }
@@ -349,6 +350,7 @@ export function useMultiview() {
             console.log('[useMultiview] sendToSlot', {
                 slotId,
                 channelName,
+                sourceName,
                 url: channelUrl.substring(0, 60) + '...',
                 mode,
                 rect: { x: r.x, y: r.y, w: r.w, h: r.h },
@@ -361,7 +363,7 @@ export function useMultiview() {
             });
             activeUrlsRef.current[slotId] = channelUrl;
             setSlots(prev => prev.map(s =>
-                s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
+                s.id === slotId ? { ...s, channelName, channelUrl, sourceName, active: true } : s
             ));
 
             // Allow React to render the active DOM element (adding the 36px control bar)
@@ -395,12 +397,12 @@ export function useMultiview() {
             if (prevMain.channelUrl) {
                 savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
                     s.id === slotId
-                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, active: true }
+                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: null, active: true }
                         : s
                 );
             } else {
                 savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
-                    s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+                    s.id === slotId ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s
                 );
             }
 
@@ -408,8 +410,8 @@ export function useMultiview() {
             setSlots(prev => prev.map(s =>
                 s.id === slotId
                     ? (prevMain.channelUrl
-                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, active: true }
-                        : { ...s, channelName: null, channelUrl: null, active: false })
+                        ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: null, active: true }
+                        : { ...s, channelName: null, channelUrl: null, sourceName: null, active: false })
                     : s
             ));
 
@@ -434,7 +436,7 @@ export function useMultiview() {
             activeUrlsRef.current[slotId] = prevMain.channelUrl;
             setSlots(prev => prev.map(s =>
                 s.id === slotId
-                    ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, active: true }
+                    ? { ...s, channelName: prevMain.channelName, channelUrl: prevMain.channelUrl, sourceName: null, active: true }
                     : s
             ));
         } else {
@@ -444,7 +446,7 @@ export function useMultiview() {
             await invoke('multiview_reposition_slot', { slotId, x: -10000, y: -10000, width: 1, height: 1 }).catch(() => { });
             activeUrlsRef.current[slotId] = null;
             setSlots(prev => prev.map(s =>
-                s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+                s.id === slotId ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s
             ));
         }
     }, []);
@@ -452,10 +454,10 @@ export function useMultiview() {
     const stopSlot = useCallback(async (slotId: 2 | 3 | 4) => {
         if (isTabModeRef.current && savedStateRef.current) {
             savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
-                s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+                s.id === slotId ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s
             );
             setSlots(prev => prev.map(s =>
-                s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+                s.id === slotId ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s
             ));
             return;
         }
@@ -466,7 +468,7 @@ export function useMultiview() {
         await invoke('multiview_reposition_slot', { slotId, x: -10000, y: -10000, width: 1, height: 1 }).catch(() => { });
         activeUrlsRef.current[slotId] = null;
         setSlots(prev => prev.map(s =>
-            s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+            s.id === slotId ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s
         ));
     }, []);
 

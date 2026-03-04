@@ -42,7 +42,7 @@ interface ChannelPanelProps {
   onWatchlistRefresh?: () => void;
   // Multiview props
   currentLayout?: string;
-  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
   // Search display props
   includeSourceInSearch?: boolean;
   // Current playing channel for syncing preview

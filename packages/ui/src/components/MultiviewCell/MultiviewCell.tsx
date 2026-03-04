@@ -5,13 +5,14 @@
  * This component only provides the interactive overlay: click to swap, right-click to stop,
  * and a placeholder when the slot is empty.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './MultiviewCell.css';
 
 interface MultiviewCellProps {
     slotId: 2 | 3 | 4;
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
     active: boolean;
     onSwapWithMain: () => void;
     onStop: () => void;
@@ -22,11 +23,24 @@ export function MultiviewCell({
     slotId,
     channelName,
     channelUrl,
+    sourceName,
     active,
     onSwapWithMain,
     onStop,
     onSetProperty,
 }: MultiviewCellProps) {
+    // Check if source name should be shown in multiview
+    const [showSourceName, setShowSourceName] = useState(false);
+    useEffect(() => {
+        async function loadSetting() {
+            if (!window.storage) return;
+            const result = await window.storage.getSettings();
+            if (result.data) {
+                setShowSourceName(result.data.includeSourceInSearch ?? false);
+            }
+        }
+        loadSetting();
+    }, []);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
     const [volume, setVolume] = useState(100);
     const [muted, setMuted] = useState(true);
@@ -73,6 +87,14 @@ export function MultiviewCell({
         }
     };
 
+    // Compute display name with source prefix if setting is enabled
+    const displayName = useMemo(() => {
+        if (showSourceName && sourceName) {
+            return `[${sourceName}] ${channelName}`;
+        }
+        return channelName;
+    }, [showSourceName, sourceName, channelName]);
+
     return (
         <div className="multiview-cell-container">
             <div
@@ -80,7 +102,7 @@ export function MultiviewCell({
                 className={`multiview-cell ${active ? 'multiview-cell-active' : 'multiview-cell-empty'}`}
                 onClick={handleClick}
                 onContextMenu={handleRightClick}
-                title={active ? `Click to swap "${channelName}" to main` : 'Right-click a channel → Send to Viewer'}
+                title={active ? `Click to swap "${displayName}" to main` : 'Right-click a channel → Send to Viewer'}
             >
                 {!active && (
                     <div className="multiview-cell-overlay">
@@ -98,7 +120,7 @@ export function MultiviewCell({
 
                 {active && (
                     <div className="multiview-cell-badge">
-                        <span className="multiview-cell-name">{channelName}</span>
+                        <span className="multiview-cell-name">{displayName}</span>
                         <span className="multiview-cell-swap-hint">click to swap</span>
                     </div>
                 )}
@@ -106,7 +128,7 @@ export function MultiviewCell({
 
             {active && (
                 <div className="multiview-cell-controls">
-                    <span className="multiview-cell-controls-name">{channelName}</span>
+                    <span className="multiview-cell-controls-name">{displayName}</span>
                     <div className="multiview-cell-controls-buttons">
                         <div className="multiview-cell-controls-volume" onClick={e => e.stopPropagation()}>
                             <button className="multiview-cell-controls-btn" onClick={handleMuteToggle} title={muted ? "Unmute" : "Mute"}>
