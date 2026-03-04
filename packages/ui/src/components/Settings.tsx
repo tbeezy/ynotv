@@ -20,6 +20,7 @@ import { TVCalendarTab } from './settings/TVCalendarTab';
 import { PlaybackTab } from './settings/PlaybackTab';
 import { CacheTab } from './settings/CacheTab';
 import { AboutTab } from './settings/AboutTab';
+import { LiveTVTab } from './settings/LiveTVTab';
 import type { ShortcutsMap, ThemeId } from '../types/app';
 import './Settings.css';
 
@@ -89,6 +90,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const [mpvParams, setMpvParams] = useState<string>('');
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
   const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824);
+
+  // LiveTV settings state
+  const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
 
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -160,6 +164,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         mpvParams?: string;
         timeshiftEnabled?: boolean;
         timeshiftCacheBytes?: number;
+        epgDarkenCurrent?: boolean;
       };
 
       // Load TMDB API key
@@ -228,6 +233,14 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       setMpvParams(settings.mpvParams ?? '');
       setTimeshiftEnabled(settings.timeshiftEnabled ?? false);
       setTimeshiftCacheBytes(settings.timeshiftCacheBytes ?? 1_073_741_824);
+
+      // Load LiveTV settings
+      const darkenCurrent = settings.epgDarkenCurrent ?? false;
+      setEpgDarkenCurrent(darkenCurrent);
+      // Apply CSS class on load
+      if (darkenCurrent) {
+        document.documentElement.classList.add('epg-darken-current');
+      }
     }
     setSettingsLoaded(true);
   }
@@ -264,6 +277,19 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     setTimeshiftCacheBytes(cacheBytes);
     if (window.storage) {
       await window.storage.updateSettings({ timeshiftEnabled: enabled, timeshiftCacheBytes: cacheBytes });
+    }
+  };
+
+  const handleEpgDarkenCurrentChange = async (enabled: boolean) => {
+    setEpgDarkenCurrent(enabled);
+    // Apply CSS class to document for ProgramBlock to use
+    if (enabled) {
+      document.documentElement.classList.add('epg-darken-current');
+    } else {
+      document.documentElement.classList.remove('epg-darken-current');
+    }
+    if (window.storage) {
+      await window.storage.updateSettings({ epgDarkenCurrent: enabled });
     }
   };
 
@@ -454,6 +480,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             timeshiftEnabled={timeshiftEnabled}
             timeshiftCacheBytes={timeshiftCacheBytes}
             onTimeshiftChange={handleTimeshiftChange}
+          />
+        );
+      case 'livetv':
+        return (
+          <LiveTVTab
+            epgDarkenCurrent={epgDarkenCurrent}
+            onEpgDarkenCurrentChange={handleEpgDarkenCurrentChange}
           />
         );
       case 'about':

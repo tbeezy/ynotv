@@ -218,6 +218,11 @@ function App() {
           setTimeshiftEnabled(result.data.timeshiftEnabled ?? false);
           setTimeshiftCacheBytes(result.data.timeshiftCacheBytes ?? 1_073_741_824);
 
+          // Apply EPG darken current setting on load
+          if (result.data.epgDarkenCurrent) {
+            document.documentElement.classList.add('epg-darken-current');
+          }
+
           // Use localStorage state if available (more recent), otherwise use Tauri storage
           const layoutState = localStorageState || result.data.savedLayoutState || null;
           setSavedLayoutState(layoutState);

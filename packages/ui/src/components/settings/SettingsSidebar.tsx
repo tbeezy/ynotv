@@ -19,6 +19,7 @@ export type SettingsTabId =
   | 'tv-calendar'
   | 'playback'
   | 'cache'
+  | 'livetv'
   | 'about';
 
 interface SettingsCategory {
@@ -45,6 +46,7 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
     label: 'Library',
     tabs: [
       { id: 'channels', label: 'Channels' },
+      { id: 'livetv', label: 'LiveTV' },
       { id: 'movies', label: 'Movies' },
       { id: 'series', label: 'Series' },
     ],

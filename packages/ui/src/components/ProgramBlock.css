@@ -31,6 +31,18 @@
   background: color-mix(in srgb, var(--accent-primary, #00d4ff) 12%, transparent);
 }
 
+/* Darker highlight when epg-darken-current is enabled on document */
+.epg-darken-current .program-block.current {
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, rgba(0, 0, 0, 0.4));
+  border-left-color: var(--accent-primary, #00d4ff);
+  border-left-width: 3px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.epg-darken-current .program-block.current:hover {
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, rgba(0, 0, 0, 0.5));
+}
+
 /* Empty state (no EPG data) */
 .program-block.empty {
   background: rgba(255, 255, 255, 0.02);
