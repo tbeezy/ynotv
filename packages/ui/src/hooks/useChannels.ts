@@ -3,7 +3,7 @@ import { db, getLastCategory, setLastCategory } from '../db';
 import type { StoredChannel, StoredCategory, SourceMeta, StoredProgram } from '../db';
 import { decompressEpgDescription } from '../utils/compression';
 import { getRecentChannels, onRecentChannelsUpdate } from '../utils/recentChannels';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { applyFilterWords } from './useFilterWords';
 import type { Source } from '@ynotv/core';
@@ -76,6 +76,11 @@ export function useCategories() {
     return unsubscribe;
   }, []);
 
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
+
   const categories = useLiveQuery(
     async () => {
       // Don't filter if sources haven't loaded yet
@@ -131,7 +136,7 @@ export function useCategories() {
 
       return [...virtualCategories, ...enabledCategories];
     },
-    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading', recentVersion]
+    [enabledSourceKey, recentVersion]
   );
   return categories ?? [];
 }
@@ -157,6 +162,10 @@ export function useCategoriesForSource(sourceId: string | null) {
 // Filters out channels from disabled sources
 export function useChannels(categoryId: string | null, sortOrder: 'alphabetical' | 'number' = 'alphabetical', options?: { skip?: boolean }) {
   const enabledSourceIds = useEnabledSources();
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
   const channels = useLiveQuery(
     async () => {
       if (options?.skip) return [];
@@ -303,7 +312,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
       // Default: alphabetical
       return results.sort((a, b) => a.name.localeCompare(b.name));
     },
-    [categoryId, sortOrder, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading', options?.skip]
+    [categoryId, sortOrder, enabledSourceKey, options?.skip]
   );
   return channels ?? [];
 }
@@ -372,6 +381,11 @@ function parseCategoryIds(categoryIdsJson: string | string[] | number[] | undefi
 export function useChannelSearch(query: string, limit = 50, includeSourceInSearch = false) {
   const enabledSourceIds = useEnabledSources();
   const sourceNameMap = useSourceNameMap();
+
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
 
   const channels = useLiveQuery(
     async () => {
@@ -454,7 +468,7 @@ export function useChannelSearch(query: string, limit = 50, includeSourceInSearc
 
       return filteredChannels as StoredChannel[];
     },
-    [query, limit, includeSourceInSearch, sourceNameMap, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+    [query, limit, includeSourceInSearch, sourceNameMap, enabledSourceKey]
   );
   return channels ?? [];
 }
@@ -463,6 +477,11 @@ export function useChannelSearch(query: string, limit = 50, includeSourceInSearc
 // Hook to search programs (EPG) by title - only searches enabled categories
 export function useProgramSearch(query: string, limit = 50) {
   const enabledSourceIds = useEnabledSources();
+
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
 
   const programs = useLiveQuery(
     async () => {
@@ -541,7 +560,7 @@ export function useProgramSearch(query: string, limit = 50) {
 
       return filteredPrograms;
     },
-    [query, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+    [query, limit, enabledSourceKey]
   );
   return programs ?? [];
 }
@@ -568,6 +587,11 @@ export interface SourceWithCategories {
 export function useCategoriesBySource(): SourceWithCategories[] {
   const enabledSourceIds = useEnabledSources();
   const { version } = useSourceVersion(); // Track reorders and edits
+
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
 
   const data = useLiveQuery(
     async () => {
@@ -681,7 +705,7 @@ export function useCategoriesBySource(): SourceWithCategories[] {
 
       return finalArray;
     },
-    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading', version]
+    [enabledSourceKey, version]
   );
 
   return data ?? [];
@@ -690,6 +714,10 @@ export function useCategoriesBySource(): SourceWithCategories[] {
 // Hook to get categories with their channel counts (filtered by enabled sources)
 export function useCategoriesWithCounts(): CategoryWithCount[] {
   const enabledSourceIds = useEnabledSources();
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
   const data = useLiveQuery(
     async () => {
       // Get all categories first
@@ -728,7 +756,7 @@ export function useCategoriesWithCounts(): CategoryWithCount[] {
 
       return withCounts;
     },
-    [enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']
+    [enabledSourceKey]
   );
   return data ?? [];
 }
@@ -739,8 +767,6 @@ export function useCurrentProgram(streamId: string | null): StoredProgram | null
     async () => {
       if (!streamId) return null;
       const now = new Date();
-      // Debug logging for EPG troubleshooting
-      console.log(`[useCurrentProgram] Querying for streamId: ${streamId}, now: ${now.toISOString()}`);
 
       // Find program where start <= now < end
       const prog = await db.programs
@@ -750,23 +776,11 @@ export function useCurrentProgram(streamId: string | null): StoredProgram | null
         .first();
 
       if (prog) {
-        console.log(`[useCurrentProgram] Found program for ${streamId}: ${prog.title}`);
         // Decompress description if needed
         return {
           ...prog,
           description: decompressEpgDescription(prog.description) ?? prog.description,
         };
-      } else {
-        // Debug: check if ANY programs exist for this stream_id
-        const allProgs = await db.programs.where('stream_id').equals(streamId).toArray();
-        console.log(`[useCurrentProgram] No current program for ${streamId}. Total programs for this channel: ${allProgs.length}`);
-        if (allProgs.length > 0) {
-          console.log(`[useCurrentProgram] Sample programs:`, allProgs.slice(0, 3).map(p => ({
-            title: p.title,
-            start: p.start,
-            end: p.end
-          })));
-        }
       }
       return null;
     },

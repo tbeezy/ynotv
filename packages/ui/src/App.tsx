@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
 import { checkForUpdates, checkForUpdatesSilent } from './services/updater';
-import type { ShortcutsMap, ShortcutAction } from './types/app';
+import type { ShortcutsMap } from './types/app';
 import { Settings } from './components/Settings';
 import type { SettingsTabId } from './components/settings/SettingsSidebar';
 import { Sidebar, type View } from './components/Sidebar';
@@ -48,10 +47,12 @@ import { MultiviewLayout } from './components/MultiviewLayout/MultiviewLayout';
 import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
 import type { LayoutMode, SavedLayoutState } from './hooks/useLayoutPersistence';
 import './themes.css';
-import { DEFAULT_SHORTCUTS } from './constants/shortcuts';
 import { useMpvListeners } from './hooks/useMpvListeners';
 import { useAutoSync } from './hooks/useAutoSync';
 import { useTimeshift } from './hooks/useTimeshift';
+import { useDvrEvents } from './hooks/useDvrEvents';
+import { useDvrUrlResolver } from './hooks/useDvrUrlResolver';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { UpdateModal } from './components/UpdateModal';
 import { registerUpdateModal } from './services/updater';
 
@@ -583,103 +584,13 @@ function App() {
     checkUpdates();
   }, []);
 
-  // Listen for DVR events
-  useEffect(() => {
-    const setupDvrListener = async () => {
-      try {
-        const unlisten = await listen('dvr:event', (event) => {
-          const data = event.payload as {
-            event_type: string;
-            schedule_id: number;
-            recording_id?: number;
-            channel_name: string;
-            program_title: string;
-            message?: string;
-          };
-          console.log('[DVR Event]', data.event_type, data);
-
-          // Show toast notification for recording events
-          if (data.event_type === 'started') {
-            console.log(`[DVR] Started recording: ${data.program_title}`);
-          } else if (data.event_type === 'completed') {
-            console.log(`[DVR] Completed recording: ${data.program_title}`);
-          } else if (data.event_type === 'failed') {
-            console.error(`[DVR] Failed recording: ${data.program_title}`, data.message);
-          }
-        });
-
-        return unlisten;
-      } catch (error) {
-        console.error('[App] Failed to setup DVR listener:', error);
-      }
-    };
-
-    let unlistenFn: (() => void) | undefined;
-    setupDvrListener().then((fn) => {
-      unlistenFn = fn;
-    });
-
-    return () => {
-      if (unlistenFn) {
-        unlistenFn();
-      }
-    };
-  }, []);
+  // Listen for DVR events (recording started / completed / failed)
+  useDvrEvents();
 
   // Listen for DVR URL resolution requests (always active, even when not on player page)
   // When the DVR scheduler needs to record a Stalker channel, it can't resolve the URL
   // itself (tokens expire quickly), so it fires this event for the frontend to resolve.
-  useEffect(() => {
-    const setupUrlResolver = async () => {
-      try {
-        const unlisten = await listen('dvr:resolve_url_now', async (event: any) => {
-          const { schedule_id, channel_id, source_id } = event.payload;
-
-          try {
-            // Get channel info from database
-            const { db } = await import('./db');
-            const channel = await db.channels.get(channel_id);
-
-            // Only Stalker channels need URL pre-resolution
-            if (!channel?.direct_url?.startsWith('stalker_')) {
-              return;
-            }
-
-            if (!window.storage) {
-              console.error('[DVR URL Resolver] Storage API not available');
-              return;
-            }
-
-            // resolvePlayUrl handles Stalker token resolution via StalkerClient
-            const resolved = await resolvePlayUrl(source_id, channel.direct_url);
-
-            // Update the schedule with the resolved URL so the recorder can use it
-            await invoke('update_dvr_stream_url', {
-              scheduleId: schedule_id,
-              streamUrl: resolved.url,
-            });
-          } catch (error) {
-            console.error('[DVR URL Resolver] Failed to resolve URL:', error);
-          }
-        });
-
-        return unlisten;
-      } catch (error) {
-        console.error('[App] Failed to setup URL resolver listener:', error);
-      }
-    };
-
-    let unlistenFn: (() => void) | undefined;
-    setupUrlResolver().then((fn) => {
-      unlistenFn = fn;
-    });
-
-    return () => {
-      if (unlistenFn) {
-        unlistenFn();
-      }
-    };
-  }, []);
+  useDvrUrlResolver();
 
   // Track if mouse is hovering over controls (prevents auto-hide)
   const controlsHoveredRef = useRef(false);
@@ -1083,169 +994,29 @@ function App() {
     },
   });
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle shortcuts when typing in inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      const currentShortcuts = shortcutsRef.current;
-
-      // Helper to match keys case-insensitively for letters, but sensitive for others if needed
-      const matches = (action: ShortcutAction, eventKey: string) => {
-        const storedKey = currentShortcuts[action] || DEFAULT_SHORTCUTS[action];
-        if (!storedKey) return false;
-
-        // precise match first
-        if (eventKey === storedKey) return true;
-
-        // case-insensitive match for single letters
-        if (eventKey.length === 1 && storedKey.length === 1) {
-          return eventKey.toLowerCase() === storedKey.toLowerCase();
-        }
-
-        return false;
-      };
-
-      if (matches('togglePlay', e.key)) {
-        e.preventDefault();
-        handleTogglePlay();
-      } else if (matches('toggleMute', e.key)) {
-        handleToggleMute();
-      } else if (matches('toggleStats', e.key)) {
-        e.preventDefault();
-        handleToggleStats();
-      } else if (matches('toggleFullscreen', e.key)) {
-        e.preventDefault();
-        handleToggleFullscreen();
-      } else if (matches('selectSubtitle', e.key)) {
-        e.preventDefault();
-        handleShowSubtitleModal();
-      } else if (matches('selectAudio', e.key)) {
-        e.preventDefault();
-        handleShowAudioModal();
-      } else if (matches('toggleGuide', e.key)) {
-        // Toggle guide
-        setActiveView((v) => (v === 'guide' ? 'none' : 'guide'));
-      } else if (matches('toggleCategories', e.key)) {
-        // Toggle categories
-        setCategoriesOpen((open) => !open);
-      } else if (matches('toggleLiveTV', e.key)) {
-        e.preventDefault();
-        // Toggle both Guide and Categories simultaneously
-        // Use refs to get fresh state in event listener
-        const currentActiveView = activeViewRef.current;
-        const currentCategoriesOpen = categoriesOpenRef.current;
-
-        // Always show controls when using Live TV hotkey
-        setShowControls(true);
-
-        const newLiveTVState = !(currentActiveView === 'guide' && currentCategoriesOpen);
-        if (newLiveTVState) {
-          setActiveView('guide');
-          setCategoriesOpen(true);
-        } else {
-          setActiveView('none');
-          setCategoriesOpen(false);
-        }
-      } else if (matches('toggleSettings', e.key)) {
-        e.preventDefault();
-        // Toggle Settings
-        const currentActiveView = activeViewRef.current;
-        setActiveView(currentActiveView === 'settings' ? 'none' : 'settings');
-      } else if (matches('toggleSports', e.key)) {
-        e.preventDefault();
-        // Toggle Sports
-        const currentActiveView = activeViewRef.current;
-        setCategoriesOpen(false);
-        setActiveView(currentActiveView === 'sports' ? 'none' : 'sports');
-      } else if (matches('toggleDvr', e.key)) {
-        e.preventDefault();
-        // Toggle DVR
-        const currentActiveView = activeViewRef.current;
-        setCategoriesOpen(false);
-        setActiveView(currentActiveView === 'dvr' ? 'none' : 'dvr');
-      } else if (matches('toggleCalendar', e.key)) {
-        e.preventDefault();
-        // Toggle TV Calendar
-        const currentActiveView = activeViewRef.current;
-        setCategoriesOpen(false);
-        setActiveView(currentActiveView === 'calendar' ? 'none' : 'calendar');
-      } else if (matches('focusSearch', e.key)) {
-        e.preventDefault();
-        // Always show controls when using Search hotkey
-        setShowControls(true);
-        // Open guide if not open
-        if (activeViewRef.current !== 'guide') {
-          setActiveView('guide');
-        }
-        // Open categories panel
-        setCategoriesOpen(true);
-        // Focus title bar search input
-        if (titleBarSearchRef.current) {
-          titleBarSearchRef.current.focus();
-        }
-      } else if (matches('close', e.key)) {
-        setActiveView('none');
-        setCategoriesOpen(false);
-        setSidebarExpanded(false);
-        setShowControls(false);
-      } else if (matches('seekForward', e.key)) {
-        e.preventDefault();
-        handleSeek(positionRef.current + 10);
-      } else if (matches('seekBackward', e.key)) {
-        e.preventDefault();
-        handleSeek(positionRef.current - 10);
-      } else if (matches('layoutMain', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('main');
-      } else if (matches('layoutPip', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('pip');
-      } else if (matches('layoutBigBottom', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('bigbottom');
-      } else if (matches('layout2x2', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('2x2');
-      } else if (matches('channelUp', e.key)) {
-        e.preventDefault();
-        // Navigate to previous channel in current category
-        const channels = currentChannelsRef.current;
-        const currentCh = currentChannelRef.current;
-        if (channels.length > 0 && currentCh) {
-          const currentIndex = channels.findIndex(ch => ch.stream_id === currentCh.stream_id);
-          if (currentIndex > 0) {
-            // Go to previous channel
-            handlePlayChannelRef.current(channels[currentIndex - 1]);
-          } else if (currentIndex === 0) {
-            // Wrap to last channel
-            handlePlayChannelRef.current(channels[channels.length - 1]);
-          }
-        }
-      } else if (matches('channelDown', e.key)) {
-        e.preventDefault();
-        // Navigate to next channel in current category
-        const channels = currentChannelsRef.current;
-        const currentCh = currentChannelRef.current;
-        if (channels.length > 0 && currentCh) {
-          const currentIndex = channels.findIndex(ch => ch.stream_id === currentCh.stream_id);
-          if (currentIndex >= 0 && currentIndex < channels.length - 1) {
-            // Go to next channel
-            handlePlayChannelRef.current(channels[currentIndex + 1]);
-          } else if (currentIndex === channels.length - 1) {
-            // Wrap to first channel
-            handlePlayChannelRef.current(channels[0]);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []); // Empty dependency array = attached once, uses refs for state
+  // Keyboard shortcuts — logic lives in useKeyboardShortcuts
+  useKeyboardShortcuts({
+    shortcutsRef,
+    activeViewRef,
+    categoriesOpenRef,
+    positionRef,
+    currentChannelsRef,
+    currentChannelRef,
+    switchLayoutRef,
+    titleBarSearchRef,
+    handlePlayChannelRef,
+    handleTogglePlay,
+    handleToggleMute,
+    handleToggleStats,
+    handleToggleFullscreen,
+    handleShowSubtitleModal,
+    handleShowAudioModal,
+    handleSeek,
+    setActiveView,
+    setCategoriesOpen,
+    setSidebarExpanded,
+    setShowControls,
+  });
 
 
   // Window controls
