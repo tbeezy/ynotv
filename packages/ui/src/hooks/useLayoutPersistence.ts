@@ -56,7 +56,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
   } = multiview;
 
   // Track main slot state locally for persistence
-  const mainSlotRef = useRef<MainSlot>({ channelName: null, channelUrl: null });
+  const mainSlotRef = useRef<MainSlot>({ channelName: null, channelUrl: null, sourceName: null });
 
   // Keep a ref to the full saved state for cross-layout restoration
   const savedStateRef = useRef<SavedLayoutState | null>(null);
@@ -255,7 +255,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       if (enabled) {
         // Manually update slotsRef so we don't save stale React state before the next render tick
         slotsRef.current = slotsRef.current.map(s =>
-          s.id === slotId ? { ...s, channelName, channelUrl, sourceName, active: true } : s
+          s.id === slotId ? { ...s, channelName, channelUrl, sourceName: sourceName ?? null, active: true } : s
         );
         await saveStateWithRefs();
       }

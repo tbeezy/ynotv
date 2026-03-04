@@ -36,7 +36,7 @@ import { bulkOps } from './services/bulk-ops';
 import type { StoredChannel, WatchlistItem } from './db';
 import { getWatchlist, db } from './db';
 import type { VodPlayInfo } from './types/media';
-import { StalkerClient } from '@ynotv/local-adapter';
+import { resolvePlayUrl } from './services/stream-resolver';
 import { VideoErrorOverlay } from './components/VideoErrorOverlay';
 import { Bridge } from './services/tauri-bridge';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
@@ -627,56 +627,37 @@ function App() {
   }, []);
 
   // Listen for DVR URL resolution requests (always active, even when not on player page)
+  // When the DVR scheduler needs to record a Stalker channel, it can't resolve the URL
+  // itself (tokens expire quickly), so it fires this event for the frontend to resolve.
   useEffect(() => {
     const setupUrlResolver = async () => {
       try {
         const unlisten = await listen('dvr:resolve_url_now', async (event: any) => {
           const { schedule_id, channel_id, source_id } = event.payload;
-          console.log('[DVR URL Resolver] Received request for schedule:', schedule_id, 'channel:', channel_id, 'source:', source_id);
 
           try {
             // Get channel info from database
             const { db } = await import('./db');
             const channel = await db.channels.get(channel_id);
-            console.log('[DVR URL Resolver] Found channel:', channel?.name, 'direct_url:', channel?.direct_url);
 
+            // Only Stalker channels need URL pre-resolution
             if (!channel?.direct_url?.startsWith('stalker_')) {
-              console.log('[DVR URL Resolver] Not a Stalker channel, skipping');
               return;
             }
 
-            // Get source config
             if (!window.storage) {
               console.error('[DVR URL Resolver] Storage API not available');
               return;
             }
 
-            const sourceRes = await window.storage.getSource(source_id);
-            console.log('[DVR URL Resolver] Source type:', sourceRes.data?.type, 'has MAC:', !!sourceRes.data?.mac);
+            // resolvePlayUrl handles Stalker token resolution via StalkerClient
+            const resolved = await resolvePlayUrl(source_id, channel.direct_url);
 
-            if (sourceRes.data?.type !== 'stalker' || !sourceRes.data.mac) {
-              console.error('[DVR URL Resolver] Stalker source not found or missing MAC');
-              return;
-            }
-
-            // Resolve URL immediately
-            console.log('[DVR URL Resolver] Resolving Stalker URL...');
-            const client = new StalkerClient({
-              baseUrl: sourceRes.data.url,
-              mac: sourceRes.data.mac,
-              userAgent: sourceRes.data.user_agent
-            }, source_id);
-
-            const resolvedUrl = await client.resolveStreamUrl(channel.direct_url);
-            console.log('[DVR URL Resolver] Resolved to:', resolvedUrl);
-
-            // Update the schedule with the resolved URL
-            console.log('[DVR URL Resolver] Updating database...');
+            // Update the schedule with the resolved URL so the recorder can use it
             await invoke('update_dvr_stream_url', {
               scheduleId: schedule_id,
-              streamUrl: resolvedUrl
+              streamUrl: resolved.url,
             });
-            console.log('[DVR URL Resolver] URL updated successfully for schedule:', schedule_id);
           } catch (error) {
             console.error('[DVR URL Resolver] Failed to resolve URL:', error);
           }
@@ -771,84 +752,41 @@ function App() {
     debugLog(`handleLoadStream: ${channel.name} (${channel.stream_id})`);
     debugLog(`  URL: ${channel.direct_url}`);
 
-    // Fetch source to get User Agent and Source Config for Stalker
-    let userAgent: string | undefined;
-    let sourceData: any | undefined;
-
-    if (window.storage && channel.source_id) {
-      try {
-        const sourceRes = await window.storage.getSource(channel.source_id);
-        if (sourceRes.data) {
-          sourceData = sourceRes.data;
-          if (sourceRes.data.user_agent) {
-            userAgent = sourceRes.data.user_agent;
-            debugLog(`  UserAgent: ${userAgent}`);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to fetch source:', e);
-      }
+    // Resolve source URL (handles Stalker token resolution + extracts userAgent/sourceName)
+    let resolved;
+    try {
+      resolved = await resolvePlayUrl(channel.source_id, channel.direct_url);
+    } catch (e) {
+      console.error('Stalker resolution failed:', e);
+      setError('Failed to resolve Stalker link');
+      return;
     }
 
-    let playUrl = channel.direct_url;
-
-    // Resolve Stalker URLs (stalker_ch:, stalker_vod:, /media/)
-    if (sourceData?.type === 'stalker' && (
-      playUrl.startsWith('stalker_') ||
-      playUrl.startsWith('/media/')
-    )) {
-      try {
-        debugLog(`Resolving Stalker URL: ${playUrl}`);
-        const client = new StalkerClient({
-          baseUrl: sourceData.url,
-          mac: sourceData.mac || '',
-          userAgent: sourceData.user_agent
-        }, sourceData.id);
-
-        playUrl = await client.resolveStreamUrl(playUrl);
-        debugLog(`Resolved to: ${playUrl}`);
-      } catch (e) {
-        console.error('Stalker resolution failed:', e);
-        setError('Failed to resolve Stalker link');
-        return;
-      }
-    }
+    debugLog(`  UserAgent: ${resolved.userAgent ?? 'none'}`);
+    debugLog(`  Resolved URL: ${resolved.url}`);
 
     setError(null);
     const result = await tryLoadWithFallbacks(
-      playUrl,
+      resolved.url,
       true, // isLive
-      userAgent,
+      resolved.userAgent,
       (msg) => setError(msg) // Pass callback for background errors
     );
     if (!result.success) {
       const errMsg = result.error ?? 'Failed to load stream';
       console.error('[(Renderer) handleLoadStream] Load Failed:', errMsg);
       debugLog(`  FAILED: ${errMsg}`, 'error');
-      console.log('[App] Setting error state:', errMsg);
       setError(errMsg);
     } else {
       debugLog(`  SUCCESS: playing`);
-      // Update channel with working URL if fallback was used
-      const resolvedChannel = result.url !== playUrl
+      // Update channel with working URL if a fallback extension was used
+      const resolvedChannel = result.url !== resolved.url
         ? { ...channel, direct_url: result.url }
         : channel;
       setCurrentChannel(resolvedChannel);
       setPlaying(true);
-      // Look up source name for multiview display
-      let sourceName: string | null = null;
-      if (channel.source_id && window.storage) {
-        try {
-          const sourceRes = await window.storage.getSource(channel.source_id);
-          if (sourceRes.data) {
-            sourceName = sourceRes.data.name;
-          }
-        } catch (e) {
-          console.warn('[App] Failed to get source name:', e);
-        }
-      }
-      // Notify multiview hook what's now in MPV (needed for swap logic)
-      multiview.notifyMainLoaded(channel.name, result.url, sourceName);
+      // Notify multiview hook what's now in MPV (sourceName comes from resolvePlayUrl)
+      multiview.notifyMainLoaded(channel.name, result.url, resolved.sourceName ?? null);
 
       // Capture video metadata after successful load
       import('./services/video-metadata').then(({ captureAndSaveMetadata }) => {
@@ -894,40 +832,24 @@ function App() {
     setError(null);
     setVodInfo(null);
 
-    // Formulate the timeshift url if it is Xtream
-    let playUrl = channel.direct_url;
-    let userAgent: string | undefined;
+    // Strip the source-id prefix from the stream_id to get the raw Xtream stream ID
+    const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
 
-    if (window.storage && channel.source_id) {
-      try {
-        const sourceRes = await window.storage.getSource(channel.source_id);
-        const source = sourceRes.data;
-        if (source) {
-          userAgent = source.user_agent;
-          if (source.type === 'xtream') {
-            const { XtreamClient } = await import('@ynotv/local-adapter');
-            const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
-
-            // Re-calculate the maximum allowed duration matching EPG start to Now
-            const endMs = startTimeMs + (durationMinutes * 60000);
-            const actualDurationMinutes = Math.ceil((Math.min(endMs, Date.now()) - startTimeMs) / 60000);
-
-            playUrl = XtreamClient.buildTimeshiftUrl(
-              rawStreamId,
-              source.url,
-              source.username || '',
-              source.password || '',
-              actualDurationMinutes,
-              new Date(startTimeMs)
-            );
-          }
-        }
-      } catch (e) {
-        console.error('Failed to resolve catchup source:', e);
-      }
+    // Resolve source URL (builds Xtream timeshift URL if needed, resolves Stalker token)
+    let resolved;
+    try {
+      resolved = await resolvePlayUrl(channel.source_id, channel.direct_url, {
+        rawStreamId,
+        startTimeMs,
+        durationMinutes,
+      });
+    } catch (e) {
+      console.error('Failed to resolve catchup source:', e);
+      setError('Failed to resolve catchup stream');
+      return;
     }
 
-    const result = await tryLoadWithFallbacks(playUrl, false, userAgent);
+    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
       setError(result.error ?? 'Failed to load catchup stream');
     } else {
@@ -1094,38 +1016,20 @@ function App() {
 
     setError(null);
 
-    // RESOLVE URL for Stalker Sources
-    let urlToPlay = info.url;
-    let userAgent: string | undefined;
-
-    if (window.storage && info.source_id) {
-      try {
-        const sourceRes = await window.storage.getSource(info.source_id);
-        const source = sourceRes.data;
-        if (source) {
-          userAgent = source.user_agent;
-          if (userAgent) debugLog(`  UserAgent: ${userAgent}`);
-
-          if (source.type === 'stalker') {
-            debugLog(`Stalker Source detected, resolving URL for cmd: ${urlToPlay}`);
-            const { StalkerClient } = await import('@ynotv/local-adapter');
-
-            const client = new StalkerClient({
-              baseUrl: source.url,
-              mac: source.mac || '',
-              userAgent: source.user_agent
-            }, source.id);
-
-            urlToPlay = await client.resolveStreamUrl(urlToPlay);
-            debugLog(`Resolved Stalker URL: ${urlToPlay}`);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to resolve Source info:', err);
-      }
+    // Resolve source URL (handles Stalker token resolution + extracts userAgent)
+    let resolved;
+    try {
+      resolved = await resolvePlayUrl(info.source_id, info.url);
+    } catch (err) {
+      console.error('Failed to resolve Source info:', err);
+      setError('Failed to resolve stream URL');
+      return;
     }
 
-    const result = await tryLoadWithFallbacks(urlToPlay, false, userAgent);
+    debugLog(`  UserAgent: ${resolved.userAgent ?? 'none'}`);
+    debugLog(`  Resolved URL: ${resolved.url}`);
+
+    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
       debugLog(`  FAILED: ${result.error}`);
       setError(result.error ?? 'Failed to load stream');

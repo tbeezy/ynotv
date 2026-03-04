@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Runtime, Manager};
+use tracing::{debug, info, warn, error};
+
 
 // macOS-specific imports for window configuration
 #[cfg(target_os = "macos")]
@@ -79,7 +81,7 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
                         .filter(|line| !line.is_empty() && !line.starts_with('#'))
                         .map(|s| s.to_string())
                         .collect();
-                    println!("[MPV] Loaded {} custom parameters from settings", custom_args.len());
+                    debug!("[MPV] Loaded {} custom parameters from settings", custom_args.len());
                     args.extend(custom_args);
                 }
             }
@@ -89,28 +91,21 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
-            println!("[MPV] TimeShift enabled from store: {}", ts_enabled);
+            debug!("[MPV] TimeShift enabled from store: {}", ts_enabled);
 
             if ts_enabled {
                 let cache_bytes = store.get("timeshiftCacheBytes")
                     .and_then(|v| v.as_u64())
                     .unwrap_or(1_073_741_824); // default 1 GB
                 let flag = format!("--demuxer-max-back-bytes={}", cache_bytes);
-                println!("[MPV] TimeShift cache bytes from store: {}", cache_bytes);
-                println!("[MPV] TimeShift enabled — injecting: {}", flag);
+                debug!("[MPV] TimeShift enabled — injecting: {}", flag);
                 args.push(flag);
-            }
-
-            // Log all args being returned
-            println!("[MPV] All params being passed to MPV:");
-            for (i, arg) in args.iter().enumerate() {
-                println!("[MPV]   [{}]: {}", i, arg);
             }
 
             return args;
         }
         Err(e) => {
-            eprintln!("[MPV] Failed to open settings store: {}", e);
+            error!("[MPV] Failed to open settings store: {}", e);
         }
     }
     Vec::new()
@@ -122,10 +117,9 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
 
 #[tauri::command]
 async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<(), String> {
-    // Debug: Print stack trace to find who's calling init_mpv
-    println!("[MPV] init_mpv called with {} args", args.len());
+    debug!("[MPV] init_mpv called with {} args", args.len());
     for (i, arg) in args.iter().enumerate() {
-        println!("[MPV]   Arg[{}]: {}", i, arg);
+        debug!("[MPV]   Arg[{}]: {}", i, arg);
     }
 
     // Load custom MPV parameters from settings
@@ -134,9 +128,9 @@ async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<()
     // Merge frontend-provided args (for timeshift settings from loaded state)
     // Frontend args are added after store params so they take precedence
     if !args.is_empty() {
-        println!("[MPV] Merging {} frontend-provided args", args.len());
+        debug!("[MPV] Merging {} frontend-provided args", args.len());
         for arg in &args {
-            println!("[MPV]   Frontend arg: {}", arg);
+            debug!("[MPV]   Frontend arg: {}", arg);
             // Remove any existing arg with same prefix to avoid duplicates
             let prefix = arg.split('=').next().unwrap_or(arg);
             custom_params.retain(|p| !p.starts_with(prefix));
@@ -144,9 +138,9 @@ async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<()
         }
     }
 
-    println!("[MPV] Final params for MPV:");
+    debug!("[MPV] Final params for MPV:");
     for (i, param) in custom_params.iter().enumerate() {
-        println!("[MPV]   [{}]: {}", i, param);
+        debug!("[MPV]   [{}]: {}", i, param);
     }
 
     #[cfg(target_os = "macos")]
@@ -395,7 +389,7 @@ async fn mpv_get_cache_debug<R: Runtime>(app: AppHandle<R>) -> Result<serde_json
     let cache_state = mpv_get_property(app.clone(), "demuxer-cache-state".to_string()).await;
     result.insert("demuxer-cache-state".to_string(), cache_state.unwrap_or(json!(null)));
 
-    println!("[MPV Debug] Cache settings: {:?}", result);
+    debug!("[MPV Debug] Cache settings: {:?}", result);
     Ok(serde_json::Value::Object(result))
 }
 
@@ -547,14 +541,14 @@ async fn init_dvr(
     app: AppHandle,
     state: tauri::State<'_, DvrState>,
 ) -> Result<(), String> {
-    println!("[DVR Command] init_dvr called");
+    info!("[DVR Command] init_dvr called");
 
     state.start_background_tasks().await
         .map_err(|e| format!("Failed to start DVR: {}", e))?;
 
     // Emit ready event
     let _ = app.emit("dvr:ready", true);
-    println!("[DVR Command] init_dvr completed successfully");
+    info!("[DVR Command] init_dvr completed successfully");
 
     Ok(())
 }
@@ -565,9 +559,9 @@ async fn schedule_recording(
     state: tauri::State<'_, DvrState>,
     request: ScheduleRequest,
 ) -> Result<i64, String> {
-    println!("[DVR Command] schedule_recording called: {}", request.program_title);
-    println!("[DVR Command]   source_id: {}, channel_id: {}", request.source_id, request.channel_id);
-    println!("[DVR Command]   scheduled_start: {}, scheduled_end: {}", request.scheduled_start, request.scheduled_end);
+    debug!("[DVR Command] schedule_recording called: {}", request.program_title);
+    debug!("[DVR Command]   source_id: {}, channel_id: {}", request.source_id, request.channel_id);
+    debug!("[DVR Command]   scheduled_start: {}, scheduled_end: {}", request.scheduled_start, request.scheduled_end);
 
     // NOTE: For Stalker sources, we should NOT pre-resolve the URL because tokens expire quickly.
     // The URL will be resolved at recording time via resolve_dvr_stream_url command.
@@ -575,11 +569,11 @@ async fn schedule_recording(
 
     let id = state.db.add_schedule(&request)
         .map_err(|e| {
-            println!("[DVR Command] ERROR: Failed to schedule: {}", e);
+            error!("[DVR Command] ERROR: Failed to schedule: {}", e);
             format!("Failed to schedule recording: {}", e)
         })?;
 
-    println!("[DVR Command] Successfully scheduled with ID: {}", id);
+    debug!("[DVR Command] Successfully scheduled with ID: {}", id);
     Ok(id)
 }
 
@@ -590,13 +584,13 @@ async fn update_dvr_stream_url(
     schedule_id: i64,
     stream_url: String,
 ) -> Result<(), String> {
-    println!("[DVR Command] update_dvr_stream_url called for schedule {}: {}", schedule_id, stream_url);
+    debug!("[DVR Command] update_dvr_stream_url called for schedule {}: {}", schedule_id, stream_url);
 
     // Update the schedule with the resolved URL
     state.db.update_schedule_stream_url(schedule_id, &stream_url)
         .map_err(|e| format!("Failed to update stream URL: {}", e))?;
 
-    println!("[DVR Command] Stream URL updated successfully for schedule {}", schedule_id);
+    debug!("[DVR Command] Stream URL updated successfully for schedule {}", schedule_id);
     Ok(())
 }
 
@@ -619,7 +613,7 @@ async fn cancel_recording(
     state: tauri::State<'_, DvrState>,
     id: i64,
 ) -> Result<(), String> {
-    println!("[DVR Command] cancel_recording called for schedule {}", id);
+    debug!("[DVR Command] cancel_recording called for schedule {}", id);
 
     // First check if this is currently recording - if so, stop it
     let schedule = state.db.get_schedule(id)
@@ -627,7 +621,7 @@ async fn cancel_recording(
 
     if let Some(ref s) = schedule {
         if matches!(s.status, crate::dvr::models::ScheduleStatus::Recording) {
-            println!("[DVR Command] Recording is active, stopping FFmpeg process...");
+            debug!("[DVR Command] Recording is active, stopping FFmpeg process...");
             state.recorder.stop_recording(id).await
                 .map_err(|e| format!("Failed to stop recording: {}", e))?;
         }
@@ -637,7 +631,7 @@ async fn cancel_recording(
     state.db.cancel_schedule(id)
         .map_err(|e| format!("Failed to cancel recording: {}", e))?;
 
-    println!("[DVR Command] Recording {} canceled successfully", id);
+    debug!("[DVR Command] Recording {} canceled successfully", id);
     Ok(())
 }
 
@@ -705,7 +699,7 @@ async fn get_recording_thumbnail(
                 Ok(data) => Ok(Some(data)),
                 Err(e) => {
                     // Thumbnail file doesn't exist or can't be read
-                    println!("[DVR] Thumbnail file not found or unreadable: {} - {}", thumbnail_path, e);
+                    warn!("[DVR] Thumbnail file not found or unreadable: {} - {}", thumbnail_path, e);
                     Ok(None)
                 }
             }
@@ -727,12 +721,12 @@ async fn update_schedule_paddings(
     #[allow(non_snake_case)] startPaddingSec: i64,
     #[allow(non_snake_case)] endPaddingSec: i64,
 ) -> Result<(), String> {
-    println!("[DVR Command] Updating padding for schedule {}: start={}, end={}", id, startPaddingSec, endPaddingSec);
+    debug!("[DVR Command] Updating padding for schedule {}: start={}, end={}", id, startPaddingSec, endPaddingSec);
 
     state.db.update_schedule_paddings(id, startPaddingSec, endPaddingSec)
         .map_err(|e| format!("Failed to update schedule paddings: {}", e))?;
 
-    println!("[DVR Command] Schedule {} padding updated successfully", id);
+    debug!("[DVR Command] Schedule {} padding updated successfully", id);
     Ok(())
 }
 
@@ -934,10 +928,10 @@ async fn bulk_upsert_channels(
     state: tauri::State<'_, DvrState>,
     channels: Vec<db_bulk_ops::BulkChannel>,
 ) -> Result<db_bulk_ops::BulkResult, String> {
-    println!("[bulk_upsert_channels] Called with {} channels", channels.len());
+    debug!("[bulk_upsert_channels] Called with {} channels", channels.len());
     db_bulk_ops::bulk_upsert_channels(&state.db, channels)
         .map_err(|e| {
-            println!("[bulk_upsert_channels] ERROR: {}", e);
+            error!("[bulk_upsert_channels] ERROR: {}", e);
             format!("Bulk upsert channels failed: {}", e)
         })
 }
@@ -1009,10 +1003,10 @@ async fn update_source_meta(
     state: tauri::State<'_, DvrState>,
     meta: db_bulk_ops::SourceMetaUpdate,
 ) -> Result<(), String> {
-    println!("[update_source_meta] Called for source_id: {}", meta.source_id);
+    debug!("[update_source_meta] Called for source_id: {}", meta.source_id);
     db_bulk_ops::update_source_meta(&state.db, meta)
         .map_err(|e| {
-            println!("[update_source_meta] ERROR: {}", e);
+            error!("[update_source_meta] ERROR: {}", e);
             format!("Update source meta failed: {}", e)
         })
 }
@@ -1020,7 +1014,7 @@ async fn update_source_meta(
 /// Health check - verifies backend systems are ready
 #[tauri::command]
 async fn health_check(state: tauri::State<'_, DvrState>) -> Result<bool, String> {
-    println!("[health_check] DVR state is active");
+    debug!("[health_check] DVR state is active");
     Ok(true)
 }
 
@@ -1053,71 +1047,83 @@ async fn parse_epg_file(
 }
 
 // =============================================================================
+// TMDB Cache State (managed, lives for the app lifetime)
+// =============================================================================
+
+/// Thread-safe wrapper around TmdbCache so it can be managed as Tauri state.
+/// Using tokio::sync::Mutex (async-aware) because TmdbCache methods are async.
+pub struct TmdbCacheState(pub tokio::sync::Mutex<TmdbCache>);
+
+impl TmdbCacheState {
+    /// Create with the given cache directory.
+    pub fn new(cache_dir: std::path::PathBuf) -> Self {
+        Self(tokio::sync::Mutex::new(TmdbCache::new(cache_dir)))
+    }
+}
+
+// =============================================================================
 // TMDB Cache Commands
 // =============================================================================
 
 /// Get TMDB cache statistics
 #[tauri::command]
-async fn get_tmdb_cache_stats(app: AppHandle) -> Result<CacheStats, String> {
-    let cache_dir = app.path().app_cache_dir()
-        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
-
-    let cache = TmdbCache::new(cache_dir);
+async fn get_tmdb_cache_stats(
+    state: tauri::State<'_, TmdbCacheState>,
+) -> Result<CacheStats, String> {
+    let cache = state.0.lock().await;
     cache.get_stats().await
         .map_err(|e| format!("Failed to get cache stats: {}", e))
 }
 
 /// Update TMDB movies cache
 #[tauri::command]
-async fn update_tmdb_movies_cache(app: AppHandle) -> Result<usize, String> {
-    let cache_dir = app.path().app_cache_dir()
-        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
-
-    let mut cache = TmdbCache::new(cache_dir);
+async fn update_tmdb_movies_cache(
+    state: tauri::State<'_, TmdbCacheState>,
+) -> Result<usize, String> {
+    let mut cache = state.0.lock().await;
     cache.update_movies_cache().await
         .map_err(|e| format!("Failed to update movies cache: {}", e))
 }
 
 /// Update TMDB series cache
 #[tauri::command]
-async fn update_tmdb_series_cache(app: AppHandle) -> Result<usize, String> {
-    let cache_dir = app.path().app_cache_dir()
-        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
-
-    let mut cache = TmdbCache::new(cache_dir);
+async fn update_tmdb_series_cache(
+    state: tauri::State<'_, TmdbCacheState>,
+) -> Result<usize, String> {
+    let mut cache = state.0.lock().await;
     cache.update_series_cache().await
         .map_err(|e| format!("Failed to update series cache: {}", e))
 }
 
 /// Find movies by title
 #[tauri::command]
-async fn find_tmdb_movies(app: AppHandle, title: String) -> Result<Vec<MatchResult>, String> {
-    let cache_dir = app.path().app_cache_dir()
-        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
-
-    let mut cache = TmdbCache::new(cache_dir);
+async fn find_tmdb_movies(
+    state: tauri::State<'_, TmdbCacheState>,
+    title: String,
+) -> Result<Vec<MatchResult>, String> {
+    let mut cache = state.0.lock().await;
     cache.find_movies(&title).await
         .map_err(|e| format!("Failed to find movies: {}", e))
 }
 
 /// Find series by title
 #[tauri::command]
-async fn find_tmdb_series(app: AppHandle, title: String) -> Result<Vec<MatchResult>, String> {
-    let cache_dir = app.path().app_cache_dir()
-        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
-
-    let mut cache = TmdbCache::new(cache_dir);
+async fn find_tmdb_series(
+    state: tauri::State<'_, TmdbCacheState>,
+    title: String,
+) -> Result<Vec<MatchResult>, String> {
+    let mut cache = state.0.lock().await;
     cache.find_series(&title).await
         .map_err(|e| format!("Failed to find series: {}", e))
 }
 
 /// Clear TMDB cache
 #[tauri::command]
-async fn clear_tmdb_cache(app: AppHandle) -> Result<(), String> {
-    let cache_dir = app.path().app_cache_dir()
-        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
-
-    let cache = TmdbCache::new(cache_dir);
+async fn clear_tmdb_cache(
+    state: tauri::State<'_, TmdbCacheState>,
+) -> Result<(), String> {
+    // clear_cache takes &self (not &mut self), but we lock for consistency
+    let cache = state.0.lock().await;
     cache.clear_cache().await
         .map_err(|e| format!("Failed to clear cache: {}", e))
 }
@@ -1141,7 +1147,7 @@ async fn add_tv_favorite(
     channel_id: Option<String>,
     status: Option<String>,
 ) -> Result<(), String> {
-    println!("[TVMaze Command] add_tv_favorite called: id={}, name={}, channel={:?}, channel_id={:?}",
+    debug!("[TVMaze Command] add_tv_favorite called: id={}, name={}, channel={:?}, channel_id={:?}",
         tvmaze_id, show_name, channel_name, channel_id);
 
     state.db.tvmaze_add_favorite(
@@ -1149,44 +1155,30 @@ async fn add_tv_favorite(
         show_image.as_deref(), channel_name.as_deref(),
         channel_id.as_deref(), status.as_deref(),
     ).map_err(|e| {
-        println!("[TVMaze Command] Failed to add favorite: {}", e);
+        error!("[TVMaze Command] Failed to add favorite: {}", e);
         e.to_string()
     })?;
 
-    println!("[TVMaze Command] Favorite added to DB, fetching episodes...");
+    debug!("[TVMaze Command] Favorite added to DB, fetching episodes...");
 
     // Fetch and store episodes immediately
     let episodes = tvmaze::fetch_episodes(tvmaze_id).await.map_err(|e| {
-        println!("[TVMaze Command] Failed to fetch episodes: {}", e);
+        warn!("[TVMaze Command] Failed to fetch episodes: {}", e);
         e
     })?;
 
-    println!("[TVMaze Command] Fetched {} episodes", episodes.len());
-    // Log first 10 episodes to see what dates are available
-    for (i, ep) in episodes.iter().take(10).enumerate() {
-        println!("[TVMaze Command] Ep {}: S{}E{} airdate={:?}",
-            i,
-            ep.season.unwrap_or(-1),
-            ep.episode.unwrap_or(-1),
-            ep.airdate
-        );
-    }
-    // Count future episodes (2026+)
-    let future_count = episodes.iter().filter(|e| {
-        e.airdate.as_ref().map_or(false, |d| d.starts_with("2026-"))
-    }).count();
-    println!("[TVMaze Command] Episodes with 2026 air dates: {}", future_count);
+    debug!("[TVMaze Command] Fetched {} episodes", episodes.len());
 
     state.db.tvmaze_upsert_episodes(tvmaze_id, &episodes)
         .map_err(|e| {
-            println!("[TVMaze Command] Failed to upsert episodes: {}", e);
+            error!("[TVMaze Command] Failed to upsert episodes: {}", e);
             e.to_string()
         })?;
 
     state.db.tvmaze_update_last_synced(tvmaze_id)
         .map_err(|e| e.to_string())?;
 
-    println!("[TVMaze Command] Successfully added show with {} episodes", episodes.len());
+    info!("[TVMaze Command] Successfully added show with {} episodes", episodes.len());
     Ok(())
 }
 
@@ -1279,7 +1271,7 @@ async fn sync_tvmaze_shows(
                                 // Mark as added for tracking purposes
                                 let _ = state.db.tvmaze_mark_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id);
                                 watchlist_added += 1;
-                                println!("[Sync] Adding episode {} for show {}", ep.tvmaze_episode_id, show_name);
+                                debug!("[Sync] Adding episode {} for show {}", ep.tvmaze_episode_id, show_name);
 
                                 // Add to episodes list for frontend
                                 episodes_to_add.push(AutoAddEpisode {
@@ -1326,7 +1318,7 @@ async fn add_show_episodes_to_watchlist(
     state: tauri::State<'_, DvrState>,
     tvmaze_id: i64,
 ) -> Result<Vec<AutoAddEpisode>, String> {
-    println!("[TVMaze Command] add_show_episodes_to_watchlist called for id={}", tvmaze_id);
+    debug!("[TVMaze Command] add_show_episodes_to_watchlist called for id={}", tvmaze_id);
 
     // Get show name
     let shows = state.db.tvmaze_get_running_shows().map_err(|e| e.to_string())?;
@@ -1382,7 +1374,7 @@ async fn add_show_episodes_to_watchlist(
                 let _ = state
                     .db
                     .tvmaze_mark_episode_added_to_watchlist(tvmaze_id, ep.tvmaze_episode_id);
-                println!(
+                debug!(
                     "[Add Episodes] Adding episode {} for show {}",
                     ep.tvmaze_episode_id, show_name
                 );
@@ -1413,7 +1405,7 @@ async fn add_show_episodes_to_watchlist(
     let _ = state.db.tvmaze_upsert_episodes(tvmaze_id, &eps);
     let _ = state.db.tvmaze_update_last_synced(tvmaze_id);
 
-    println!(
+    debug!(
         "[Add Episodes] Returning {} episodes to add for show {}",
         episodes_to_add.len(),
         show_name
@@ -1427,13 +1419,13 @@ async fn clear_show_watchlist_tracking(
     state: tauri::State<'_, DvrState>,
     tvmaze_id: i64,
 ) -> Result<usize, String> {
-    println!("[TVMaze Command] clear_show_watchlist_tracking called for id={}", tvmaze_id);
+    debug!("[TVMaze Command] clear_show_watchlist_tracking called for id={}", tvmaze_id);
     state.db.tvmaze_clear_show_added_episodes(tvmaze_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn get_show_details(tvmaze_id: i64) -> Result<tvmaze::TvMazeShowDetails, String> {
-    println!("[TVMaze Command] get_show_details called for id={}", tvmaze_id);
+    debug!("[TVMaze Command] get_show_details called for id={}", tvmaze_id);
     tvmaze::fetch_show_details(tvmaze_id).await
 }
 
@@ -1445,7 +1437,7 @@ struct ShowDetailsWithEpisodes {
 
 #[tauri::command]
 async fn get_show_details_with_episodes(tvmaze_id: i64) -> Result<ShowDetailsWithEpisodes, String> {
-    println!("[TVMaze Command] get_show_details_with_episodes called for id={}", tvmaze_id);
+    debug!("[TVMaze Command] get_show_details_with_episodes called for id={}", tvmaze_id);
     let (details, episodes) = tvmaze::fetch_show_details_with_episodes(tvmaze_id).await?;
     Ok(ShowDetailsWithEpisodes { details, episodes })
 }
@@ -1456,18 +1448,18 @@ async fn set_show_channel(
     tvmaze_id: i64,
     channel_id: Option<String>,
 ) -> Result<(), String> {
-    println!("[TVMaze Command] set_show_channel called for id={:?}, channel_id={:?}", tvmaze_id, channel_id);
+    debug!("[TVMaze Command] set_show_channel called for id={:?}, channel_id={:?}", tvmaze_id, channel_id);
 
     // Get channel name if channel_id is provided
     let channel_name: Option<String> = if let Some(ref cid) = channel_id {
         match state.db.get_channel_by_id(cid) {
             Ok(Some(ch)) => Some(ch.name),
             Ok(None) => {
-                println!("[TVMaze Command] Channel not found: {}", cid);
+                warn!("[TVMaze Command] Channel not found: {}", cid);
                 None
             }
             Err(e) => {
-                println!("[TVMaze Command] Error getting channel: {}", e);
+                error!("[TVMaze Command] Error getting channel: {}", e);
                 None
             }
         }
@@ -1492,7 +1484,7 @@ async fn update_show_watchlist_settings(
     watchlist_autoswitch_enabled: bool,
     watchlist_autoswitch_seconds: i32,
 ) -> Result<(), String> {
-    println!("[TVMaze Command] update_show_watchlist_settings called for id={} auto_add={}", tvmaze_id, auto_add_to_watchlist);
+    debug!("[TVMaze Command] update_show_watchlist_settings called for id={} auto_add={}", tvmaze_id, auto_add_to_watchlist);
     state.db.tvmaze_update_watchlist_settings(
         tvmaze_id,
         auto_add_to_watchlist,
@@ -1508,7 +1500,7 @@ async fn get_show_watchlist_settings(
     state: tauri::State<'_, DvrState>,
     tvmaze_id: i64,
 ) -> Result<serde_json::Value, String> {
-    println!("[TVMaze Command] get_show_watchlist_settings called for id={}", tvmaze_id);
+    debug!("[TVMaze Command] get_show_watchlist_settings called for id={}", tvmaze_id);
     let settings_opt = state.db.tvmaze_get_watchlist_settings(tvmaze_id).map_err(|e| e.to_string())?;
 
     // Default settings if show not found
@@ -1526,7 +1518,7 @@ async fn get_show_watchlist_settings(
 
 #[tauri::command]
 async fn get_episode_details(tvmaze_episode_id: i64) -> Result<serde_json::Value, String> {
-    println!("[TVMaze Command] get_episode_details called for episode_id={}", tvmaze_episode_id);
+    debug!("[TVMaze Command] get_episode_details called for episode_id={}", tvmaze_episode_id);
     let client = reqwest::Client::new();
     let url = format!("https://api.tvmaze.com/episodes/{}", tvmaze_episode_id);
     let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
@@ -1535,7 +1527,7 @@ async fn get_episode_details(tvmaze_episode_id: i64) -> Result<serde_json::Value
 
 #[tauri::command]
 async fn open_external_url(url: String) -> Result<(), String> {
-    println!("[Open URL] Opening external URL: {}", url);
+    debug!("[Open URL] Opening external URL: {}", url);
     tauri_plugin_opener::open_url(&url, None::<&str>).map_err(|e| e.to_string())
 }
 
@@ -1623,16 +1615,16 @@ fn update_startup_size_in_store(app: &tauri::AppHandle, width: u32, height: u32)
 
             // IMPORTANT: Save to disk immediately
             if let Err(e) = store.save() {
-                println!("[WindowState] Failed to save store: {}", e);
+                warn!("[WindowState] Failed to save store: {}", e);
             } else {
-                println!("[WindowState] Successfully saved store with size: {}x{}", width, height);
+                debug!("[WindowState] Successfully saved store with size: {}x{}", width, height);
             }
 
             // Drop the store to release the lock
             drop(store);
         }
         Err(e) => {
-            println!("[WindowState] Failed to open store: {}", e);
+            warn!("[WindowState] Failed to open store: {}", e);
             // Fallback: try direct file manipulation
             fallback_update_store_file(app, width, height);
         }
@@ -1680,7 +1672,7 @@ fn restore_window_state(app: &tauri::AppHandle) {
                             tauri::PhysicalPosition { x: state.x, y: state.y }
                         ));
                     }
-                    println!("[WindowState] Restored: {}x{} at ({}, {})",
+                    debug!("[WindowState] Restored: {}x{} at ({}, {})",
                         state.width, state.height, state.x, state.y);
                 }
             }
@@ -1699,7 +1691,7 @@ fn restore_window_position(app: &tauri::AppHandle) {
                         let _ = window.set_position(tauri::Position::Physical(
                             tauri::PhysicalPosition { x: state.x, y: state.y }
                         ));
-                        println!("[WindowState] Restored position: ({}, {})", state.x, state.y);
+                        debug!("[WindowState] Restored position: ({}, {})", state.x, state.y);
                     }
                 }
             }
@@ -1740,10 +1732,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 if let Some(window) = app.get_webview_window("main") {
-                    // Set the title bar style to Overlay for proper drag behavior
-                    // This allows the window to be dragged even when not focused
                     let _ = window.set_title_bar_style(TitleBarStyle::Overlay);
-                    println!("[macOS] Window configured with Overlay title bar style");
+                    info!("[macOS] Window configured with Overlay title bar style");
                 }
             }
 
@@ -1751,35 +1741,45 @@ pub fn run() {
             let app_handle = app.handle().clone();
 
             // For now, disable verbose logging by default (sqlx logs are too noisy)
-            // The debug setting will be checked dynamically when logging is requested
             dvr::init_logging(false);
 
             match tauri::async_runtime::block_on(async move {
-                println!("[DVR Setup] Starting DVR initialization...");
+                info!("[DVR Setup] Starting DVR initialization...");
                 DvrState::new(app_handle).await
             }) {
                 Ok(dvr_state) => {
-                    println!("[DVR Setup] System initialized successfully, managing state...");
+                    info!("[DVR Setup] System initialized successfully, managing state...");
                     app.manage(dvr_state);
-                    println!("[DVR Setup] State managed successfully");
+                    info!("[DVR Setup] State managed successfully");
                 }
                 Err(e) => {
-                    eprintln!("[DVR Setup] WARNING: Failed to initialize full DVR: {}", e);
-                    eprintln!("[DVR Setup] DVR features (recording) will be unavailable.");
-                    eprintln!("[DVR Setup] Bulk sync operations may also be affected.");
-                    // Don't try to create a partial state - bulk ops will fail gracefully
+                    error!("[DVR Setup] WARNING: Failed to initialize full DVR: {}", e);
+                    error!("[DVR Setup] DVR features (recording) will be unavailable.");
+                    error!("[DVR Setup] Bulk sync operations may also be affected.");
                 }
             }
 
+            // Register TmdbCacheState as managed state so the cache is shared
+            // across all TMDB commands instead of being re-created each call.
+            match app.path().app_cache_dir() {
+                Ok(cache_dir) => {
+                    app.manage(TmdbCacheState::new(cache_dir));
+                    info!("[TMDB] Cache state initialized");
+                }
+                Err(e) => {
+                    error!("[TMDB] Failed to get cache dir for TmdbCacheState: {}", e);
+                    // App can still run without TMDB (VOD matching degrades gracefully)
+                }
+            }
             // On macOS, initialize MPV after a short delay to ensure window is ready
             #[cfg(target_os = "macos")]
             {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-                    println!("[MPV macOS] Auto-initializing MPV...");
+                    info!("[MPV macOS] Auto-initializing MPV...");
                     if let Err(e) = mpv_macos::init_mpv(app_handle).await {
-                        eprintln!("[MPV macOS] Auto-init failed: {}", e);
+                        error!("[MPV macOS] Auto-init failed: {}", e);
                     }
                 });
             }
