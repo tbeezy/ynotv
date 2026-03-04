@@ -455,34 +455,32 @@ export function ChannelPanel({
     [windowStart, pixelsPerHour]
   );
 
-  // Selected channel for preview/info (defaults to first channel or current)
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  // Selected channel for preview/info - stores the full channel object
+  const [selectedChannel, setSelectedChannel] = useState<StoredChannel | null>(null);
 
-  // Sync selectedChannelId with currentChannel when it changes externally
+  // Sync selectedChannel with currentChannel when it changes externally
   // (watchlist notification, autoswitch, calendar, multiview swap)
+  // Also re-sync when becoming visible to ensure preview matches current channel
   useEffect(() => {
-    if (currentChannel?.stream_id && currentChannel.stream_id !== selectedChannelId) {
-      setSelectedChannelId(currentChannel.stream_id);
-      lastChannelIdRef.current = currentChannel.stream_id;
+    if (currentChannel?.stream_id) {
+      // Update selectedChannel to match currentChannel
+      if (currentChannel.stream_id !== selectedChannel?.stream_id) {
+        setSelectedChannel(currentChannel);
+      }
     }
-  }, [currentChannel?.stream_id]);
+  }, [currentChannel, selectedChannel?.stream_id, visible]);
 
-  // Derive selected channel object
-  const selectedChannel = useMemo(() =>
-    channels.find(c => c.stream_id === selectedChannelId) || channels[0] || null,
-    [channels, selectedChannelId]);
-
-  // Track if we have a channel to show (handles watchlist/favorites where selectedChannelId is set but channels array is loading)
-  const hasSelectedChannel = selectedChannelId !== null || selectedChannel !== null;
+  // Track if we have a channel to show
+  const hasSelectedChannel = selectedChannel !== null;
 
   // Handle Channel Click: Preview vs Fullscreen
   const handleChannelClick = (channel: StoredChannel) => {
-    if (selectedChannelId === channel.stream_id) {
+    if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> Go Fullscreen (Close Guide)
       onClose();
     } else {
       // Select for preview and play immediately
-      setSelectedChannelId(channel.stream_id);
+      setSelectedChannel(channel);
       // Also update last channel ref immediately for resize effect
       lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
@@ -499,12 +497,12 @@ export function ChannelPanel({
 
   // Handle search result click - same logic as regular channel click
   const handleSearchChannelClick = (channel: StoredChannel) => {
-    if (selectedChannelId === channel.stream_id) {
+    if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> Go Fullscreen (Close Guide)
       onClose();
     } else {
       // Select for preview and play immediately
-      setSelectedChannelId(channel.stream_id);
+      setSelectedChannel(channel);
       // Also update last channel ref immediately for resize effect
       lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
@@ -515,12 +513,12 @@ export function ChannelPanel({
   const handleSearchProgramClick = async (program: StoredProgram) => {
     const channel = await db.channels.get(program.stream_id);
     if (channel) {
-      if (selectedChannelId === channel.stream_id) {
+      if (selectedChannel?.stream_id === channel.stream_id) {
         // Already selected/previewing -> Go Fullscreen (Close Guide)
         onClose();
       } else {
         // Select for preview and play immediately
-        setSelectedChannelId(channel.stream_id);
+        setSelectedChannel(channel);
         // Also update last channel ref immediately for resize effect
         lastChannelIdRef.current = channel.stream_id;
         onPlayChannel(channel);
@@ -682,7 +680,7 @@ export function ChannelPanel({
     // Re-run when layout changes (sidebar/category visibility) or when visibility/selection changes
     // Include selectedChannelId to trigger resize when returning to view with a selection
     // Include isWatchlistMode and categoryId to handle special view modes
-  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id, selectedChannelId, isWatchlistMode, categoryId]);
+  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id, isWatchlistMode, categoryId]);
 
   return (
     <div
@@ -694,7 +692,7 @@ export function ChannelPanel({
         <div className="guide-preview-pane" ref={previewRef}>
           {/* The actual video is rendered by MPV "under" this transparent div */}
           {/* Only show placeholder when truly no channel is selected (not in watchlist/favorites mode with a selection) */}
-          {!selectedChannel && !selectedChannelId && !isWatchlistMode && categoryId !== '__favorites__' && categoryId !== '__recent__' && (
+          {!selectedChannel && !isWatchlistMode && categoryId !== '__favorites__' && categoryId !== '__recent__' && (
             <div className="guide-preview-placeholder">Select a channel</div>
           )}
           {/* Show Error Overlay if there is an error */}
