@@ -1100,40 +1100,40 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
 
     // Convert to BulkChannel format for optimized Rust operations
     const convertToBulkChannel = (ch: any): BulkChannel => ({
-      stream_id: ch.stream_id,
-      source_id: ch.source_id,
+      stream_id: ch.stream_id ?? '',
+      source_id: ch.source_id ?? '',
       category_ids: Array.isArray(ch.category_ids)
         ? JSON.stringify(ch.category_ids)
-        : ch.category_ids,
-      name: ch.name,
-      channel_num: ch.channel_num,
+        : (ch.category_ids ?? '[]'),
+      name: ch.name ?? 'Unknown Channel',
+      channel_num: ch.channel_num ?? 0,
       is_favorite: ch.is_favorite ?? false,
       enabled: ch.enabled ?? true,
-      stream_type: ch.stream_type,
-      stream_icon: ch.stream_icon,
-      epg_channel_id: ch.epg_channel_id,
-      added: ch.added,
-      custom_sid: ch.custom_sid,
-      tv_archive: ch.tv_archive,
-      direct_source: ch.direct_source,
-      direct_url: ch.direct_url,
-      xmltv_id: ch.xmltv_id,
-      series_no: ch.series_no,
-      live: ch.live,
+      stream_type: ch.stream_type ?? null,
+      stream_icon: ch.stream_icon ?? null,
+      epg_channel_id: ch.epg_channel_id ?? null,
+      added: ch.added ?? null,
+      custom_sid: ch.custom_sid ?? null,
+      tv_archive: ch.tv_archive ?? 0,
+      direct_source: ch.direct_source ?? null,
+      direct_url: ch.direct_url ?? null,
+      xmltv_id: ch.xmltv_id ?? null,
+      series_no: ch.series_no ?? null,
+      live: ch.live ?? 1,
     });
 
     // Convert to BulkCategory format
     const convertToBulkCategory = (cat: any): BulkCategory => ({
-      category_id: cat.category_id,
-      source_id: cat.source_id,
-      category_name: cat.category_name,
-      parent_id: cat.parent_id,
+      category_id: cat.category_id ?? '',
+      source_id: cat.source_id ?? '',
+      category_name: cat.category_name ?? 'Unknown Category',
+      parent_id: cat.parent_id ?? null,
       enabled: cat.enabled ?? true,
-      display_order: cat.display_order,
-      channel_count: cat.channel_count,
+      display_order: cat.display_order ?? null,
+      channel_count: cat.channel_count ?? null,
       filter_words: Array.isArray(cat.filter_words)
         ? JSON.stringify(cat.filter_words)
-        : cat.filter_words,
+        : (cat.filter_words ?? null),
     });
 
     // Combine add and update (upsert handles both)

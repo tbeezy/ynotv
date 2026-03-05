@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { Virtuoso } from 'react-virtuoso';
 import { useChannels, useCategories, useAllPrograms } from '../hooks/useChannels';
@@ -22,6 +22,54 @@ import './ChannelPanel.css';
 
 // Width of the channel info column (20% bigger than original 220)
 const CHANNEL_COLUMN_WIDTH = 264;
+
+// Memoized Virtuoso row component to prevent unnecessary re-renders
+// This must be defined OUTSIDE the ChannelPanel component
+interface ChannelRowData {
+  channelSortOrder: 'alphabetical' | 'number';
+  programs: Map<string, StoredProgram[]>;
+  windowStart: Date;
+  windowEnd: Date;
+  pixelsPerHour: number;
+  visibleHours: number;
+  handleChannelClick: (channel: StoredChannel) => void;
+  onPlayCatchup?: (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number) => void;
+  handleFavoriteToggle: () => void;
+  categoryId: string | null;
+  activeRecordings: import('../hooks/useActiveRecordings').RecordingInfo[];
+  currentLayout?: string;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
+}
+
+const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
+  index,
+  channel,
+  data,
+}: {
+  index: number;
+  channel: StoredChannel;
+  data: ChannelRowData;
+}) {
+  return (
+    <ChannelRow
+      channel={channel}
+      index={index}
+      sortOrder={data.channelSortOrder}
+      programs={data.programs.get(channel.stream_id) ?? []}
+      windowStart={data.windowStart}
+      windowEnd={data.windowEnd}
+      pixelsPerHour={data.pixelsPerHour}
+      visibleHours={data.visibleHours}
+      onPlay={() => data.handleChannelClick(channel)}
+      onPlayCatchup={data.onPlayCatchup}
+      onFavoriteToggle={data.handleFavoriteToggle}
+      categoryId={data.categoryId}
+      activeRecordings={data.activeRecordings}
+      currentLayout={data.currentLayout}
+      onSendToSlot={data.onSendToSlot}
+    />
+  );
+});
 
 interface ChannelPanelProps {
   categoryId: string | null;
@@ -483,7 +531,7 @@ export function ChannelPanel({
   const hasSelectedChannel = selectedChannel !== null;
 
   // Handle Channel Click: Preview vs Fullscreen
-  const handleChannelClick = (channel: StoredChannel) => {
+  const handleChannelClick = useCallback((channel: StoredChannel) => {
     if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> Go Fullscreen (Close Guide)
       onClose();
@@ -494,7 +542,7 @@ export function ChannelPanel({
       lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
     }
-  };
+  }, [selectedChannel?.stream_id, onClose, onPlayChannel]);
 
   // Handle favorite toggle - refresh channel data
   const handleFavoriteToggle = useCallback(async () => {
@@ -1055,25 +1103,28 @@ export function ChannelPanel({
               key={`channel-list-${favoritesVersion}`}
               data={channels}
               className="guide-channels"
-              itemContent={(index, channel) => (
-                <ChannelRow
-                  channel={channel}
+              itemContent={(index, channel, context) => (
+                <ChannelRowVirtuoso
                   index={index}
-                  sortOrder={channelSortOrder}
-                  programs={programs.get(channel.stream_id) ?? []}
-                  windowStart={windowStart}
-                  windowEnd={windowEnd}
-                  pixelsPerHour={pixelsPerHour}
-                  visibleHours={visibleHours}
-                  onPlay={() => handleChannelClick(channel)}
-                  onPlayCatchup={onPlayCatchup}
-                  onFavoriteToggle={handleFavoriteToggle}
-                  categoryId={categoryId}
-                  activeRecordings={activeRecordings}
-                  currentLayout={currentLayout}
-                  onSendToSlot={onSendToSlot}
+                  channel={channel}
+                  data={context}
                 />
               )}
+              context={{
+                channelSortOrder,
+                programs,
+                windowStart,
+                windowEnd,
+                pixelsPerHour,
+                visibleHours,
+                handleChannelClick,
+                onPlayCatchup,
+                handleFavoriteToggle,
+                categoryId,
+                activeRecordings,
+                currentLayout,
+                onSendToSlot,
+              }}
               components={{
                 EmptyPlaceholder: () => (
                   <div className="guide-empty">
