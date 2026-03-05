@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
 import { checkForUpdates, checkForUpdatesSilent } from './services/updater';
-import type { ShortcutsMap, ShortcutAction } from './types/app';
+import type { ShortcutsMap } from './types/app';
 import { Settings } from './components/Settings';
 import type { SettingsTabId } from './components/settings/SettingsSidebar';
 import { Sidebar, type View } from './components/Sidebar';
@@ -36,7 +35,7 @@ import { bulkOps } from './services/bulk-ops';
 import type { StoredChannel, WatchlistItem } from './db';
 import { getWatchlist, db } from './db';
 import type { VodPlayInfo } from './types/media';
-import { StalkerClient } from '@ynotv/local-adapter';
+import { resolvePlayUrl } from './services/stream-resolver';
 import { VideoErrorOverlay } from './components/VideoErrorOverlay';
 import { Bridge } from './services/tauri-bridge';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
@@ -48,10 +47,12 @@ import { MultiviewLayout } from './components/MultiviewLayout/MultiviewLayout';
 import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
 import type { LayoutMode, SavedLayoutState } from './hooks/useLayoutPersistence';
 import './themes.css';
-import { DEFAULT_SHORTCUTS } from './constants/shortcuts';
 import { useMpvListeners } from './hooks/useMpvListeners';
 import { useAutoSync } from './hooks/useAutoSync';
 import { useTimeshift } from './hooks/useTimeshift';
+import { useDvrEvents } from './hooks/useDvrEvents';
+import { useDvrUrlResolver } from './hooks/useDvrUrlResolver';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { UpdateModal } from './components/UpdateModal';
 import { registerUpdateModal } from './services/updater';
 
@@ -178,6 +179,9 @@ function App() {
   // Timeshift settings (loaded from store)
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
   const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824); // Default 1GB
+  const [liveBufferOffset, setLiveBufferOffset] = useState(0); // Default 0 seconds behind live
+  // Search settings
+  const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
 
   // Update modal state
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -217,6 +221,13 @@ function App() {
           setReopenLastOnStartup(result.data.reopenLastOnStartup ?? false);
           setTimeshiftEnabled(result.data.timeshiftEnabled ?? false);
           setTimeshiftCacheBytes(result.data.timeshiftCacheBytes ?? 1_073_741_824);
+          setLiveBufferOffset(result.data.liveBufferOffset ?? 0);
+          setIncludeSourceInSearch(result.data.includeSourceInSearch ?? false);
+
+          // Apply EPG darken current setting on load
+          if (result.data.epgDarkenCurrent) {
+            document.documentElement.classList.add('epg-darken-current');
+          }
 
           // Use localStorage state if available (more recent), otherwise use Tauri storage
           const layoutState = localStorageState || result.data.savedLayoutState || null;
@@ -256,7 +267,7 @@ function App() {
   } = mpv;
 
   // Ref for the restore callback (avoid circular dependency)
-  const onLoadMainChannelRef = useRef<(name: string, url: string) => void>(() => { });
+  const onLoadMainChannelRef = useRef<(name: string, url: string, sourceName?: string | null) => void | Promise<void>>(() => { });
 
   // Multiview with persistence
   const multiview = useLayoutPersistence({
@@ -265,7 +276,7 @@ function App() {
     initialSavedState: savedLayoutState,
     settingsLoaded: layoutSettingsLoaded,
     mpvReady: mpvReadyState,
-    onLoadMainChannel: (name, url) => onLoadMainChannelRef.current(name, url),
+    onLoadMainChannel: (name, url, sourceName) => onLoadMainChannelRef.current(name, url, sourceName),
   });
 
   // Update the ref so onReady can call the latest syncMpvGeometry
@@ -289,9 +300,18 @@ function App() {
   }, [duration, playing]);
 
   // Set up the restore callback now that multiview is initialized
-  onLoadMainChannelRef.current = (channelName: string, channelUrl: string) => {
-    // Create a minimal channel object for UI state
-    const restoredChannel: StoredChannel = {
+  onLoadMainChannelRef.current = async (channelName: string, channelUrl: string, sourceName?: string | null) => {
+    // Try to find the actual channel from database for proper UI state
+    let channel: StoredChannel | null = null;
+    try {
+      const channels = await db.channels.whereRaw('name = ?', [channelName]).toArray();
+      channel = channels.find(c => c.direct_url === channelUrl) || channels[0] || null;
+    } catch (e) {
+      console.warn('[App] Failed to lookup channel:', e);
+    }
+
+    // Use the actual channel if found, otherwise create a minimal one
+    const restoredChannel: StoredChannel = channel || {
       stream_id: `restored_${Date.now()}`,
       source_id: 'restored',
       name: channelName,
@@ -311,8 +331,8 @@ function App() {
     setPlaying(true);
     setActiveView('none');
 
-    // Also notify multiview so swap logic works
-    multiview.notifyMainLoaded(channelName, channelUrl);
+    // Also notify multiview so swap logic works (preserve sourceName)
+    multiview.notifyMainLoaded(channelName, channelUrl, sourceName);
   };
 
   const [currentChannel, setCurrentChannel] = useState<StoredChannel | null>(null);
@@ -417,7 +437,7 @@ function App() {
   }, [searchQuery]);
 
   // Fetch search results
-  const searchChannels = useChannelSearch(debouncedSearchQuery, 200);
+  const searchChannels = useChannelSearch(debouncedSearchQuery, 200, includeSourceInSearch);
   const searchPrograms = useProgramSearch(debouncedSearchQuery, 200);
 
   // Fetch watchlist when in watchlist mode or when refresh is triggered
@@ -566,122 +586,13 @@ function App() {
     checkUpdates();
   }, []);
 
-  // Listen for DVR events
-  useEffect(() => {
-    const setupDvrListener = async () => {
-      try {
-        const unlisten = await listen('dvr:event', (event) => {
-          const data = event.payload as {
-            event_type: string;
-            schedule_id: number;
-            recording_id?: number;
-            channel_name: string;
-            program_title: string;
-            message?: string;
-          };
-          console.log('[DVR Event]', data.event_type, data);
-
-          // Show toast notification for recording events
-          if (data.event_type === 'started') {
-            console.log(`[DVR] Started recording: ${data.program_title}`);
-          } else if (data.event_type === 'completed') {
-            console.log(`[DVR] Completed recording: ${data.program_title}`);
-          } else if (data.event_type === 'failed') {
-            console.error(`[DVR] Failed recording: ${data.program_title}`, data.message);
-          }
-        });
-
-        return unlisten;
-      } catch (error) {
-        console.error('[App] Failed to setup DVR listener:', error);
-      }
-    };
-
-    let unlistenFn: (() => void) | undefined;
-    setupDvrListener().then((fn) => {
-      unlistenFn = fn;
-    });
-
-    return () => {
-      if (unlistenFn) {
-        unlistenFn();
-      }
-    };
-  }, []);
+  // Listen for DVR events (recording started / completed / failed)
+  useDvrEvents();
 
   // Listen for DVR URL resolution requests (always active, even when not on player page)
-  useEffect(() => {
-    const setupUrlResolver = async () => {
-      try {
-        const unlisten = await listen('dvr:resolve_url_now', async (event: any) => {
-          const { schedule_id, channel_id, source_id } = event.payload;
-          console.log('[DVR URL Resolver] Received request for schedule:', schedule_id, 'channel:', channel_id, 'source:', source_id);
-
-          try {
-            // Get channel info from database
-            const { db } = await import('./db');
-            const channel = await db.channels.get(channel_id);
-            console.log('[DVR URL Resolver] Found channel:', channel?.name, 'direct_url:', channel?.direct_url);
-
-            if (!channel?.direct_url?.startsWith('stalker_')) {
-              console.log('[DVR URL Resolver] Not a Stalker channel, skipping');
-              return;
-            }
-
-            // Get source config
-            if (!window.storage) {
-              console.error('[DVR URL Resolver] Storage API not available');
-              return;
-            }
-
-            const sourceRes = await window.storage.getSource(source_id);
-            console.log('[DVR URL Resolver] Source type:', sourceRes.data?.type, 'has MAC:', !!sourceRes.data?.mac);
-
-            if (sourceRes.data?.type !== 'stalker' || !sourceRes.data.mac) {
-              console.error('[DVR URL Resolver] Stalker source not found or missing MAC');
-              return;
-            }
-
-            // Resolve URL immediately
-            console.log('[DVR URL Resolver] Resolving Stalker URL...');
-            const client = new StalkerClient({
-              baseUrl: sourceRes.data.url,
-              mac: sourceRes.data.mac,
-              userAgent: sourceRes.data.user_agent
-            }, source_id);
-
-            const resolvedUrl = await client.resolveStreamUrl(channel.direct_url);
-            console.log('[DVR URL Resolver] Resolved to:', resolvedUrl);
-
-            // Update the schedule with the resolved URL
-            console.log('[DVR URL Resolver] Updating database...');
-            await invoke('update_dvr_stream_url', {
-              scheduleId: schedule_id,
-              streamUrl: resolvedUrl
-            });
-            console.log('[DVR URL Resolver] URL updated successfully for schedule:', schedule_id);
-          } catch (error) {
-            console.error('[DVR URL Resolver] Failed to resolve URL:', error);
-          }
-        });
-
-        return unlisten;
-      } catch (error) {
-        console.error('[App] Failed to setup URL resolver listener:', error);
-      }
-    };
-
-    let unlistenFn: (() => void) | undefined;
-    setupUrlResolver().then((fn) => {
-      unlistenFn = fn;
-    });
-
-    return () => {
-      if (unlistenFn) {
-        unlistenFn();
-      }
-    };
-  }, []);
+  // When the DVR scheduler needs to record a Stalker channel, it can't resolve the URL
+  // itself (tokens expire quickly), so it fires this event for the frontend to resolve.
+  useDvrUrlResolver();
 
   // Track if mouse is hovering over controls (prevents auto-hide)
   const controlsHoveredRef = useRef(false);
@@ -754,72 +665,41 @@ function App() {
     debugLog(`handleLoadStream: ${channel.name} (${channel.stream_id})`);
     debugLog(`  URL: ${channel.direct_url}`);
 
-    // Fetch source to get User Agent and Source Config for Stalker
-    let userAgent: string | undefined;
-    let sourceData: any | undefined;
-
-    if (window.storage && channel.source_id) {
-      try {
-        const sourceRes = await window.storage.getSource(channel.source_id);
-        if (sourceRes.data) {
-          sourceData = sourceRes.data;
-          if (sourceRes.data.user_agent) {
-            userAgent = sourceRes.data.user_agent;
-            debugLog(`  UserAgent: ${userAgent}`);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to fetch source:', e);
-      }
+    // Resolve source URL (handles Stalker token resolution + extracts userAgent/sourceName)
+    let resolved;
+    try {
+      resolved = await resolvePlayUrl(channel.source_id, channel.direct_url);
+    } catch (e) {
+      console.error('Stalker resolution failed:', e);
+      setError('Failed to resolve Stalker link');
+      return;
     }
 
-    let playUrl = channel.direct_url;
-
-    // Resolve Stalker URLs (stalker_ch:, stalker_vod:, /media/)
-    if (sourceData?.type === 'stalker' && (
-      playUrl.startsWith('stalker_') ||
-      playUrl.startsWith('/media/')
-    )) {
-      try {
-        debugLog(`Resolving Stalker URL: ${playUrl}`);
-        const client = new StalkerClient({
-          baseUrl: sourceData.url,
-          mac: sourceData.mac || '',
-          userAgent: sourceData.user_agent
-        }, sourceData.id);
-
-        playUrl = await client.resolveStreamUrl(playUrl);
-        debugLog(`Resolved to: ${playUrl}`);
-      } catch (e) {
-        console.error('Stalker resolution failed:', e);
-        setError('Failed to resolve Stalker link');
-        return;
-      }
-    }
+    debugLog(`  UserAgent: ${resolved.userAgent ?? 'none'}`);
+    debugLog(`  Resolved URL: ${resolved.url}`);
 
     setError(null);
     const result = await tryLoadWithFallbacks(
-      playUrl,
+      resolved.url,
       true, // isLive
-      userAgent,
+      resolved.userAgent,
       (msg) => setError(msg) // Pass callback for background errors
     );
     if (!result.success) {
       const errMsg = result.error ?? 'Failed to load stream';
       console.error('[(Renderer) handleLoadStream] Load Failed:', errMsg);
       debugLog(`  FAILED: ${errMsg}`, 'error');
-      console.log('[App] Setting error state:', errMsg);
       setError(errMsg);
     } else {
       debugLog(`  SUCCESS: playing`);
-      // Update channel with working URL if fallback was used
-      const resolvedChannel = result.url !== playUrl
+      // Update channel with working URL if a fallback extension was used
+      const resolvedChannel = result.url !== resolved.url
         ? { ...channel, direct_url: result.url }
         : channel;
       setCurrentChannel(resolvedChannel);
       setPlaying(true);
-      // Notify multiview hook what's now in MPV (needed for swap logic)
-      multiview.notifyMainLoaded(channel.name, result.url);
+      // Notify multiview hook what's now in MPV (sourceName comes from resolvePlayUrl)
+      multiview.notifyMainLoaded(channel.name, result.url, resolved.sourceName ?? null);
 
       // Capture video metadata after successful load
       import('./services/video-metadata').then(({ captureAndSaveMetadata }) => {
@@ -865,40 +745,24 @@ function App() {
     setError(null);
     setVodInfo(null);
 
-    // Formulate the timeshift url if it is Xtream
-    let playUrl = channel.direct_url;
-    let userAgent: string | undefined;
+    // Strip the source-id prefix from the stream_id to get the raw Xtream stream ID
+    const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
 
-    if (window.storage && channel.source_id) {
-      try {
-        const sourceRes = await window.storage.getSource(channel.source_id);
-        const source = sourceRes.data;
-        if (source) {
-          userAgent = source.user_agent;
-          if (source.type === 'xtream') {
-            const { XtreamClient } = await import('@ynotv/local-adapter');
-            const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
-
-            // Re-calculate the maximum allowed duration matching EPG start to Now
-            const endMs = startTimeMs + (durationMinutes * 60000);
-            const actualDurationMinutes = Math.ceil((Math.min(endMs, Date.now()) - startTimeMs) / 60000);
-
-            playUrl = XtreamClient.buildTimeshiftUrl(
-              rawStreamId,
-              source.url,
-              source.username || '',
-              source.password || '',
-              actualDurationMinutes,
-              new Date(startTimeMs)
-            );
-          }
-        }
-      } catch (e) {
-        console.error('Failed to resolve catchup source:', e);
-      }
+    // Resolve source URL (builds Xtream timeshift URL if needed, resolves Stalker token)
+    let resolved;
+    try {
+      resolved = await resolvePlayUrl(channel.source_id, channel.direct_url, {
+        rawStreamId,
+        startTimeMs,
+        durationMinutes,
+      });
+    } catch (e) {
+      console.error('Failed to resolve catchup source:', e);
+      setError('Failed to resolve catchup stream');
+      return;
     }
 
-    const result = await tryLoadWithFallbacks(playUrl, false, userAgent);
+    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
       setError(result.error ?? 'Failed to load catchup stream');
     } else {
@@ -1065,38 +929,20 @@ function App() {
 
     setError(null);
 
-    // RESOLVE URL for Stalker Sources
-    let urlToPlay = info.url;
-    let userAgent: string | undefined;
-
-    if (window.storage && info.source_id) {
-      try {
-        const sourceRes = await window.storage.getSource(info.source_id);
-        const source = sourceRes.data;
-        if (source) {
-          userAgent = source.user_agent;
-          if (userAgent) debugLog(`  UserAgent: ${userAgent}`);
-
-          if (source.type === 'stalker') {
-            debugLog(`Stalker Source detected, resolving URL for cmd: ${urlToPlay}`);
-            const { StalkerClient } = await import('@ynotv/local-adapter');
-
-            const client = new StalkerClient({
-              baseUrl: source.url,
-              mac: source.mac || '',
-              userAgent: source.user_agent
-            }, source.id);
-
-            urlToPlay = await client.resolveStreamUrl(urlToPlay);
-            debugLog(`Resolved Stalker URL: ${urlToPlay}`);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to resolve Source info:', err);
-      }
+    // Resolve source URL (handles Stalker token resolution + extracts userAgent)
+    let resolved;
+    try {
+      resolved = await resolvePlayUrl(info.source_id, info.url);
+    } catch (err) {
+      console.error('Failed to resolve Source info:', err);
+      setError('Failed to resolve stream URL');
+      return;
     }
 
-    const result = await tryLoadWithFallbacks(urlToPlay, false, userAgent);
+    debugLog(`  UserAgent: ${resolved.userAgent ?? 'none'}`);
+    debugLog(`  Resolved URL: ${resolved.url}`);
+
+    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
       debugLog(`  FAILED: ${result.error}`);
       setError(result.error ?? 'Failed to load stream');
@@ -1150,169 +996,29 @@ function App() {
     },
   });
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle shortcuts when typing in inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      const currentShortcuts = shortcutsRef.current;
-
-      // Helper to match keys case-insensitively for letters, but sensitive for others if needed
-      const matches = (action: ShortcutAction, eventKey: string) => {
-        const storedKey = currentShortcuts[action] || DEFAULT_SHORTCUTS[action];
-        if (!storedKey) return false;
-
-        // precise match first
-        if (eventKey === storedKey) return true;
-
-        // case-insensitive match for single letters
-        if (eventKey.length === 1 && storedKey.length === 1) {
-          return eventKey.toLowerCase() === storedKey.toLowerCase();
-        }
-
-        return false;
-      };
-
-      if (matches('togglePlay', e.key)) {
-        e.preventDefault();
-        handleTogglePlay();
-      } else if (matches('toggleMute', e.key)) {
-        handleToggleMute();
-      } else if (matches('toggleStats', e.key)) {
-        e.preventDefault();
-        handleToggleStats();
-      } else if (matches('toggleFullscreen', e.key)) {
-        e.preventDefault();
-        handleToggleFullscreen();
-      } else if (matches('selectSubtitle', e.key)) {
-        e.preventDefault();
-        handleShowSubtitleModal();
-      } else if (matches('selectAudio', e.key)) {
-        e.preventDefault();
-        handleShowAudioModal();
-      } else if (matches('toggleGuide', e.key)) {
-        // Toggle guide
-        setActiveView((v) => (v === 'guide' ? 'none' : 'guide'));
-      } else if (matches('toggleCategories', e.key)) {
-        // Toggle categories
-        setCategoriesOpen((open) => !open);
-      } else if (matches('toggleLiveTV', e.key)) {
-        e.preventDefault();
-        // Toggle both Guide and Categories simultaneously
-        // Use refs to get fresh state in event listener
-        const currentActiveView = activeViewRef.current;
-        const currentCategoriesOpen = categoriesOpenRef.current;
-
-        // Always show controls when using Live TV hotkey
-        setShowControls(true);
-
-        const newLiveTVState = !(currentActiveView === 'guide' && currentCategoriesOpen);
-        if (newLiveTVState) {
-          setActiveView('guide');
-          setCategoriesOpen(true);
-        } else {
-          setActiveView('none');
-          setCategoriesOpen(false);
-        }
-      } else if (matches('toggleSettings', e.key)) {
-        e.preventDefault();
-        // Toggle Settings
-        const currentActiveView = activeViewRef.current;
-        setActiveView(currentActiveView === 'settings' ? 'none' : 'settings');
-      } else if (matches('toggleSports', e.key)) {
-        e.preventDefault();
-        // Toggle Sports
-        const currentActiveView = activeViewRef.current;
-        setCategoriesOpen(false);
-        setActiveView(currentActiveView === 'sports' ? 'none' : 'sports');
-      } else if (matches('toggleDvr', e.key)) {
-        e.preventDefault();
-        // Toggle DVR
-        const currentActiveView = activeViewRef.current;
-        setCategoriesOpen(false);
-        setActiveView(currentActiveView === 'dvr' ? 'none' : 'dvr');
-      } else if (matches('toggleCalendar', e.key)) {
-        e.preventDefault();
-        // Toggle TV Calendar
-        const currentActiveView = activeViewRef.current;
-        setCategoriesOpen(false);
-        setActiveView(currentActiveView === 'calendar' ? 'none' : 'calendar');
-      } else if (matches('focusSearch', e.key)) {
-        e.preventDefault();
-        // Always show controls when using Search hotkey
-        setShowControls(true);
-        // Open guide if not open
-        if (activeViewRef.current !== 'guide') {
-          setActiveView('guide');
-        }
-        // Open categories panel
-        setCategoriesOpen(true);
-        // Focus title bar search input
-        if (titleBarSearchRef.current) {
-          titleBarSearchRef.current.focus();
-        }
-      } else if (matches('close', e.key)) {
-        setActiveView('none');
-        setCategoriesOpen(false);
-        setSidebarExpanded(false);
-        setShowControls(false);
-      } else if (matches('seekForward', e.key)) {
-        e.preventDefault();
-        handleSeek(positionRef.current + 10);
-      } else if (matches('seekBackward', e.key)) {
-        e.preventDefault();
-        handleSeek(positionRef.current - 10);
-      } else if (matches('layoutMain', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('main');
-      } else if (matches('layoutPip', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('pip');
-      } else if (matches('layoutBigBottom', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('bigbottom');
-      } else if (matches('layout2x2', e.key)) {
-        e.preventDefault();
-        if (switchLayoutRef.current) switchLayoutRef.current('2x2');
-      } else if (matches('channelUp', e.key)) {
-        e.preventDefault();
-        // Navigate to previous channel in current category
-        const channels = currentChannelsRef.current;
-        const currentCh = currentChannelRef.current;
-        if (channels.length > 0 && currentCh) {
-          const currentIndex = channels.findIndex(ch => ch.stream_id === currentCh.stream_id);
-          if (currentIndex > 0) {
-            // Go to previous channel
-            handlePlayChannelRef.current(channels[currentIndex - 1]);
-          } else if (currentIndex === 0) {
-            // Wrap to last channel
-            handlePlayChannelRef.current(channels[channels.length - 1]);
-          }
-        }
-      } else if (matches('channelDown', e.key)) {
-        e.preventDefault();
-        // Navigate to next channel in current category
-        const channels = currentChannelsRef.current;
-        const currentCh = currentChannelRef.current;
-        if (channels.length > 0 && currentCh) {
-          const currentIndex = channels.findIndex(ch => ch.stream_id === currentCh.stream_id);
-          if (currentIndex >= 0 && currentIndex < channels.length - 1) {
-            // Go to next channel
-            handlePlayChannelRef.current(channels[currentIndex + 1]);
-          } else if (currentIndex === channels.length - 1) {
-            // Wrap to first channel
-            handlePlayChannelRef.current(channels[0]);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []); // Empty dependency array = attached once, uses refs for state
+  // Keyboard shortcuts — logic lives in useKeyboardShortcuts
+  useKeyboardShortcuts({
+    shortcutsRef,
+    activeViewRef,
+    categoriesOpenRef,
+    positionRef,
+    currentChannelsRef,
+    currentChannelRef,
+    switchLayoutRef,
+    titleBarSearchRef,
+    handlePlayChannelRef,
+    handleTogglePlay,
+    handleToggleMute,
+    handleToggleStats,
+    handleToggleFullscreen,
+    handleShowSubtitleModal,
+    handleShowAudioModal,
+    handleSeek,
+    setActiveView,
+    setCategoriesOpen,
+    setSidebarExpanded,
+    setShowControls,
+  });
 
 
   // Window controls
@@ -1630,7 +1336,7 @@ function App() {
         timeshiftState={timeshiftState}
         onTimeshiftCatchUp={() => {
           if (timeshiftState) {
-            handleSeek(Math.max(0, timeshiftState.cacheEnd - 2));
+            handleSeek(Math.max(0, timeshiftState.cacheEnd - liveBufferOffset));
           }
         }}
       />
@@ -1717,6 +1423,8 @@ function App() {
         onWatchlistRefresh={() => setWatchlistRefreshTrigger(v => v + 1)}
         currentLayout={multiview.layout}
         onSendToSlot={multiview.sendToSlot}
+        includeSourceInSearch={includeSourceInSearch}
+        currentChannel={currentChannel}
       />
 
       {/* Settings Panel */}

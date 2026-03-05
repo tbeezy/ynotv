@@ -34,12 +34,14 @@ export type ShortcutAction =
 export interface SavedChannelState {
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
 }
 
 export interface SavedSlotState {
     id: 2 | 3 | 4;
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
     active: boolean;
 }
 

@@ -51,6 +51,25 @@ jobs:
         shell: bash
         continue-on-error: true
 
+      - name: Read release notes
+        id: release-notes
+        run: |
+          # Try to read CHANGELOG.md for this version
+          VERSION=${{ github.ref_name }}
+          if [ -f CHANGELOG.md ]; then
+            # Extract notes for this version (everything between this version and the next)
+            NOTES=$(sed -n "/^## \\$VERSION/,/^## /p" CHANGELOG.md | sed '$d' | tail -n +2)
+            if [ -z "$NOTES" ]; then
+              NOTES="See CHANGELOG.md for full release notes."
+            fi
+          else
+            NOTES="See the assets to download this version and install."
+          fi
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Build Tauri App
         id: tauri-build
         uses: tauri-apps/tauri-action@v0
@@ -61,7 +80,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Release ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: ${{ steps.release-notes.outputs.body }}
           prerelease: false
 
       - name: Check build status

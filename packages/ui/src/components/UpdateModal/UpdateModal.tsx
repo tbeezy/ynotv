@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { check, Update, DownloadEvent } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { getVersion } from '@tauri-apps/api/app';
 import './UpdateModal.css';
 
 interface UpdateModalProps {
@@ -13,6 +14,11 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
   const [status, setStatus] = useState<'checking' | 'available' | 'downloading' | 'installing' | 'uptodate' | 'error'>('checking');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [currentVersion, setCurrentVersion] = useState<string>('');
+
+  useEffect(() => {
+    getVersion().then(setCurrentVersion).catch(() => setCurrentVersion(''));
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -172,7 +178,7 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
                 You're running the latest version of ynoTV!
               </p>
               <p className="update-modal-version-text">
-                Current version: v{update?.currentVersion || '1.5.7'}
+                Current version: v{update?.currentVersion || currentVersion || 'Unknown'}
               </p>
               <div className="update-modal-actions">
                 <button className="update-modal-btn primary" onClick={handleClose}>

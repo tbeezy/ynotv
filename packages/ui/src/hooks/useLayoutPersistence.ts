@@ -14,11 +14,13 @@ export interface SavedLayoutState {
   mainChannel: {
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
   };
   slots: {
     id: 2 | 3 | 4;
     channelName: string | null;
     channelUrl: string | null;
+    sourceName: string | null;
     active: boolean;
   }[];
 }
@@ -29,7 +31,7 @@ interface UseLayoutPersistenceOptions {
   initialSavedState?: SavedLayoutState | null;
   settingsLoaded?: boolean;
   mpvReady?: boolean;
-  onLoadMainChannel?: (channelName: string, channelUrl: string) => void;
+  onLoadMainChannel?: (channelName: string, channelUrl: string, sourceName?: string | null) => void;
 }
 
 /**
@@ -54,7 +56,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
   } = multiview;
 
   // Track main slot state locally for persistence
-  const mainSlotRef = useRef<MainSlot>({ channelName: null, channelUrl: null });
+  const mainSlotRef = useRef<MainSlot>({ channelName: null, channelUrl: null, sourceName: null });
 
   // Keep a ref to the full saved state for cross-layout restoration
   const savedStateRef = useRef<SavedLayoutState | null>(null);
@@ -167,9 +169,9 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
    * Notify that main channel loaded - tracks for persistence
    */
   const notifyMainLoaded = useCallback(
-    (channelName: string, channelUrl: string) => {
-      baseNotifyMainLoaded(channelName, channelUrl);
-      mainSlotRef.current = { channelName, channelUrl };
+    (channelName: string, channelUrl: string, sourceName?: string | null) => {
+      baseNotifyMainLoaded(channelName, channelUrl, sourceName);
+      mainSlotRef.current = { channelName, channelUrl, sourceName: sourceName || null };
 
       // Save state immediately
       if (enabled) {
@@ -229,8 +231,8 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
           // Only restore slots that aren't already active
           for (const slot of slotsToRestore) {
             if (!currentlyActiveSlots.has(slot.id)) {
-              console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName);
-              await baseSendToSlot(slot.id, slot.channelName || '', slot.channelUrl || '');
+              console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName, 'source:', slot.sourceName);
+              await baseSendToSlot(slot.id, slot.channelName || '', slot.channelUrl || '', slot.sourceName || null);
               await new Promise((r) => setTimeout(r, 200));
             }
           }
@@ -244,16 +246,16 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
    * Send a channel to a slot with persistence
    */
   const sendToSlot = useCallback(
-    async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => {
-      console.log('[useLayoutPersistence] sendToSlot:', slotId, channelName);
+    async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => {
+      console.log('[useLayoutPersistence] sendToSlot:', slotId, channelName, sourceName);
 
-      await baseSendToSlot(slotId, channelName, channelUrl);
+      await baseSendToSlot(slotId, channelName, channelUrl, sourceName);
 
       // Save state after loading
       if (enabled) {
         // Manually update slotsRef so we don't save stale React state before the next render tick
         slotsRef.current = slotsRef.current.map(s =>
-          s.id === slotId ? { ...s, channelName, channelUrl, active: true } : s
+          s.id === slotId ? { ...s, channelName, channelUrl, sourceName: sourceName ?? null, active: true } : s
         );
         await saveStateWithRefs();
       }
@@ -273,7 +275,10 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
         mainSlotRef.current = {
           channelName: slot.channelName,
           channelUrl: slot.channelUrl,
+          sourceName: slot.sourceName,
         };
+        // Notify parent that main channel changed (for preview panel sync)
+        onLoadMainChannel?.(slot.channelName || '', slot.channelUrl, slot.sourceName);
       }
 
       await baseSwapWithMain(slotId, currentSlots);
@@ -285,13 +290,14 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
             ...s,
             channelName: oldMain.channelName,
             channelUrl: oldMain.channelUrl,
+            sourceName: oldMain.sourceName,
             active: !!oldMain.channelUrl
           } : s
         );
         await saveStateWithRefs();
       }
     },
-    [baseSwapWithMain, enabled, saveStateWithRefs]
+    [baseSwapWithMain, enabled, saveStateWithRefs, onLoadMainChannel]
   );
 
   /**
@@ -304,7 +310,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       if (enabled) {
         // Zero out target slot manually before save tick
         slotsRef.current = slotsRef.current.map(s =>
-          s.id === slotId ? { ...s, channelName: null, channelUrl: null, active: false } : s
+          s.id === slotId ? { ...s, channelName: null, channelUrl: null, sourceName: null, active: false } : s
         );
         await saveStateWithRefs();
       }
@@ -335,12 +341,15 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       if (state.mainChannel.channelUrl) {
         console.log(
           '[useLayoutPersistence] Restoring main channel:',
-          state.mainChannel.channelName
+          state.mainChannel.channelName,
+          'source:',
+          state.mainChannel.sourceName
         );
         if (onLoadMainChannel) {
           onLoadMainChannel(
             state.mainChannel.channelName || '',
-            state.mainChannel.channelUrl
+            state.mainChannel.channelUrl,
+            state.mainChannel.sourceName
           );
         } else {
           await invoke('mpv_load', { url: state.mainChannel.channelUrl }).catch(
@@ -350,7 +359,8 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
         mainSlotRef.current = { ...state.mainChannel };
         baseNotifyMainLoaded(
           state.mainChannel.channelName || '',
-          state.mainChannel.channelUrl
+          state.mainChannel.channelUrl,
+          state.mainChannel.sourceName
         );
       }
 
@@ -363,11 +373,12 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       console.log('[useLayoutPersistence] Restoring', slotsToRestore.length, 'slots:', slotsToRestore.map(s => ({ id: s.id, name: s.channelName })));
 
       for (const slot of slotsToRestore) {
-        console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName);
+        console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName, 'source:', slot.sourceName);
         await baseSendToSlot(
           slot.id,
           slot.channelName || '',
           slot.channelUrl || '',
+          slot.sourceName || null, // Pass sourceName for display in mini media bar
           true // force - bypass tab mode check during restore
         );
         // Wait between slots for React to render mini media bars

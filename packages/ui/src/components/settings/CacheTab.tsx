@@ -17,18 +17,23 @@ function estimateMinutes(bytes: number, mbps: number): number {
 interface CacheTabProps {
   timeshiftEnabled: boolean;
   timeshiftCacheBytes: number;
-  onTimeshiftChange: (enabled: boolean, cacheBytes: number) => void;
+  liveBufferOffset?: number;
+  onTimeshiftChange: (enabled: boolean, cacheBytes: number, bufferOffset?: number) => void;
 }
 
-export function CacheTab({ timeshiftEnabled, timeshiftCacheBytes, onTimeshiftChange }: CacheTabProps) {
+export function CacheTab({ timeshiftEnabled, timeshiftCacheBytes, liveBufferOffset = 0, onTimeshiftChange }: CacheTabProps) {
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const handleTimeshiftToggle = (enabled: boolean) => {
-    onTimeshiftChange(enabled, timeshiftCacheBytes);
+    onTimeshiftChange(enabled, timeshiftCacheBytes, liveBufferOffset);
   };
 
   const handlePreset = (bytes: number) => {
-    onTimeshiftChange(timeshiftEnabled, bytes);
+    onTimeshiftChange(timeshiftEnabled, bytes, liveBufferOffset);
+  };
+
+  const handleBufferOffsetChange = (offset: number) => {
+    onTimeshiftChange(timeshiftEnabled, timeshiftCacheBytes, offset);
   };
 
   const checkMpvCache = async () => {
@@ -104,6 +109,27 @@ export function CacheTab({ timeshiftEnabled, timeshiftCacheBytes, onTimeshiftCha
                   </tr>
                 </tbody>
               </table>
+
+              <div className="timeshift-buffer-offset" style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <div className="timeshift-presets-label">Live Now Buffer Offset</div>
+                <p className="section-description" style={{ marginTop: '4px', fontSize: '0.8125rem' }}>
+                  When pressing "Go Live" during time shift, seek to this many seconds behind the live edge. Helps prevent buffer stalls on some networks.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="30"
+                    step="1"
+                    value={liveBufferOffset}
+                    onChange={(e) => handleBufferOffsetChange(parseInt(e.target.value))}
+                    style={{ flex: 1 }}
+                  />
+                  <span style={{ minWidth: '60px', textAlign: 'right', fontSize: '0.875rem' }}>
+                    {liveBufferOffset}s
+                  </span>
+                </div>
+              </div>
 
               <p className="timeshift-note">
                 ⚠️ Changes take effect on next restart. Buffer lives only in RAM and is reset on channel change.

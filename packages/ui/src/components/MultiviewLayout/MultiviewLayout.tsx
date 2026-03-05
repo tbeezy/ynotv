@@ -35,6 +35,7 @@ export function MultiviewLayout({
             slotId={slot.id}
             channelName={slot.channelName}
             channelUrl={slot.channelUrl}
+            sourceName={slot.sourceName}
             active={slot.active}
             onSwapWithMain={() => onSwapWithMain(slot.id)}
             onStop={() => onStop(slot.id)}

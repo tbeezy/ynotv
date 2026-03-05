@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { Virtuoso } from 'react-virtuoso';
 import { useChannels, useCategories, useAllPrograms } from '../hooks/useChannels';
 import { useTimeGrid } from '../hooks/useTimeGrid';
@@ -41,7 +42,11 @@ interface ChannelPanelProps {
   onWatchlistRefresh?: () => void;
   // Multiview props
   currentLayout?: string;
-  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
+  // Search display props
+  includeSourceInSearch?: boolean;
+  // Current playing channel for syncing preview
+  currentChannel?: StoredChannel | null;
 }
 
 export function ChannelPanel({
@@ -63,6 +68,8 @@ export function ChannelPanel({
   onWatchlistRefresh,
   currentLayout,
   onSendToSlot,
+  includeSourceInSearch,
+  currentChannel,
 }: ChannelPanelProps) {
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);
@@ -79,6 +86,31 @@ export function ChannelPanel({
 
   // Get active recordings for showing indicators
   const { recordings: activeRecordings } = useActiveRecordings(5000);
+
+  // Cached source name map to avoid repeated Tauri calls
+  const { version: sourceVersion } = useSourceVersion();
+  const sourceNameMapRef = useRef<Map<string, string>>(new Map());
+  const lastSourceVersionRef = useRef<number>(-1);
+
+  // Fetch source names only when version changes
+  useEffect(() => {
+    if (lastSourceVersionRef.current === sourceVersion) return;
+    if (!includeSourceInSearch || !window.storage) return;
+
+    async function fetchSourceNames() {
+      const result = await window.storage.getSources();
+      if (result.data) {
+        const map = new Map<string, string>();
+        for (const source of result.data) {
+          map.set(source.id, source.name);
+        }
+        sourceNameMapRef.current = map;
+        lastSourceVersionRef.current = sourceVersion;
+      }
+    }
+
+    fetchSourceNames();
+  }, [sourceVersion, includeSourceInSearch]);
 
   // State for search results programs
   const [searchChannelPrograms, setSearchChannelPrograms] = useState<Map<string, StoredProgram[]>>(new Map());
@@ -183,17 +215,22 @@ export function ChannelPanel({
     goToNow,
   } = useTimeGrid({ availableWidth });
 
-  // Get stream IDs for programs lookup
-  const streamIds = useMemo(() => channels.map((ch) => ch.stream_id), [channels]);
-
-  // Fetch ALL programs at once (no lazy loading by time window)
-  const programs = useAllPrograms(streamIds);
+  // Programs will be fetched after selectedChannel is defined (see below)
 
   // Update current time every minute
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Calculate current time indicator position
+  const currentTimeIndicatorPosition = useMemo(() => {
+    const hoursFromStart = (currentTime.getTime() - windowStart.getTime()) / (1000 * 60 * 60);
+    const position = hoursFromStart * pixelsPerHour;
+    // Only show if within visible window
+    if (position < 0 || position > availableWidth) return null;
+    return position;
+  }, [currentTime, windowStart, pixelsPerHour, availableWidth]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -264,6 +301,10 @@ export function ChannelPanel({
         for (const streamId of uniqueStreamIds) {
           const channel = await db.channels.get(streamId);
           if (channel) {
+            // Add source_name if includeSourceInSearch is enabled (using cached map)
+            if (includeSourceInSearch) {
+              channel.source_name = sourceNameMapRef.current.get(channel.source_id) || undefined;
+            }
             programChannelsMap.set(streamId, channel);
 
             // Get all matching programs for this channel
@@ -278,7 +319,7 @@ export function ChannelPanel({
     }
 
     fetchSearchData();
-  }, [isSearchMode, searchChannels, searchPrograms]);
+  }, [isSearchMode, searchChannels, searchPrograms, includeSourceInSearch]);
 
   // Fetch data for watchlist
   useEffect(() => {
@@ -410,25 +451,45 @@ export function ChannelPanel({
     [windowStart, pixelsPerHour]
   );
 
-  // Selected channel for preview/info (defaults to first channel or current)
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  // Selected channel for preview/info - stores the full channel object
+  const [selectedChannel, setSelectedChannel] = useState<StoredChannel | null>(null);
 
-  // Derive selected channel object
-  const selectedChannel = useMemo(() =>
-    channels.find(c => c.stream_id === selectedChannelId) || channels[0] || null,
-    [channels, selectedChannelId]);
+  // Get stream IDs for programs lookup
+  // Include selectedChannel (from currentChannel prop) in case it's from a different category/source
+  const streamIds = useMemo(() => {
+    const ids = channels.map((ch) => ch.stream_id);
+    if (selectedChannel?.stream_id && !ids.includes(selectedChannel.stream_id)) {
+      ids.push(selectedChannel.stream_id);
+    }
+    return ids;
+  }, [channels, selectedChannel?.stream_id]);
 
-  // Track if we have a channel to show (handles watchlist/favorites where selectedChannelId is set but channels array is loading)
-  const hasSelectedChannel = selectedChannelId !== null || selectedChannel !== null;
+  // Fetch ALL programs at once (no lazy loading by time window)
+  const programs = useAllPrograms(streamIds);
+
+  // Sync selectedChannel with currentChannel when it changes externally
+  // (watchlist notification, autoswitch, calendar, multiview swap)
+  // Also re-sync when becoming visible to ensure preview matches current channel
+  useEffect(() => {
+    if (currentChannel?.stream_id) {
+      // Update selectedChannel to match currentChannel
+      if (currentChannel.stream_id !== selectedChannel?.stream_id) {
+        setSelectedChannel(currentChannel);
+      }
+    }
+  }, [currentChannel, selectedChannel?.stream_id, visible]);
+
+  // Track if we have a channel to show
+  const hasSelectedChannel = selectedChannel !== null;
 
   // Handle Channel Click: Preview vs Fullscreen
   const handleChannelClick = (channel: StoredChannel) => {
-    if (selectedChannelId === channel.stream_id) {
+    if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> Go Fullscreen (Close Guide)
       onClose();
     } else {
       // Select for preview and play immediately
-      setSelectedChannelId(channel.stream_id);
+      setSelectedChannel(channel);
       // Also update last channel ref immediately for resize effect
       lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
@@ -445,12 +506,12 @@ export function ChannelPanel({
 
   // Handle search result click - same logic as regular channel click
   const handleSearchChannelClick = (channel: StoredChannel) => {
-    if (selectedChannelId === channel.stream_id) {
+    if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> Go Fullscreen (Close Guide)
       onClose();
     } else {
       // Select for preview and play immediately
-      setSelectedChannelId(channel.stream_id);
+      setSelectedChannel(channel);
       // Also update last channel ref immediately for resize effect
       lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
@@ -461,12 +522,12 @@ export function ChannelPanel({
   const handleSearchProgramClick = async (program: StoredProgram) => {
     const channel = await db.channels.get(program.stream_id);
     if (channel) {
-      if (selectedChannelId === channel.stream_id) {
+      if (selectedChannel?.stream_id === channel.stream_id) {
         // Already selected/previewing -> Go Fullscreen (Close Guide)
         onClose();
       } else {
         // Select for preview and play immediately
-        setSelectedChannelId(channel.stream_id);
+        setSelectedChannel(channel);
         // Also update last channel ref immediately for resize effect
         lastChannelIdRef.current = channel.stream_id;
         onPlayChannel(channel);
@@ -628,7 +689,7 @@ export function ChannelPanel({
     // Re-run when layout changes (sidebar/category visibility) or when visibility/selection changes
     // Include selectedChannelId to trigger resize when returning to view with a selection
     // Include isWatchlistMode and categoryId to handle special view modes
-  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id, selectedChannelId, isWatchlistMode, categoryId]);
+  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id, isWatchlistMode, categoryId]);
 
   return (
     <div
@@ -640,7 +701,7 @@ export function ChannelPanel({
         <div className="guide-preview-pane" ref={previewRef}>
           {/* The actual video is rendered by MPV "under" this transparent div */}
           {/* Only show placeholder when truly no channel is selected (not in watchlist/favorites mode with a selection) */}
-          {!selectedChannel && !selectedChannelId && !isWatchlistMode && categoryId !== '__favorites__' && categoryId !== '__recent__' && (
+          {!selectedChannel && !isWatchlistMode && categoryId !== '__favorites__' && categoryId !== '__recent__' && (
             <div className="guide-preview-placeholder">Select a channel</div>
           )}
           {/* Show Error Overlay if there is an error */}
@@ -753,6 +814,13 @@ export function ChannelPanel({
                   </span>
                 );
               })}
+              {/* Current time indicator */}
+              {currentTimeIndicatorPosition !== null && (
+                <div
+                  className="guide-current-time-indicator"
+                  style={{ left: currentTimeIndicatorPosition }}
+                />
+              )}
             </div>
           </div>
         )}
@@ -870,6 +938,7 @@ export function ChannelPanel({
                       activeRecordings={activeRecordings}
                       currentLayout={currentLayout}
                       onSendToSlot={onSendToSlot}
+                      includeSourceInSearch={includeSourceInSearch}
                     />
                   ))}
                 </div>
@@ -936,6 +1005,7 @@ export function ChannelPanel({
                                   onPlay={() => handleSearchChannelClick(channel)}
                                   onFavoriteToggle={refreshSearchResults}
                                   activeRecordings={activeRecordings}
+                                  includeSourceInSearch={includeSourceInSearch}
                                 />
                               ))}
                             </div>
@@ -959,6 +1029,7 @@ export function ChannelPanel({
                                   onPlay={() => handleSearchChannelClick(channel)}
                                   onFavoriteToggle={refreshSearchResults}
                                   activeRecordings={activeRecordings}
+                                  includeSourceInSearch={includeSourceInSearch}
                                 />
                               ))}
                             </div>
@@ -1010,6 +1081,13 @@ export function ChannelPanel({
                   </div>
                 ),
               }}
+            />
+          )}
+          {/* Current time indicator - spans through all channel rows */}
+          {!isSearchMode && !isWatchlistMode && currentTimeIndicatorPosition !== null && (
+            <div
+              className="guide-current-time-indicator"
+              style={{ left: currentTimeIndicatorPosition + CHANNEL_COLUMN_WIDTH }}
             />
           )}
         </div>

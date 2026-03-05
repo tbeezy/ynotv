@@ -17,7 +17,7 @@ interface ChannelContextMenuProps {
     onClose: () => void;
     // Multiview props
     currentLayout?: string;
-    onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string) => void;
+    onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
 }
 
 // Helper to format date for datetime-local input
@@ -354,7 +354,15 @@ export function ChannelContextMenu({
         if (!onSendToSlot) return;
         // Resolve the stream URL (same logic as main player)
         const url = channel.direct_url ?? '';
-        onSendToSlot(slotId, channel.name, url);
+        // Look up source name
+        let sourceName: string | null = null;
+        if (channel.source_id && window.storage) {
+            const result = await window.storage.getSource(channel.source_id);
+            if (result.data) {
+                sourceName = result.data.name;
+            }
+        }
+        onSendToSlot(slotId, channel.name, url, sourceName);
         addToRecentChannels(channel);
         onClose();
     };
