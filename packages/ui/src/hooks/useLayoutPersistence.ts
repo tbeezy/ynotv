@@ -158,7 +158,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
 
     // Build new state from current refs
     const currentState = buildCurrentState();
-    console.log('[useLayoutPersistence] Saving state:', currentState);
+    // State saved
 
     savedStateRef.current = currentState;
     const updatedMasterState = updateMasterState(currentState);
@@ -193,7 +193,6 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
         savedStateRef.current = stateBeforeSwitch;
         const updatedMasterState = updateMasterState(stateBeforeSwitch);
 
-        console.log('[useLayoutPersistence] Saving before switch to', newLayout);
         await persistToStorage(updatedMasterState);
       }
 
@@ -226,12 +225,10 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
               ? savedState.slots.filter((s) => s.id === 2 && s.active && s.channelUrl)
               : savedState.slots.filter((s) => s.active && s.channelUrl);
 
-          console.log('[useLayoutPersistence] Restoring slots after switch to', newLayout, ':', slotsToRestore.map(s => s.id));
 
           // Only restore slots that aren't already active
           for (const slot of slotsToRestore) {
             if (!currentlyActiveSlots.has(slot.id)) {
-              console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName, 'source:', slot.sourceName);
               await baseSendToSlot(slot.id, slot.channelName || '', slot.channelUrl || '', slot.sourceName || null);
               await new Promise((r) => setTimeout(r, 200));
             }
@@ -247,7 +244,6 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
    */
   const sendToSlot = useCallback(
     async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => {
-      console.log('[useLayoutPersistence] sendToSlot:', slotId, channelName, sourceName);
 
       await baseSendToSlot(slotId, channelName, channelUrl, sourceName);
 
@@ -327,7 +323,6 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       if (hasRestoredRef.current) return;
       hasRestoredRef.current = true;
 
-      console.log('[useLayoutPersistence] Restoring layout state:', state);
 
       // Step 1: Switch to the saved layout first (this mounts MultiviewLayout)
       // Use baseSwitchLayout directly to avoid triggering the post-switch restore logic
@@ -339,12 +334,6 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
 
       // Step 3: Load main channel if present
       if (state.mainChannel.channelUrl) {
-        console.log(
-          '[useLayoutPersistence] Restoring main channel:',
-          state.mainChannel.channelName,
-          'source:',
-          state.mainChannel.sourceName
-        );
         if (onLoadMainChannel) {
           onLoadMainChannel(
             state.mainChannel.channelName || '',
@@ -362,6 +351,7 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
           state.mainChannel.channelUrl,
           state.mainChannel.sourceName
         );
+      } else {
       }
 
       // Step 4: Wait for main to load and React to render
@@ -370,11 +360,9 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       // Step 5: Load secondary slots - now MultiviewLayout should be fully rendered
       // Filter for slots that should be active
       const slotsToRestore = state.slots.filter((s) => s.active && s.channelUrl);
-      console.log('[useLayoutPersistence] Restoring', slotsToRestore.length, 'slots:', slotsToRestore.map(s => ({ id: s.id, name: s.channelName })));
 
       for (const slot of slotsToRestore) {
-        console.log('[useLayoutPersistence] Restoring slot', slot.id, ':', slot.channelName, 'source:', slot.sourceName);
-        await baseSendToSlot(
+          await baseSendToSlot(
           slot.id,
           slot.channelName || '',
           slot.channelUrl || '',
@@ -389,7 +377,6 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       savedStateRef.current = state;
       masterStateRef.current = state;
 
-      console.log('[useLayoutPersistence] Layout state restored successfully');
     },
     [baseSwitchLayout, baseNotifyMainLoaded, baseSendToSlot, onLoadMainChannel]
   );
@@ -423,7 +410,6 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
     }
 
     restoreAttemptedRef.current = true;
-    console.log('[useLayoutPersistence] Triggering restore with state:', initialStateRef.current);
     setIsRestoring(true);
     restoreFnRef.current(initialStateRef.current).then(() => {
       setIsRestoring(false);
@@ -441,7 +427,6 @@ export function useLayoutPersistence(options: UseLayoutPersistenceOptions) {
       const stateToSave = masterStateRef.current || buildCurrentState();
 
       persistToStorage(stateToSave);
-      console.log('[useLayoutPersistence] Triggered persistToStorage on beforeunload');
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);

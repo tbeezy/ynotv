@@ -33,18 +33,18 @@ export interface UseKeyboardShortcutsOptions {
     titleBarSearchRef: RefObject<HTMLInputElement | null>;
     handlePlayChannelRef: MutableRefObject<(channel: StoredChannel) => void>;
 
-    // --- Action callbacks ---
-    handleTogglePlay: () => void;
-    handleToggleMute: () => void;
-    handleToggleStats: () => void;
-    handleToggleFullscreen: () => void;
-    handleShowSubtitleModal: () => void;
-    handleShowAudioModal: () => void;
-    handleSeek: (position: number) => void;
-    setActiveView: React.Dispatch<React.SetStateAction<View>>;
-    setCategoriesOpen: React.Dispatch<React.SetStateAction<boolean>>;
-    setSidebarExpanded: React.Dispatch<React.SetStateAction<boolean>>;
-    setShowControls: React.Dispatch<React.SetStateAction<boolean>>;
+    // --- Action callbacks (as refs to avoid stale closures) ---
+    handleTogglePlayRef: MutableRefObject<() => void>;
+    handleToggleMuteRef: MutableRefObject<() => void>;
+    handleToggleStatsRef: MutableRefObject<() => void>;
+    handleToggleFullscreenRef: MutableRefObject<() => void>;
+    handleShowSubtitleModalRef: MutableRefObject<() => void>;
+    handleShowAudioModalRef: MutableRefObject<() => void>;
+    handleSeekRef: MutableRefObject<(position: number) => void>;
+    setActiveViewRef: MutableRefObject<React.Dispatch<React.SetStateAction<View>>>;
+    setCategoriesOpenRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
+    setSidebarExpandedRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
+    setShowControlsRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
 }
 
 /**
@@ -65,18 +65,17 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         switchLayoutRef,
         titleBarSearchRef,
         handlePlayChannelRef,
-
-        handleTogglePlay,
-        handleToggleMute,
-        handleToggleStats,
-        handleToggleFullscreen,
-        handleShowSubtitleModal,
-        handleShowAudioModal,
-        handleSeek,
-        setActiveView,
-        setCategoriesOpen,
-        setSidebarExpanded,
-        setShowControls,
+        handleTogglePlayRef,
+        handleToggleMuteRef,
+        handleToggleStatsRef,
+        handleToggleFullscreenRef,
+        handleShowSubtitleModalRef,
+        handleShowAudioModalRef,
+        handleSeekRef,
+        setActiveViewRef,
+        setCategoriesOpenRef,
+        setSidebarExpandedRef,
+        setShowControlsRef,
     } = options;
 
     useEffect(() => {
@@ -109,80 +108,80 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
             if (matches('togglePlay', e.key)) {
                 e.preventDefault();
-                handleTogglePlay();
+                handleTogglePlayRef.current();
             } else if (matches('toggleMute', e.key)) {
-                handleToggleMute();
+                handleToggleMuteRef.current();
             } else if (matches('toggleStats', e.key)) {
                 e.preventDefault();
-                handleToggleStats();
+                handleToggleStatsRef.current();
             } else if (matches('toggleFullscreen', e.key)) {
                 e.preventDefault();
-                handleToggleFullscreen();
+                handleToggleFullscreenRef.current();
             } else if (matches('selectSubtitle', e.key)) {
                 e.preventDefault();
-                handleShowSubtitleModal();
+                handleShowSubtitleModalRef.current();
             } else if (matches('selectAudio', e.key)) {
                 e.preventDefault();
-                handleShowAudioModal();
+                handleShowAudioModalRef.current();
             } else if (matches('toggleGuide', e.key)) {
-                setActiveView((v) => (v === 'guide' ? 'none' : 'guide'));
+                setActiveViewRef.current((v) => (v === 'guide' ? 'none' : 'guide'));
             } else if (matches('toggleCategories', e.key)) {
-                setCategoriesOpen((open) => !open);
+                setCategoriesOpenRef.current((open) => !open);
             } else if (matches('toggleLiveTV', e.key)) {
                 e.preventDefault();
                 const currentActiveView = activeViewRef.current;
                 const currentCategoriesOpen = categoriesOpenRef.current;
 
-                setShowControls(true);
+                setShowControlsRef.current(true);
 
                 const newLiveTVState = !(currentActiveView === 'guide' && currentCategoriesOpen);
                 if (newLiveTVState) {
-                    setActiveView('guide');
-                    setCategoriesOpen(true);
+                    setActiveViewRef.current('guide');
+                    setCategoriesOpenRef.current(true);
                 } else {
-                    setActiveView('none');
-                    setCategoriesOpen(false);
+                    setActiveViewRef.current('none');
+                    setCategoriesOpenRef.current(false);
                 }
             } else if (matches('toggleSettings', e.key)) {
                 e.preventDefault();
                 const currentActiveView = activeViewRef.current;
-                setActiveView(currentActiveView === 'settings' ? 'none' : 'settings');
+                setActiveViewRef.current(currentActiveView === 'settings' ? 'none' : 'settings');
             } else if (matches('toggleSports', e.key)) {
                 e.preventDefault();
                 const currentActiveView = activeViewRef.current;
-                setCategoriesOpen(false);
-                setActiveView(currentActiveView === 'sports' ? 'none' : 'sports');
+                setCategoriesOpenRef.current(false);
+                setActiveViewRef.current(currentActiveView === 'sports' ? 'none' : 'sports');
             } else if (matches('toggleDvr', e.key)) {
                 e.preventDefault();
                 const currentActiveView = activeViewRef.current;
-                setCategoriesOpen(false);
-                setActiveView(currentActiveView === 'dvr' ? 'none' : 'dvr');
+                setCategoriesOpenRef.current(false);
+                setActiveViewRef.current(currentActiveView === 'dvr' ? 'none' : 'dvr');
             } else if (matches('toggleCalendar', e.key)) {
                 e.preventDefault();
                 const currentActiveView = activeViewRef.current;
-                setCategoriesOpen(false);
-                setActiveView(currentActiveView === 'calendar' ? 'none' : 'calendar');
+                setCategoriesOpenRef.current(false);
+                setActiveViewRef.current(currentActiveView === 'calendar' ? 'none' : 'calendar');
             } else if (matches('focusSearch', e.key)) {
                 e.preventDefault();
-                setShowControls(true);
+                setShowControlsRef.current(true);
                 if (activeViewRef.current !== 'guide') {
-                    setActiveView('guide');
+                    setActiveViewRef.current('guide');
                 }
-                setCategoriesOpen(true);
+                setCategoriesOpenRef.current(true);
                 if (titleBarSearchRef.current) {
                     titleBarSearchRef.current.focus();
                 }
             } else if (matches('close', e.key)) {
-                setActiveView('none');
-                setCategoriesOpen(false);
-                setSidebarExpanded(false);
-                setShowControls(false);
+                setActiveViewRef.current('none');
+                setCategoriesOpenRef.current(false);
+                setSidebarExpandedRef.current(false);
+                setShowControlsRef.current(false);
             } else if (matches('seekForward', e.key)) {
                 e.preventDefault();
-                handleSeek(positionRef.current + 10);
+                handleSeekRef.current(positionRef.current + 10);
             } else if (matches('seekBackward', e.key)) {
                 e.preventDefault();
-                handleSeek(positionRef.current - 10);
+                handleSeekRef.current(positionRef.current - 10);
             } else if (matches('layoutMain', e.key)) {
                 e.preventDefault();
                 switchLayoutRef.current?.('main');

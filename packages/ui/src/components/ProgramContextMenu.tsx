@@ -127,6 +127,8 @@ export function ProgramContextMenu({
                         : ' (Reminder at start time)'
                     : '';
                 showSuccess('Added to Watchlist', `${program.title}${reminderText}`);
+                // Dispatch event to refresh watchlist UI
+                window.dispatchEvent(new CustomEvent('watchlist-updated'));
             } else {
                 showInfo('Already in Watchlist', `${program.title} is already in your watchlist`);
             }

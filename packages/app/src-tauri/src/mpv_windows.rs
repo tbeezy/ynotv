@@ -122,7 +122,6 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     {
         let mut init = state.initializing.lock().unwrap();
         if *init {
-            println!("[MPV Windows] Initialization already in progress");
             return Ok(());
         }
 
@@ -134,7 +133,6 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     }
 
     let socket_path = get_socket_path();
-    println!("[MPV Windows] Initializing MPV on socket: {}", socket_path);
 
     // Get the main window handle for embedding
     let window = match app.get_webview_window("main") {
@@ -158,7 +156,6 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
             return Err(e.to_string());
         }
     };
-    println!("[MPV Windows] Embedding MPV into HWND: {:?}", hwnd);
 
     // Prepare arguments
     let mut args = vec![
@@ -178,16 +175,8 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     ];
 
     // Add custom parameters from settings
-    println!("[MPV Windows] Adding {} custom params to args", custom_params.len());
     for param in &custom_params {
-        println!("[MPV Windows]   Adding param: {}", param);
         args.push(param.clone());
-    }
-
-    // Log final args list
-    println!("[MPV Windows] Final MPV args count: {}", args.len());
-    for (i, arg) in args.iter().enumerate() {
-        println!("[MPV Windows]   Arg[{}]: {}", i, arg);
     }
 
     // Launch MPV using shell plugin
@@ -200,8 +189,6 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
 
     let pid = child.pid();
     *state.pid.lock().unwrap() = pid;
-
-    println!("[MPV Windows] MPV spawned successfully with PID: {}", pid);
 
     // Spawn a thread to monitor the process
     {
@@ -231,7 +218,6 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
                         404 => "Stream Not Found (404)".to_string(),
                         _ => format!("HTTP Error ({}): Unable to load stream", code),
                     };
-                    println!("[MPV] Emitting HTTP error: {}", error_msg);
                     let _ = app_handle.emit("mpv-http-error", error_msg);
                 }
             };
@@ -249,8 +235,8 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
                         // println!("[MPV stderr] {}", stderr_str); // uncomment for local debugging
                         parse_and_emit(&stderr_str, &app_handle_for_stderr);
                     },
-                    CommandEvent::Error(e) => println!("[MPV error] {}", e),
-                    CommandEvent::Terminated(s) => println!("[MPV] Terminated: {:?}", s),
+                    CommandEvent::Error(_) => {}
+                    CommandEvent::Terminated(_) => {}
                     _ => {}
                 }
             }
@@ -261,18 +247,11 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
     tokio::time::sleep(Duration::from_millis(1000)).await;
 
     // Connect to IPC
-    println!("[MPV Windows] Connecting IPC...");
     let connect_res = connect_ipc(app, state, &socket_path).await;
 
     *state.initializing.lock().unwrap() = false;
 
-    match connect_res {
-        Ok(_) => {
-            println!("[MPV Windows] Init Complete");
-            Ok(())
-        }
-        Err(e) => Err(e)
-    }
+    connect_res
 }
 
 async fn connect_ipc<R: Runtime>(
@@ -317,7 +296,6 @@ async fn connect_ipc<R: Runtime>(
 
     tauri::async_runtime::spawn(async move {
         let mut line = String::new();
-        let mut cache_log_counter: u32 = 0;
         let mut status = MpvStatus {
             playing: false,
             volume: 100.0,
@@ -349,12 +327,6 @@ async fn connect_ipc<R: Runtime>(
                                                     let cache_end = obj.get("cache-end").and_then(|v| v.as_f64()).unwrap_or(0.0);
                                                     let cached_duration = (cache_end - cache_start).max(0.0);
                                                     let behind_live = (cache_end - status.position).max(0.0);
-                                                    // Debug: print cache state periodically (every ~30 events ~ 10-15 seconds)
-                                                    cache_log_counter += 1;
-                                                    if cached_duration > 0.0 && cache_log_counter % 30 == 0 {
-                                                        println!("[MPV] Cache state: start={:.1}s, end={:.1}s, duration={:.1}s, behind_live={:.1}s, time_pos={:.1}s",
-                                                            cache_start, cache_end, cached_duration, behind_live, status.position);
-                                                    }
                                                     if cached_duration > 0.0 {
                                                         let ts_state = serde_json::json!({
                                                             "cacheStart": cache_start,
@@ -389,7 +361,6 @@ async fn connect_ipc<R: Runtime>(
                                             Some(e) => format!("Stream Error: {}", e),
                                             None => "Stream Error: Unknown playback error".to_string(),
                                         };
-                                        println!("[MPV] end-file error: {}", error_msg);
                                         let _ = app_handle.emit("mpv-end-file-error", error_msg);
                                     }
                                 }
@@ -492,7 +463,6 @@ pub async fn init_mpv_with_params<R: Runtime>(
     };
 
     if is_running {
-        println!("[MPV Windows] Already running, reconnecting IPC");
         let socket_path = get_socket_path();
         return connect_ipc(&app, &state, &socket_path).await;
     }
@@ -641,7 +611,6 @@ pub async fn mpv_set_geometry<R: Runtime>(
 
     if target_hwnd.is_none() {
         // MPV window not found — fall back to IPC zoom/align
-        println!("[MPV Windows] MPV child window not found after retries, skipping SetWindowPos");
         return Ok(());
     }
 
@@ -657,7 +626,6 @@ pub async fn mpv_set_geometry<R: Runtime>(
         ).map_err(|e| format!("SetWindowPos failed: {}", e))?;
     }
 
-    println!("[MPV Windows] MPV HWND repositioned successfully");
     Ok(())
 }
 

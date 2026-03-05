@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { invoke } from '@tauri-apps/api/core';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
 import { checkForUpdates, checkForUpdatesSilent } from './services/updater';
-import type { ShortcutsMap } from './types/app';
 import { Settings } from './components/Settings';
 import type { SettingsTabId } from './components/settings/SettingsSidebar';
 import { Sidebar, type View } from './components/Sidebar';
@@ -24,979 +22,373 @@ import {
   useChannelSyncing,
   useVodSyncing,
   useTmdbMatching,
-  useSetChannelSyncing,
-  useSetVodSyncing,
-  useSetChannelSortOrder,
   useSyncStatusMessage,
-  useSetSyncStatusMessage,
   useChannelSortOrder
 } from './stores/uiStore';
-import { bulkOps } from './services/bulk-ops';
-import type { StoredChannel, WatchlistItem } from './db';
-import { getWatchlist, db } from './db';
-import type { VodPlayInfo } from './types/media';
-import { resolvePlayUrl } from './services/stream-resolver';
+import type { StoredChannel } from './db';
+import { db } from './db';
 import { VideoErrorOverlay } from './components/VideoErrorOverlay';
 import { Bridge } from './services/tauri-bridge';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { addToRecentChannels } from './utils/recentChannels';
-import type { ThemeId } from './types/app';
-import { WatchlistNotificationContainer, type WatchlistNotificationItem } from './components/WatchlistNotification';
-import { useLayoutPersistence } from './hooks/useLayoutPersistence';
+import { WatchlistNotificationContainer } from './components/WatchlistNotification';
 import { MultiviewLayout } from './components/MultiviewLayout/MultiviewLayout';
 import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
-import type { LayoutMode, SavedLayoutState } from './hooks/useLayoutPersistence';
 import './themes.css';
-import { useMpvListeners } from './hooks/useMpvListeners';
-import { useAutoSync } from './hooks/useAutoSync';
 import { useTimeshift } from './hooks/useTimeshift';
 import { useDvrEvents } from './hooks/useDvrEvents';
 import { useDvrUrlResolver } from './hooks/useDvrUrlResolver';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { UpdateModal } from './components/UpdateModal';
 import { registerUpdateModal } from './services/updater';
+import { useLayoutPersistence, type LayoutMode } from './hooks/useLayoutPersistence';
+import { useMpvListeners } from './hooks/useMpvListeners';
 
-// Helper to check stream status if mpv fails
+// NEW: Extracted hooks
+import { useAppSettings } from './hooks/useAppSettings';
+import { usePlayback } from './hooks/usePlayback';
+import { useNavigation } from './hooks/useNavigation';
+import { useWatchlist } from './hooks/useWatchlist';
+import { useWindowManager } from './hooks/useWindowManager';
 
-// Auto-hide controls after this many milliseconds of inactivity
-const CONTROLS_AUTO_HIDE_MS = 3000;
-
-
-
-// Debug logging helper for UI playback
-function debugLog(message: string, category = 'play'): void {
-  // Check if debug logging is enabled via global flag
-  if (!(window as any).__debugLoggingEnabled) {
-    return;
-  }
-  const logMsg = `[${category}] ${message}`;
-  console.log(logMsg);
-  if (window.debug?.logFromRenderer) {
-    window.debug.logFromRenderer(logMsg).catch(() => { });
-  }
-}
-
-/**
- * Generate fallback stream URLs when primary fails.
- * Live TV: .ts → .m3u8 → .m3u
- * VOD: provider extension → .m3u8 → .ts
- */
-function getStreamFallbacks(url: string, isLive: boolean): string[] {
-  try {
-    // Parse URL properly to preserve query params (often used for auth tokens)
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
-
-    const extMatch = pathname.match(/\.([a-z0-9]+)$/i);
-    if (!extMatch) return []; // No extension, can't generate fallbacks
-
-    const currentExt = extMatch[1].toLowerCase();
-    const basePathname = pathname.slice(0, -currentExt.length - 1);
-
-    const generateUrl = (ext: string): string => {
-      const newUrl = new URL(url);
-      newUrl.pathname = `${basePathname}.${ext}`;
-      return newUrl.toString();
-    };
-
-    if (isLive) {
-      // Live TV fallback order: .ts → .m3u8 → .m3u
-      const fallbacks: string[] = [];
-      if (currentExt !== 'm3u8') fallbacks.push(generateUrl('m3u8'));
-      if (currentExt !== 'm3u') fallbacks.push(generateUrl('m3u'));
-      return fallbacks;
-    } else {
-      // VOD fallback order: provider ext → .m3u8 → .ts
-      const fallbacks: string[] = [];
-      if (currentExt !== 'm3u8') fallbacks.push(generateUrl('m3u8'));
-      if (currentExt !== 'ts') fallbacks.push(generateUrl('ts'));
-      return fallbacks;
-    }
-  } catch {
-    // Invalid URL, can't generate fallbacks
-    return [];
-  }
-}
-
-/**
- * Try loading a stream URL with fallbacks on failure.
- * Returns the successful URL or null if all failed.
- */
-async function tryLoadWithFallbacks(
-  primaryUrl: string,
-  isLive: boolean,
-  userAgent?: string,
-  onError?: (msg: string) => void
-): Promise<{ success: boolean; url: string; error?: string }> {
-  debugLog(`Attempting to load: ${primaryUrl} (isLive: ${isLive})`);
-
-  if (userAgent) {
-    try {
-      await Bridge.setProperty('user-agent', userAgent);
-    } catch (e) {
-      console.warn('Failed to set user-agent:', e);
-    }
-  }
-
-  // 1. Force Play FIRST (User Request)
-  // We launch MPV immediately. If it works, great.
-  const result = await Bridge.loadVideo(primaryUrl);
-
-
-
-  if (result.success) {
-    debugLog(`Primary URL loaded successfully`);
-    return { success: true, url: primaryUrl };
-  }
-
-  const errorMsg = (result as any).error || 'Unknown error';
-  debugLog(`Primary URL failed: ${errorMsg}`);
-
-  // Try fallbacks
-  const fallbacks = getStreamFallbacks(primaryUrl, isLive);
-  debugLog(`Trying ${fallbacks.length} fallback URLs...`);
-  for (const fallbackUrl of fallbacks) {
-    debugLog(`Trying fallback: ${fallbackUrl}`);
-    const fallbackResult = await Bridge.loadVideo(fallbackUrl);
-    if (fallbackResult.success) {
-      debugLog(`Fallback succeeded: ${fallbackUrl}`);
-      return { success: true, url: fallbackUrl };
-    }
-    debugLog(`Fallback failed: ${(fallbackResult as any).error}`);
-  }
-
-  // All failed - return original error
-  debugLog(`All URLs failed, returning error: ${errorMsg}`);
-  return { success: false, url: primaryUrl, error: errorMsg };
-}
+// ============================================================================
+// App Component
+// ============================================================================
 
 function App() {
-  // Layout persistence state - must be declared before useEffect that uses them
-  const [rememberLastChannels, setRememberLastChannels] = useState(false);
-  const [reopenLastOnStartup, setReopenLastOnStartup] = useState(false);
-  const [savedLayoutState, setSavedLayoutState] = useState<SavedLayoutState | null>(null);
-  const [layoutSettingsLoaded, setLayoutSettingsLoaded] = useState(false);
-  // Timeshift settings (loaded from store)
-  const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
-  const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824); // Default 1GB
-  const [liveBufferOffset, setLiveBufferOffset] = useState(0); // Default 0 seconds behind live
-  // Search settings
-  const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
+  // ==========================================================================
+  // Settings & Configuration (from useAppSettings)
+  // ==========================================================================
+  const {
+    rememberLastChannels,
+    reopenLastOnStartup,
+    savedLayoutState,
+    layoutSettingsLoaded,
+    timeshiftEnabled,
+    timeshiftCacheBytes,
+    liveBufferOffset,
+    includeSourceInSearch,
+    theme,
+    shortcuts,
+    showSidebar: showSidebarFromSettings,
+    setTheme,
+    setShortcuts,
+    setShowSidebar: setShowSidebarFromSettings,
+  } = useAppSettings();
 
-  // Update modal state
-  const [updateModalOpen, setUpdateModalOpen] = useState(false);
-
-  // Register update modal callback
-  useEffect(() => {
-    registerUpdateModal(setUpdateModalOpen);
-  }, []);
-
-  // Load layout persistence settings on mount
-  useEffect(() => {
-    const loadLayoutSettings = async () => {
-      if (!window.storage) {
-        setLayoutSettingsLoaded(true);
-        return;
-      }
-
-      try {
-        // Try Tauri storage first
-        const result = await window.storage.getSettings();
-
-        // Also check localStorage for saved layout state (saved on app close)
-        let localStorageState: SavedLayoutState | null = null;
-        try {
-          const localData = localStorage.getItem('app-settings');
-          if (localData) {
-            const parsed = JSON.parse(localData);
-            localStorageState = parsed.savedLayoutState ?? null;
-          }
-        } catch (e) {
-          console.warn('[App] Failed to read from localStorage:', e);
-        }
-
-        // Use the most recent state (prefer localStorage for layout state since it's saved on close)
-        if (result.data) {
-          setRememberLastChannels(result.data.rememberLastChannels ?? false);
-          setReopenLastOnStartup(result.data.reopenLastOnStartup ?? false);
-          setTimeshiftEnabled(result.data.timeshiftEnabled ?? false);
-          setTimeshiftCacheBytes(result.data.timeshiftCacheBytes ?? 1_073_741_824);
-          setLiveBufferOffset(result.data.liveBufferOffset ?? 0);
-          setIncludeSourceInSearch(result.data.includeSourceInSearch ?? false);
-
-          // Apply EPG darken current setting on load
-          if (result.data.epgDarkenCurrent) {
-            document.documentElement.classList.add('epg-darken-current');
-          }
-
-          // Use localStorage state if available (more recent), otherwise use Tauri storage
-          const layoutState = localStorageState || result.data.savedLayoutState || null;
-          setSavedLayoutState(layoutState);
-          console.log('[App] Loaded saved layout state:', layoutState);
-        } else if (localStorageState) {
-          // Fallback to localStorage if Tauri storage is empty
-          setSavedLayoutState(localStorageState);
-          console.log('[App] Loaded saved layout state from localStorage:', localStorageState);
-        }
-      } catch (e) {
-        console.error('[App] Failed to load layout settings:', e);
-      }
-      setLayoutSettingsLoaded(true);
-    };
-    loadLayoutSettings();
-  }, []);
-
-  // ── MPV state (via extracted hook) - MUST be before multiview to get mpvReady ───────────────────────────────────────
-  const syncMpvGeometryRef = useRef<() => Promise<void>>(async () => { });
-  const [mpvReadyState, setMpvReadyState] = useState(false);
-
+  // ==========================================================================
+  // MPV Listeners (must be before useLayoutPersistence for mpvReady)
+  // ==========================================================================
   const mpv = useMpvListeners({
-    onReady: () => {
-      setMpvReadyState(true);
-      syncMpvGeometryRef.current();
-    },
-    // Pass timeshift settings from loaded state - wait for settings to load before initializing MPV
     timeshiftEnabled,
     timeshiftCacheBytes,
     settingsLoaded: layoutSettingsLoaded,
   });
+
   const {
-    mpvReady, playing, volume, muted, position, duration, error,
-    volumeDraggingRef, seekingRef,
-    setError, setPlaying, setPosition, setVolume,
+    mpvReady,
+    playing,
+    volume,
+    muted,
+    position,
+    duration,
+    error,
+    volumeDraggingRef,
+    seekingRef,
+    setError,
+    setPlaying,
+    setPosition,
+    setVolume,
   } = mpv;
 
-  // Ref for the restore callback (avoid circular dependency)
-  const onLoadMainChannelRef = useRef<(name: string, url: string, sourceName?: string | null) => void | Promise<void>>(() => { });
-
-  // Multiview with persistence
+  // ==========================================================================
+  // Multiview / Layout Persistence (needs mpvReady from useMpvListeners)
+  // ==========================================================================
   const multiview = useLayoutPersistence({
     enabled: rememberLastChannels,
-    reopenLastOnStartup: reopenLastOnStartup,
+    reopenLastOnStartup,
     initialSavedState: savedLayoutState,
     settingsLoaded: layoutSettingsLoaded,
-    mpvReady: mpvReadyState,
-    onLoadMainChannel: (name, url, sourceName) => onLoadMainChannelRef.current(name, url, sourceName),
+    mpvReady: mpvReady,
+    onLoadMainChannel: (channelName, channelUrl, sourceName) => {
+      // Update currentChannel when swap or restore happens - need to find the channel in db
+      // This is async so we can't block, but we should update the UI
+      if (channelUrl) {
+        db.channels.where('direct_url').equals(channelUrl).first().then(channel => {
+          if (channel) {
+            setCurrentChannel(channel);
+            // Also load the stream in MPV (for restore and swap scenarios)
+            // Use the ref to avoid stale closure issues
+            handlePlayChannelRef.current?.(channel, true); // true = autoSwitched (don't add to recent)
+          } else {
+            // Channel not found in db, create a minimal channel object
+            const minimalChannel: StoredChannel = {
+              stream_id: `swap_${Date.now()}`,
+              name: channelName || 'Unknown',
+              stream_icon: '',
+              epg_channel_id: '',
+              category_ids: [],
+              direct_url: channelUrl,
+              source_id: sourceName || 'unknown',
+            };
+            setCurrentChannel(minimalChannel);
+            handlePlayChannelRef.current?.(minimalChannel, true);
+          }
+        });
+      }
+    },
   });
 
-  // Update the ref so onReady can call the latest syncMpvGeometry
-  useEffect(() => {
-    syncMpvGeometryRef.current = () => multiview.syncMpvGeometry();
-  }, [multiview]);
+  const {
+    layout: multiviewLayout,
+    slots: multiviewSlots,
+    switchLayout,
+    sendToSlot,
+    swapWithMain,
+    stopSlot,
+    setSlotProperty,
+    repositionSecondarySlots,
+    enterTabMode,
+    exitTabMode,
+    notifyMainLoaded,
+    syncMpvGeometry,
+    isRestoring,
+  } = multiview;
 
-  // Pending seek ref for deferred scrubbing
-  const pendingCatchupSeekRef = useRef<number | null>(null);
-
-  // TimeShift — subscribe to demuxer-cache-state events emitted from Rust
-  const timeshiftState = useTimeshift(timeshiftEnabled);
-
-  useEffect(() => {
-    if (pendingCatchupSeekRef.current !== null && duration > 0 && playing) {
-      const targetSeek = pendingCatchupSeekRef.current;
-      pendingCatchupSeekRef.current = null;
-      Bridge.seek(targetSeek).catch(e => console.warn('[App] Deferred seek failed:', e));
-      setPosition(targetSeek);
-    }
-  }, [duration, playing]);
-
-  // Set up the restore callback now that multiview is initialized
-  onLoadMainChannelRef.current = async (channelName: string, channelUrl: string, sourceName?: string | null) => {
-    // Try to find the actual channel from database for proper UI state
-    let channel: StoredChannel | null = null;
-    try {
-      const channels = await db.channels.whereRaw('name = ?', [channelName]).toArray();
-      channel = channels.find(c => c.direct_url === channelUrl) || channels[0] || null;
-    } catch (e) {
-      console.warn('[App] Failed to lookup channel:', e);
-    }
-
-    // Use the actual channel if found, otherwise create a minimal one
-    const restoredChannel: StoredChannel = channel || {
-      stream_id: `restored_${Date.now()}`,
-      source_id: 'restored',
-      name: channelName,
-      direct_url: channelUrl,
-      stream_icon: '',
-      epg_channel_id: '',
-      category_ids: [],
-    };
-
-    // Load the stream directly
-    invoke('mpv_load', { url: channelUrl }).catch((e) =>
-      console.warn('[App] Failed to restore main channel:', e)
-    );
-
-    // Set UI state
-    setCurrentChannel(restoredChannel);
-    setPlaying(true);
-    setActiveView('none');
-
-    // Also notify multiview so swap logic works (preserve sourceName)
-    multiview.notifyMainLoaded(channelName, channelUrl, sourceName);
-  };
-
-  const [currentChannel, setCurrentChannel] = useState<StoredChannel | null>(null);
-  const [vodInfo, setVodInfo] = useState<VodPlayInfo | null>(null);
-  const [catchupInfo, setCatchupInfo] = useState<{
-    channelId: string;
-    programTitle: string;
-    startTime: number;
-    duration: number;
-  } | null>(null);
-
-  const isCatchup = catchupInfo !== null;
-
-  // Debug: Log error state changes
-  useEffect(() => {
-    if (error) {
-      console.log('[(Renderer) Error State Changed]', error);
-    }
-  }, [error]);
-
-  // Multiview state
+  // Refs for multiview (used by keyboard shortcuts)
   const multiviewLayoutRef = useRef<LayoutMode>('main');
-  const switchLayoutRef = useRef(multiview.switchLayout);
-  useEffect(() => { multiviewLayoutRef.current = multiview.layout; }, [multiview.layout]);
-  useEffect(() => { switchLayoutRef.current = multiview.switchLayout; }, [multiview.switchLayout]);
+  const switchLayoutRef = useRef(switchLayout);
+  const handlePlayChannelRef = useRef<((channel: StoredChannel, autoSwitched?: boolean) => void) | null>(null);
+  useEffect(() => { multiviewLayoutRef.current = multiviewLayout; }, [multiviewLayout]);
+  useEffect(() => { switchLayoutRef.current = switchLayout; }, [switchLayout]);
 
-  const [showControls, setShowControls] = useState(true);
-  const [lastActivity, setLastActivity] = useState(Date.now());
-  const [activeView, setActiveView] = useState<View>('none');
-  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('sources');
-  const [editSourceId, setEditSourceId] = useState<string | null>(null);
-  const [sportsPreviewEnabled, setSportsPreviewEnabled] = useState(true);
+  // ==========================================================================
+  // Playback (needs callbacks from useLayoutPersistence)
+  // ==========================================================================
+  const playback = usePlayback({
+    rememberLastChannels,
+    reopenLastOnStartup,
+    savedLayoutState,
+    mpvReadyState: mpvReady,
+    syncMpvGeometry,
+    notifyMainLoaded,
+    mpvListeners: mpv, // Pass shared MPV listeners to avoid duplicate state
+  });
 
-  // Listen for open-settings custom event (from TV Calendar, etc.)
+  const {
+    currentChannel,
+    vodInfo,
+    catchupInfo,
+    isCatchup,
+    setCurrentChannel,
+    handlePlayChannel,
+    handlePlayCatchup,
+    handleCatchupSeek,
+    handlePlayVod,
+    handlePlayRecording,
+    handleStop,
+    handleSeek,
+    handleTogglePlay,
+    handleVolumeChange,
+    handleToggleMute,
+    handleCycleSubtitle,
+    handleCycleAudio,
+    handleToggleStats,
+    handleToggleFullscreen,
+  } = playback;
+
+  // Keep handlePlayChannel ref updated for onLoadMainChannel callback
   useEffect(() => {
-    const handleOpenSettings = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tab?: SettingsTabId }>;
-      console.log('[App] Received open-settings event:', customEvent.detail);
-      if (customEvent.detail?.tab) {
-        setSettingsTab(customEvent.detail.tab);
-      }
-      setActiveView('settings');
-    };
-    window.addEventListener('open-settings', handleOpenSettings);
-    return () => window.removeEventListener('open-settings', handleOpenSettings);
+    handlePlayChannelRef.current = handlePlayChannel;
+  }, [handlePlayChannel]);
+
+  // ==========================================================================
+  // Navigation State (from useNavigation)
+  // ==========================================================================
+  const {
+    categoryId,
+    setCategoryId,
+    loading: categoryLoading
+  } = useSelectedCategory();
+
+  const nav = useNavigation({
+    playing,
+    multiviewLayout,
+    multiviewExitTabMode: exitTabMode,
+    setCategoryId,
+    initialShowSidebar: showSidebarFromSettings,
+  });
+
+  const {
+    activeView,
+    settingsTab,
+    editSourceId,
+    categoriesOpen,
+    sidebarExpanded,
+    showSidebar,
+    searchQuery,
+    debouncedSearchQuery,
+    isSearchMode,
+    isWatchlistMode,
+    showControls,
+    controlsHoveredRef,
+    titleBarSearchRef,
+    activeViewRef,
+    categoriesOpenRef,
+    setActiveView,
+    setSettingsTab,
+    setEditSourceId,
+    setCategoriesOpen,
+    setSidebarExpanded,
+    setShowSidebar,
+    setSearchQuery,
+    setIsWatchlistMode,
+    setShowControls,
+    handleSelectCategory,
+    handleMouseMove,
+  } = nav;
+
+  // ==========================================================================
+  // Watchlist State (from useWatchlist)
+  // ==========================================================================
+  const {
+    watchlistItems,
+    watchlistRefreshTrigger,
+    watchlistNotifications,
+    setWatchlistNotifications,
+    refreshWatchlist,
+    handleWatchlistSwitch,
+    handleWatchlistDismiss,
+  } = useWatchlist({
+    onAutoswitch: (channel) => {
+      addToRecentChannels(channel);
+      handlePlayChannel(channel, true); // true = autoSwitched
+    },
+  });
+
+  // ==========================================================================
+  // Window Manager (from useWindowManager)
+  // ==========================================================================
+  const { handleMinimize, handleMaximize, handleClose } = useWindowManager();
+
+  // ==========================================================================
+  // Update Modal State
+  // ==========================================================================
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+
+  useEffect(() => {
+    registerUpdateModal(setUpdateModalOpen);
   }, []);
 
-  // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, or Series opens; exit when they close
-  useEffect(() => {
-    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' || activeView === 'settings' || activeView === 'movies' || activeView === 'series' || activeView === 'calendar') {
-      multiview.enterTabMode(activeView);
-    } else {
-      multiview.exitTabMode();
-    }
-  }, [activeView, multiview]);
-
-  // Ensure video software scaling is reset when completely exiting tab views
-  useEffect(() => {
-    if (activeView === 'none') {
-      Bridge.setProperty('video-zoom', 0).catch(() => { });
-      Bridge.setProperty('video-align-x', 0).catch(() => { });
-      Bridge.setProperty('video-align-y', 0).catch(() => { });
-    }
-  }, [activeView]);
-
-
-
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false); // Default to hidden
-
-  // Channel/category state (persisted)
-  const { categoryId, setCategoryId, loading: categoryLoading } = useSelectedCategory();
-
-  // Get channels for current category (for up/down navigation)
-  const channelSortOrder = useChannelSortOrder();
-  const currentChannels = useChannels(categoryId, channelSortOrder);
-
-  // Active recordings for title bar indicator
-  const { recordings: activeRecordings, isRecording: hasActiveRecording } = useActiveRecordings(5000);
-
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [isSearchMode, setIsSearchMode] = useState(false);
-
-  // Watchlist state
-  const [isWatchlistMode, setIsWatchlistMode] = useState(false);
-  const [watchlistItems, setWatchlistItems] = useState<WatchlistItem[]>([]);
-  const [watchlistRefreshTrigger, setWatchlistRefreshTrigger] = useState(0);
-
-  // Watchlist notifications state
-  const [watchlistNotifications, setWatchlistNotifications] = useState<WatchlistNotificationItem[]>([]);
-
-  // Debounce search query for performance
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-      setIsSearchMode(searchQuery.length >= 2);
-    }, 150); // 150ms debounce for smooth typing
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Fetch search results
-  const searchChannels = useChannelSearch(debouncedSearchQuery, 200, includeSourceInSearch);
-  const searchPrograms = useProgramSearch(debouncedSearchQuery, 200);
-
-  // Fetch watchlist when in watchlist mode or when refresh is triggered
-  useEffect(() => {
-    if (isWatchlistMode) {
-      const loadWatchlist = async () => {
-        const { getWatchlist } = await import('./db');
-        const items = await getWatchlist();
-        setWatchlistItems(items);
-      };
-      loadWatchlist();
-    } else {
-      setWatchlistItems([]);
-    }
-  }, [isWatchlistMode, watchlistRefreshTrigger]);
-
-  // Handle watchlist notification switch
-  const handleWatchlistSwitch = useCallback(async (notification: WatchlistNotificationItem) => {
-    try {
-      const channel = await db.channels.get(notification.channelId);
-      if (channel) {
-        handlePlayChannel(channel);
-      }
-    } catch (error) {
-      console.error('Failed to switch to watchlist channel:', error);
-    }
-  }, []);
-
-  // Handle watchlist notification dismiss
-  const handleWatchlistDismiss = useCallback((id: number) => {
-    setWatchlistNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
-
-  // Global sync state (from Settings)
+  // ==========================================================================
+  // Sync State from Store
+  // ==========================================================================
   const channelSyncing = useChannelSyncing();
   const vodSyncing = useVodSyncing();
   const tmdbMatching = useTmdbMatching();
-  const setChannelSyncing = useSetChannelSyncing();
-  const setVodSyncing = useSetVodSyncing();
-  const setChannelSortOrder = useSetChannelSortOrder();
   const syncStatusMessage = useSyncStatusMessage();
-  const setSyncStatusMessage = useSetSyncStatusMessage();
+  const channelSortOrder = useChannelSortOrder();
 
-  const [shortcuts, setShortcuts] = useState<ShortcutsMap>({});
+  // ==========================================================================
+  // TimeShift State
+  // ==========================================================================
+  const timeshiftState = useTimeshift(timeshiftEnabled);
 
-  // Theme state
-  const [theme, setTheme] = useState<ThemeId>('glass-neon');
+  // ==========================================================================
+  // DVR Events & URL Resolver
+  // ==========================================================================
+  useDvrEvents();
+  useDvrUrlResolver();
 
-  // Apply theme effect
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+  // ==========================================================================
+  // Category & Channel State
+  // ==========================================================================
+  const currentChannels = useChannels(categoryId, channelSortOrder);
+  const currentChannelsRef = useRef(currentChannels);
+  useEffect(() => { currentChannelsRef.current = currentChannels; }, [currentChannels]);
 
+  // ==========================================================================
+  // Active Recordings
+  // ==========================================================================
+  const { recordings: activeRecordings, isRecording: hasActiveRecording } = useActiveRecordings(5000);
+
+  // ==========================================================================
+  // Search Results
+  // ==========================================================================
+  const searchChannels = useChannelSearch(debouncedSearchQuery, 200, includeSourceInSearch);
+  const searchPrograms = useProgramSearch(debouncedSearchQuery, 200);
+
+  // ==========================================================================
+  // Track Selection Modal State
+  // ==========================================================================
+  const [showSubtitleModal, setShowSubtitleModal] = useState(false);
+  const [showAudioModal, setShowAudioModal] = useState(false);
+
+  const handleShowSubtitleModal = useCallback(() => setShowSubtitleModal(true), []);
+  const handleShowAudioModal = useCallback(() => setShowAudioModal(true), []);
+
+  // ==========================================================================
+  // Refs for Keyboard Shortcuts (to avoid stale closures)
+  // ==========================================================================
   const playingRef = useRef(playing);
   const positionRef = useRef(position);
   const shortcutsRef = useRef(shortcuts);
-  const activeViewRef = useRef(activeView);
-  const categoriesOpenRef = useRef(categoriesOpen);
+  const currentChannelRef = useRef(currentChannel);
+  const handleTogglePlayRef = useRef(handleTogglePlay);
+  const handleToggleMuteRef = useRef(handleToggleMute);
+  const handleToggleStatsRef = useRef(handleToggleStats);
+  const handleToggleFullscreenRef = useRef(handleToggleFullscreen);
+  const handleShowSubtitleModalRef = useRef(handleShowSubtitleModal);
+  const handleShowAudioModalRef = useRef(handleShowAudioModal);
+  const handleSeekRef = useRef(handleSeek);
+  const setActiveViewRef = useRef(setActiveView);
+  const setCategoriesOpenRef = useRef(setCategoriesOpen);
+  const setSidebarExpandedRef = useRef(setSidebarExpanded);
+  const setShowControlsRef = useRef(setShowControls);
 
   useEffect(() => { playingRef.current = playing; }, [playing]);
   useEffect(() => { positionRef.current = position; }, [position]);
   useEffect(() => { shortcutsRef.current = shortcuts; }, [shortcuts]);
-  useEffect(() => { activeViewRef.current = activeView; }, [activeView]);
-  useEffect(() => { categoriesOpenRef.current = categoriesOpen; }, [categoriesOpen]);
-
-  const currentChannelRef = useRef(currentChannel);
   useEffect(() => { currentChannelRef.current = currentChannel; }, [currentChannel]);
+  useEffect(() => { handleTogglePlayRef.current = handleTogglePlay; }, [handleTogglePlay]);
+  useEffect(() => { handleToggleMuteRef.current = handleToggleMute; }, [handleToggleMute]);
+  useEffect(() => { handleToggleStatsRef.current = handleToggleStats; }, [handleToggleStats]);
+  useEffect(() => { handleToggleFullscreenRef.current = handleToggleFullscreen; }, [handleToggleFullscreen]);
+  useEffect(() => { handleShowSubtitleModalRef.current = handleShowSubtitleModal; }, [handleShowSubtitleModal]);
+  useEffect(() => { handleShowAudioModalRef.current = handleShowAudioModal; }, [handleShowAudioModal]);
+  useEffect(() => { handleSeekRef.current = handleSeek; }, [handleSeek]);
+  useEffect(() => { setActiveViewRef.current = setActiveView; }, [setActiveView]);
+  useEffect(() => { setCategoriesOpenRef.current = setCategoriesOpen; }, [setCategoriesOpen]);
+  useEffect(() => { setSidebarExpandedRef.current = setSidebarExpanded; }, [setSidebarExpanded]);
+  useEffect(() => { setShowControlsRef.current = setShowControls; }, [setShowControls]);
 
-  // Ref for current channels list (for up/down navigation)
-  const currentChannelsRef = useRef(currentChannels);
-  useEffect(() => { currentChannelsRef.current = currentChannels; }, [currentChannels]);
-
-  // Ref for title bar search input
-  const titleBarSearchRef = useRef<HTMLInputElement>(null);
-
-
-  // Initialize window size on startup from Tauri store settings
+  // ==========================================================================
+  // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, or Series opens
+  // ==========================================================================
   useEffect(() => {
-    const initWindowSize = async () => {
-      try {
-        if (!window.storage) {
-          console.log('[App] window.storage not available');
-          return;
-        }
-
-        const result = await window.storage.getSettings();
-        console.log('[App] Got settings from store:', result);
-        const settings = result.data || {};
-        console.log('[App] Settings object:', JSON.stringify(settings, null, 2));
-        const width = settings.startupWidth || 1920;
-        const height = settings.startupHeight || 1080;
-        console.log(`[App] Applying startup size: ${width}x${height}`);
-
-        // Apply startup size immediately
-        try {
-          const appWindow = getCurrentWindow();
-
-          // Get current size before change
-          const currentSize = await appWindow.outerSize();
-          console.log(`[App] Current window size: ${currentSize.width}x${currentSize.height}`);
-
-          // If maximized, unmaximize first
-          const isMaximized = await appWindow.isMaximized();
-          if (isMaximized) {
-            await appWindow.unmaximize();
-          }
-
-          await appWindow.setSize(new LogicalSize(width, height));
-          console.log('[App] Window size applied successfully');
-          // Don't center - let the Rust side restore position from window_state.json
-          // await appWindow.center();
-        } catch (innerErr) {
-          console.error('[App] Resize error:', innerErr);
-        }
-      } catch (err) {
-        console.error('[App] Failed to resize window on startup:', err);
-      }
-    };
-
-    initWindowSize();
-  }, []);
-
-  // Initialize DVR on app load
-  useEffect(() => {
-    const initDvr = async () => {
-      try {
-        console.log('[App] Initializing DVR...');
-        await invoke('init_dvr');
-        console.log('[App] DVR initialized');
-      } catch (error) {
-        console.error('[App] Failed to initialize DVR:', error);
-      }
-    };
-
-    initDvr();
-  }, []);
-
-  // Check for app updates on startup (wait a bit for app to fully load)
-  useEffect(() => {
-    const checkUpdates = async () => {
-      // Wait 5 seconds after app loads before checking for updates
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      await checkForUpdatesSilent();
-    };
-
-    checkUpdates();
-  }, []);
-
-  // Listen for DVR events (recording started / completed / failed)
-  useDvrEvents();
-
-  // Listen for DVR URL resolution requests (always active, even when not on player page)
-  // When the DVR scheduler needs to record a Stalker channel, it can't resolve the URL
-  // itself (tokens expire quickly), so it fires this event for the frontend to resolve.
-  useDvrUrlResolver();
-
-  // Track if mouse is hovering over controls (prevents auto-hide)
-  const controlsHoveredRef = useRef(false);
-
-  // Auto-hide controls after 3 seconds of no activity
-  useEffect(() => {
-    // Don't auto-hide if not playing or if panels are open
-    if (!playing || activeView !== 'none' || categoriesOpen) return;
-
-    const timer = setTimeout(() => {
-      // Don't hide if mouse is hovering over controls
-      if (!controlsHoveredRef.current) {
-        setShowControls(false);
-      }
-    }, CONTROLS_AUTO_HIDE_MS);
-
-    return () => clearTimeout(timer);
-  }, [lastActivity, playing, activeView, categoriesOpen]);
-
-  // Show controls on mouse move and reset hide timer
-  const handleMouseMove = useCallback(() => {
-    setShowControls(true);
-    setLastActivity(Date.now()); // Always new value = resets timer
-  }, []);
-
-  // Play a recording file in MPV
-  const handlePlayRecording = async (recording: import('./db').DvrRecording) => {
-    console.log('[App] handlePlayRecording called with:', recording.file_path);
-    debugLog(`handlePlayRecording: ${recording.file_path}`);
-    setError(null);
-
-    try {
-      // Use file:// protocol for local files
-      const url = recording.file_path.startsWith('file://') ? recording.file_path : `file://${recording.file_path}`;
-      const result = await Bridge.loadVideo(url);
-
-      if (result.success) {
-        debugLog('Recording playback started');
-        // Set current channel so NowPlayingBar shows full controls
-        setCurrentChannel({
-          stream_id: `recording_${recording.id}`,
-          name: recording.program_title,
-          stream_icon: '',
-          epg_channel_id: '',
-          category_ids: [],
-          direct_url: url,
-          source_id: 'dvr',
-        });
-        setVodInfo({
-          title: recording.program_title,
-          url: url,
-          type: 'recording',
-          source_id: 'dvr',
-        });
-        setPlaying(true);
-        // Close DVR dashboard when playing
-        setActiveView('none');
-      } else {
-        const errMsg = (result as any).error || 'Failed to load recording';
-        debugLog(`Recording playback failed: ${errMsg}`, 'error');
-        setError(errMsg);
-      }
-    } catch (error: any) {
-      debugLog(`Recording playback error: ${error?.message}`, 'error');
-      setError(error?.message || 'Failed to play recording');
-    }
-  };
-
-  const handleLoadStream = async (channel: StoredChannel) => {
-    debugLog(`handleLoadStream: ${channel.name} (${channel.stream_id})`);
-    debugLog(`  URL: ${channel.direct_url}`);
-
-    // Resolve source URL (handles Stalker token resolution + extracts userAgent/sourceName)
-    let resolved;
-    try {
-      resolved = await resolvePlayUrl(channel.source_id, channel.direct_url);
-    } catch (e) {
-      console.error('Stalker resolution failed:', e);
-      setError('Failed to resolve Stalker link');
-      return;
-    }
-
-    debugLog(`  UserAgent: ${resolved.userAgent ?? 'none'}`);
-    debugLog(`  Resolved URL: ${resolved.url}`);
-
-    setError(null);
-    const result = await tryLoadWithFallbacks(
-      resolved.url,
-      true, // isLive
-      resolved.userAgent,
-      (msg) => setError(msg) // Pass callback for background errors
-    );
-    if (!result.success) {
-      const errMsg = result.error ?? 'Failed to load stream';
-      console.error('[(Renderer) handleLoadStream] Load Failed:', errMsg);
-      debugLog(`  FAILED: ${errMsg}`, 'error');
-      setError(errMsg);
+    if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' ||
+        activeView === 'settings' || activeView === 'movies' || activeView === 'series' ||
+        activeView === 'calendar') {
+      enterTabMode(activeView);
     } else {
-      debugLog(`  SUCCESS: playing`);
-      // Update channel with working URL if a fallback extension was used
-      const resolvedChannel = result.url !== resolved.url
-        ? { ...channel, direct_url: result.url }
-        : channel;
-      setCurrentChannel(resolvedChannel);
-      setPlaying(true);
-      // Notify multiview hook what's now in MPV (sourceName comes from resolvePlayUrl)
-      multiview.notifyMainLoaded(channel.name, result.url, resolved.sourceName ?? null);
-
-      // Capture video metadata after successful load
-      import('./services/video-metadata').then(({ captureAndSaveMetadata }) => {
-        captureAndSaveMetadata(channel.stream_id, channel.source_id).catch(console.error);
-      });
+      exitTabMode();
     }
-  };
+  }, [activeView, enterTabMode, exitTabMode]);
 
-
-
-  const handleTogglePlay = async () => {
-    // Toggle based on current state (Ref ensures fresh state in callbacks)
-    if (playingRef.current) {
-      await Bridge.pause();
-    } else {
-      await Bridge.resume();
+  // ==========================================================================
+  // Handle Watchlist Switch (needs access to handlePlayChannel)
+  // ==========================================================================
+  const handleWatchlistSwitchWrapper = useCallback(async (notification: import('./components/WatchlistNotification').WatchlistNotificationItem) => {
+    const channel = await db.channels.get(notification.channelId);
+    if (channel) {
+      addToRecentChannels(channel);
+      handlePlayChannel(channel);
     }
-  };
+  }, [handlePlayChannel]);
 
-
-  const handleVolumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseInt(e.target.value);
-    setVolume(newVolume);
-    await Bridge.setVolume(newVolume);
-  };
-
-  const handleToggleMute = async () => {
-    await Bridge.toggleMute();
-    // UI state updated via mpv status callback
-  };
-
-  const handlePlayChannel = (channel: StoredChannel) => {
-    // Clear out any vod or catchup info since we are playing live TV
-    setVodInfo(null);
-    setCatchupInfo(null);
-    // Add to recently viewed
-    addToRecentChannels(channel);
-    handleLoadStream(channel);
-  };
-
-  const handlePlayCatchup = async (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number) => {
-    debugLog(`handlePlayCatchup: ${channel.name} - ${programTitle}`);
-    setError(null);
-    setVodInfo(null);
-
-    // Strip the source-id prefix from the stream_id to get the raw Xtream stream ID
-    const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
-
-    // Resolve source URL (builds Xtream timeshift URL if needed, resolves Stalker token)
-    let resolved;
-    try {
-      resolved = await resolvePlayUrl(channel.source_id, channel.direct_url, {
-        rawStreamId,
-        startTimeMs,
-        durationMinutes,
-      });
-    } catch (e) {
-      console.error('Failed to resolve catchup source:', e);
-      setError('Failed to resolve catchup stream');
-      return;
-    }
-
-    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
-    if (!result.success) {
-      setError(result.error ?? 'Failed to load catchup stream');
-    } else {
-      setCurrentChannel(channel);
-      setCatchupInfo({ channelId: channel.stream_id, programTitle, startTime: startTimeMs, duration: durationMinutes });
-      setPlaying(true);
-      setActiveView('none');
-      setCategoriesOpen(false);
-      setSidebarExpanded(false);
-    }
-  };
-
-  // Ref for play channel handler (for up/down navigation)
-  const handlePlayChannelRef = useRef(handlePlayChannel);
-  useEffect(() => { handlePlayChannelRef.current = handlePlayChannel; }, [handlePlayChannel]);
-
-  const handleCatchupSeek = async (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number, seekSeconds: number) => {
-    // Optimistically update seeking state so UI reacts instantly
-    seekingRef.current = true;
-
-    // Defer the seek call until MPV reports it has loaded the file
-    pendingCatchupSeekRef.current = seekSeconds;
-
-    // First, ask handlePlayCatchup to transition our playback
-    await handlePlayCatchup(channel, programTitle, startTimeMs, durationMinutes);
-
-    // Free the flag shortly after so other controls are unblocked
-    setTimeout(() => { seekingRef.current = false; }, 200);
-  };
-
-  const handleStop = async () => {
-    debugLog('handleStop called');
-    await Bridge.stop();
-    debugLog('handleStop: Bridge.stop() completed');
-    setPlaying(false);
-    setCurrentChannel(null);
-    setCatchupInfo(null);
-  };
-
-  const handleSeek = async (seconds: number) => {
-    seekingRef.current = true;
-    setPosition(seconds); // Optimistic update
-    try {
-      await Bridge.seek(seconds);
-    } catch (e) {
-      console.warn('[App] Seek command failed:', e);
-    }
-    // Brief delay before accepting mpv updates again
-    setTimeout(() => { seekingRef.current = false; }, 200);
-  };
-
-  const handleCycleSubtitle = async () => {
-    await Bridge.cycleSubtitle();
-  };
-
-  const handleCycleAudio = async () => {
-    await Bridge.cycleAudio();
-  };
-
-  const handleToggleStats = async () => {
-    // Toggle MPV's built-in stats overlay
-    await Bridge.toggleStats();
-  };
-
-  const handleToggleFullscreen = async () => {
-    console.log('[App] Toggle fullscreen called');
-    try {
-      await Bridge.toggleFullscreen();
-    } catch (e) {
-      console.error('[App] Fullscreen error:', e);
-    }
-  };
-
-  // Modal state for track selection
-  const [showSubtitleModal, setShowSubtitleModal] = useState(false);
-  const [showAudioModal, setShowAudioModal] = useState(false);
-
-  const handleShowSubtitleModal = () => {
-    setShowSubtitleModal(true);
-  };
-
-  const handleShowAudioModal = () => {
-    setShowAudioModal(true);
-  };
-
-  // Background timer for watchlist reminders and autoswitch
-  useEffect(() => {
-    const checkWatchlist = async () => {
-      // Clear expired items first (programs that have ended)
-      const { clearExpiredWatchlist } = await import('./db');
-      await clearExpiredWatchlist();
-
-      const now = Date.now();
-      const { getWatchlist } = await import('./db');
-      const items = await getWatchlist();
-
-      for (const item of items) {
-        const startTime = item.start_time;
-        const reminderTime = startTime - (item.reminder_minutes * 60 * 1000);
-
-        // Check if reminder should be shown
-        if (item.reminder_enabled && !item.reminder_shown && now >= reminderTime && now < startTime + 30000) {
-          console.log('[Watchlist] Reminder:', item.program_title);
-          const notification: WatchlistNotificationItem = {
-            id: Date.now() + (item.id || 0),
-            watchlistId: item.id || 0,
-            programTitle: item.program_title,
-            channelName: item.channel_name,
-            channelId: item.channel_id,
-            sourceId: item.source_id,
-            startTime: item.start_time,
-            type: 'reminder',
-          };
-          setWatchlistNotifications(prev => [...prev, notification]);
-
-          const { markReminderShown } = await import('./db');
-          await markReminderShown(item.id!);
-        }
-
-        // Check if autoswitch should trigger (respecting autoswitch_seconds_before setting)
-        const secondsBefore = item.autoswitch_seconds_before ?? 0;
-        const autoswitchTime = startTime - (secondsBefore * 1000);
-        if (item.autoswitch_enabled && !item.autoswitch_triggered && now >= autoswitchTime && now < startTime + 60000) {
-          console.log('[Watchlist] Auto-switching to:', item.program_title, `( ${secondsBefore}s before start)`);
-
-          try {
-            const channel = await db.channels.get(item.channel_id);
-            if (channel) {
-              // Auto-switch without calling handlePlayChannel (to avoid dependency issues)
-              addToRecentChannels(channel);
-              handleLoadStream(channel);
-
-              const notification: WatchlistNotificationItem = {
-                id: Date.now() + (item.id || 0) + 1000,
-                watchlistId: item.id || 0,
-                programTitle: item.program_title,
-                channelName: item.channel_name,
-                channelId: item.channel_id,
-                sourceId: item.source_id,
-                startTime: item.start_time,
-                type: 'autoswitch',
-              };
-              setWatchlistNotifications(prev => [...prev, notification]);
-            }
-          } catch (error) {
-            console.error('[Watchlist] Auto-switch failed:', error);
-          }
-
-          const { markAutoswitchTriggered } = await import('./db');
-          await markAutoswitchTriggered(item.id!);
-        }
-      }
-    };
-
-    checkWatchlist();
-    const interval = setInterval(checkWatchlist, 10000);
-    return () => clearInterval(interval);
-  }, []); // Empty dependency array - runs once on mount
-
-  // Play VOD content (movies/series)
-  const handlePlayVod = async (info: VodPlayInfo) => {
-    debugLog(`handlePlayVod: ${info.title} (${info.type})`);
-    debugLog(`  URL: ${info.url}`);
-
-    setError(null);
-
-    // Resolve source URL (handles Stalker token resolution + extracts userAgent)
-    let resolved;
-    try {
-      resolved = await resolvePlayUrl(info.source_id, info.url);
-    } catch (err) {
-      console.error('Failed to resolve Source info:', err);
-      setError('Failed to resolve stream URL');
-      return;
-    }
-
-    debugLog(`  UserAgent: ${resolved.userAgent ?? 'none'}`);
-    debugLog(`  Resolved URL: ${resolved.url}`);
-
-    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
-    if (!result.success) {
-      debugLog(`  FAILED: ${result.error}`);
-      setError(result.error ?? 'Failed to load stream');
-    } else {
-      debugLog(`  SUCCESS: playing`);
-      // Create a pseudo-channel for the now playing bar
-      const workingUrl = result.url;
-      setCurrentChannel({
-        stream_id: 'vod',
-        name: info.title,
-        stream_icon: '',
-        epg_channel_id: '',
-        category_ids: [],
-        direct_url: workingUrl,
-        source_id: 'vod',
-      });
-      setVodInfo({ ...info, url: workingUrl });
-      setPlaying(true);
-      // Close VOD pages when playing
-      setActiveView('none');
-    }
-  };
-
-  // Handle category selection - opens guide if closed
-  const handleSelectCategory = (catId: string | null) => {
-    setCategoryId(catId);
-
-    // Handle special categories
-    if (catId === '__watchlist__') {
-      setIsWatchlistMode(true);
-      setIsSearchMode(false);
-      setSearchQuery('');
-    } else {
-      setIsWatchlistMode(false);
-    }
-
-    // Open guide if it's not already open
-    if (activeView !== 'guide') {
-      setActiveView('guide');
-    }
-  };
-
-  // ── Auto-sync on startup (via extracted hook) ────────────────────────────
-  useAutoSync({
-    onShortcutsLoaded: (s) => setShortcuts(s as ShortcutsMap),
-    onThemeLoaded: (t) => setTheme(t as ThemeId),
-    onSidebarVisibilityLoaded: (v) => setShowSidebar(v),
-    onFontSizeLoaded: (ch, cat) => {
-      if (ch) document.documentElement.style.setProperty('--channel-font-size', `${ch}px`);
-      if (cat) document.documentElement.style.setProperty('--category-font-size', `${cat}px`);
-    },
-  });
-
-  // Keyboard shortcuts — logic lives in useKeyboardShortcuts
+  // ==========================================================================
+  // Keyboard Shortcuts
+  // ==========================================================================
   useKeyboardShortcuts({
     shortcutsRef,
     activeViewRef,
@@ -1006,33 +398,98 @@ function App() {
     currentChannelRef,
     switchLayoutRef,
     titleBarSearchRef,
-    handlePlayChannelRef,
-    handleTogglePlay,
-    handleToggleMute,
-    handleToggleStats,
-    handleToggleFullscreen,
-    handleShowSubtitleModal,
-    handleShowAudioModal,
-    handleSeek,
-    setActiveView,
-    setCategoriesOpen,
-    setSidebarExpanded,
-    setShowControls,
+    handlePlayChannelRef: { current: handlePlayChannel },
+    handleTogglePlayRef,
+    handleToggleMuteRef,
+    handleToggleStatsRef,
+    handleToggleFullscreenRef,
+    handleShowSubtitleModalRef,
+    handleShowAudioModalRef,
+    handleSeekRef,
+    setActiveViewRef,
+    setCategoriesOpenRef,
+    setSidebarExpandedRef,
+    setShowControlsRef,
   });
 
+  // ==========================================================================
+  // Auto-Sync on Startup
+  // ==========================================================================
+  useEffect(() => {
+    // This was previously useAutoSync hook - inline for now
+    const loadSettings = async () => {
+      if (!window.storage) return;
+      try {
+        const result = await window.storage.getSettings();
+        if (result.data) {
+          // Apply font sizes
+          if (result.data.channelFontSize) {
+            document.documentElement.style.setProperty('--channel-font-size', `${result.data.channelFontSize}px`);
+          }
+          if (result.data.categoryFontSize) {
+            document.documentElement.style.setProperty('--category-font-size', `${result.data.categoryFontSize}px`);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load settings:', e);
+      }
+    };
+    loadSettings();
+  }, []);
 
-  // Window controls
-  const handleMinimize = () => {
-    Bridge.minimize();
-  };
+  // ==========================================================================
+  // Window Size Initialization
+  // ==========================================================================
+  useEffect(() => {
+    const initWindowSize = async () => {
+      try {
+        if (!window.storage) return;
+        const result = await window.storage.getSettings();
+        const settings = result.data || {};
+        const width = settings.startupWidth || 1920;
+        const height = settings.startupHeight || 1080;
 
-  const handleMaximize = () => {
-    Bridge.toggleMaximize();
-  };
+        const appWindow = getCurrentWindow();
+        const isMaximized = await appWindow.isMaximized();
+        if (isMaximized) {
+          await appWindow.unmaximize();
+        }
+        await appWindow.setSize(new LogicalSize(width, height));
+      } catch (err) {
+        console.error('[App] Failed to resize window on startup:', err);
+      }
+    };
+    initWindowSize();
+  }, []);
 
-  const handleClose = () => {
-    Bridge.close();
-  };
+  // ==========================================================================
+  // DVR Initialization
+  // ==========================================================================
+  useEffect(() => {
+    const initDvr = async () => {
+      try {
+        await invoke('init_dvr');
+      } catch (error) {
+        console.error('[App] Failed to initialize DVR:', error);
+      }
+    };
+    initDvr();
+  }, []);
+
+  // ==========================================================================
+  // Check for Updates
+  // ==========================================================================
+  useEffect(() => {
+    const checkUpdates = async () => {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      await checkForUpdatesSilent();
+    };
+    checkUpdates();
+  }, []);
+
+  // ==========================================================================
+  // Render
+  // ==========================================================================
   return (
     <div className={`app${showControls ? '' : ' controls-hidden'}`} onMouseMove={handleMouseMove}>
       {/* Custom title bar for frameless window */}
@@ -1040,17 +497,15 @@ function App() {
         <div className="title-bar-left-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Logo className="title-bar-logo" />
           <LayoutPicker
-            currentLayout={multiview.layout}
-            onSelect={multiview.switchLayout}
+            currentLayout={multiviewLayout}
+            onSelect={switchLayout}
           />
         </div>
 
-        {/* Spacer for left side */}
         <div className="title-bar-spacer"></div>
 
         {/* Center Section: Unified Navigation Bar */}
         <div className="title-bar-content">
-          {/* Unified Control Bar with Segmented Buttons + Integrated Search */}
           <div className="title-bar-unified">
             {/* Segmented Control for View Switching */}
             <div className="title-bar-segmented">
@@ -1145,7 +600,6 @@ function App() {
               </button>
             </div>
 
-            {/* Divider between segmented buttons and search */}
             <div className="unified-divider"></div>
 
             {/* Integrated Search */}
@@ -1162,7 +616,6 @@ function App() {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  // Auto-open categories and guide when searching
                   if (e.target.value.length >= 1) {
                     setCategoriesOpen(true);
                     if (activeView !== 'guide') {
@@ -1171,7 +624,6 @@ function App() {
                   }
                 }}
                 onFocus={() => {
-                  // Auto-open guide when searching
                   if (!isSearchMode && activeView !== 'guide') {
                     setCategoriesOpen(true);
                     setActiveView('guide');
@@ -1191,16 +643,13 @@ function App() {
           </div>
         </div>
 
-        {/* Right Spacer to balance the left spacer */}
         <div className="title-bar-spacer" style={{ position: 'relative' }}>
-          {/* Recording Indicator - shown when actively recording, positioned absolutely so it doesn't affect layout */}
           {hasActiveRecording && (
             <div className="title-bar-recording-indicator">
               <RecordingIndicator size="small" variant="recording" />
             </div>
           )}
         </div>
-
 
         {/* Calendar Button */}
         <button
@@ -1237,22 +686,15 @@ function App() {
         </button>
 
         <div className="window-controls">
-          <button onClick={handleMinimize} title="Minimize">
-            ─
-          </button>
-          <button onClick={handleMaximize} title="Maximize">
-            □
-          </button>
-          <button onClick={handleClose} className="close" title="Close">
-            ✕
-          </button>
+          <button onClick={handleMinimize} title="Minimize">─</button>
+          <button onClick={handleMaximize} title="Maximize">□</button>
+          <button onClick={handleClose} className="close" title="Close">✕</button>
         </div>
       </div>
 
-
       {/* Background - transparent over mpv */}
       <div className="video-background">
-        {!currentChannel && !error && !multiview.isRestoring && (
+        {!currentChannel && !error && !isRestoring && (
           <div className="placeholder">
             <Logo className="placeholder__logo" />
             {(channelSyncing || vodSyncing || tmdbMatching) ? (
@@ -1274,7 +716,6 @@ function App() {
           </div>
         )}
 
-        {/* Error Overlay for Fullscreen */}
         {error && activeView !== 'guide' && (
           <VideoErrorOverlay
             error={error}
@@ -1282,19 +723,6 @@ function App() {
           />
         )}
       </div>
-
-      {/* Multiview HLS cell grid (rendered on top of MPV, which renders behind) */}
-      {/* Hide when in tab mode (guide/sports/dvr/settings) so secondaries don't block preview */}
-      {multiview.layout !== 'main' && activeView === 'none' && (
-        <MultiviewLayout
-          layout={multiview.layout}
-          slots={multiview.slots}
-          onSwapWithMain={(slotId) => multiview.swapWithMain(slotId, multiview.slots)}
-          onStop={multiview.stopSlot}
-          onSetProperty={multiview.setSlotProperty}
-          onReposition={() => multiview.repositionSecondarySlots()}
-        />
-      )}
 
       {/* Now Playing Bar */}
       <NowPlayingBar
@@ -1330,7 +758,7 @@ function App() {
         onToggleFullscreen={handleToggleFullscreen}
         onShowSubtitleModal={handleShowSubtitleModal}
         onShowAudioModal={handleShowAudioModal}
-        onGoToLive={() => currentChannel && handlePlayChannelRef.current(currentChannel)}
+        onGoToLive={() => currentChannel && handlePlayChannel(currentChannel)}
         onCatchupSeek={handleCatchupSeek}
         timeshiftEnabled={timeshiftEnabled}
         timeshiftState={timeshiftState}
@@ -1340,6 +768,18 @@ function App() {
           }
         }}
       />
+
+      {/* Multiview Layout */}
+      {multiviewLayout !== 'main' && activeView === 'none' && (
+        <MultiviewLayout
+          layout={multiviewLayout}
+          slots={multiviewSlots}
+          onSwapWithMain={(slotId) => swapWithMain(slotId, multiviewSlots)}
+          onStop={stopSlot}
+          onSetProperty={setSlotProperty}
+          onReposition={repositionSecondarySlots}
+        />
+      )}
 
       {/* Track Selection Modals */}
       <TrackSelectionModal
@@ -1353,7 +793,7 @@ function App() {
         onClose={() => setShowAudioModal(false)}
       />
 
-      {/* Sidebar Navigation - stays visible when any panel is open */}
+      {/* Sidebar Navigation */}
       <Sidebar
         activeView={activeView}
         onViewChange={setActiveView}
@@ -1365,16 +805,13 @@ function App() {
         onExpandedToggle={() => setSidebarExpanded((exp) => !exp)}
       />
 
-      {/* Category Strip - slides out from sidebar */}
+      {/* Category Strip */}
       <CategoryStrip
         selectedCategoryId={categoryId}
         onSelectCategory={(catId) => {
-          // Exit search mode when selecting a category
           if (isSearchMode) {
             setSearchQuery('');
-            setIsSearchMode(false);
           }
-          // Exit watchlist mode when selecting a regular category
           if (catId !== '__watchlist__') {
             setIsWatchlistMode(false);
           }
@@ -1392,7 +829,7 @@ function App() {
         }}
       />
 
-      {/* Channel Panel - slides out (shifts right if categories open) */}
+      {/* Channel Panel */}
       <ChannelPanel
         categoryId={isSearchMode || isWatchlistMode ? null : categoryId}
         visible={activeView === 'guide'}
@@ -1405,13 +842,7 @@ function App() {
           setActiveView('none');
           setCategoriesOpen(false);
           setSidebarExpanded(false);
-          // Exit tab mode: restore multiview state if it was active
-          multiview.exitTabMode();
-          // EPG guard: only reset MPV geometry if multiview is NOT active
-          // (if multiview is active, MPV stays in its grid quadrant)
-          if (multiviewLayoutRef.current === 'main') {
-            Bridge.syncWindow();
-          }
+          Bridge.syncWindow();
         }}
         error={error}
         isSearchMode={isSearchMode}
@@ -1420,9 +851,9 @@ function App() {
         searchPrograms={searchPrograms}
         isWatchlistMode={isWatchlistMode}
         watchlistItems={watchlistItems}
-        onWatchlistRefresh={() => setWatchlistRefreshTrigger(v => v + 1)}
-        currentLayout={multiview.layout}
-        onSendToSlot={multiview.sendToSlot}
+        onWatchlistRefresh={refreshWatchlist}
+        currentLayout={multiviewLayout}
+        onSendToSlot={sendToSlot}
         includeSourceInSearch={includeSourceInSearch}
         currentChannel={currentChannel}
       />
@@ -1442,7 +873,7 @@ function App() {
       {/* Movies Page */}
       {activeView === 'movies' && (
         <MoviesPage
-          onPlay={handlePlayVod}
+          onPlay={(info) => handlePlayVod(info, () => setActiveView('none'))}
           onClose={() => setActiveView('none')}
         />
       )}
@@ -1450,7 +881,7 @@ function App() {
       {/* Series Page */}
       {activeView === 'series' && (
         <SeriesPage
-          onPlay={handlePlayVod}
+          onPlay={(info) => handlePlayVod(info, () => setActiveView('none'))}
           onClose={() => setActiveView('none')}
         />
       )}
@@ -1458,7 +889,7 @@ function App() {
       {/* DVR Dashboard */}
       {activeView === 'dvr' && (
         <DvrDashboard
-          onPlay={handlePlayRecording}
+          onPlay={(recording) => handlePlayRecording(recording, () => setActiveView('none'))}
           onClose={() => setActiveView('none')}
         />
       )}
@@ -1471,15 +902,14 @@ function App() {
             setSearchQuery(query);
             setActiveView('guide');
             setCategoriesOpen(true);
-            // Focus the search input after the view transition
             setTimeout(() => {
               if (titleBarSearchRef.current) {
                 titleBarSearchRef.current.focus();
               }
             }, 50);
           }}
-          previewEnabled={sportsPreviewEnabled}
-          onTogglePreview={() => setSportsPreviewEnabled(prev => !prev)}
+          previewEnabled={true}
+          onTogglePreview={() => {}}
         />
       )}
 
@@ -1488,27 +918,15 @@ function App() {
         <TVCalendarPage
           onClose={() => setActiveView('none')}
           onPlayChannel={async (channelName) => {
-            console.log('[App] Calendar onPlayChannel called with:', channelName);
-            console.log('[App] Available channels:', currentChannels.map(c => c.name));
-            // Find channel by name and play it
             let channel = currentChannels.find(c => c.name === channelName);
-            console.log('[App] Found channel in currentChannels:', channel);
-
-            // Fallback: query database directly if not in current list
             if (!channel) {
-              console.log('[App] Channel not in current list, querying database...');
               const channels = await db.channels.whereRaw('name = ?', [channelName]).toArray();
-              console.log('[App] Database query result:', channels);
               if (channels.length > 0) {
                 channel = channels[0];
-                console.log('[App] Using channel from database:', channel);
               }
             }
-
             if (channel) {
               handlePlayChannel(channel);
-            } else {
-              console.log('[App] Channel not found anywhere:', channelName);
             }
           }}
         />
@@ -1517,7 +935,7 @@ function App() {
       {/* Watchlist Notifications */}
       <WatchlistNotificationContainer
         notifications={watchlistNotifications}
-        onSwitch={handleWatchlistSwitch}
+        onSwitch={handleWatchlistSwitchWrapper}
         onDismiss={handleWatchlistDismiss}
       />
 
@@ -1526,7 +944,6 @@ function App() {
         isOpen={updateModalOpen}
         onClose={() => setUpdateModalOpen(false)}
       />
-
     </div>
   );
 }

@@ -85,12 +85,16 @@ async fn connect_ipc(socket_path: &str) -> Result<tokio::sync::mpsc::Sender<Stri
         let mut retries = 15;
         loop {
             match ClientOptions::new().open(socket_path) {
-                Ok(s) => break Ok(s),
+                Ok(s) => {
+                    break Ok(s);
+                },
                 Err(_) if retries > 0 => {
                     tokio::time::sleep(Duration::from_millis(300)).await;
                     retries -= 1;
                 }
-                Err(e) => break Err(format!("Secondary IPC connect failed: {}", e)),
+                Err(e) => {
+                    break Err(format!("Secondary IPC connect failed: {}", e));
+                }
             }
         }
     }?;
@@ -144,7 +148,6 @@ pub async fn kill_slot<R: Runtime>(app: &AppHandle<R>, slot_id: u8) {
                 let _ = TerminateProcess(ph, 0);
             }
         }
-        println!("[SecondaryMPV] Slot {} killed (pid={})", slot_id, pid);
     }
 }
 
@@ -197,16 +200,15 @@ pub async fn spawn_slot<R: Runtime>(
         .map_err(|e| format!("Failed to spawn secondary MPV: {}", e))?;
 
     let pid = child.pid();
-    println!("[SecondaryMPV] Slot {} spawned PID={}", slot_id, pid);
 
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             match event {
                 CommandEvent::Stderr(line) => {
-                    println!("[MPV-{}] {}", slot_id, String::from_utf8_lossy(&line));
+                    eprintln!("[MPV-{}] {}", slot_id, String::from_utf8_lossy(&line));
                 }
-                CommandEvent::Terminated(s) => {
-                    println!("[MPV-{}] Terminated: {:?}", slot_id, s);
+                CommandEvent::Terminated(_) => {
+                    break;
                 }
                 _ => {}
             }
@@ -216,33 +218,22 @@ pub async fn spawn_slot<R: Runtime>(
     // Wait for MPV to create its window, then position it
     tokio::time::sleep(Duration::from_millis(1200)).await;
 
-    println!("[SecondaryMPV] Slot {} attempting to find HWND (pid={}) and position at x={} y={} w={} h={}", 
-        slot_id, pid, x, y, width, height);
-
     // Find the MPV child HWND by exact title and position it
     let target_title = format!("YNOTV_MPV_SLOT_{}", slot_id);
     if let Some(hwnd_raw) = crate::mpv_windows::find_mpv_hwnd_by_title(parent_hwnd_raw, &target_title) {
-        println!("[SecondaryMPV] Slot {} found HWND: {}, positioning...", slot_id, hwnd_raw);
-        if let Err(e) = set_hwnd_rect(hwnd_raw, x, y, width, height, true) {
-            println!("[SecondaryMPV] Slot {} initial reposition failed: {}", slot_id, e);
-        } else {
-            println!("[SecondaryMPV] Slot {} successfully positioned at x={} y={} w={} h={} (brought to front)", 
-                slot_id, x, y, width, height);
-        }
+        let _ = set_hwnd_rect(hwnd_raw, x, y, width, height, true);
         // Store the discovered HWND so we don't need to search again
         let ipc_tx = connect_ipc(&socket_path).await.ok();
         let state = app.state::<SecondaryMpvState>();
         let mut slots = state.slots.lock().unwrap();
         slots.insert(slot_id, SlotInstance { pid, hwnd: hwnd_raw, ipc_tx });
     } else {
-        println!("[SecondaryMPV] Slot {} HWND not found after search — storing without HWND (will retry on reposition)", slot_id);
         let ipc_tx = connect_ipc(&socket_path).await.ok();
         let state = app.state::<SecondaryMpvState>();
         let mut slots = state.slots.lock().unwrap();
         slots.insert(slot_id, SlotInstance { pid, hwnd: 0, ipc_tx });
     }
 
-    println!("[SecondaryMPV] Slot {} ready", slot_id);
     Ok(())
 }
 
@@ -256,9 +247,6 @@ pub async fn load_slot<R: Runtime>(
     width: u32,
     height: u32,
 ) -> Result<(), String> {
-    println!("[SecondaryMPV] load_slot called: slot={} x={} y={} w={} h={} url={}", 
-        slot_id, x, y, width, height, &url[..url.len().min(60)]);
-
     // Check if slot is already running; extract tx clone before any await
     let existing_tx = {
         let state = app.state::<SecondaryMpvState>();
@@ -267,13 +255,10 @@ pub async fn load_slot<R: Runtime>(
     };
 
     if existing_tx.is_none() {
-        println!("[SecondaryMPV] Slot {} not found, spawning new instance...", slot_id);
         // Note: Custom MPV params only apply to main player, not secondary slots
         spawn_slot(app, slot_id, x, y, width, height).await?;
     } else {
         // Slot already exists - reposition it to the new coordinates
-        println!("[SecondaryMPV] Slot {} already exists, repositioning to x={} y={} w={} h={}", 
-            slot_id, x, y, width, height);
         reposition_slot(app, slot_id, x, y, width, height).await?;
     }
 
@@ -285,10 +270,7 @@ pub async fn load_slot<R: Runtime>(
     };
 
     if let Some(tx) = tx {
-        send_ipc(&tx, "loadfile", vec![json!(url)]).await;
-        println!("[SecondaryMPV] Slot {} loading: {}", slot_id, &url[..url.len().min(80)]);
-    } else {
-        println!("[SecondaryMPV] WARNING: Slot {} has no IPC channel after spawn/reposition", slot_id);
+        send_ipc(&tx, "loadfile", vec![json!(url.clone())]).await;
     }
     Ok(())
 }
@@ -347,7 +329,6 @@ pub async fn reposition_slot<R: Runtime>(
             if let Ok(parent_hwnd_raw) = get_parent_hwnd(app) {
                 let target_title = format!("YNOTV_MPV_SLOT_{}", slot_id);
                 if let Some(found) = crate::mpv_windows::find_mpv_hwnd_by_title(parent_hwnd_raw, &target_title) {
-                    println!("[SecondaryMPV] Re-discovered HWND for slot {} (pid={}): {}", slot_id, pid, found);
                     effective_hwnd = found;
                     // Persist the discovered HWND so future calls don't need to search
                     {
@@ -357,21 +338,13 @@ pub async fn reposition_slot<R: Runtime>(
                             slot.hwnd = found;
                         }
                     }
-                } else {
-                    println!("[SecondaryMPV] WARNING: Could not find HWND for slot {} (pid={}) during reposition", slot_id, pid);
                 }
             }
         }
 
         if effective_hwnd != 0 {
-            println!("[SecondaryMPV] reposition_slot → slot={} x={} y={} w={} h={}", slot_id, x, y, width, height);
             set_hwnd_rect(effective_hwnd, x, y, width, height, true)?;
-            println!("[SecondaryMPV] reposition_slot → slot={} completed successfully (brought to front)", slot_id);
-        } else {
-            println!("[SecondaryMPV] WARNING: No valid HWND for slot {} during reposition; skipping SetWindowPos", slot_id);
         }
-    } else {
-        println!("[SecondaryMPV] WARNING: reposition_slot called for unknown slot {}", slot_id);
     }
 
     Ok(())

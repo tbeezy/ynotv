@@ -145,11 +145,6 @@ export function useMultiview() {
         const m = mode ?? layoutRef.current;
         const r = primaryRect(m);
         try {
-            console.log('[useMultiview] syncMpvGeometry', {
-                mode: m,
-                rect: { x: r.x, y: r.y, w: r.w, h: r.h },
-                window: { width: window.innerWidth, height: window.innerHeight, dpr: dpr() },
-            });
 
             // CRITICAL: Reset video zoom/align when switching to multiview layouts.
             // EPG preview may have set these, causing black screen if not reset.
@@ -159,15 +154,14 @@ export function useMultiview() {
                     await Bridge.setProperty('video-zoom', 0);
                     await Bridge.setProperty('video-align-x', 0);
                     await Bridge.setProperty('video-align-y', 0);
-                    console.log('[useMultiview] Reset video-zoom/align for multiview layout');
                 } catch (e) {
-                    console.warn('[useMultiview] Failed to reset video properties:', e);
+                    // Ignore reset errors
                 }
             }
 
             await invoke('mpv_set_geometry', { x: r.x, y: r.y, width: r.w, height: r.h });
         } catch (e) {
-            console.warn('[useMultiview] syncMpvGeometry failed:', e);
+            // Ignore geometry sync errors
         }
     }, []);
 
@@ -183,12 +177,6 @@ export function useMultiview() {
         const ops = activeSlots.map(async (slot) => {
             const r = secondaryRect(slot.id, m);
             try {
-                console.log('[useMultiview] multiview_reposition_slot', {
-                    slotId: slot.id,
-                    mode: m,
-                    rect: { x: r.x, y: r.y, w: r.w, h: r.h },
-                    window: { width: window.innerWidth, height: window.innerHeight, dpr: dpr() },
-                });
                 await invoke('multiview_reposition_slot', {
                     slotId: slot.id,
                     x: r.x,
@@ -197,7 +185,7 @@ export function useMultiview() {
                     height: r.h,
                 });
             } catch (e) {
-                console.warn('[useMultiview] multiview_reposition_slot failed:', slot.id, e);
+                // Ignore reposition errors
             }
         });
 
@@ -278,7 +266,6 @@ export function useMultiview() {
 
     const switchLayout = useCallback(async (newLayout: LayoutMode) => {
         if (isTabModeRef.current && savedStateRef.current) {
-            console.log(`[useMultiview] Layout changed to ${newLayout} while a tab is open. Deferring until closed.`);
 
             // If switching to 'main' while tab is open, we need to clear pending secondary slots
             if (newLayout === 'main') {
@@ -293,23 +280,17 @@ export function useMultiview() {
 
         if (newLayout === 'main') {
             // CRITICAL: Kill all secondary MPVs FIRST and wait for them to fully terminate
-            console.log('[useMultiview] Switching to main layout - killing all secondary MPVs...');
-            await invoke('multiview_kill_all').catch((e) => {
-                console.warn('[useMultiview] Error killing secondary MPVs:', e);
-            });
+            await invoke('multiview_kill_all').catch(() => { });
             setSlots(EMPTY_SLOTS.map(s => ({ ...s })));
             activeUrlsRef.current = { 2: null, 3: null, 4: null };
             // Small delay to ensure windows are fully destroyed before restoring main MPV
             await new Promise(resolve => setTimeout(resolve, 200));
         } else if (newLayout === 'pip') {
             // When switching to PiP, we must manually kill slots 3 and 4 since PiP only uses slot 2
-            console.log('[useMultiview] Switching to PiP - killing slots 3 and 4...');
             const ops = [];
             for (const id of [3, 4]) {
                 if (slotsRef.current.find(s => s.id === id)?.active) {
-                    ops.push(invoke('multiview_kill_slot', { slotId: id }).catch(e => {
-                        console.warn(`[useMultiview] Error killing slot ${id}:`, e);
-                    }));
+                    ops.push(invoke('multiview_kill_slot', { slotId: id }).catch(() => { }));
                 }
             }
             if (ops.length > 0) await Promise.all(ops);
@@ -335,7 +316,6 @@ export function useMultiview() {
     /** Load a stream URL into a secondary MPV slot */
     const sendToSlot = useCallback(async (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName: string | null = null, force: boolean = false) => {
         if (isTabModeRef.current && savedStateRef.current && !force) {
-            console.log(`[useMultiview] Deferring load for slot ${slotId} while a full-screen tab is open`);
             savedStateRef.current.slots = savedStateRef.current.slots.map(s =>
                 s.id === slotId ? { ...s, channelName, channelUrl, sourceName, active: true } : s
             );
@@ -348,15 +328,6 @@ export function useMultiview() {
         const mode = layoutRef.current;
         const r = secondaryRect(slotId, mode);
         try {
-            console.log('[useMultiview] sendToSlot', {
-                slotId,
-                channelName,
-                sourceName,
-                url: channelUrl.substring(0, 60) + '...',
-                mode,
-                rect: { x: r.x, y: r.y, w: r.w, h: r.h },
-                window: { width: window.innerWidth, height: window.innerHeight, dpr: dpr() },
-            });
             await invoke('multiview_load_slot', {
                 slotId,
                 url: channelUrl,
@@ -368,7 +339,7 @@ export function useMultiview() {
             ));
 
             // Allow React to render the active DOM element (adding the 36px control bar)
-            // then reposition the slot so MPV shrinks to fit exactly. 
+            // then reposition the slot so MPV shrinks to fit exactly.
             setTimeout(() => {
                 const updatedRect = secondaryRect(slotId, layoutRef.current);
                 invoke('multiview_reposition_slot', {
@@ -380,14 +351,16 @@ export function useMultiview() {
                 }).catch(() => { });
             }, 100);
         } catch (e) {
-            console.error('[useMultiview] sendToSlot failed:', e);
+            // Ignore sendToSlot errors
         }
     }, []);
 
     /** Swap: load a secondary slot's stream into the primary MPV and vice versa */
     const swapWithMain = useCallback(async (slotId: 2 | 3 | 4, currentSlots: ViewerSlot[]) => {
         const slot = currentSlots.find(s => s.id === slotId);
-        if (!slot?.channelUrl) return;
+        if (!slot?.channelUrl) {
+            return;
+        }
 
         const prevMain = { ...mainSlotRef.current };
         const newMainUrl = slot.channelUrl;
@@ -424,17 +397,25 @@ export function useMultiview() {
         }
 
         // Load the slot's stream into primary MPV
-        await invoke('mpv_load', { url: newMainUrl });
+        try {
+            await invoke('mpv_load', { url: newMainUrl });
+        } catch (e) {
+            // Ignore mpv_load errors
+        }
         mainSlotRef.current = { channelName: newMainName, channelUrl: newMainUrl, sourceName: newMainSourceName };
 
         // Put the old main stream into the secondary slot
         if (prevMain.channelUrl) {
             const r = secondaryRect(slotId, layoutRef.current);
-            await invoke('multiview_load_slot', {
-                slotId,
-                url: prevMain.channelUrl,
-                x: r.x, y: r.y, width: r.w, height: r.h,
-            }).catch(() => { });
+            try {
+                await invoke('multiview_load_slot', {
+                    slotId,
+                    url: prevMain.channelUrl,
+                    x: r.x, y: r.y, width: r.w, height: r.h,
+                });
+            } catch (e) {
+                // Ignore multiview_load_slot errors
+            }
             activeUrlsRef.current[slotId] = prevMain.channelUrl;
             setSlots(prev => prev.map(s =>
                 s.id === slotId
@@ -478,14 +459,13 @@ export function useMultiview() {
         try {
             await invoke('multiview_set_property_slot', { slotId, property, value });
         } catch (e) {
-            console.warn('[useMultiview] setSlotProperty failed for slot', slotId, e);
+            // Ignore setProperty errors
         }
     }, []);
 
     /** Enter tab mode: push secondary MPVs off-screen to keep them buffering/playing */
     const enterTabMode = useCallback(async (tabName?: string) => {
         if (isTabModeRef.current) return;
-        console.log(`[useMultiview] Entering tab ${tabName || 'mode'} - hiding secondaries off-screen`);
         isTabModeRef.current = true;
 
         savedStateRef.current = {
@@ -499,7 +479,7 @@ export function useMultiview() {
             const ops = slotsRef.current.filter(s => s.active).map(s =>
                 invoke('multiview_reposition_slot', { slotId: s.id, x: -10000, y: -10000, width: 1, height: 1 })
             );
-            await Promise.all(ops).catch(e => console.warn('[useMultiview] Error hiding MPVs:', e));
+            await Promise.all(ops).catch(() => { });
 
             // Temporarily reset primary MPV geometry to fullscreen so the Guide preview
             // pane's `video-zoom` and `video-align` software scaling can work normally.
@@ -510,7 +490,6 @@ export function useMultiview() {
     /** Exit tab mode: restore saved multiview state, unhiding or loading slots as needed */
     const exitTabMode = useCallback(async () => {
         if (!isTabModeRef.current) return;
-        console.log('[useMultiview] Exiting full-screen tab - restoring multiview state');
         isTabModeRef.current = false;
 
         const saved = savedStateRef.current;
@@ -520,7 +499,7 @@ export function useMultiview() {
 
         if (saved.layout === 'main') {
             // The user switched to main layout while tab was open; we need to kill the hidden MPVs
-            await invoke('multiview_kill_all').catch(console.warn);
+            await invoke('multiview_kill_all').catch(() => { });
             activeUrlsRef.current = { 2: null, 3: null, 4: null };
             await syncMpvGeometry('main');
         } else {
@@ -535,17 +514,17 @@ export function useMultiview() {
                     if (activeUrlsRef.current[slot.id] === slot.channelUrl) {
                         invoke('multiview_reposition_slot', {
                             slotId: slot.id, x: r.x, y: r.y, width: r.w, height: r.h
-                        }).catch(e => console.warn('[useMultiview] Failed to restore slot', slot.id, e));
+                        }).catch(() => { });
                     } else {
                         // It was assigned a NEW stream while the tab was open, so load it
                         invoke('multiview_load_slot', {
                             slotId: slot.id, url: slot.channelUrl, x: r.x, y: r.y, width: r.w, height: r.h
-                        }).catch(e => console.warn('[useMultiview] Failed to load new slot', slot.id, e));
+                        }).catch(() => { });
                         activeUrlsRef.current[slot.id] = slot.channelUrl;
                     }
                 } else if (!slot.active && activeUrlsRef.current[slot.id]) {
                     // It was stopped while the tab was open
-                    invoke('multiview_stop_slot', { slotId: slot.id }).catch(e => console.warn('[useMultiview] Failed to stop slot', slot.id, e));
+                    invoke('multiview_stop_slot', { slotId: slot.id }).catch(() => { });
                     // Ensure the stopped MPV window stays hidden off-screen
                     invoke('multiview_reposition_slot', { slotId: slot.id, x: -10000, y: -10000, width: 1, height: 1 }).catch(() => { });
                     activeUrlsRef.current[slot.id] = null;

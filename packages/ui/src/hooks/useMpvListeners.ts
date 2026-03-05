@@ -56,14 +56,8 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
         // Don't initialize MPV until settings are loaded from store
         // This ensures timeshift settings are available before MPV starts
         if (!options.settingsLoaded) {
-            console.log('[useMpvListeners] Waiting for settings to load before initializing MPV...');
             return;
         }
-
-        console.log('[useMpvListeners] Settings loaded, initializing MPV with timeshift:', {
-            enabled: options.timeshiftEnabled,
-            cacheBytes: options.timeshiftCacheBytes
-        });
 
         let unlistenFns: (() => void)[] = [];
 
@@ -97,22 +91,16 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
             });
 
             const unlistenHttpError = await listen('mpv-http-error', (e: any) => {
-                console.error('[mpv-http-error]', e.payload);
                 setError(e.payload);
             });
 
             const unlistenEndFileError = await listen('mpv-end-file-error', (e: any) => {
-                console.error('[mpv-end-file-error]', e.payload);
                 setError(prev => prev ? prev : e.payload);
-            });
-
-            const unlistenStartFile = await listen('mpv-start-file', () => {
-                // Reserved for future start-file handling
             });
 
             unlistenFns = [
                 unlistenReady, unlistenStatus, unlistenError,
-                unlistenHttpError, unlistenEndFileError, unlistenStartFile,
+                unlistenHttpError, unlistenEndFileError,
             ];
 
             // Init MPV after listeners are registered to catch the ready event
