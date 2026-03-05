@@ -1556,22 +1556,27 @@ fn save_window_state(app: &tauri::AppHandle) {
         if window.is_fullscreen().unwrap_or(false) {
             return;
         }
-        // Use inner_size to match what setSize() sets in the frontend
-        let size = match window.inner_size() {
+        // Get inner_size (physical pixels) and convert to logical pixels
+        // This ensures the size is DPI-independent and won't double-scale on restore
+        let physical_size = match window.inner_size() {
             Ok(s) => s,
             Err(_) => return,
         };
+        let scale_factor = window.scale_factor().unwrap_or(1.0);
+        let logical_size: tauri::LogicalSize<f64> = physical_size.to_logical(scale_factor);
+
         let pos = match window.outer_position() {
             Ok(p) => p,
             Err(_) => return,
         };
         // Sanity-check: ignore absurd values (minimised, off-screen, etc.)
-        if size.width < 400 || size.height < 300 {
+        if physical_size.width < 400 || physical_size.height < 300 {
             return;
         }
+        // Save logical size (DPI-independent) to prevent double-scaling issues
         let state = WindowState {
-            width: size.width,
-            height: size.height,
+            width: logical_size.width.round() as u32,
+            height: logical_size.height.round() as u32,
             x: pos.x,
             y: pos.y,
         };
@@ -1586,7 +1591,8 @@ fn save_window_state(app: &tauri::AppHandle) {
         }
         // Also update the startupWidth/startupHeight in tauri-plugin-store
         // so Settings -> UI shows the last closed size as the default
-        update_startup_size_in_store(app, size.width, size.height);
+        // Use logical size to prevent DPI scaling issues
+        update_startup_size_in_store(app, logical_size.width.round() as u32, logical_size.height.round() as u32);
     }
 }
 
@@ -1662,9 +1668,10 @@ fn restore_window_state(app: &tauri::AppHandle) {
         if let Ok(json) = std::fs::read_to_string(&path) {
             if let Ok(state) = serde_json::from_str::<WindowState>(&json) {
                 if let Some(window) = app.get_webview_window("main") {
-                    // Apply size
-                    let _ = window.set_size(tauri::Size::Physical(
-                        tauri::PhysicalSize { width: state.width, height: state.height }
+                    // Apply size as logical size (DPI-independent)
+                    // This ensures the window opens at the correct logical size regardless of monitor scaling
+                    let _ = window.set_size(tauri::Size::Logical(
+                        tauri::LogicalSize { width: state.width as f64, height: state.height as f64 }
                     ));
                     // Apply position (only if non-zero — avoids placing off-screen on first run)
                     if state.x != 0 || state.y != 0 {
@@ -1672,7 +1679,7 @@ fn restore_window_state(app: &tauri::AppHandle) {
                             tauri::PhysicalPosition { x: state.x, y: state.y }
                         ));
                     }
-                    debug!("[WindowState] Restored: {}x{} at ({}, {})",
+                    debug!("[WindowState] Restored: {}x{} logical at ({}, {})",
                         state.width, state.height, state.x, state.y);
                 }
             }
