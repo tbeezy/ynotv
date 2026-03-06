@@ -1,5 +1,12 @@
   # Changelog
 
+  ## v1.5.9
+  Fixes:
+	- Certain stalker portals weren't saving channels properly
+	- Clear cache vacuums SQLite database
+	- db-wal truncates after sync
+	- Backend changes
+  
   ## v1.5.8
   Added:
   - Current time indicator in EPG

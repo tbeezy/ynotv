@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+
+// Auto-sync check interval: 10 minutes
+const AUTO_SYNC_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 import { invoke } from '@tauri-apps/api/core';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
 import { checkForUpdates, checkForUpdatesSilent } from './services/updater';
@@ -425,11 +428,20 @@ function App() {
   });
 
   // ==========================================================================
-  // Auto-Sync on Startup
+  // Auto-Sync on Startup & Periodic Checking
   // ==========================================================================
+  const isAutoSyncingRef = useRef(false);
+
   useEffect(() => {
-    const doInitialSync = async () => {
+    // Helper to perform sync check and sync stale sources
+    const performSyncCheck = async (isPeriodic = false) => {
       if (!window.storage) return;
+
+      // Skip if already syncing (for periodic checks)
+      if (isPeriodic && isAutoSyncingRef.current) {
+        console.log('[AutoSync] Periodic check skipped - sync already in progress');
+        return;
+      }
 
       // Health check — ensure backend bulk-ops plugin is ready
       const healthy = await bulkOps.healthCheck();
@@ -440,8 +452,8 @@ function App() {
       try {
         // Load settings first
         const settingsResult = await window.storage.getSettings();
-        if (settingsResult.data) {
-          // Apply font sizes
+        if (!isPeriodic && settingsResult.data) {
+          // Apply font sizes (only on initial sync)
           if (settingsResult.data.channelFontSize) {
             document.documentElement.style.setProperty('--channel-font-size', `${settingsResult.data.channelFontSize}px`);
           }
@@ -457,79 +469,98 @@ function App() {
         const epgRefreshHours = settingsResult.data?.epgRefreshHours ?? 6;
         const vodRefreshHours = settingsResult.data?.vodRefreshHours ?? 24;
 
+        // Skip periodic check if both are manual-only (0 = manual only)
+        if (isPeriodic && epgRefreshHours === 0 && vodRefreshHours === 0) {
+          return;
+        }
+
         // Get sources
         const result = await window.storage.getSources();
         if (!result.data || result.data.length === 0) return;
 
+        let didSync = false;
+
         // ── Channel / EPG sync ──────────────────────────────────────────────
-        // Filter out VOD-only sources from channel sync
-        const enabledSources = result.data.filter((s: any) => s.enabled && !s.vod_only);
-        const staleSources: any[] = [];
-        for (const source of enabledSources) {
-          if (await isEpgStale(source.id, epgRefreshHours)) staleSources.push(source);
-        }
-
-        if (staleSources.length > 0) {
-          setChannelSyncing(true);
-          const CONCURRENCY = 10;
-          const total = staleSources.length;
-          for (let i = 0; i < total; i += CONCURRENCY) {
-            const batch = staleSources.slice(i, i + CONCURRENCY);
-            const batchNum = Math.floor(i / CONCURRENCY) + 1;
-            const totalBatches = Math.ceil(total / CONCURRENCY);
-            setSyncStatusMessage(`Syncing batch ${batchNum}/${totalBatches}: ${batch.map((s: any) => s.name).join(', ')}`);
-            await Promise.all(
-              batch.map(async (source: any, idx: number) => {
-                const prefix = `[${i + idx + 1}/${total}] ${source.name}`;
-                await syncSource(source, (msg) => setSyncStatusMessage(`${prefix}: ${msg}`));
-              })
-            );
+        if (epgRefreshHours > 0) {
+          // Filter out VOD-only sources from channel sync
+          const enabledSources = result.data.filter((s: any) => s.enabled && !s.vod_only);
+          const staleSources: any[] = [];
+          for (const source of enabledSources) {
+            if (await isEpgStale(source.id, epgRefreshHours)) staleSources.push(source);
           }
-          setSyncStatusMessage(null);
 
-          // Checkpoint WAL after all EPG syncs complete
-          console.log('[AutoSync] All EPG syncs complete - triggering checkpoint');
-          db.checkpoint('PASSIVE')
-            .then(() => console.log('[AutoSync] EPG checkpoint completed'))
-            .catch((err) => console.error('[AutoSync] EPG checkpoint failed:', err));
+          if (staleSources.length > 0) {
+            didSync = true;
+            isAutoSyncingRef.current = true;
+            setChannelSyncing(true);
+            const CONCURRENCY = 10;
+            const total = staleSources.length;
+            const statusPrefix = isPeriodic ? 'Auto-syncing' : 'Syncing';
+            for (let i = 0; i < total; i += CONCURRENCY) {
+              const batch = staleSources.slice(i, i + CONCURRENCY);
+              const batchNum = Math.floor(i / CONCURRENCY) + 1;
+              const totalBatches = Math.ceil(total / CONCURRENCY);
+              setSyncStatusMessage(`${statusPrefix} batch ${batchNum}/${totalBatches}: ${batch.map((s: any) => s.name).join(', ')}`);
+              await Promise.all(
+                batch.map(async (source: any, idx: number) => {
+                  const prefix = `[${i + idx + 1}/${total}] ${source.name}`;
+                  await syncSource(source, (msg) => setSyncStatusMessage(`${prefix}: ${msg}`));
+                })
+              );
+            }
+            setSyncStatusMessage(null);
+          }
         }
 
         // ── VOD sync (Xtream only) ──────────────────────────────────────────
-        const xtreamSources = result.data.filter((s: any) => s.type === 'xtream' && s.enabled);
-        if (xtreamSources.length > 0) {
-          const staleVod: any[] = [];
-          for (const source of xtreamSources) {
-            if (await isVodStale(source.id, vodRefreshHours)) staleVod.push(source);
-          }
-          if (staleVod.length > 0) {
-            setVodSyncing(true);
-            const CONCURRENCY = 10;
-            const total = staleVod.length;
-            for (let i = 0; i < total; i += CONCURRENCY) {
-              const batch = staleVod.slice(i, i + CONCURRENCY);
-              const batchNum = Math.floor(i / CONCURRENCY) + 1;
-              const totalBatches = Math.ceil(total / CONCURRENCY);
-              setSyncStatusMessage(`Syncing VOD batch ${batchNum}/${totalBatches}: ${batch.map((s: any) => s.name).join(', ')}`);
-              await Promise.all(batch.map((source: any) => syncVodForSource(source)));
+        if (vodRefreshHours > 0) {
+          const xtreamSources = result.data.filter((s: any) => s.type === 'xtream' && s.enabled);
+          if (xtreamSources.length > 0) {
+            const staleVod: any[] = [];
+            for (const source of xtreamSources) {
+              if (await isVodStale(source.id, vodRefreshHours)) staleVod.push(source);
             }
-            setSyncStatusMessage(null);
-
-            // Checkpoint WAL after all VOD syncs complete
-            console.log('[AutoSync] All VOD syncs complete - triggering checkpoint');
-            db.checkpoint('PASSIVE')
-              .then(() => console.log('[AutoSync] VOD checkpoint completed'))
-              .catch((err) => console.error('[AutoSync] VOD checkpoint failed:', err));
+            if (staleVod.length > 0) {
+              didSync = true;
+              isAutoSyncingRef.current = true;
+              setVodSyncing(true);
+              const CONCURRENCY = 10;
+              const total = staleVod.length;
+              const statusPrefix = isPeriodic ? 'Auto-syncing' : 'Syncing';
+              for (let i = 0; i < total; i += CONCURRENCY) {
+                const batch = staleVod.slice(i, i + CONCURRENCY);
+                const batchNum = Math.floor(i / CONCURRENCY) + 1;
+                const totalBatches = Math.ceil(total / CONCURRENCY);
+                setSyncStatusMessage(`${statusPrefix} VOD batch ${batchNum}/${totalBatches}: ${batch.map((s: any) => s.name).join(', ')}`);
+                await Promise.all(batch.map((source: any) => syncVodForSource(source)));
+              }
+              setSyncStatusMessage(null);
+            }
           }
         }
+
+        if (isPeriodic && didSync) {
+          console.log('[AutoSync] Periodic sync completed');
+        }
       } catch (err) {
-        console.error('[AutoSync] Initial sync failed:', err);
+        console.error('[AutoSync] Sync failed:', err);
       } finally {
+        isAutoSyncingRef.current = false;
         setChannelSyncing(false);
         setVodSyncing(false);
       }
     };
 
-    doInitialSync();
+    // Run initial sync
+    performSyncCheck(false);
+
+    // Set up periodic checking every 10 minutes
+    const intervalId = setInterval(() => {
+      performSyncCheck(true);
+    }, AUTO_SYNC_CHECK_INTERVAL_MS);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, [setChannelSortOrder, setChannelSyncing, setVodSyncing, setSyncStatusMessage]);
 
   // ==========================================================================
