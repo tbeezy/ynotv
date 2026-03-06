@@ -1,11 +1,16 @@
   # Changelog
 
   ## v1.5.9
+  Added:
+  	- EPG matching for some external EPG providers, when adding sources or editing, check Advanced EPG Matching to enable
+	- Autosync will check in background if EPG is stale to the time set in Data Refresh
   Fixes:
 	- Certain stalker portals weren't saving channels properly
 	- Clear cache vacuums SQLite database
 	- db-wal truncates after sync
 	- Backend changes
+	- EPG matching for some external EPG providers, when adding sources or editing, check Advanced EPG Matching to enable
+	- Calendar Add to Watchlist
   
   ## v1.5.8
   Added:
