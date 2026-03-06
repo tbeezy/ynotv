@@ -42,6 +42,7 @@ interface SourceFormData {
   backupCredentials: Array<{ username: string; password: string }>;
   pendingSwap: boolean;
   display_order?: number;
+  advancedEpgMatching: boolean;
 }
 
 const emptyForm: SourceFormData = {
@@ -60,6 +61,7 @@ const emptyForm: SourceFormData = {
   backupCredentials: [],
   pendingSwap: false,
   display_order: undefined,
+  advancedEpgMatching: false,
 };
 
 // Normalize vendor Expiration Strings to concise MM/DD/YY
@@ -244,6 +246,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
       backupCredentials: source.backup_credentials || [],
       pendingSwap: false,
       display_order: source.display_order,
+      advancedEpgMatching: source.advanced_epg_matching ?? false,
     });
     console.log('[SourcesTab] Editing source, existing UA:', source.user_agent);
     setEditingId(source.id);
@@ -344,6 +347,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
       backup_macs: formData.type === 'stalker' && formData.backupMacs.length > 0 ? formData.backupMacs : undefined,
       backup_credentials: formData.type === 'xtream' && formData.backupCredentials.length > 0 ? formData.backupCredentials : undefined,
       display_order: formData.display_order,
+      advanced_epg_matching: formData.advancedEpgMatching || undefined,
     };
 
     console.log('[SourcesTab] Saving source with UA:', source.user_agent);
@@ -1215,6 +1219,21 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
               </label>
               <span className="hint">
                 Skip channel sync - only sync Movies and Series from this source
+              </span>
+            </div>
+
+            {/* Advanced EPG Matching */}
+            <div className="form-group epg-settings">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={formData.advancedEpgMatching}
+                  onChange={(e) => setFormData({ ...formData, advancedEpgMatching: e.target.checked })}
+                />
+                Advanced EPG Matching
+              </label>
+              <span className="hint">
+                Enable display name-based EPG matching for external EPGs (slower but more accurate for some providers)
               </span>
             </div>
 

@@ -1294,7 +1294,13 @@ export interface AutoAddEpisode {
 
 export async function addTvEpisodeToWatchlist(
   ep: AutoAddEpisode,
-  channel: StoredChannel
+  channel: StoredChannel,
+  options?: {
+    reminder_enabled?: boolean;
+    reminder_minutes?: number;
+    autoswitch_enabled?: boolean;
+    autoswitch_seconds_before?: number;
+  }
 ): Promise<boolean> {
   try {
     // Calculate start and end times
@@ -1340,10 +1346,10 @@ export async function addTvEpisodeToWatchlist(
       end_time: endTime,
       source_id: channel.source_id,
       added_at: Date.now(),
-      reminder_enabled: ep.reminder_enabled,
-      reminder_minutes: ep.reminder_minutes,
-      autoswitch_enabled: ep.autoswitch_enabled,
-      autoswitch_seconds_before: ep.autoswitch_seconds,
+      reminder_enabled: options?.reminder_enabled ?? ep.reminder_enabled,
+      reminder_minutes: options?.reminder_minutes ?? ep.reminder_minutes,
+      autoswitch_enabled: options?.autoswitch_enabled ?? ep.autoswitch_enabled,
+      autoswitch_seconds_before: options?.autoswitch_seconds_before ?? ep.autoswitch_seconds,
       reminder_shown: false,
       autoswitch_triggered: false
     };

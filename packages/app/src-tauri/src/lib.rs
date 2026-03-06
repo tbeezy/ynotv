@@ -1026,8 +1026,9 @@ async fn stream_parse_epg(
     source_id: String,
     epg_url: String,
     channel_mappings: Vec<epg_streaming::ChannelMapping>,
+    advanced_epg_matching: bool,
 ) -> Result<epg_streaming::EpgParseResult, String> {
-    epg_streaming::stream_parse_epg(app, &state.db, source_id, epg_url, channel_mappings)
+    epg_streaming::stream_parse_epg(app, &state.db, source_id, epg_url, channel_mappings, advanced_epg_matching)
         .await
         .map_err(|e| format!("Stream parse EPG failed: {}", e))
 }
@@ -1040,8 +1041,9 @@ async fn parse_epg_file(
     source_id: String,
     file_path: String,
     channel_mappings: Vec<epg_streaming::ChannelMapping>,
+    advanced_epg_matching: bool,
 ) -> Result<epg_streaming::EpgParseResult, String> {
-    epg_streaming::parse_epg_file(app, &state.db, source_id, file_path, channel_mappings)
+    epg_streaming::parse_epg_file(app, &state.db, source_id, file_path, channel_mappings, advanced_epg_matching)
         .await
         .map_err(|e| format!("Parse EPG file failed: {}", e))
 }

@@ -29,6 +29,7 @@ export interface Source {
   }>;
   display_order?: number;
   enabled: boolean;
+  advanced_epg_matching?: boolean; // Enable display name-based EPG matching for external EPGs (default: false)
 }
 
 export interface XtreamSource extends Source {

@@ -109,6 +109,35 @@ pub struct EpgParseResult {
     pub bytes_processed: u64,
 }
 
+/// Normalize a channel name for fuzzy matching
+/// Removes common prefixes, suffixes, and special characters
+fn normalize_channel_name(name: &str) -> String {
+    let name = name.trim();
+
+    // Remove common prefixes (case insensitive)
+    let prefixes = [
+        "prime:", "il:", "f:", "ss:", "##", "####",
+        "[", "]", "(", ")", "{", "}",
+    ];
+    let mut result = name.to_string();
+    for prefix in &prefixes {
+        if result.to_lowercase().starts_with(prefix) {
+            result = result[prefix.len()..].to_string();
+        }
+    }
+
+    // Remove superscript characters (ᴿᴬᵂ, ᴴᴰ, etc.)
+    let superscripts = ['\u{1d3f}', '\u{1d2c}', '\u{1d42}', '\u{1d34}', '\u{1d35}', '\u{2076}', '\u{2070}', '\u{1da0}', '\u{1d56}', '\u{02e2}'];
+    for ch in &superscripts {
+        result = result.replace(*ch, "");
+    }
+
+    // Remove extra whitespace and convert to lowercase
+    result = result.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
+
+    result
+}
+
 /// Build a channel lookup map that supports multiple stream_ids per epg_channel_id
 /// This allows primary + backup streams to all get the same EPG data
 fn build_channel_lookup(mappings: Vec<ChannelMapping>) -> HashMap<String, Vec<String>> {
@@ -126,14 +155,60 @@ fn build_channel_lookup(mappings: Vec<ChannelMapping>) -> HashMap<String, Vec<St
 
         // Also add name-based lookup for fallback
         if !mapping.channel_name.is_empty() {
+            let name = mapping.channel_name.trim().to_string();
             lookup
-                .entry(mapping.channel_name.trim().to_string())
+                .entry(name.clone())
                 .or_default()
-                .push(stream_id);
+                .push(stream_id.clone());
+
+            // Also add normalized version for fuzzy matching
+            let normalized = normalize_channel_name(&name);
+            if normalized != name.to_lowercase() && !normalized.is_empty() {
+                lookup
+                    .entry(normalized)
+                    .or_default()
+                    .push(stream_id.clone());
+            }
         }
     }
 
     lookup
+}
+
+/// Merge channel lookup with display name mapping from EPG XML
+/// This creates bidirectional mappings between M3U names and EPG channel IDs
+fn merge_with_display_names(
+    mut channel_lookup: HashMap<String, Vec<String>>,
+    display_name_mapping: &HashMap<String, String>,
+) -> HashMap<String, Vec<String>> {
+    // For each M3U channel name in channel_lookup, check if it matches
+    // any EPG display name, and if so, also map the EPG channel ID
+    let m3u_names: Vec<String> = channel_lookup.keys().cloned().collect();
+
+    for m3u_name in m3u_names {
+        let normalized_m3u = normalize_channel_name(&m3u_name);
+
+        // Check if this M3U name (or its normalized version) matches any EPG display name
+        if let Some(epg_channel_id) = display_name_mapping.get(&m3u_name)
+            .or_else(|| display_name_mapping.get(&normalized_m3u))
+        {
+            // Get the stream_ids for this M3U name
+            if let Some(stream_ids) = channel_lookup.get(&m3u_name).cloned() {
+                // Also map the EPG channel ID to these stream_ids
+                channel_lookup
+                    .entry(epg_channel_id.clone())
+                    .or_default()
+                    .extend(stream_ids.clone());
+
+                info!(
+                    "[EPG] Linked M3U '{}' (normalized: '{}') to EPG channel ID '{}'",
+                    m3u_name, normalized_m3u, epg_channel_id
+                );
+            }
+        }
+    }
+
+    channel_lookup
 }
 
 /// Stream and parse EPG XML from URL with true streaming and pipelining
@@ -143,10 +218,11 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     source_id: String,
     epg_url: String,
     channel_mappings: Vec<ChannelMapping>,
+    advanced_epg_matching: bool,
 ) -> Result<EpgParseResult> {
     let start_time = std::time::Instant::now();
 
-    info!("Starting TRUE streaming EPG parse for source {} from {}", source_id, epg_url);
+    info!("Starting TRUE streaming EPG parse for source {} from {} (advanced matching: {})", source_id, epg_url, advanced_epg_matching);
 
     // Build channel lookup map (supports multiple stream_ids per epg_channel_id)
     let channel_lookup = build_channel_lookup(channel_mappings);
@@ -190,6 +266,20 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     let total_bytes = response.content_length();
     info!("EPG download started, total size: {:?} bytes", total_bytes);
 
+    // Check if response is actually gzipped (server may return gzip even if URL doesn't end with .gz)
+    let is_response_gzipped = response.headers()
+        .get("content-encoding")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.to_lowercase().contains("gzip"))
+        .unwrap_or(false);
+    let should_decompress = is_gzipped || is_response_gzipped;
+    if should_decompress {
+        info!("[EPG] Will decompress response (URL gzipped: {}, Content-Encoding: {})",
+            is_gzipped,
+            response.headers().get("content-encoding").and_then(|v| v.to_str().ok()).unwrap_or("none")
+        );
+    }
+
     // Delete old programs BEFORE starting the pipeline
     info!("[EPG] Deleting old programs for source {}", source_id);
     let deleted_count = delete_programs_for_source(db, &source_id)?;
@@ -214,6 +304,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
             source_id_clone,
             total_bytes,
             is_gzipped,
+            advanced_epg_matching,
         ).await
     });
 
@@ -278,8 +369,17 @@ async fn parse_download_stream<R: tauri::Runtime>(
     source_id: String,
     total_bytes: Option<u64>,
     is_gzipped: bool,
+    advanced_epg_matching: bool,
 ) -> Result<StreamingParserResult> {
     let start_time = std::time::Instant::now();
+
+    // Check if response is actually gzipped BEFORE consuming response body
+    let is_response_gzipped = response.headers()
+        .get("content-encoding")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.to_lowercase().contains("gzip"))
+        .unwrap_or(false);
+    let should_decompress = is_gzipped || is_response_gzipped;
 
     // Download chunks into a buffer
     let mut chunks: Vec<bytes::Bytes> = Vec::new();
@@ -301,11 +401,13 @@ async fn parse_download_stream<R: tauri::Runtime>(
     }
 
     let download_ms = start_time.elapsed().as_millis() as u64;
+
     info!(
-        "[EPG] Downloaded {} bytes in {} chunks in {}ms",
+        "[EPG] Downloaded {} bytes in {} chunks in {}ms (gzipped: {})",
         total_bytes_downloaded,
         chunks.len(),
-        download_ms
+        download_ms,
+        should_decompress
     );
 
     // Combine chunks for parsing (pre-allocate for speed)
@@ -316,8 +418,21 @@ async fn parse_download_stream<R: tauri::Runtime>(
         compressed_data.extend_from_slice(&chunk);
     }
 
-    // Decompress if gzipped
-    let xml_data: Vec<u8> = if is_gzipped {
+    // Log first few bytes for debugging
+    if compressed_data.len() >= 4 {
+        info!("[EPG] First 4 bytes: {:02x} {:02x} {:02x} {:02x}",
+            compressed_data[0], compressed_data[1], compressed_data[2], compressed_data[3]);
+    }
+
+    // Check for gzip magic bytes (1f 8b) as fallback detection
+    let has_gzip_magic = compressed_data.len() >= 2 && compressed_data[0] == 0x1f && compressed_data[1] == 0x8b;
+    if !should_decompress && has_gzip_magic {
+        info!("[EPG] Detected gzip magic bytes, will decompress");
+    }
+    let should_decompress = should_decompress || has_gzip_magic;
+
+    // Decompress if gzipped (either by URL extension, Content-Encoding header, or magic bytes)
+    let xml_data: Vec<u8> = if should_decompress {
         use flate2::read::GzDecoder;
         use std::io::Read;
 
@@ -343,16 +458,100 @@ async fn parse_download_stream<R: tauri::Runtime>(
         total_bytes,
         total_bytes_downloaded,
         start_time,
+        advanced_epg_matching,
     ).await?;
 
     let total_ms = start_time.elapsed().as_millis() as u64;
-    let timing_label = if is_gzipped { "Combine+Decompress" } else { "Combine" };
     info!(
-        "[EPG Timing] Download: {}ms, {}: {}ms, Parse+Insert: {}ms, Total: {}ms",
-        download_ms, timing_label, combine_ms, total_ms - download_ms - combine_ms, total_ms
+        "[EPG Timing] Download: {}ms, Combine: {}ms, Parse+Insert: {}ms, Total: {}ms",
+        download_ms, combine_ms, total_ms - download_ms - combine_ms, total_ms
     );
 
     Ok(parse_result)
+}
+
+/// Build a mapping from display names to channel IDs by parsing <channel> elements
+/// This allows matching M3U channel names like "US: BET" to EPG channel id "bet.us"
+fn build_display_name_mapping(xml_data: &[u8]) -> HashMap<String, String> {
+    let mut mapping: HashMap<String, String> = HashMap::new();
+    let mut reader = Reader::from_reader(xml_data);
+    reader.config_mut().trim_text(true);
+
+    let mut buf = Vec::with_capacity(4096);
+    let mut current_channel_id: Option<String> = None;
+    let mut current_element: Option<String> = None;
+    let mut current_text = String::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) => {
+                let name = std::str::from_utf8(e.name().as_ref()).unwrap_or("").to_string();
+                match name.as_str() {
+                    "channel" => {
+                        // Parse channel id attribute
+                        for attr in e.attributes() {
+                            if let Ok(attr) = attr {
+                                let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+                                if key == "id" {
+                                    let value = attr
+                                        .decode_and_unescape_value(reader.decoder())
+                                        .unwrap_or_default();
+                                    current_channel_id = Some(value.to_string());
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    "display-name" => {
+                        current_element = Some(name);
+                        current_text.clear();
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Event::Text(e)) => {
+                if current_element.is_some() {
+                    if let Ok(text) = e.unescape() {
+                        current_text.push_str(&text);
+                    }
+                }
+            }
+            Ok(Event::End(e)) => {
+                let name = std::str::from_utf8(e.name().as_ref()).unwrap_or("").to_string();
+                match name.as_str() {
+                    "channel" => {
+                        current_channel_id = None;
+                    }
+                    "display-name" => {
+                        if let Some(ref channel_id) = current_channel_id {
+                            let display_name = current_text.trim().to_string();
+                            if !display_name.is_empty() {
+                                // Add mapping from display name to channel ID
+                                mapping.insert(display_name.clone(), channel_id.clone());
+                                // Also add normalized version
+                                let normalized = normalize_channel_name(&display_name);
+                                if !normalized.is_empty() && normalized != display_name.to_lowercase() {
+                                    mapping.insert(normalized, channel_id.clone());
+                                }
+                            }
+                        }
+                        current_element = None;
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => {
+                warn!("XML parse error during display name extraction: {}", e);
+                break;
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    info!("[EPG] Built display name mapping with {} entries", mapping.len());
+    mapping
 }
 
 /// Parse XML and stream batches to inserter
@@ -365,7 +564,18 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
     total_bytes: Option<u64>,
     bytes_downloaded: u64,
     start_time: std::time::Instant,
+    advanced_epg_matching: bool,
 ) -> Result<StreamingParserResult> {
+    // Conditionally build display name mapping for advanced EPG matching
+    let channel_lookup = if advanced_epg_matching {
+        info!("[EPG] Advanced EPG matching enabled - building display name mappings");
+        let display_name_mapping = build_display_name_mapping(xml_data);
+        merge_with_display_names(channel_lookup, &display_name_mapping)
+    } else {
+        info!("[EPG] Using standard EPG matching (advanced matching disabled)");
+        channel_lookup
+    };
+
     let mut reader = Reader::from_reader(xml_data);
     reader.config_mut().trim_text(true);
 
@@ -453,8 +663,15 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
                         if let Some(program) = current_program.take() {
                             total_programs += 1;
 
-                            // Check if channel is in our lookup (fast O(1) lookup)
-                            if let Some(stream_ids) = channel_lookup.get(&program.channel_id) {
+                            // Check if channel is in our merged lookup (fast O(1) lookup)
+                            // The lookup now contains mappings from:
+                            // - EPG channel IDs (e.g., "bet.us")
+                            // - M3U channel names (e.g., "US: BET ᴿᴬᵂ")
+                            // - Normalized versions of both
+                            let stream_ids = channel_lookup.get(&program.channel_id)
+                                .or_else(|| channel_lookup.get(&normalize_channel_name(&program.channel_id)));
+
+                            if let Some(stream_ids) = stream_ids {
                                 matched_programs += 1;  // Count the program once, not per stream_id
 
                                 // Add a copy of the program for each matching stream_id
@@ -747,6 +964,7 @@ pub async fn parse_epg_file<R: tauri::Runtime>(
     source_id: String,
     file_path: String,
     channel_mappings: Vec<ChannelMapping>,
+    advanced_epg_matching: bool,
 ) -> Result<EpgParseResult> {
     use tokio::fs::File;
     use tokio::io::AsyncReadExt;
@@ -793,6 +1011,7 @@ pub async fn parse_epg_file<R: tauri::Runtime>(
             Some(total_bytes),
             total_bytes,
             start_time,
+            advanced_epg_matching,
         ).await
     });
 

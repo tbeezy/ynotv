@@ -516,7 +516,8 @@ async function syncEpgFromUrl(
           debugLog(epgStreaming.formatProgress(progress), 'epg');
           onProgress(progress);
         }
-        : undefined
+        : undefined,
+      source.advanced_epg_matching
     );
 
     debugLog(
@@ -666,6 +667,7 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
       sourceId: source.id,
       epgUrl: xmltvUrl,
       channelMappings,
+      advancedEpgMatching: source.advanced_epg_matching ?? false,
     });
 
     console.log(`[EPG] Rust streaming parser COMPLETE:`);
