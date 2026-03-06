@@ -859,11 +859,24 @@ export class SqliteDatabase {
     // Transaction helper
     // Dexie: transaction('rw', [tables], cb)
     async transaction(mode: string, tables: any[], cb: () => Promise<void>) {
-        // For now, simple wrapper. 
+        // For now, simple wrapper.
         // Real implementation might need to handle locking if we were rigorous, but SQLite
         // serializes writes anyway.
         // We can wrap callback in a try/catch if we wanted to be safe
         return await cb();
+    }
+
+    // Execute raw SQL (for VACUUM, PRAGMAs, etc.)
+    async execute(sql: string, params?: any[]): Promise<void> {
+        const db = await this.dbPromise;
+        await db.execute(sql, params);
+    }
+
+    // Checkpoint WAL - call after bulk operations to reclaim space
+    // mode: 'PASSIVE' (default, no wait), 'FULL' (wait for all writers), 'RESTART' (full reset), 'TRUNCATE' (reset + truncate)
+    async checkpoint(mode: 'PASSIVE' | 'FULL' | 'RESTART' | 'TRUNCATE' = 'PASSIVE'): Promise<void> {
+        const db = await this.dbPromise;
+        await db.execute(`PRAGMA wal_checkpoint(${mode})`);
     }
 }
 

@@ -455,7 +455,7 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
 
                             // Check if channel is in our lookup (fast O(1) lookup)
                             if let Some(stream_ids) = channel_lookup.get(&program.channel_id) {
-                                matched_programs += stream_ids.len();
+                                matched_programs += 1;  // Count the program once, not per stream_id
 
                                 // Add a copy of the program for each matching stream_id
                                 // This allows primary + backup streams to all get EPG data

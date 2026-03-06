@@ -803,6 +803,14 @@ export async function clearAllCachedData(): Promise<void> {
   await db.vodMovies.clear();
   await db.vodSeries.clear();
   await db.vodCategories.clear();
+
+  // 5. Checkpoint WAL to main database and truncate WAL file
+  // TRUNCATE = copy all WAL pages to main DB, then reset WAL to 0 bytes
+  await db.execute('PRAGMA wal_checkpoint(TRUNCATE)');
+
+  // 6. Vacuum the database to reclaim disk space
+  // VACUUM rebuilds the database file, repacking it into a minimal amount of disk space
+  await db.execute('VACUUM');
 }
 
 

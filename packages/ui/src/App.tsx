@@ -486,6 +486,12 @@ function App() {
             );
           }
           setSyncStatusMessage(null);
+
+          // Checkpoint WAL after all EPG syncs complete
+          console.log('[AutoSync] All EPG syncs complete - triggering checkpoint');
+          db.checkpoint('PASSIVE')
+            .then(() => console.log('[AutoSync] EPG checkpoint completed'))
+            .catch((err) => console.error('[AutoSync] EPG checkpoint failed:', err));
         }
 
         // ── VOD sync (Xtream only) ──────────────────────────────────────────
@@ -507,6 +513,12 @@ function App() {
               await Promise.all(batch.map((source: any) => syncVodForSource(source)));
             }
             setSyncStatusMessage(null);
+
+            // Checkpoint WAL after all VOD syncs complete
+            console.log('[AutoSync] All VOD syncs complete - triggering checkpoint');
+            db.checkpoint('PASSIVE')
+              .then(() => console.log('[AutoSync] VOD checkpoint completed'))
+              .catch((err) => console.error('[AutoSync] VOD checkpoint failed:', err));
           }
         }
       } catch (err) {

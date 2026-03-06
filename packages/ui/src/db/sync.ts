@@ -1261,6 +1261,15 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     debugLog(`Sync complete for ${source.name}: ${channels.length} channels, ${categories.length} categories, ${programCount} programs`, 'sync');
     console.timeEnd('sync-total');
     debugLog(`Total sync time: ${((performance.now() - startTime) / 1000).toFixed(2)}s`, 'sync');
+
+    // Checkpoint WAL after sync completes to reclaim space
+    // TRUNCATE mode = wait for all readers/writers, then checkpoint and truncate WAL to 0
+    try {
+      await db.checkpoint('TRUNCATE');
+    } catch (err) {
+      console.error(`[Sync] TRUNCATE checkpoint failed for ${source.name}:`, err);
+    }
+
     return {
       success: true,
       channelCount: channels.length,
@@ -1456,6 +1465,15 @@ export async function syncAllSources(onProgress?: (msg: string) => void): Promis
   }
 
   debugLog('syncAllSources complete', 'sync');
+
+  // Final checkpoint after all sources synced
+  // TRUNCATE mode ensures WAL file is actually truncated to 0 bytes
+  try {
+    await db.checkpoint('TRUNCATE');
+  } catch (err) {
+    console.error('[Sync] Final TRUNCATE checkpoint failed:', err);
+  }
+
   return results;
 }
 
@@ -1923,6 +1941,14 @@ export async function syncAllVod(): Promise<Map<string, VodSyncResult>> {
     for (const { sourceId, result } of batchResults) {
       results.set(sourceId, result);
     }
+  }
+
+  // Checkpoint WAL after all VOD syncs complete
+  // TRUNCATE mode ensures WAL file is actually truncated to 0 bytes
+  try {
+    await db.checkpoint('TRUNCATE');
+  } catch (err) {
+    console.error('[Sync] VOD TRUNCATE checkpoint failed:', err);
   }
 
   return results;
