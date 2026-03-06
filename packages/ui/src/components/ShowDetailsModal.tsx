@@ -98,13 +98,13 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
 
   // Auto-add watchlist settings
   const [autoAddEnabled, setAutoAddEnabled] = useState(false);
-  const [autoAddReminderEnabled, setAutoAddReminderEnabled] = useState(true);
-  const [autoAddReminderMinutes, setAutoAddReminderMinutes] = useState(5);
-  const [autoAddAutoswitchEnabled, setAutoAddAutoswitchEnabled] = useState(false);
-  const [autoAddAutoswitchSeconds, setAutoAddAutoswitchSeconds] = useState(30);
   const [savingSettings, setSavingSettings] = useState(false);
   const [autoAddSuccess, setAutoAddSuccess] = useState<string | null>(null);
   const prevAutoAddEnabled = useRef(false);
+
+  // Modal for configuring auto-add settings (shown when enabling auto-add)
+  const [showAutoAddConfigModal, setShowAutoAddConfigModal] = useState(false);
+  const pendingAutoAddEnable = useRef(false);
 
   // Sync with prop when it changes (e.g., when reopening the modal)
   useEffect(() => {
@@ -130,10 +130,6 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
       }>('get_show_watchlist_settings', { tvmazeId });
 
       setAutoAddEnabled(settings.auto_add_to_watchlist);
-      setAutoAddReminderEnabled(settings.watchlist_reminder_enabled);
-      setAutoAddReminderMinutes(settings.watchlist_reminder_minutes);
-      setAutoAddAutoswitchEnabled(settings.watchlist_autoswitch_enabled);
-      setAutoAddAutoswitchSeconds(settings.watchlist_autoswitch_seconds);
       prevAutoAddEnabled.current = settings.auto_add_to_watchlist;
     } catch (e) {
       console.error('[ShowDetails] Failed to load watchlist settings:', e);
@@ -192,7 +188,12 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
             if (ep.channel_id) {
               const channel = await db.channels.get(ep.channel_id);
               if (channel) {
-                const added = await addTvEpisodeToWatchlist(ep, channel);
+                const added = await addTvEpisodeToWatchlist(ep, channel, {
+                  reminder_enabled: reminderEnabled,
+                  reminder_minutes: reminderMinutes,
+                  autoswitch_enabled: autoswitchEnabled,
+                  autoswitch_seconds_before: autoswitchSeconds,
+                });
                 if (added) addedCount++;
               }
             }
@@ -220,6 +221,52 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
     } finally {
       setSavingSettings(false);
     }
+  }
+
+  // Handle auto-add checkbox change - show config modal when enabling
+  function handleAutoAddToggle(enabled: boolean) {
+    if (enabled) {
+      // Check if channel is set first
+      if (!currentChannel) {
+        setAutoAddSuccess('Please set a channel for this show first');
+        setTimeout(() => setAutoAddSuccess(null), 5000);
+        return;
+      }
+      // Show the configuration modal instead of directly enabling
+      pendingAutoAddEnable.current = true;
+      setShowAutoAddConfigModal(true);
+    } else {
+      // User is disabling - save directly without modal
+      setAutoAddEnabled(false);
+      saveWatchlistSettings(false, true, 5, false, 30);
+    }
+  }
+
+  // Handle confirmation from the auto-add config modal
+  function handleAutoAddConfigConfirm(
+    addedCount: number,
+    reminderEnabled: boolean,
+    reminderMinutes: number,
+    autoswitchEnabled: boolean,
+    autoswitchSeconds: number
+  ) {
+    setShowAutoAddConfigModal(false);
+    pendingAutoAddEnable.current = false;
+
+    // Enable auto-add with the configured settings
+    setAutoAddEnabled(true);
+    saveWatchlistSettings(true, reminderEnabled, reminderMinutes, autoswitchEnabled, autoswitchSeconds);
+
+    if (addedCount > 0) {
+      setAutoAddSuccess(`Added ${addedCount} upcoming episode${addedCount !== 1 ? 's' : ''} to your watchlist`);
+      setTimeout(() => setAutoAddSuccess(null), 5000);
+    }
+  }
+
+  function handleAutoAddConfigCancel() {
+    setShowAutoAddConfigModal(false);
+    pendingAutoAddEnable.current = false;
+    // Don't enable auto-add since user cancelled
   }
 
   useEffect(() => {
@@ -475,17 +522,7 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
                     <input
                       type="checkbox"
                       checked={autoAddEnabled}
-                      onChange={(e) => {
-                        const enabled = e.target.checked;
-                        setAutoAddEnabled(enabled);
-                        saveWatchlistSettings(
-                          enabled,
-                          autoAddReminderEnabled,
-                          autoAddReminderMinutes,
-                          autoAddAutoswitchEnabled,
-                          autoAddAutoswitchSeconds
-                        );
-                      }}
+                      onChange={(e) => handleAutoAddToggle(e.target.checked)}
                       disabled={savingSettings}
                     />
                     <span className="sdm-auto-add-text">
@@ -495,103 +532,6 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
                       Auto-add new episodes to Watchlist
                     </span>
                   </label>
-
-                  {autoAddEnabled && (
-                    <div className="sdm-auto-add-options">
-                      <label className="sdm-auto-add-option">
-                        <input
-                          type="checkbox"
-                          checked={autoAddReminderEnabled}
-                          onChange={(e) => {
-                            const enabled = e.target.checked;
-                            setAutoAddReminderEnabled(enabled);
-                            saveWatchlistSettings(
-                              autoAddEnabled,
-                              enabled,
-                              autoAddReminderMinutes,
-                              autoAddAutoswitchEnabled,
-                              autoAddAutoswitchSeconds
-                            );
-                          }}
-                          disabled={savingSettings}
-                        />
-                        <span>Reminder {autoAddReminderMinutes} min before</span>
-                      </label>
-
-                      {autoAddReminderEnabled && (
-                        <div className="sdm-auto-add-input-row">
-                          <input
-                            type="range"
-                            min="0"
-                            max="60"
-                            value={autoAddReminderMinutes}
-                            onChange={(e) => {
-                              const minutes = parseInt(e.target.value);
-                              setAutoAddReminderMinutes(minutes);
-                            }}
-                            onMouseUp={() => {
-                              saveWatchlistSettings(
-                                autoAddEnabled,
-                                autoAddReminderEnabled,
-                                autoAddReminderMinutes,
-                                autoAddAutoswitchEnabled,
-                                autoAddAutoswitchSeconds
-                              );
-                            }}
-                            disabled={savingSettings}
-                          />
-                          <span>{autoAddReminderMinutes} min</span>
-                        </div>
-                      )}
-
-                      <label className="sdm-auto-add-option">
-                        <input
-                          type="checkbox"
-                          checked={autoAddAutoswitchEnabled}
-                          onChange={(e) => {
-                            const enabled = e.target.checked;
-                            setAutoAddAutoswitchEnabled(enabled);
-                            saveWatchlistSettings(
-                              autoAddEnabled,
-                              autoAddReminderEnabled,
-                              autoAddReminderMinutes,
-                              enabled,
-                              autoAddAutoswitchSeconds
-                            );
-                          }}
-                          disabled={savingSettings}
-                        />
-                        <span>Auto-switch {autoAddAutoswitchSeconds}s before</span>
-                      </label>
-
-                      {autoAddAutoswitchEnabled && (
-                        <div className="sdm-auto-add-input-row">
-                          <input
-                            type="range"
-                            min="0"
-                            max="300"
-                            step="10"
-                            value={autoAddAutoswitchSeconds}
-                            onChange={(e) => {
-                              const seconds = parseInt(e.target.value);
-                              setAutoAddAutoswitchSeconds(seconds);
-                            }}
-                            onMouseUp={() => {
-                              saveWatchlistSettings(
-                                autoAddEnabled,
-                                autoAddReminderEnabled,
-                                autoAddReminderMinutes,
-                                autoAddAutoswitchEnabled,
-                                autoAddAutoswitchSeconds
-                              );
-                            }}
-                            disabled={savingSettings}
-                          />
-                          <span>{autoAddAutoswitchSeconds}s</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -851,6 +791,21 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
               window.dispatchEvent(new CustomEvent('watchlist-updated'));
             }}
             onCancel={() => setShowNotificationsModal(false)}
+          />
+        )}
+
+        {/* Auto-add Configuration Modal - shown when enabling auto-add */}
+        {showAutoAddConfigModal && (
+          <ShowNotificationsModal
+            isOpen={showAutoAddConfigModal}
+            showName={showName}
+            channelName={currentChannel}
+            episodes={episodes}
+            configureOnly={true}
+            onConfirm={(addedCount, reminderEnabled, reminderMinutes, autoswitchEnabled, autoswitchSeconds) => {
+              handleAutoAddConfigConfirm(addedCount, reminderEnabled, reminderMinutes, autoswitchEnabled, autoswitchSeconds);
+            }}
+            onCancel={handleAutoAddConfigCancel}
           />
         )}
 

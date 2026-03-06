@@ -20,8 +20,10 @@ interface ShowNotificationsModalProps {
   showName: string;
   channelName: string | null;
   episodes: Episode[];
-  onConfirm: (addedCount: number) => void;
+  onConfirm: (addedCount: number, reminderEnabled: boolean, reminderMinutes: number, autoswitchEnabled: boolean, autoswitchSeconds: number) => void;
   onCancel: () => void;
+  /** If true, modal only collects settings and returns them without adding to watchlist. Caller is responsible for adding. */
+  configureOnly?: boolean;
 }
 
 export function ShowNotificationsModal({
@@ -31,6 +33,7 @@ export function ShowNotificationsModal({
   episodes,
   onConfirm,
   onCancel,
+  configureOnly = false,
 }: ShowNotificationsModalProps) {
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderMinutes, setReminderMinutes] = useState(5);
@@ -82,6 +85,14 @@ export function ShowNotificationsModal({
       return;
     }
 
+    const upcomingEpisodes = futureEpisodes();
+
+    // If configureOnly mode, just return settings without adding
+    if (configureOnly) {
+      onConfirm(upcomingEpisodes.length, reminderEnabled, reminderMinutes, autoswitchEnabled, autoswitchSeconds);
+      return;
+    }
+
     const options: WatchlistOptions = {
       reminder_enabled: reminderEnabled,
       reminder_minutes: reminderMinutes,
@@ -94,8 +105,6 @@ export function ShowNotificationsModal({
     let skippedCount = 0;
 
     try {
-      const upcomingEpisodes = futureEpisodes();
-
       for (const episode of upcomingEpisodes) {
         // Create a synthetic program object for the watchlist
         const startTime = episode.airstamp
@@ -137,13 +146,13 @@ export function ShowNotificationsModal({
         }
       }
 
-      onConfirm(addedCount);
+      onConfirm(addedCount, reminderEnabled, reminderMinutes, autoswitchEnabled, autoswitchSeconds);
     } catch (error) {
       console.error('[ShowNotificationsModal] Failed to add episodes:', error);
     } finally {
       setIsAdding(false);
     }
-  }, [channel, reminderEnabled, reminderMinutes, autoswitchEnabled, autoswitchSeconds, episodes, showName, futureEpisodes, onConfirm]);
+  }, [channel, reminderEnabled, reminderMinutes, autoswitchEnabled, autoswitchSeconds, episodes, showName, futureEpisodes, onConfirm, configureOnly]);
 
   // Handle escape key
   useEffect(() => {
@@ -167,7 +176,7 @@ export function ShowNotificationsModal({
     <div className="show-notifications-overlay" onClick={isAdding ? undefined : onCancel}>
       <div className="show-notifications-modal" onClick={(e) => e.stopPropagation()}>
         <div className="show-notifications-header">
-          <h3>🔔 Notifications</h3>
+          <h3>{configureOnly ? '⚙️ Auto-Add Settings' : '🔔 Notifications'}</h3>
           <button className="show-notifications-close" onClick={isAdding ? undefined : onCancel} disabled={isAdding}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -184,7 +193,9 @@ export function ShowNotificationsModal({
               {channelName ? `Channel: ${channelName}` : 'No channel set'}
             </div>
             <div className="show-notifications-count">
-              {upcomingCount} upcoming episode{upcomingCount !== 1 ? 's' : ''} will be added to your watchlist
+              {configureOnly
+                ? `${upcomingCount} upcoming episode${upcomingCount !== 1 ? 's' : ''} will be auto-added with these settings`
+                : `${upcomingCount} upcoming episode${upcomingCount !== 1 ? 's' : ''} will be added to your watchlist`}
             </div>
             {channelError && (
               <div className="show-notifications-error">{channelError}</div>
@@ -322,6 +333,8 @@ export function ShowNotificationsModal({
                 <span className="show-notifications-spinner" />
                 Adding...
               </>
+            ) : configureOnly ? (
+              `Enable Auto-Add for ${upcomingCount} Episode${upcomingCount !== 1 ? 's' : ''}`
             ) : (
               `Add ${upcomingCount} Episode${upcomingCount !== 1 ? 's' : ''} to Watchlist`
             )}
