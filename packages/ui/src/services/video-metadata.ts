@@ -6,6 +6,9 @@ import { db, ChannelMetadata } from '../db';
  * Captures resolution, fps, and audio information from MPV player
  */
 
+// In-memory cache to prevent reloading when components remount (e.g., scrolling)
+const metadataCache = new Map<string, ChannelMetadata>();
+
 export interface VideoMetadata {
     width: number;
     height: number;
@@ -60,7 +63,7 @@ export function formatAudioChannels(channels: number): string {
 }
 
 /**
- * Save channel metadata to database
+ * Save channel metadata to database and cache
  */
 export async function saveChannelMetadata(
     streamId: string,
@@ -79,15 +82,26 @@ export async function saveChannelMetadata(
     };
 
     await db.channelMetadata.put(channelMetadata);
+    // Update cache so badges show immediately
+    metadataCache.set(streamId, channelMetadata);
     console.log(`[VideoMetadata]  Saved for ${streamId}:`, channelMetadata);
 }
 
 /**
- * Get channel metadata from database
+ * Get channel metadata from cache or database
+ * Uses in-memory cache for instant retrieval on remount
  */
 export async function getChannelMetadata(streamId: string): Promise<ChannelMetadata | null> {
     try {
+        // Check memory cache first (instant)
+        const cached = metadataCache.get(streamId);
+        if (cached) return cached;
+
+        // Fall back to IndexedDB
         const metadata = await db.channelMetadata.get(streamId);
+        if (metadata) {
+            metadataCache.set(streamId, metadata);
+        }
         return metadata || null;
     } catch (error) {
         console.error('[VideoMetadata] Failed to get metadata:', error);

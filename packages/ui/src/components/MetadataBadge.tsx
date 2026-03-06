@@ -35,6 +35,7 @@ export function MetadataBadge({ streamId, variant = 'compact' }: MetadataBadgePr
         return unsubscribe;
     }, []);
 
+    // Return null immediately - badge will pop in when data loads
     if (!metadata) return null;
 
     const { quality_label, fps, audio_channels } = metadata;

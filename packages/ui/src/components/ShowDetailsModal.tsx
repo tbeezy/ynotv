@@ -161,7 +161,27 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
       // If auto-add was just enabled, immediately add current upcoming episodes
       if (autoAdd && !prevAutoAddEnabled.current) {
         console.log('[ShowDetails] Auto-add enabled, fetching current episodes...');
+
+        // Check if channel is set first
+        if (!currentChannel) {
+          setAutoAddSuccess('Please set a channel for this show first to enable auto-add');
+          setTimeout(() => setAutoAddSuccess(null), 5000);
+          // Disable auto-add since it can't work without a channel
+          setAutoAddEnabled(false);
+          prevAutoAddEnabled.current = false;
+          await invoke('update_show_watchlist_settings', {
+            tvmazeId,
+            autoAddToWatchlist: false,
+            watchlistReminderEnabled: reminderEnabled,
+            watchlistReminderMinutes: reminderMinutes,
+            watchlistAutoswitchEnabled: autoswitchEnabled,
+            watchlistAutoswitchSeconds: autoswitchSeconds,
+          });
+          return;
+        }
+
         const episodesToAdd = await invoke<AutoAddEpisode[]>('add_show_episodes_to_watchlist', { tvmazeId });
+        console.log('[ShowDetails] Episodes to add:', episodesToAdd.length);
 
         if (episodesToAdd.length > 0) {
           // Clear existing auto-added episodes for this show to refresh with latest data
@@ -181,7 +201,15 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
           if (addedCount > 0) {
             setAutoAddSuccess(`Added ${addedCount} upcoming episode${addedCount !== 1 ? 's' : ''} to your watchlist`);
             setTimeout(() => setAutoAddSuccess(null), 5000);
+            // Dispatch event to refresh watchlist UI
+            window.dispatchEvent(new CustomEvent('watchlist-updated'));
+          } else {
+            setAutoAddSuccess('No new episodes to add');
+            setTimeout(() => setAutoAddSuccess(null), 3000);
           }
+        } else {
+          setAutoAddSuccess('No upcoming episodes found');
+          setTimeout(() => setAutoAddSuccess(null), 3000);
         }
       }
 
@@ -819,6 +847,8 @@ export function ShowDetailsModal({ isOpen, tvmazeId, showName, channelName, onCl
               setShowNotificationsModal(false);
               setNotificationSuccess(`Added ${addedCount} episode${addedCount !== 1 ? 's' : ''} to your watchlist`);
               setTimeout(() => setNotificationSuccess(null), 3000);
+              // Dispatch event to refresh watchlist UI
+              window.dispatchEvent(new CustomEvent('watchlist-updated'));
             }}
             onCancel={() => setShowNotificationsModal(false)}
           />

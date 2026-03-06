@@ -23,11 +23,17 @@ import {
   useVodSyncing,
   useTmdbMatching,
   useSyncStatusMessage,
-  useChannelSortOrder
+  useChannelSortOrder,
+  useSetChannelSyncing,
+  useSetVodSyncing,
+  useSetSyncStatusMessage,
+  useSetChannelSortOrder
 } from './stores/uiStore';
 import type { StoredChannel } from './db';
 import { db } from './db';
 import { VideoErrorOverlay } from './components/VideoErrorOverlay';
+import { syncSource, syncVodForSource, isEpgStale, isVodStale } from './db/sync';
+import { bulkOps } from './services/bulk-ops';
 import { Bridge } from './services/tauri-bridge';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { addToRecentChannels } from './utils/recentChannels';
@@ -289,6 +295,12 @@ function App() {
   const syncStatusMessage = useSyncStatusMessage();
   const channelSortOrder = useChannelSortOrder();
 
+  // Setter functions for auto-sync
+  const setChannelSyncing = useSetChannelSyncing();
+  const setVodSyncing = useSetVodSyncing();
+  const setSyncStatusMessage = useSetSyncStatusMessage();
+  const setChannelSortOrder = useSetChannelSortOrder();
+
   // ==========================================================================
   // TimeShift State
   // ==========================================================================
@@ -416,26 +428,97 @@ function App() {
   // Auto-Sync on Startup
   // ==========================================================================
   useEffect(() => {
-    // This was previously useAutoSync hook - inline for now
-    const loadSettings = async () => {
+    const doInitialSync = async () => {
       if (!window.storage) return;
+
+      // Health check — ensure backend bulk-ops plugin is ready
+      const healthy = await bulkOps.healthCheck();
+      if (!healthy) {
+        console.error('[AutoSync] Backend health check failed — sync may not work');
+      }
+
       try {
-        const result = await window.storage.getSettings();
-        if (result.data) {
+        // Load settings first
+        const settingsResult = await window.storage.getSettings();
+        if (settingsResult.data) {
           // Apply font sizes
-          if (result.data.channelFontSize) {
-            document.documentElement.style.setProperty('--channel-font-size', `${result.data.channelFontSize}px`);
+          if (settingsResult.data.channelFontSize) {
+            document.documentElement.style.setProperty('--channel-font-size', `${settingsResult.data.channelFontSize}px`);
           }
-          if (result.data.categoryFontSize) {
-            document.documentElement.style.setProperty('--category-font-size', `${result.data.categoryFontSize}px`);
+          if (settingsResult.data.categoryFontSize) {
+            document.documentElement.style.setProperty('--category-font-size', `${settingsResult.data.categoryFontSize}px`);
+          }
+          // Apply other settings
+          if (settingsResult.data.channelSortOrder) {
+            setChannelSortOrder(settingsResult.data.channelSortOrder as 'alphabetical' | 'number');
           }
         }
-      } catch (e) {
-        console.error('Failed to load settings:', e);
+
+        const epgRefreshHours = settingsResult.data?.epgRefreshHours ?? 6;
+        const vodRefreshHours = settingsResult.data?.vodRefreshHours ?? 24;
+
+        // Get sources
+        const result = await window.storage.getSources();
+        if (!result.data || result.data.length === 0) return;
+
+        // ── Channel / EPG sync ──────────────────────────────────────────────
+        // Filter out VOD-only sources from channel sync
+        const enabledSources = result.data.filter((s: any) => s.enabled && !s.vod_only);
+        const staleSources: any[] = [];
+        for (const source of enabledSources) {
+          if (await isEpgStale(source.id, epgRefreshHours)) staleSources.push(source);
+        }
+
+        if (staleSources.length > 0) {
+          setChannelSyncing(true);
+          const CONCURRENCY = 10;
+          const total = staleSources.length;
+          for (let i = 0; i < total; i += CONCURRENCY) {
+            const batch = staleSources.slice(i, i + CONCURRENCY);
+            const batchNum = Math.floor(i / CONCURRENCY) + 1;
+            const totalBatches = Math.ceil(total / CONCURRENCY);
+            setSyncStatusMessage(`Syncing batch ${batchNum}/${totalBatches}: ${batch.map((s: any) => s.name).join(', ')}`);
+            await Promise.all(
+              batch.map(async (source: any, idx: number) => {
+                const prefix = `[${i + idx + 1}/${total}] ${source.name}`;
+                await syncSource(source, (msg) => setSyncStatusMessage(`${prefix}: ${msg}`));
+              })
+            );
+          }
+          setSyncStatusMessage(null);
+        }
+
+        // ── VOD sync (Xtream only) ──────────────────────────────────────────
+        const xtreamSources = result.data.filter((s: any) => s.type === 'xtream' && s.enabled);
+        if (xtreamSources.length > 0) {
+          const staleVod: any[] = [];
+          for (const source of xtreamSources) {
+            if (await isVodStale(source.id, vodRefreshHours)) staleVod.push(source);
+          }
+          if (staleVod.length > 0) {
+            setVodSyncing(true);
+            const CONCURRENCY = 10;
+            const total = staleVod.length;
+            for (let i = 0; i < total; i += CONCURRENCY) {
+              const batch = staleVod.slice(i, i + CONCURRENCY);
+              const batchNum = Math.floor(i / CONCURRENCY) + 1;
+              const totalBatches = Math.ceil(total / CONCURRENCY);
+              setSyncStatusMessage(`Syncing VOD batch ${batchNum}/${totalBatches}: ${batch.map((s: any) => s.name).join(', ')}`);
+              await Promise.all(batch.map((source: any) => syncVodForSource(source)));
+            }
+            setSyncStatusMessage(null);
+          }
+        }
+      } catch (err) {
+        console.error('[AutoSync] Initial sync failed:', err);
+      } finally {
+        setChannelSyncing(false);
+        setVodSyncing(false);
       }
     };
-    loadSettings();
-  }, []);
+
+    doInitialSync();
+  }, [setChannelSortOrder, setChannelSyncing, setVodSyncing, setSyncStatusMessage]);
 
   // ==========================================================================
   // Window Size Initialization
