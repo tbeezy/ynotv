@@ -860,6 +860,16 @@ function App() {
         )}
       </div>
 
+      {/* Video double-click overlay - captures double-clicks on video area to toggle fullscreen */}
+      {activeView === 'none' && multiviewLayout === 'main' && (
+        <div
+          className="video-doubleclick-overlay"
+          onDoubleClick={() => {
+            handleToggleFullscreen();
+          }}
+        />
+      )}
+
       {/* Now Playing Bar */}
       <NowPlayingBar
         visible={

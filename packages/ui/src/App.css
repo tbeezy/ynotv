@@ -306,6 +306,18 @@
   pointer-events: none;
 }
 
+/* Double-click overlay for fullscreen toggle - covers video area only */
+.video-doubleclick-overlay {
+  position: absolute;
+  top: 32px; /* Below title bar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  pointer-events: auto;
+  z-index: 5; /* Below NowPlayingBar (z-index: 100) and titlebar */
+}
+
 /* Placeholder shown before any stream is loaded */
 .placeholder {
   display: flex;
