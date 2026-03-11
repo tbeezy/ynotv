@@ -223,6 +223,10 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         : channel;
       setCurrentChannel(resolvedChannel);
       setPlaying(true);
+      // Explicitly force MPV to unpause after loading.
+      // If a previous stream ended/was interrupted, MPV may hold pause=true,
+      // causing the new stream to load but not start playing.
+      Bridge.play().catch(e => console.warn('[usePlayback] play() after load failed:', e));
       notifyMainLoaded?.(channel.name, result.url, resolved.sourceName ?? null);
 
       import('../services/video-metadata').then(({ captureAndSaveMetadata }) => {
