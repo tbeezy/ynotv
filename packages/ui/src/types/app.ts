@@ -29,7 +29,8 @@ export type ShortcutAction =
     | 'layoutBigBottom'
     | 'layout2x2'
     | 'channelUp'
-    | 'channelDown';
+    | 'channelDown'
+    | 'replayLastStream';
 
 export interface SavedChannelState {
     channelName: string | null;

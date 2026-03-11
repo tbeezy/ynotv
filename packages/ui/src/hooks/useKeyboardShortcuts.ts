@@ -32,6 +32,7 @@ export interface UseKeyboardShortcutsOptions {
     switchLayoutRef: MutableRefObject<((layout: LayoutMode) => void) | null>;
     titleBarSearchRef: RefObject<HTMLInputElement | null>;
     handlePlayChannelRef: MutableRefObject<(channel: StoredChannel) => void>;
+    lastPlayedChannelRef: MutableRefObject<StoredChannel | null>;
 
     // --- Action callbacks (as refs to avoid stale closures) ---
     handleTogglePlayRef: MutableRefObject<() => void>;
@@ -65,6 +66,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         switchLayoutRef,
         titleBarSearchRef,
         handlePlayChannelRef,
+        lastPlayedChannelRef,
         handleTogglePlayRef,
         handleToggleMuteRef,
         handleToggleStatsRef,
@@ -219,6 +221,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                         // Wrap to first channel
                         handlePlayChannelRef.current(channels[0]);
                     }
+                }
+            } else if (matches('replayLastStream', e.key)) {
+                e.preventDefault();
+                const lastChannel = lastPlayedChannelRef.current;
+                if (lastChannel) {
+                    handlePlayChannelRef.current(lastChannel);
                 }
             }
         };

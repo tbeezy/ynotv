@@ -168,6 +168,7 @@ function App() {
   const multiviewLayoutRef = useRef<LayoutMode>('main');
   const switchLayoutRef = useRef(switchLayout);
   const handlePlayChannelRef = useRef<((channel: StoredChannel, autoSwitched?: boolean) => void) | null>(null);
+  const lastPlayedChannelRef = useRef<StoredChannel | null>(null);
   useEffect(() => { multiviewLayoutRef.current = multiviewLayout; }, [multiviewLayout]);
   useEffect(() => { switchLayoutRef.current = switchLayout; }, [switchLayout]);
 
@@ -210,6 +211,13 @@ function App() {
   useEffect(() => {
     handlePlayChannelRef.current = handlePlayChannel;
   }, [handlePlayChannel]);
+
+  // Track last played channel for replay shortcut
+  useEffect(() => {
+    if (currentChannel) {
+      lastPlayedChannelRef.current = currentChannel;
+    }
+  }, [currentChannel]);
 
   // ==========================================================================
   // Navigation State (from useNavigation)
@@ -414,6 +422,7 @@ function App() {
     switchLayoutRef,
     titleBarSearchRef,
     handlePlayChannelRef: { current: handlePlayChannel },
+    lastPlayedChannelRef,
     handleTogglePlayRef,
     handleToggleMuteRef,
     handleToggleStatsRef,
