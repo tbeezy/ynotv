@@ -10,6 +10,7 @@
 
   Fixes:
   - Scroll is reset on changing categories.
+  - Fixed stream starting in paused state when opening after another stream that ended
 
   ## v1.5.9
   Added:
