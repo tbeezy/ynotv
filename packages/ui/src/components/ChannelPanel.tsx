@@ -192,6 +192,7 @@ export function ChannelPanel({
   // Ref for measuring the grid container width
   const gridContainerRef = useRef<HTMLDivElement>(null);
 
+
   // Track window width to differentiate window resize vs category toggle
   const lastWindowWidth = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
 
@@ -1100,7 +1101,7 @@ export function ChannelPanel({
           ) : (
             /* Normal EPG Grid View */
             <Virtuoso
-              key={`channel-list-${favoritesVersion}`}
+              key={`channel-list-${categoryId ?? 'all'}-${favoritesVersion}`}
               data={channels}
               className="guide-channels"
               itemContent={(index, channel, context) => (
