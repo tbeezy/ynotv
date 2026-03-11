@@ -1,6 +1,6 @@
   # Changelog
   
-    ## v1.6.0
+  ## v1.6.0
   Added:
   -Current watching channel is now highlighted in LiveTV/EPG
   -Added new option in Settings -> LiveTV. Enable pause/volume control in the Preview video for EPG. Restart is needed for it to take effect.
