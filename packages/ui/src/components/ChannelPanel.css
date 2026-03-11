@@ -442,6 +442,15 @@
   background: var(--surface-hover, rgba(255, 255, 255, 0.03));
 }
 
+/* Currently playing channel highlight - matches hover style */
+.guide-channel-row.currently-playing {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.03));
+}
+
+.guide-channel-row.currently-playing .guide-channel-info {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+}
+
 /* Channel Info (left side) */
 .guide-channel-info {
   display: flex;

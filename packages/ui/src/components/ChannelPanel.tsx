@@ -39,6 +39,7 @@ interface ChannelRowData {
   activeRecordings: import('../hooks/useActiveRecordings').RecordingInfo[];
   currentLayout?: string;
   onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
+  currentChannel?: StoredChannel | null;
 }
 
 const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
@@ -50,6 +51,8 @@ const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
   channel: StoredChannel;
   data: ChannelRowData;
 }) {
+  const isCurrentlyPlaying = data.currentChannel?.stream_id === channel.stream_id;
+
   return (
     <ChannelRow
       channel={channel}
@@ -67,6 +70,7 @@ const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
       activeRecordings={data.activeRecordings}
       currentLayout={data.currentLayout}
       onSendToSlot={data.onSendToSlot}
+      isCurrentlyPlaying={isCurrentlyPlaying}
     />
   );
 });
@@ -1125,6 +1129,7 @@ export function ChannelPanel({
                 activeRecordings,
                 currentLayout,
                 onSendToSlot,
+                currentChannel,
               }}
               components={{
                 EmptyPlaceholder: () => (

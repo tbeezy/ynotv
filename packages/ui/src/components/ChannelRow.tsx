@@ -28,6 +28,7 @@ interface ChannelRowProps {
   activeRecordings?: RecordingInfo[];
   currentLayout?: string;
   onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
+  isCurrentlyPlaying?: boolean;
 }
 
 export const ChannelRow = memo(function ChannelRow({
@@ -46,6 +47,7 @@ export const ChannelRow = memo(function ChannelRow({
   activeRecordings = [],
   currentLayout,
   onSendToSlot,
+  isCurrentlyPlaying,
 }: ChannelRowProps) {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ program: StoredProgram; x: number; y: number } | null>(null);
@@ -104,7 +106,7 @@ export const ChannelRow = memo(function ChannelRow({
   }
 
   return (
-    <div className="guide-channel-row">
+    <div className={`guide-channel-row ${isCurrentlyPlaying ? 'currently-playing' : ''}`}>
       {/* Channel info column */}
       <div
         className={`guide-channel-info ${isRecording ? 'is-recording' : ''}`}
