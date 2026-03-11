@@ -149,6 +149,11 @@
   justify-content: center;
   overflow: hidden;
   min-height: 0;
+  cursor: pointer;
+}
+
+.guide-preview-video:hover {
+  cursor: pointer;
 }
 
 /* Optional: Indicate it is a preview area if no video is selected */

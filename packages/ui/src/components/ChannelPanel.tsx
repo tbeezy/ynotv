@@ -788,7 +788,14 @@ export function ChannelPanel({
       <div className="guide-top-section">
         <div className="guide-preview-pane" ref={previewPaneRef}>
           {/* Video container - holds the MPV video and overlays */}
-          <div className="guide-preview-video" ref={previewRef}>
+          <div
+            className="guide-preview-video"
+            ref={previewRef}
+            onDoubleClick={() => {
+              // Double-click to close the guide panel (fullscreen video)
+              onClose();
+            }}
+          >
             {/* The actual video is rendered by MPV "under" this transparent div */}
             {/* Only show placeholder when truly no channel is selected (not in watchlist/favorites mode with a selection) */}
             {!selectedChannel && !isWatchlistMode && categoryId !== '__favorites__' && categoryId !== '__recent__' && (
@@ -801,11 +808,12 @@ export function ChannelPanel({
           </div>
           {/* Mini Media Bar for EPG Preview - transparent overlay in bottom right */}
           {miniMediaBarForEpgPreview && selectedChannel && (
-            <div className="guide-preview-minibar">
+            <div className="guide-preview-minibar" onDoubleClick={(e) => e.stopPropagation()}>
               {/* Play/Pause button */}
               <button
                 className="guide-minibar-btn"
                 onClick={onTogglePlay}
+                onDoubleClick={(e) => e.stopPropagation()}
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
@@ -820,10 +828,11 @@ export function ChannelPanel({
                 )}
               </button>
               {/* Volume button with expandable slider */}
-              <div className="guide-minibar-volume">
+              <div className="guide-minibar-volume" onDoubleClick={(e) => e.stopPropagation()}>
                 <button
                   className="guide-minibar-btn"
                   onClick={handlePreviewMuteToggle}
+                  onDoubleClick={(e) => e.stopPropagation()}
                   title={previewMuted ? 'Unmute' : 'Mute'}
                 >
                   {previewMuted || previewVolume === 0 ? (
@@ -842,6 +851,7 @@ export function ChannelPanel({
                   max="100"
                   value={previewMuted ? 0 : previewVolume}
                   onChange={handlePreviewVolumeChange}
+                  onDoubleClick={(e) => e.stopPropagation()}
                   className="guide-minibar-volume-slider"
                   title="Volume"
                 />
