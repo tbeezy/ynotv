@@ -95,6 +95,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
   // LiveTV settings state
   const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
+  const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
 
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -169,6 +170,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         timeshiftCacheBytes?: number;
         liveBufferOffset?: number;
         epgDarkenCurrent?: boolean;
+        miniMediaBarForEpgPreview?: boolean;
       };
 
       // Load TMDB API key
@@ -246,6 +248,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       if (darkenCurrent) {
         document.documentElement.classList.add('epg-darken-current');
       }
+
+      // Load mini media bar setting
+      setMiniMediaBarForEpgPreview(settings.miniMediaBarForEpgPreview ?? false);
     }
     setSettingsLoaded(true);
   }
@@ -305,6 +310,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     }
     if (window.storage) {
       await window.storage.updateSettings({ epgDarkenCurrent: enabled });
+    }
+  };
+
+  const handleMiniMediaBarForEpgPreviewChange = async (enabled: boolean) => {
+    setMiniMediaBarForEpgPreview(enabled);
+    if (window.storage) {
+      await window.storage.updateSettings({ miniMediaBarForEpgPreview: enabled });
     }
   };
 
@@ -512,6 +524,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
           <LiveTVTab
             epgDarkenCurrent={epgDarkenCurrent}
             onEpgDarkenCurrentChange={handleEpgDarkenCurrentChange}
+            miniMediaBarForEpgPreview={miniMediaBarForEpgPreview}
+            onMiniMediaBarForEpgPreviewChange={handleMiniMediaBarForEpgPreviewChange}
           />
         );
       case 'about':

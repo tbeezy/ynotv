@@ -150,6 +150,89 @@
   border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
 }
 
+/* Mini Media Bar for EPG Preview - Matches Multiview Cell Controls */
+.guide-preview-minibar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.guide-minibar-channel {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50%;
+}
+
+.guide-minibar-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guide-minibar-volume {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.guide-minibar-volume-slider {
+  width: 0;
+  opacity: 0;
+  transition: all 0.2s ease;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  cursor: pointer;
+  transform-origin: left;
+}
+
+.guide-minibar-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+}
+
+.guide-minibar-volume:hover .guide-minibar-volume-slider {
+  width: 60px;
+  opacity: 1;
+}
+
+.guide-minibar-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.guide-minibar-btn:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
 .guide-info-pane {
   flex: 1;
   background: var(--bg-overlay, rgba(0, 0, 0, 0.95));

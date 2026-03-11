@@ -77,6 +77,7 @@ function App() {
     timeshiftCacheBytes,
     liveBufferOffset,
     includeSourceInSearch,
+    miniMediaBarForEpgPreview,
     theme,
     shortcuts,
     showSidebar: showSidebarFromSettings,
@@ -991,6 +992,9 @@ function App() {
         onSendToSlot={sendToSlot}
         includeSourceInSearch={includeSourceInSearch}
         currentChannel={currentChannel}
+        miniMediaBarForEpgPreview={miniMediaBarForEpgPreview}
+        onTogglePlay={handleTogglePlay}
+        isPlaying={playing}
       />
 
       {/* Settings Panel */}

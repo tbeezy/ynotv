@@ -3,9 +3,16 @@ import './PlaybackTab.css'; // Reuse existing tab styles
 interface LiveTVTabProps {
   epgDarkenCurrent: boolean;
   onEpgDarkenCurrentChange: (enabled: boolean) => void;
+  miniMediaBarForEpgPreview: boolean;
+  onMiniMediaBarForEpgPreviewChange: (enabled: boolean) => void;
 }
 
-export function LiveTVTab({ epgDarkenCurrent, onEpgDarkenCurrentChange }: LiveTVTabProps) {
+export function LiveTVTab({
+  epgDarkenCurrent,
+  onEpgDarkenCurrentChange,
+  miniMediaBarForEpgPreview,
+  onMiniMediaBarForEpgPreviewChange,
+}: LiveTVTabProps) {
   return (
     <div className="settings-tab-content playback-tab-content">
       <div className="settings-section">
@@ -62,6 +69,34 @@ export function LiveTVTab({ epgDarkenCurrent, onEpgDarkenCurrentChange }: LiveTV
                 <span style={{ color: 'rgba(255,255,255,0.95)' }}>Current Program</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Preview Panel Settings */}
+      <div className="settings-section" style={{ marginTop: '24px' }}>
+        <div className="section-header">
+          <h3>Preview Panel</h3>
+        </div>
+        <p className="section-description">
+          Customize the video preview panel in the LiveTV/EPG view.
+        </p>
+
+        <div className="timeshift-settings">
+          {/* Enable mini media bar for EPG preview */}
+          <div className="timeshift-toggle-row">
+            <div className="timeshift-toggle-info">
+              <span className="timeshift-toggle-label">Mini media bar for EPG Preview</span>
+              <span className="timeshift-toggle-sub">When enabled, a mini play/pause control bar will appear at the bottom of the preview video panel in the LiveTV/EPG view. Requires restart to take effect.</span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={miniMediaBarForEpgPreview}
+                onChange={(e) => onMiniMediaBarForEpgPreviewChange(e.target.checked)}
+              />
+              <span className="toggle-slider" />
+            </label>
           </div>
         </div>
       </div>
