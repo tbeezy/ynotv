@@ -1,4 +1,15 @@
   # Changelog
+  
+    ## v1.6.0
+  Added:
+  -Current watching channel is now highlighted in LiveTV/EPG
+  -Added new option in Settings -> LiveTV. Enable pause/volume control in the Preview video for EPG. Restart is needed for it to take effect.
+  -Double clicking preview video now full screens video in app.
+  -Double clicking anywhere on non UI elements now full screens the app, and the reverse to disable full screen
+  -Added shortcut key to replay last stream
+
+  Fixes:
+  - Scroll is reset on changing categories.
 
   ## v1.5.9
   Added:
