@@ -6,6 +6,8 @@ interface ChannelsTabProps {
   onChannelSortOrderChange: (order: 'alphabetical' | 'number') => void;
   includeSourceInSearch: boolean;
   onIncludeSourceInSearchChange: (enabled: boolean) => void;
+  maxSearchResults: number;
+  onMaxSearchResultsChange: (limit: number) => void;
 }
 
 async function saveIncludeSourceInSearch(enabled: boolean) {
@@ -13,11 +15,18 @@ async function saveIncludeSourceInSearch(enabled: boolean) {
   await window.storage.updateSettings({ includeSourceInSearch: enabled });
 }
 
+async function saveMaxSearchResults(limit: number) {
+  if (!window.storage) return;
+  await window.storage.updateSettings({ maxSearchResults: limit });
+}
+
 export function ChannelsTab({
   channelSortOrder,
   onChannelSortOrderChange,
   includeSourceInSearch,
   onIncludeSourceInSearchChange,
+  maxSearchResults,
+  onMaxSearchResultsChange,
 }: ChannelsTabProps) {
   const setChannelSortOrder = useSetChannelSortOrder();
 
@@ -88,6 +97,30 @@ export function ChannelsTab({
               <span className="toggle-slider" />
             </label>
           </div>
+        </div>
+
+        <div className="refresh-settings" style={{ marginTop: '20px' }}>
+          <div className="form-group inline">
+            <label>Max search results</label>
+            <select
+              value={maxSearchResults}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                onMaxSearchResultsChange(value);
+                saveMaxSearchResults(value);
+              }}
+            >
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200 (default)</option>
+              <option value={500}>500</option>
+              <option value={1000}>1000</option>
+            </select>
+          </div>
+          <p className="form-hint" style={{ marginTop: '0.5rem' }}>
+            Maximum number of results to show in channel search, custom group search, and calendar channel selector.
+            Higher values may impact performance.
+          </p>
         </div>
       </div>
     </div>

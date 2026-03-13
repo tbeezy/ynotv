@@ -17,6 +17,7 @@ export interface AppSettings {
 
   // Search
   includeSourceInSearch: boolean;
+  maxSearchResults: number;
 
   // LiveTV
   miniMediaBarForEpgPreview: boolean;
@@ -54,6 +55,7 @@ export function useAppSettings(): AppSettings {
 
   // Search settings
   const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
+  const [maxSearchResults, setMaxSearchResults] = useState(200);
 
   // LiveTV settings
   const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
@@ -106,6 +108,7 @@ export function useAppSettings(): AppSettings {
           setTimeshiftCacheBytes(result.data.timeshiftCacheBytes ?? 1_073_741_824);
           setLiveBufferOffset(result.data.liveBufferOffset ?? 0);
           setIncludeSourceInSearch(result.data.includeSourceInSearch ?? false);
+          setMaxSearchResults(result.data.maxSearchResults ?? 200);
           setMiniMediaBarForEpgPreview(result.data.miniMediaBarForEpgPreview ?? false);
 
           // Apply EPG darken current setting on load
@@ -172,6 +175,7 @@ export function useAppSettings(): AppSettings {
     timeshiftCacheBytes,
     liveBufferOffset,
     includeSourceInSearch,
+    maxSearchResults,
     miniMediaBarForEpgPreview,
     theme,
     shortcuts,

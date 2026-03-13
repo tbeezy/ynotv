@@ -65,6 +65,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   // Channel display state
   const [channelSortOrder, setChannelSortOrder] = useState<'alphabetical' | 'number'>('alphabetical');
   const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
+  const [maxSearchResults, setMaxSearchResults] = useState(200);
 
   // Shortcuts state
   const [shortcuts, setShortcuts] = useState<ShortcutsMap>({});
@@ -155,6 +156,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         debugLoggingEnabled?: boolean;
         channelSortOrder?: 'alphabetical' | 'number';
         includeSourceInSearch?: boolean;
+        maxSearchResults?: number;
         tmdbMatchingEnabled?: boolean;
         shortcuts?: ShortcutsMap;
         channelFontSize?: number;
@@ -210,6 +212,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       // Load channel display settings
       setChannelSortOrder(settings.channelSortOrder ?? 'alphabetical');
       setIncludeSourceInSearch(settings.includeSourceInSearch ?? false);
+      setMaxSearchResults(settings.maxSearchResults ?? 200);
 
       // Load shortcuts
       if (settings.shortcuts) {
@@ -383,6 +386,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     }
   };
 
+  const handleMaxSearchResultsChange = async (value: number) => {
+    setMaxSearchResults(value);
+    if (window.storage) {
+      await window.storage.updateSettings({ maxSearchResults: value });
+    }
+  };
+
   function renderTabContent() {
     switch (activeTab) {
       case 'sources':
@@ -421,6 +431,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onChannelSortOrderChange={setChannelSortOrder}
             includeSourceInSearch={includeSourceInSearch}
             onIncludeSourceInSearchChange={handleIncludeSourceInSearchChange}
+            maxSearchResults={maxSearchResults}
+            onMaxSearchResultsChange={handleMaxSearchResultsChange}
           />
         );
       case 'movies':

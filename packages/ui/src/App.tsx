@@ -77,6 +77,7 @@ function App() {
     timeshiftCacheBytes,
     liveBufferOffset,
     includeSourceInSearch,
+    maxSearchResults,
     miniMediaBarForEpgPreview,
     theme,
     shortcuts,
@@ -339,8 +340,8 @@ function App() {
   // ==========================================================================
   // Search Results
   // ==========================================================================
-  const searchChannels = useChannelSearch(debouncedSearchQuery, 200, includeSourceInSearch);
-  const searchPrograms = useProgramSearch(debouncedSearchQuery, 200);
+  const searchChannels = useChannelSearch(debouncedSearchQuery, maxSearchResults, includeSourceInSearch);
+  const searchPrograms = useProgramSearch(debouncedSearchQuery, maxSearchResults);
 
   // ==========================================================================
   // Track Selection Modal State

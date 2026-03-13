@@ -46,6 +46,15 @@ function SearchResults({ query, selectedChannelId, onSelect, enabledSourceIdsKey
 
     async function search() {
       try {
+        // Load max search results setting
+        let maxSearchResults = 200;
+        if (window.storage) {
+          const settings = await window.storage.getSettings();
+          if (settings.data?.maxSearchResults) {
+            maxSearchResults = settings.data.maxSearchResults;
+          }
+        }
+
         console.log('[ChannelSelectorModal] Searching for:', query);
 
         // Get enabled category IDs for category filtering
@@ -70,9 +79,9 @@ function SearchResults({ query, selectedChannelId, onSelect, enabledSourceIdsKey
           all = await db.channels.whereRaw(
             `LOWER(name) LIKE ? AND source_id IN (${placeholders})`,
             [`%${searchTerm}%`, ...sourceList]
-          ).limit(200).toArray();
+          ).limit(maxSearchResults).toArray();
         } else {
-          all = await db.channels.whereRaw('LOWER(name) LIKE ?', [`%${searchTerm}%`]).limit(200).toArray();
+          all = await db.channels.whereRaw('LOWER(name) LIKE ?', [`%${searchTerm}%`]).limit(maxSearchResults).toArray();
         }
         console.log('[ChannelSelectorModal] Raw results:', all.length, 'for query:', query);
 
@@ -87,7 +96,7 @@ function SearchResults({ query, selectedChannelId, onSelect, enabledSourceIdsKey
             if (!hasEnabledCategory) return false;
           }
           return true;
-        }).slice(0, 100);
+        }).slice(0, maxSearchResults);
         console.log('[ChannelSelectorModal] Filtered results:', filtered.length, 'for query:', query);
         if (isMounted) setResults(filtered);
       } catch (err) {
