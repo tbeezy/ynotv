@@ -55,6 +55,8 @@ async function tryLoadWithFallbacks(
   userAgent?: string,
   onError?: (msg: string) => void
 ): Promise<{ success: boolean; url: string; error?: string }> {
+  console.log('[Playback] Setting User-Agent:', userAgent || '(using default)');
+
   if (userAgent) {
     try {
       await Bridge.setProperty('user-agent', userAgent);
@@ -63,23 +65,33 @@ async function tryLoadWithFallbacks(
     }
   }
 
+  console.log('[Playback] Loading URL:', primaryUrl);
   const result = await Bridge.loadVideo(primaryUrl);
 
   if (result.success) {
+    console.log('[Playback] Successfully loaded:', primaryUrl);
     return { success: true, url: primaryUrl };
   }
 
   const errorMsg = (result as any).error || 'Unknown error';
+  console.warn('[Playback] Failed to load:', primaryUrl, 'Error:', errorMsg);
 
   const fallbacks = getStreamFallbacks(primaryUrl, isLive);
-
-  for (const fallbackUrl of fallbacks) {
-    const fallbackResult = await Bridge.loadVideo(fallbackUrl);
-    if (fallbackResult.success) {
-      return { success: true, url: fallbackUrl };
-    }
+  if (fallbacks.length > 0) {
+    console.log('[Playback] Trying fallback URLs:', fallbacks);
   }
 
+  for (const fallbackUrl of fallbacks) {
+    console.log('[Playback] Trying fallback:', fallbackUrl);
+    const fallbackResult = await Bridge.loadVideo(fallbackUrl);
+    if (fallbackResult.success) {
+      console.log('[Playback] Fallback succeeded:', fallbackUrl);
+      return { success: true, url: fallbackUrl };
+    }
+    console.warn('[Playback] Fallback failed:', fallbackUrl);
+  }
+
+  console.error('[Playback] All URLs failed. Final error:', errorMsg);
   return { success: false, url: primaryUrl, error: errorMsg };
 }
 
@@ -198,6 +210,9 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     // Clear error immediately - stale errors from old channel will be ignored
     setError(null);
 
+    console.log('[Playback] Loading channel:', channel.name);
+    console.log('[Playback] Raw URL:', channel.direct_url);
+
     let resolved;
     try {
       resolved = await resolvePlayUrl(channel.source_id, channel.direct_url);
@@ -206,6 +221,10 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       setError('Failed to resolve Stalker link');
       return;
     }
+
+    console.log('[Playback] Resolved URL:', resolved.url);
+    console.log('[Playback] User-Agent:', resolved.userAgent || '(default)');
+    console.log('[Playback] Source:', resolved.sourceName || channel.source_id);
 
     const result = await tryLoadWithFallbacks(
       resolved.url,
