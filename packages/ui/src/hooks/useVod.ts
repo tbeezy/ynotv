@@ -23,8 +23,11 @@ export function useMovies(categoryId?: string | null, search?: string, limit = 2
       // Only filter by enabled sources if they've loaded
       const filtered = enabledSourceIds ? allMovies.filter(m => enabledSourceIds.has(m.source_id)) : allMovies;
       if (search) {
-        const searchLower = search.toLowerCase();
-        return filtered.filter(m => m.name.toLowerCase().includes(searchLower));
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        return filtered.filter(m => {
+          const title = (m.name || m.title || '').toLowerCase();
+          return searchTerms.every(term => title.includes(term));
+        });
       }
       return filtered;
     }
@@ -38,24 +41,86 @@ export function useMovies(categoryId?: string | null, search?: string, limit = 2
       const idsList = Array.from(enabledSourceIds);
       if (idsList.length === 0) return [];
 
-      // Use raw SQL with IN clause and LIMIT
-      const placeholders = idsList.map(() => '?').join(',');
+      const fetchLimit = limit * 5; 
+      const sourcePlaceholders = idsList.map(() => '?').join(',');
       const dbInstance = await (db as any).dbPromise;
-      allMovies = await dbInstance.select(
-        `SELECT * FROM vodMovies WHERE source_id IN (${placeholders}) ORDER BY name LIMIT ${limit}`,
-        idsList
-      );
+      
+      let queryStr = `SELECT * FROM vodMovies WHERE source_id IN (${sourcePlaceholders})`;
+      const params: any[] = [...idsList];
+
+      if (search) {
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+        if (searchClauses) {
+          queryStr += ` AND (${searchClauses})`;
+          searchTerms.forEach(term => {
+            params.push(`%${term}%`, `%${term}%`);
+          });
+        }
+      }
+
+      queryStr += ` ORDER BY name LIMIT ${fetchLimit}`;
+      allMovies = await dbInstance.select(queryStr, params);
     } else {
-      // No source filter - just limit
-      allMovies = await db.vodMovies.orderBy('name').limit(limit).toArray();
+      // No source filter - use db.vodMovies but apply memory limits if no search
+      if (search) {
+        // If searching but no sources enabled filter(?) fallback to memory since dexie is hard to multi-LIKE
+        // actually just use dbInstance
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+        const params: any[] = [];
+        searchTerms.forEach(term => {
+          params.push(`%${term}%`, `%${term}%`);
+        });
+        const dbInstance = await (db as any).dbPromise;
+        allMovies = await dbInstance.select(`SELECT * FROM vodMovies WHERE ${searchClauses} ORDER BY name LIMIT ${limit * 5}`, params);
+      } else {
+        allMovies = await db.vodMovies.orderBy('name').limit(limit * 5).toArray();
+      }
     }
 
-    if (search) {
-      const searchLower = search.toLowerCase();
-      allMovies = allMovies.filter(m => m.name.toLowerCase().includes(searchLower));
+    // (Search is already applied in SQL, but we leave the memory filter for the categoryId case)
+    if (search && categoryId) {
+      const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+      allMovies = allMovies.filter(m => {
+        const title = (m.name || m.title || '').toLowerCase();
+        return searchTerms.every(term => title.includes(term));
+      });
     }
 
-    return allMovies;
+    // Filter out movies belonging ONLY to disabled categories
+    const enabledCategories = await db.vodCategories.where('type').equals('movie').toArray();
+    const enabledCatIds = new Set(
+      enabledCategories
+        .filter(c => c.enabled !== false)
+        .map(c => `${c.source_id}:${c.category_id}`)
+    );
+
+    allMovies = allMovies.filter(m => {
+      // Parse category IDs
+      let ids: string[] = [];
+      if (m.category_ids) {
+        try {
+          const parsed = typeof m.category_ids === 'string' ? JSON.parse(m.category_ids) : m.category_ids;
+          if (Array.isArray(parsed)) {
+            ids = parsed.map(String);
+          } else {
+            ids = [String(parsed)];
+          }
+        } catch (e) {
+          ids = [String(m.category_ids)];
+        }
+      }
+      if (m.category_id) ids.push(String(m.category_id));
+      if ((m as any)._stalker_category) ids.push(String((m as any)._stalker_category));
+
+      if (ids.length === 0) return true; // Keep orphans
+
+      return ids.some(id => enabledCatIds.has(`${m.source_id}:${id}`));
+    });
+
+    // Apply the original requested limit after filtering
+    return allMovies.slice(0, limit);
   }, [categoryId, search, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']);
 
   return {
@@ -118,8 +183,11 @@ export function useSeries(categoryId?: string | null, search?: string, limit = 2
       // Only filter by enabled sources if they've loaded
       const filtered = enabledSourceIds ? allSeries.filter(s => enabledSourceIds.has(s.source_id)) : allSeries;
       if (search) {
-        const searchLower = search.toLowerCase();
-        return filtered.filter(s => s.name.toLowerCase().includes(searchLower));
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        return filtered.filter(s => {
+          const title = (s.name || s.title || '').toLowerCase();
+          return searchTerms.every(term => title.includes(term));
+        });
       }
       return filtered;
     }
@@ -132,22 +200,83 @@ export function useSeries(categoryId?: string | null, search?: string, limit = 2
       const idsList = Array.from(enabledSourceIds);
       if (idsList.length === 0) return [];
 
-      // Use raw SQL with IN clause and LIMIT
-      const placeholders = idsList.map(() => '?').join(',');
+      const fetchLimit = limit * 5;
       const dbInstance = await (db as any).dbPromise;
-      allSeries = await dbInstance.select(
-        `SELECT * FROM vodSeries WHERE source_id IN (${placeholders}) ORDER BY name LIMIT ${limit}`,
-        idsList
-      );
+      const sourcePlaceholders = idsList.map(() => '?').join(',');
+      
+      let queryStr = `SELECT * FROM vodSeries WHERE source_id IN (${sourcePlaceholders})`;
+      const params: any[] = [...idsList];
+
+      if (search) {
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+        if (searchClauses) {
+          queryStr += ` AND (${searchClauses})`;
+          searchTerms.forEach(term => {
+            params.push(`%${term}%`, `%${term}%`);
+          });
+        }
+      }
+
+      queryStr += ` ORDER BY name LIMIT ${fetchLimit}`;
+      allSeries = await dbInstance.select(queryStr, params);
     } else {
       // No source filter - just limit
-      allSeries = await db.vodSeries.orderBy('name').limit(limit).toArray();
+      if (search) {
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+        const params: any[] = [];
+        searchTerms.forEach(term => {
+          params.push(`%${term}%`, `%${term}%`);
+        });
+        const dbInstance = await (db as any).dbPromise;
+        allSeries = await dbInstance.select(`SELECT * FROM vodSeries WHERE ${searchClauses} ORDER BY name LIMIT ${limit * 5}`, params);
+      } else {
+        allSeries = await db.vodSeries.orderBy('name').limit(limit * 5).toArray();
+      }
     }
 
-    if (search) {
-      const searchLower = search.toLowerCase();
-      allSeries = allSeries.filter(s => s.name.toLowerCase().includes(searchLower));
+    if (search && categoryId) {
+      const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+      allSeries = allSeries.filter(s => {
+        const title = (s.name || s.title || '').toLowerCase();
+        return searchTerms.every(term => title.includes(term));
+      });
     }
+
+    // Filter out series belonging ONLY to disabled categories
+    const enabledCategories = await db.vodCategories.where('type').equals('series').toArray();
+    const enabledCatIds = new Set(
+      enabledCategories
+        .filter(c => c.enabled !== false)
+        .map(c => `${c.source_id}:${c.category_id}`)
+    );
+
+    allSeries = allSeries.filter(s => {
+      // Parse category IDs
+      let ids: string[] = [];
+      if (s.category_ids) {
+        try {
+          const parsed = typeof s.category_ids === 'string' ? JSON.parse(s.category_ids) : s.category_ids;
+          if (Array.isArray(parsed)) {
+            ids = parsed.map(String);
+          } else {
+            ids = [String(parsed)];
+          }
+        } catch (e) {
+          ids = [String(s.category_ids)];
+        }
+      }
+      if (s.category_id) ids.push(String(s.category_id));
+      if (s._stalker_category) ids.push(String(s._stalker_category));
+
+      if (ids.length === 0) return true; // Keep orphans
+
+      return ids.some(id => enabledCatIds.has(`${s.source_id}:${id}`));
+    });
+
+    // Apply the original limit
+    allSeries = allSeries.slice(0, limit);
 
     // Debug: Log first few series to check cover field
     if (allSeries.length > 0) {
@@ -319,13 +448,17 @@ export function useVodCategories(type: 'movie' | 'series') {
   const categories = useLiveQuery(async () => {
     const allCategories = await db.vodCategories.where('type').equals(type).toArray();
 
-    // Lazy Load Support: We MUST show empty categories for Stalker Lazy Mode to work.
-    // The previous logic filtered out count > 0, which hid all Stalker categories.
-    // For now, we return ALL categories.
-    // If we want to hide truly empty Non-Stalker categories, we'd need to check source type,
-    // but simplified behavior is better for now.
-
-    return allCategories;
+    // Only return enabled categories, ordered by display_order
+    return allCategories
+      .filter(cat => cat.enabled !== false)
+      .sort((a, b) => {
+        if (a.display_order !== undefined && b.display_order !== undefined) {
+           return a.display_order - b.display_order;
+        }
+        if (a.display_order !== undefined) return -1;
+        if (b.display_order !== undefined) return 1;
+        return a.name.localeCompare(b.name);
+      });
   }, [type]);
 
   return {
@@ -451,18 +584,49 @@ export function useWindowedMovies(
         const dbInstance = await (db as any).dbPromise;
 
         // Build WHERE clause
-        let whereClause = '1=1';
+        // 1. Filter out disabled categories
+        const enabledCategories = await db.vodCategories.filter(c => c.type === 'movie' && c.enabled !== false).toArray();
+        const enabledBySource: Record<string, string[]> = {};
+        enabledCategories.forEach(c => {
+          if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
+          enabledBySource[c.source_id].push(c.category_id);
+        });
+
         const params: any[] = [];
+        const sourceConditions: string[] = [];
+
+        for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
+          if (catIds.length === 0) continue;
+          const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
+          const catInPlaceholders = catIds.map(() => '?').join(',');
+          
+          const condition = `(source_id = ? ${catLikes ? `AND (${catLikes})` : ''})`;
+          
+          sourceConditions.push(condition);
+          params.push(sourceId);
+          catIds.forEach(id => params.push(`%"${id}"%`)); // For category_ids LIKE
+        }
+
+        const orphanCondition = `(category_ids IS NULL OR category_ids = '[]')`;
+        let whereClause = sourceConditions.length > 0 
+          ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
+          : orphanCondition;
 
         if (categoryId) {
-          // Use JSON-style matching with quotes to avoid substring matches (e.g., "cat1" matching "cat10")
+          // Use JSON-style matching with quotes to avoid substring matches
           whereClause += ' AND category_ids LIKE ?';
           params.push(`%"${categoryId}"%`);
         }
 
         if (search) {
-          whereClause += ' AND name LIKE ?';
-          params.push(`%${search}%`);
+          const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+          const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+          if (searchClauses) {
+            whereClause += ` AND (${searchClauses})`;
+            searchTerms.forEach(term => {
+              params.push(`%${term}%`, `%${term}%`);
+            });
+          }
         }
 
         // Get total count
@@ -501,18 +665,47 @@ export function useWindowedMovies(
       const dbInstance = await (db as any).dbPromise;
 
       // Build WHERE clause
-      let whereClause = '1=1';
+      const enabledCategories = await db.vodCategories.filter(c => c.type === 'movie' && c.enabled !== false).toArray();
+      const enabledBySource: Record<string, string[]> = {};
+      enabledCategories.forEach(c => {
+        if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
+        enabledBySource[c.source_id].push(c.category_id);
+      });
+
       const params: any[] = [];
+      const sourceConditions: string[] = [];
+
+      for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
+        if (catIds.length === 0) continue;
+        const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
+        const catInPlaceholders = catIds.map(() => '?').join(',');
+        
+        const condition = `(source_id = ? ${catLikes ? `AND (${catLikes})` : ''})`;
+        
+        sourceConditions.push(condition);
+        params.push(sourceId);
+        catIds.forEach(id => params.push(`%"${id}"%`));
+      }
+
+      const orphanCondition = `(category_ids IS NULL OR category_ids = '[]')`;
+      let whereClause = sourceConditions.length > 0 
+        ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
+        : orphanCondition;
 
       if (categoryId) {
-        // Use JSON-style matching with quotes to avoid substring matches (e.g., "cat1" matching "cat10")
         whereClause += ' AND category_ids LIKE ?';
         params.push(`%"${categoryId}"%`);
       }
 
       if (search) {
-        whereClause += ' AND name LIKE ?';
-        params.push(`%${search}%`);
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+        if (searchClauses) {
+          whereClause += ` AND (${searchClauses})`;
+          searchTerms.forEach(term => {
+            params.push(`%${term}%`, `%${term}%`);
+          });
+        }
       }
 
       // Load next window
@@ -580,18 +773,53 @@ export function useWindowedSeries(
         const dbInstance = await (db as any).dbPromise;
 
         // Build WHERE clause
-        let whereClause = '1=1';
+        const enabledCategories = await db.vodCategories.filter(c => c.type === 'series' && c.enabled !== false).toArray();
+        const enabledBySource: Record<string, string[]> = {};
+        enabledCategories.forEach(c => {
+          if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
+          enabledBySource[c.source_id].push(c.category_id);
+        });
+
         const params: any[] = [];
+        const sourceConditions: string[] = [];
+
+        for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
+          if (catIds.length === 0) continue;
+          const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
+          const catInPlaceholders = catIds.map(() => '?').join(',');
+          
+          const condition = `(source_id = ? AND (
+            category_id IN (${catInPlaceholders}) OR
+            _stalker_category IN (${catInPlaceholders}) 
+            ${catLikes ? `OR ${catLikes}` : ''}
+          ))`;
+          
+          sourceConditions.push(condition);
+          params.push(sourceId);
+          params.push(...catIds);
+          params.push(...catIds);
+          catIds.forEach(id => params.push(`%"${id}"%`));
+        }
+
+        const orphanCondition = `((category_ids IS NULL OR category_ids = '[]') AND category_id IS NULL AND _stalker_category IS NULL)`;
+        let whereClause = sourceConditions.length > 0 
+          ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
+          : orphanCondition;
 
         if (categoryId) {
-          // Use JSON-style matching with quotes to avoid substring matches (e.g., "cat1" matching "cat10")
           whereClause += ' AND category_ids LIKE ?';
           params.push(`%"${categoryId}"%`);
         }
 
         if (search) {
-          whereClause += ' AND name LIKE ?';
-          params.push(`%${search}%`);
+          const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+          const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+          if (searchClauses) {
+            whereClause += ` AND (${searchClauses})`;
+            searchTerms.forEach(term => {
+              params.push(`%${term}%`, `%${term}%`);
+            });
+          }
         }
 
         // Get total count
@@ -630,18 +858,53 @@ export function useWindowedSeries(
       const dbInstance = await (db as any).dbPromise;
 
       // Build WHERE clause
-      let whereClause = '1=1';
+      const enabledCategories = await db.vodCategories.filter(c => c.type === 'series' && c.enabled !== false).toArray();
+      const enabledBySource: Record<string, string[]> = {};
+      enabledCategories.forEach(c => {
+        if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
+        enabledBySource[c.source_id].push(c.category_id);
+      });
+
       const params: any[] = [];
+      const sourceConditions: string[] = [];
+
+      for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
+        if (catIds.length === 0) continue;
+        const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
+        const catInPlaceholders = catIds.map(() => '?').join(',');
+        
+        const condition = `(source_id = ? AND (
+          category_id IN (${catInPlaceholders}) OR
+          _stalker_category IN (${catInPlaceholders}) 
+          ${catLikes ? `OR ${catLikes}` : ''}
+        ))`;
+        
+        sourceConditions.push(condition);
+        params.push(sourceId);
+        params.push(...catIds);
+        params.push(...catIds);
+        catIds.forEach(id => params.push(`%"${id}"%`));
+      }
+
+      const orphanCondition = `((category_ids IS NULL OR category_ids = '[]') AND category_id IS NULL AND _stalker_category IS NULL)`;
+      let whereClause = sourceConditions.length > 0 
+        ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
+        : orphanCondition;
 
       if (categoryId) {
-        // Use JSON-style matching with quotes to avoid substring matches (e.g., "cat1" matching "cat10")
         whereClause += ' AND category_ids LIKE ?';
         params.push(`%"${categoryId}"%`);
       }
 
       if (search) {
-        whereClause += ' AND name LIKE ?';
-        params.push(`%${search}%`);
+        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
+        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
+        if (searchClauses) {
+          whereClause += ` AND (${searchClauses})`;
+          searchTerms.forEach(term => {
+            params.push(`%${term}%`, `%${term}%`);
+          });
+        }
       }
 
       // Load next window

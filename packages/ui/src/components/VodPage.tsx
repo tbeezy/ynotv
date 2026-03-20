@@ -6,6 +6,8 @@ import { VerticalSidebar } from './vod/VerticalSidebar';
 import { VodBrowse } from './vod/VodBrowse';
 import { MovieDetail } from './vod/MovieDetail';
 import { SeriesDetail } from './vod/SeriesDetail';
+import { SourceContextMenu } from './SourceContextMenu';
+import { ManageVodCategories } from './vod/ManageVodCategories';
 import { useVodCategories } from '../hooks/useVod';
 import {
   useTrendingMovies,
@@ -101,6 +103,10 @@ interface VodPageProps {
 export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Context Menu & Management State
+  const [contextMenu, setContextMenu] = useState<{ sourceId: string; sourceName: string; x: number; y: number } | null>(null);
+  const [manageCategoriesSource, setManageCategoriesSource] = useState<{ id: string; name: string } | null>(null);
 
   // Category state - use the appropriate store based on type
   const moviesCategory = useMoviesCategory();
@@ -356,11 +362,19 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         type={type}
         onBack={onClose}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(query) => {
+          setSearchQuery(query);
+          if (query.trim() && selectedCategoryId === null) {
+            setSelectedCategoryId('all');
+          }
+        }}
         onSearchSubmit={() => {
           if (searchQuery.trim() && selectedCategoryId === null) {
             setSelectedCategoryId('all');
           }
+        }}
+        onContextMenu={(e, sourceId, sourceName) => {
+          setContextMenu({ sourceId, sourceName, x: e.clientX, y: e.clientY });
         }}
       />
 
@@ -421,6 +435,32 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
           onClose={handleCloseDetail}
           onPlayEpisode={handlePlay}
           apiKey={tmdbApiKey}
+        />
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <SourceContextMenu
+          sourceId={contextMenu.sourceId}
+          sourceName={contextMenu.sourceName}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={() => setContextMenu(null)}
+          onEditSource={() => {
+            // Can be implemented if edit source exists in settings
+            console.log('Edit source', contextMenu.sourceId);
+          }}
+          onManageVodCategories={(id, name) => {
+            setManageCategoriesSource({ id, name });
+          }}
+        />
+      )}
+
+      {/* Manage VOD Categories Modal */}
+      {manageCategoriesSource && (
+        <ManageVodCategories
+          sourceId={manageCategoriesSource.id}
+          sourceName={manageCategoriesSource.name}
+          onClose={() => setManageCategoriesSource(null)}
         />
       )}
     </div>

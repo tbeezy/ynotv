@@ -1543,13 +1543,27 @@ export async function syncVodMovies(
     return { count: existingCount, categoryCount: 0, skipped: true };
   }
 
+  // Fetch existing categories to preserve user settings (enabled, display_order)
+  const existingCategories = await db.vodCategories
+    .whereRaw('source_id = ? AND type = ?', [source.id, 'movie'])
+    .toArray();
+  const existingCategorySettings = new Map(existingCategories.map(c => [
+    c.category_id, 
+    { enabled: c.enabled, display_order: c.display_order }
+  ]));
+
   // Convert categories to VodCategory format
-  const vodCategories: VodCategory[] = categories.map(cat => ({
-    category_id: cat.category_id,
-    source_id: source.id,
-    name: cat.category_name,
-    type: 'movie' as const,
-  }));
+  const vodCategories: VodCategory[] = categories.map(cat => {
+    const settings = existingCategorySettings.get(cat.category_id);
+    return {
+      category_id: cat.category_id,
+      source_id: source.id,
+      name: cat.category_name,
+      type: 'movie' as const,
+      enabled: settings?.enabled ?? true,
+      display_order: settings?.display_order,
+    };
+  });
 
   // Get only enriched existing movies to preserve tmdb_id and other enrichments
   // This is much faster than loading ALL movies - only movies with enrichments matter
@@ -1691,13 +1705,27 @@ export async function syncVodSeries(
     return { count: existingCount, categoryCount: 0, skipped: true };
   }
 
+  // Fetch existing categories to preserve user settings (enabled, display_order)
+  const existingSeriesCategories = await db.vodCategories
+    .whereRaw('source_id = ? AND type = ?', [source.id, 'series'])
+    .toArray();
+  const existingSeriesCategorySettings = new Map(existingSeriesCategories.map(c => [
+    c.category_id, 
+    { enabled: c.enabled, display_order: c.display_order }
+  ]));
+
   // Convert categories to VodCategory format
-  const vodCategories: VodCategory[] = categories.map(cat => ({
-    category_id: cat.category_id,
-    source_id: source.id,
-    name: cat.category_name,
-    type: 'series' as const,
-  }));
+  const vodCategories: VodCategory[] = categories.map(cat => {
+    const settings = existingSeriesCategorySettings.get(cat.category_id);
+    return {
+      category_id: cat.category_id,
+      source_id: source.id,
+      name: cat.category_name,
+      type: 'series' as const,
+      enabled: settings?.enabled ?? true,
+      display_order: settings?.display_order,
+    };
+  });
 
   // Get only enriched existing series to preserve tmdb_id and other enrichments
   const existingSeries = await db.vodSeries

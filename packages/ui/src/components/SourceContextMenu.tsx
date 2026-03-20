@@ -7,7 +7,8 @@ interface SourceContextMenuProps {
     sourceName: string;
     position: { x: number; y: number };
     onClose: () => void;
-    onManageCategories: (sourceId: string, sourceName: string) => void;
+    onManageCategories?: (sourceId: string, sourceName: string) => void;
+    onManageVodCategories?: (sourceId: string, sourceName: string) => void;
     onEditSource: (sourceId: string) => void;
 }
 
@@ -17,6 +18,7 @@ export function SourceContextMenu({
     position,
     onClose,
     onManageCategories,
+    onManageVodCategories,
     onEditSource,
 }: SourceContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
@@ -82,9 +84,16 @@ export function SourceContextMenu({
             <div className="context-menu-header" style={{ padding: '8px 12px 4px', fontSize: '11px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 {sourceName}
             </div>
-            <div className="context-menu-item" onClick={() => { onManageCategories(sourceId, sourceName); onClose(); }}>
-                📋 Manage Categories
-            </div>
+            {onManageCategories && (
+                <div className="context-menu-item" onClick={() => { onManageCategories(sourceId, sourceName); onClose(); }}>
+                    📋 Manage Categories
+                </div>
+            )}
+            {onManageVodCategories && (
+                <div className="context-menu-item" onClick={() => { onManageVodCategories(sourceId, sourceName); onClose(); }}>
+                    🎬 Manage VOD Categories
+                </div>
+            )}
             <div className="context-menu-item" onClick={() => { onEditSource(sourceId); onClose(); }}>
                 ⚙️ Edit Source
             </div>

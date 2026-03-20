@@ -46,6 +46,7 @@ export interface VerticalSidebarProps {
     searchQuery?: string;
     onSearchChange?: (query: string) => void;
     onSearchSubmit?: () => void;
+    onContextMenu?: (e: React.MouseEvent, sourceId: string, sourceName: string) => void;
 }
 
 // Icons
@@ -98,6 +99,7 @@ export function VerticalSidebar({
     searchQuery = '',
     onSearchChange,
     onSearchSubmit,
+    onContextMenu,
 }: VerticalSidebarProps) {
     const [sources, setSources] = useState<Record<string, string>>({});
     const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
@@ -255,6 +257,10 @@ export function VerticalSidebar({
                         <button
                             className="vertical-sidebar__source-header"
                             onClick={() => toggleSource(sourceId)}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                onContextMenu?.(e, sourceId, sources[sourceId] || 'Unknown Source');
+                            }}
                         >
                             <div className="source-header-left">
                                 <ChevronIcon expanded={!!expandedSources[sourceId]} />
