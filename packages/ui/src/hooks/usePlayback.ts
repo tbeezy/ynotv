@@ -55,7 +55,7 @@ async function tryLoadWithFallbacks(
   userAgent?: string,
   onError?: (msg: string) => void
 ): Promise<{ success: boolean; url: string; error?: string }> {
-  console.log('[Playback] Setting User-Agent:', userAgent || '(using default)');
+  console.info('[Playback] Setting User-Agent:', userAgent || '(using default)');
 
   if (userAgent) {
     try {
@@ -65,11 +65,11 @@ async function tryLoadWithFallbacks(
     }
   }
 
-  console.log('[Playback] Loading URL:', primaryUrl);
+  console.info('[Playback] Loading URL:', primaryUrl);
   const result = await Bridge.loadVideo(primaryUrl);
 
   if (result.success) {
-    console.log('[Playback] Successfully loaded:', primaryUrl);
+    console.info('[Playback] Successfully loaded:', primaryUrl);
     return { success: true, url: primaryUrl };
   }
 
@@ -78,14 +78,14 @@ async function tryLoadWithFallbacks(
 
   const fallbacks = getStreamFallbacks(primaryUrl, isLive);
   if (fallbacks.length > 0) {
-    console.log('[Playback] Trying fallback URLs:', fallbacks);
+    console.info('[Playback] Trying fallback URLs:', fallbacks);
   }
 
   for (const fallbackUrl of fallbacks) {
-    console.log('[Playback] Trying fallback:', fallbackUrl);
+    console.info('[Playback] Trying fallback:', fallbackUrl);
     const fallbackResult = await Bridge.loadVideo(fallbackUrl);
     if (fallbackResult.success) {
-      console.log('[Playback] Fallback succeeded:', fallbackUrl);
+      console.info('[Playback] Fallback succeeded:', fallbackUrl);
       return { success: true, url: fallbackUrl };
     }
     console.warn('[Playback] Fallback failed:', fallbackUrl);
@@ -210,8 +210,8 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     // Clear error immediately - stale errors from old channel will be ignored
     setError(null);
 
-    console.log('[Playback] Loading channel:', channel.name);
-    console.log('[Playback] Raw URL:', channel.direct_url);
+    console.info('[Playback] Loading channel:', channel.name);
+    console.info('[Playback] Raw URL:', channel.direct_url);
 
     let resolved;
     try {
@@ -222,9 +222,9 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       return;
     }
 
-    console.log('[Playback] Resolved URL:', resolved.url);
-    console.log('[Playback] User-Agent:', resolved.userAgent || '(default)');
-    console.log('[Playback] Source:', resolved.sourceName || channel.source_id);
+    console.info('[Playback] Resolved URL:', resolved.url);
+    console.info('[Playback] User-Agent:', resolved.userAgent || '(default)');
+    console.info('[Playback] Source:', resolved.sourceName || channel.source_id);
 
     const result = await tryLoadWithFallbacks(
       resolved.url,

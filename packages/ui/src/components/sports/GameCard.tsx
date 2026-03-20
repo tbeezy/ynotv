@@ -2,40 +2,83 @@ import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
 import './styles/GameCard.css';
 
-// Generic tokens that are too common to be meaningful search terms on their own.
-// We prefer to skip these when a team name has other words available.
-const GENERIC_TEAM_TOKENS = new Set([
-  'fc', 'afc', 'sc', 'cf', 'ac', 'as', 'rc', 'bfc', 'utd',
-  'united', 'city', 'town', 'rovers', 'wanderers', 'athletic', 'albion',
-  'hotspur', 'county', 'vale', 'orient', 'palace', 'wednesday',
-  'rangers', 'united', 'real', 'club', 'sporting', 'dynamo', 'lokomotiv',
-]);
+/**
+ * Known city/location prefixes used in major sports team names.
+ * Multi-word prefixes (e.g. "St. Louis", "New York") must be listed before
+ * single-word ones so they match greedily.
+ */
+const TEAM_CITY_PREFIXES: string[] = [
+  // Multi-word US/Canada cities (must come first)
+  'St. Louis', 'St Louis', 'New York', 'Los Angeles', 'San Francisco', 'San Diego',
+  'San Jose', 'Kansas City', 'Oklahoma City', 'Salt Lake', 'New Orleans',
+  'Las Vegas', 'Green Bay', 'Tampa Bay', 'Bay Area', 'Golden State',
+  'New England', 'Carolina', 'Rhode Island',
+  'Fort Worth', 'Fort Lauderdale', 'El Paso', 'San Antonio', 'Little Rock',
+  'Baton Rouge', 'West Ham', 'Crystal Palace', 'Brighton', 'Sheffield',
+  'Nottingham', 'Wolverhampton', 'Aston', 'Porto Alegre',
+  'Porto', 'Real Madrid', 'Real Sociedad', 'Real Betis', 'Real Valladolid',
+  'Atletico', 'Athletic',
+  // Single-word US/Canada cities
+  'Atlanta', 'Baltimore', 'Boston', 'Buffalo', 'Charlotte', 'Chicago',
+  'Cincinnati', 'Cleveland', 'Colorado', 'Columbus', 'Dallas', 'Denver',
+  'Detroit', 'Edmonton', 'Florida', 'Houston', 'Indiana', 'Jacksonville',
+  'Louisville', 'Memphis', 'Miami', 'Milwaukee', 'Minnesota', 'Montreal',
+  'Nashville', 'Newark', 'Oakland', 'Orlando', 'Ottawa', 'Philadelphia',
+  'Phoenix', 'Pittsburgh', 'Portland', 'Sacramento', 'Seattle', 'Toronto',
+  'Utah', 'Vancouver', 'Washington', 'Winnipeg', 'Arizona', 'Cincinnati',
+  'Jacksonville', 'Tennessee', 'Mississippi', 'Alabama', 'Georgia', 'Oregon',
+  // Soccer — Premier League / La Liga / Bundesliga / Serie A / Ligue 1 / etc.
+  'Arsenal', 'Chelsea', 'Everton', 'Leicester', 'Liverpool', 'Fulham',
+  'Brentford', 'Bournemouth', 'Burnley', 'Watford', 'Sunderland', 'Middlesbrough',
+  'Bayern', 'Dortmund', 'Leverkusen', 'Leipzig', 'Frankfurt', 'Stuttgart',
+  'Bremen', 'Hamburg', 'Freiburg', 'Augsburg', 'Wolfsburg', 'Mainz', 'Bochum',
+  'Barcelona', 'Sevilla', 'Valencia', 'Villarreal', 'Bilbao', 'Getafe',
+  'Girona', 'Alaves', 'Mallorca', 'Celta', 'Rayo', 'Osasuna', 'Cadiz',
+  'Juventus', 'Napoli', 'Milan', 'Roma', 'Lazio', 'Atalanta', 'Fiorentina',
+  'Torino', 'Udine', 'Monza', 'Bologna', 'Genoa', 'Lecce', 'Frosinone',
+  'Paris', 'Lyon', 'Marseille', 'Lens', 'Lille', 'Monaco', 'Montpellier',
+  'Toulouse', 'Nantes', 'Strasbourg', 'Reims', 'Rennes', 'Brest', 'Clermont',
+  'Ajax', 'Feyenoord', 'Eindhoven', 'Bruges', 'Anderlecht', 'Lisbon', 'Benfica',
+  'Sporting', 'Porto', 'Amsterdam', 'Galatasaray', 'Fenerbahce', 'Besiktas',
+  'Flamengo', 'Palmeiras', 'Santos', 'Corinthians', 'Botafogo', 'Fluminense',
+  'Gremio', 'Internacional',
+  // International / club prefix words
+  'Inter', 'Internazionale', 'Manchester', 'Tottenham', 'Blackburn', 'Blackpool',
+  'Newcastle', 'Swindon', 'Coventry', 'Luton', 'Cambridge',
+  'Rangers', 'Celtic', 'Aberdeen', 'Hibernian', 'Hearts',
+];
+
+// Sort longest-first so multi-word prefixes match before single-word
+TEAM_CITY_PREFIXES.sort((a, b) => b.length - a.length);
 
 /**
- * Build the best possible AND-style search query for the two teams.
- * Strategy:
- *   1. Split each team name into words.
- *   2. From each team, pick the most distinctive word (longest non-generic token).
- *   3. Join them with a space so the multi-word AND search finds both.
- * Example: "Manchester United" + "AFC Bournemouth" → "Manchester Bournemouth"
+ * Strip a known city/location prefix from a team name, returning only the nickname.
+ * Example: "St. Louis Cardinals" → "Cardinals"
+ *          "New York Mets"       → "Mets"
+ *          "Twins"               → "Twins" (no prefix to remove)
+ */
+function stripCityPrefix(name: string): string {
+  const trimmed = name.trim();
+  for (const city of TEAM_CITY_PREFIXES) {
+    // Match case-insensitively at the start, followed by a space
+    if (trimmed.toLowerCase().startsWith(city.toLowerCase() + ' ')) {
+      const nickname = trimmed.slice(city.length).trim();
+      if (nickname.length > 0) return nickname;
+    }
+  }
+  return trimmed; // No known prefix found — use the full name
+}
+
+/**
+ * Build a search query using team nicknames (city prefix stripped).
+ * Example: "St. Louis Cardinals" + "New York Mets" → "Cardinals Mets"
  */
 function buildTeamSearchQuery(homeTeam: string, awayTeam: string): string {
-  function bestWord(name: string): string {
-    const words = name
-      .replace(/[()&.]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 1);
-
-    // Prefer words that are NOT in the generic set, sorted longest-first
-    const significant = words.filter(w => !GENERIC_TEAM_TOKENS.has(w.toLowerCase()));
-    const candidates = significant.length > 0 ? significant : words;
-    return candidates.sort((a, b) => b.length - a.length)[0] ?? name;
-  }
-
-  const homeWord = bestWord(homeTeam);
-  const awayWord = bestWord(awayTeam);
-  return `${homeWord} ${awayWord}`;
+  const homeNickname = stripCityPrefix(homeTeam);
+  const awayNickname = stripCityPrefix(awayTeam);
+  return `${homeNickname} ${awayNickname}`;
 }
+
 
 interface GameCardProps {
   event: SportsEvent;

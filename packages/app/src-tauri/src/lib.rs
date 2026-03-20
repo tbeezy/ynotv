@@ -1723,6 +1723,11 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_log::Builder::new()
+            .level(if cfg!(debug_assertions) {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            })
             .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
             .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
                 file_name: Some("ynotv".into())
