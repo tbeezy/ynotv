@@ -412,6 +412,37 @@ function App() {
   }, [handlePlayChannel]);
 
   // ==========================================================================
+  // Handle Channel Navigation (Up/Down)
+  // ==========================================================================
+  const handleChannelUp = useCallback(() => {
+    const channels = currentChannelsRef.current;
+    const currentCh = currentChannelRef.current;
+    if (channels.length > 0 && currentCh) {
+      const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
+      if (currentIndex > 0) {
+        handlePlayChannel(channels[currentIndex - 1]);
+      } else if (currentIndex === 0) {
+        // Wrap to last channel
+        handlePlayChannel(channels[channels.length - 1]);
+      }
+    }
+  }, [handlePlayChannel]);
+
+  const handleChannelDown = useCallback(() => {
+    const channels = currentChannelsRef.current;
+    const currentCh = currentChannelRef.current;
+    if (channels.length > 0 && currentCh) {
+      const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
+      if (currentIndex >= 0 && currentIndex < channels.length - 1) {
+        handlePlayChannel(channels[currentIndex + 1]);
+      } else if (currentIndex === channels.length - 1) {
+        // Wrap to first channel
+        handlePlayChannel(channels[0]);
+      }
+    }
+  }, [handlePlayChannel]);
+
+  // ==========================================================================
   // Keyboard Shortcuts
   // ==========================================================================
   useKeyboardShortcuts({
@@ -1006,6 +1037,8 @@ function App() {
         miniMediaBarForEpgPreview={miniMediaBarForEpgPreview}
         onTogglePlay={handleTogglePlay}
         isPlaying={playing}
+        onChannelUp={handleChannelUp}
+        onChannelDown={handleChannelDown}
       />
 
       {/* Settings Panel */}

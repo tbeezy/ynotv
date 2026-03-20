@@ -103,6 +103,8 @@ interface ChannelPanelProps {
   miniMediaBarForEpgPreview?: boolean;
   onTogglePlay?: () => void;
   isPlaying?: boolean;
+  onChannelUp?: () => void;
+  onChannelDown?: () => void;
 }
 
 export function ChannelPanel({
@@ -129,6 +131,8 @@ export function ChannelPanel({
   miniMediaBarForEpgPreview,
   onTogglePlay,
   isPlaying,
+  onChannelUp,
+  onChannelDown,
 }: ChannelPanelProps) {
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);
@@ -827,6 +831,32 @@ export function ChannelPanel({
                   </svg>
                 )}
               </button>
+              {/* Up button */}
+              {onChannelUp && (
+                <button
+                  className="guide-minibar-btn"
+                  onClick={onChannelUp}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  title="Previous Channel (Up)"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 15l-6-6-6 6" />
+                  </svg>
+                </button>
+              )}
+              {/* Down button */}
+              {onChannelDown && (
+                <button
+                  className="guide-minibar-btn"
+                  onClick={onChannelDown}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  title="Next Channel (Down)"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              )}
               {/* Volume button with expandable slider */}
               <div className="guide-minibar-volume" onDoubleClick={(e) => e.stopPropagation()}>
                 <button
