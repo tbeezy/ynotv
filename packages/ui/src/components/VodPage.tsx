@@ -305,6 +305,15 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   ]);
 
   const handleItemClick = useCallback((item: MediaItem) => {
+    if (item.source_id === 'tmdb') {
+      const title = item.title || item.name || '';
+      if (title) {
+        setSearchQuery(title);
+        setSelectedCategoryId('all');
+        setSelectedItem(null);
+      }
+      return;
+    }
     setSelectedItem(item);
   }, []);
 
@@ -320,6 +329,16 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   // Handle hero play button - movies play directly, series open detail
   const handleHeroPlay = useCallback((item: MediaItem) => {
+    if (item.source_id === 'tmdb') {
+      const title = item.title || item.name || '';
+      if (title) {
+        setSearchQuery(title);
+        setSelectedCategoryId('all');
+        setSelectedItem(null);
+      }
+      return;
+    }
+
     if (type === 'movie') {
       const movie = item as StoredMovie;
       handlePlay({

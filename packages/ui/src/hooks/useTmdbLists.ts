@@ -129,7 +129,6 @@ export function useEnabledSeriesGenres(): number[] | undefined {
  */
 function useMatchedMovies(tmdbMovies: TmdbMovieResult[], tmdbMoviesLoaded: boolean) {
   const [movies, setMovies] = useState<StoredMovie[]>([]);
-  const [matching, setMatching] = useState(false);
   const matchVersionRef = useRef(0);
 
   useEffect(() => {
@@ -139,26 +138,31 @@ function useMatchedMovies(tmdbMovies: TmdbMovieResult[], tmdbMoviesLoaded: boole
     }
 
     const currentVersion = ++matchVersionRef.current;
-    setMatching(true);
+    
+    const mapped = tmdbMovies.map(tmdb => ({
+      movie_id: `tmdb-movie-${tmdb.id}`,
+      name: tmdb.title,
+      title: tmdb.title,
+      stream_icon: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : '',
+      rating: tmdb.vote_average,
+      rating_5based: tmdb.vote_average ? tmdb.vote_average / 2 : 0,
+      added: '',
+      category_id: '',
+      category_ids: [],
+      container_extension: '',
+      custom_sid: '',
+      direct_source: '',
+      source_id: 'tmdb',
+      stream_id: `tmdb-movie-${tmdb.id}`,
+      tmdb_id: tmdb.id
+    } as unknown as StoredMovie));
 
-    getOrMatchMoviesByTmdbList(tmdbMovies)
-      .then((result) => {
-        if (currentVersion === matchVersionRef.current) {
-          setMovies(result.movies);
-          if (result.newlyMatched > 0) {
-            console.log(`[TitleMatch] Newly matched ${result.newlyMatched} movies`);
-          }
-        }
-      })
-      .catch(console.error)
-      .finally(() => {
-        if (currentVersion === matchVersionRef.current) {
-          setMatching(false);
-        }
-      });
+    if (currentVersion === matchVersionRef.current) {
+      setMovies(mapped);
+    }
   }, [tmdbMovies, tmdbMoviesLoaded]);
 
-  return { movies, matching };
+  return { movies, matching: false };
 }
 
 /**
@@ -168,7 +172,6 @@ function useMatchedMovies(tmdbMovies: TmdbMovieResult[], tmdbMoviesLoaded: boole
  */
 function useMatchedSeries(tmdbSeries: TmdbTvResult[], tmdbSeriesLoaded: boolean) {
   const [series, setSeries] = useState<StoredSeries[]>([]);
-  const [matching, setMatching] = useState(false);
   const matchVersionRef = useRef(0);
 
   useEffect(() => {
@@ -178,26 +181,30 @@ function useMatchedSeries(tmdbSeries: TmdbTvResult[], tmdbSeriesLoaded: boolean)
     }
 
     const currentVersion = ++matchVersionRef.current;
-    setMatching(true);
+    
+    const mapped = tmdbSeries.map(tmdb => ({
+      series_id: `tmdb-series-${tmdb.id}`,
+      name: tmdb.name,
+      title: tmdb.name,
+      cover: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : '',
+      rating: tmdb.vote_average,
+      rating_5based: tmdb.vote_average ? tmdb.vote_average / 2 : 0,
+      category_id: '',
+      category_ids: [],
+      custom_sid: '',
+      direct_source: '',
+      plot: tmdb.overview,
+      releaseDate: tmdb.first_air_date,
+      source_id: 'tmdb',
+      tmdb_id: tmdb.id
+    } as unknown as StoredSeries));
 
-    getOrMatchSeriesByTmdbList(tmdbSeries)
-      .then((result) => {
-        if (currentVersion === matchVersionRef.current) {
-          setSeries(result.series);
-          if (result.newlyMatched > 0) {
-            console.log(`[TitleMatch] Newly matched ${result.newlyMatched} series`);
-          }
-        }
-      })
-      .catch(console.error)
-      .finally(() => {
-        if (currentVersion === matchVersionRef.current) {
-          setMatching(false);
-        }
-      });
+    if (currentVersion === matchVersionRef.current) {
+      setSeries(mapped);
+    }
   }, [tmdbSeries, tmdbSeriesLoaded]);
 
-  return { series, matching };
+  return { series, matching: false };
 }
 
 // ===========================================================================
@@ -562,8 +569,24 @@ export function useMultipleMoviesByGenre(
       genreIds.map(async (genreId) => {
         try {
           const tmdbMovies = await discoverMoviesByGenreWithCache(accessToken, genreId);
-          const { movies } = await getOrMatchMoviesByTmdbList(tmdbMovies);
-          return { genreId, movies, error: null };
+          const mapped = tmdbMovies.map(tmdb => ({
+            movie_id: `tmdb-movie-${tmdb.id}`,
+            name: tmdb.title,
+            title: tmdb.title,
+            stream_icon: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : '',
+            rating: tmdb.vote_average,
+            rating_5based: tmdb.vote_average ? tmdb.vote_average / 2 : 0,
+            added: '',
+            category_id: '',
+            category_ids: [],
+            container_extension: '',
+            custom_sid: '',
+            direct_source: '',
+            source_id: 'tmdb',
+            stream_id: `tmdb-movie-${tmdb.id}`,
+            tmdb_id: tmdb.id
+          } as unknown as StoredMovie));
+          return { genreId, movies: mapped, error: null };
         } catch (err) {
           return { genreId, movies: [] as StoredMovie[], error: err };
         }
@@ -611,8 +634,23 @@ export function useMultipleSeriesByGenre(
       genreIds.map(async (genreId) => {
         try {
           const tmdbSeries = await discoverTvShowsByGenreWithCache(accessToken, genreId);
-          const { series } = await getOrMatchSeriesByTmdbList(tmdbSeries);
-          return { genreId, series, error: null };
+          const mapped = tmdbSeries.map(tmdb => ({
+            series_id: `tmdb-series-${tmdb.id}`,
+            name: tmdb.name,
+            title: tmdb.name,
+            cover: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : '',
+            rating: tmdb.vote_average,
+            rating_5based: tmdb.vote_average ? tmdb.vote_average / 2 : 0,
+            category_id: '',
+            category_ids: [],
+            custom_sid: '',
+            direct_source: '',
+            plot: tmdb.overview,
+            releaseDate: tmdb.first_air_date,
+            source_id: 'tmdb',
+            tmdb_id: tmdb.id
+          } as unknown as StoredSeries));
+          return { genreId, series: mapped, error: null };
         } catch (err) {
           return { genreId, series: [] as StoredSeries[], error: err };
         }
