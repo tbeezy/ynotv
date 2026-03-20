@@ -945,6 +945,8 @@ function App() {
             handleSeek(Math.max(0, timeshiftState.cacheEnd - liveBufferOffset));
           }
         }}
+        onChannelUp={handleChannelUp}
+        onChannelDown={handleChannelDown}
       />
 
       {/* Multiview Layout */}
