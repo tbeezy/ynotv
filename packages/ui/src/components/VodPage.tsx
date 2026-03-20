@@ -394,7 +394,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     <div className="vod-page">
       {/* Sidebar: Categories + Search + Back */}
       <VerticalSidebar
-        categories={categories.map(c => ({ id: c.category_id, name: c.name }))}
+        categories={categories.map(c => ({ id: c.category_id, name: c.name, source_id: c.source_id }))}
         selectedId={selectedCategoryId}
         onSelect={handleCategorySelect}
         type={type}
