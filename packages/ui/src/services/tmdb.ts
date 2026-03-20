@@ -146,6 +146,23 @@ export interface TmdbGenre {
 }
 
 // ===========================================================================
+// Memory cache for direct API responses
+// ===========================================================================
+
+const apiCache = new Map<string, { data: any, timestamp: number }>();
+const API_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+async function withApiCache<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const cached = apiCache.get(key);
+  if (cached && Date.now() - cached.timestamp < API_CACHE_TTL) {
+    return cached.data as T;
+  }
+  const data = await fetcher();
+  apiCache.set(key, { data, timestamp: Date.now() });
+  return data;
+}
+
+// ===========================================================================
 // Movie endpoints (direct API)
 // ===========================================================================
 
@@ -153,36 +170,44 @@ export async function getTrendingMovies(
   accessToken: string,
   timeWindow: 'day' | 'week' = 'week'
 ): Promise<TmdbMovieResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.trending.trending('movie', timeWindow);
-  return response.results as unknown as TmdbMovieResult[];
+  return withApiCache(`movies_trending_${timeWindow}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.trending.trending('movie', timeWindow);
+    return response.results as unknown as TmdbMovieResult[];
+  });
 }
 
 export async function getPopularMovies(
   accessToken: string,
   page = 1
 ): Promise<TmdbMovieResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.movies.popular({ page });
-  return response.results as TmdbMovieResult[];
+  return withApiCache(`movies_popular_${page}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.movies.popular({ page });
+    return response.results as TmdbMovieResult[];
+  });
 }
 
 export async function getTopRatedMovies(
   accessToken: string,
   page = 1
 ): Promise<TmdbMovieResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.movies.topRated({ page });
-  return response.results as TmdbMovieResult[];
+  return withApiCache(`movies_toprated_${page}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.movies.topRated({ page });
+    return response.results as TmdbMovieResult[];
+  });
 }
 
 export async function getNowPlayingMovies(
   accessToken: string,
   page = 1
 ): Promise<TmdbMovieResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.movies.nowPlaying({ page });
-  return response.results as TmdbMovieResult[];
+  return withApiCache(`movies_nowplaying_${page}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.movies.nowPlaying({ page });
+    return response.results as TmdbMovieResult[];
+  });
 }
 
 export async function getUpcomingMovies(
@@ -230,36 +255,44 @@ export async function getTrendingTvShows(
   accessToken: string,
   timeWindow: 'day' | 'week' = 'week'
 ): Promise<TmdbTvResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.trending.trending('tv', timeWindow);
-  return response.results as unknown as TmdbTvResult[];
+  return withApiCache(`tv_trending_${timeWindow}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.trending.trending('tv', timeWindow);
+    return response.results as unknown as TmdbTvResult[];
+  });
 }
 
 export async function getPopularTvShows(
   accessToken: string,
   page = 1
 ): Promise<TmdbTvResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.tvShows.popular({ page });
-  return response.results as TmdbTvResult[];
+  return withApiCache(`tv_popular_${page}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.tvShows.popular({ page });
+    return response.results as TmdbTvResult[];
+  });
 }
 
 export async function getTopRatedTvShows(
   accessToken: string,
   page = 1
 ): Promise<TmdbTvResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.tvShows.topRated({ page });
-  return response.results as TmdbTvResult[];
+  return withApiCache(`tv_toprated_${page}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.tvShows.topRated({ page });
+    return response.results as TmdbTvResult[];
+  });
 }
 
 export async function getOnTheAirTvShows(
   accessToken: string,
   page = 1
 ): Promise<TmdbTvResult[]> {
-  const tmdb = getTmdb(accessToken);
-  const response = await tmdb.tvShows.onTheAir({ page });
-  return response.results as TmdbTvResult[];
+  return withApiCache(`tv_ontheair_${page}`, async () => {
+    const tmdb = getTmdb(accessToken);
+    const response = await tmdb.tvShows.onTheAir({ page });
+    return response.results as TmdbTvResult[];
+  });
 }
 
 export async function getAiringTodayTvShows(

@@ -310,7 +310,6 @@ export const Bridge = {
     async getSettings() {
         const s = await getStore();
         const settings = await s.get('settings');
-        console.log('[Bridge] getSettings returning:', settings);
         return { success: true, data: settings || {} };
     },
 

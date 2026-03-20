@@ -20,12 +20,6 @@ import {
   useLocalPopularSeries,
   useFeaturedContent,
   useTmdbApiKey,
-  useMovieGenres,
-  useTvGenres,
-  useEnabledMovieGenres,
-  useEnabledSeriesGenres,
-  useMultipleMoviesByGenre,
-  useMultipleSeriesByGenre,
 } from '../hooks/useTmdbLists';
 import {
   useMoviesCategory,
@@ -120,11 +114,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   // API key for TMDB
   const tmdbApiKey = useTmdbApiKey();
 
-  // Genres from TMDB
-  const { genres: movieGenres } = useMovieGenres(type === 'movie' ? tmdbApiKey : null);
-  const { genres: tvGenres } = useTvGenres(type === 'series' ? tmdbApiKey : null);
-  const genres = type === 'movie' ? movieGenres : tvGenres;
-
   // Featured content for hero
   const { items: featuredItems } = useFeaturedContent(tmdbApiKey, type === 'movie' ? 'movies' : 'series', 5);
 
@@ -162,41 +151,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   // Get selected category name for VodBrowse
   const selectedCategory = categories.find(c => c.category_id === selectedCategoryId);
-
-  // Enabled genres from settings
-  const enabledMovieGenres = useEnabledMovieGenres();
-  const enabledSeriesGenres = useEnabledSeriesGenres();
-  const enabledGenreIds = type === 'movie' ? enabledMovieGenres : enabledSeriesGenres;
-
-  // Filter genres to only show enabled ones
-  // No hard limit - user controls via Settings which genres to show
-  const genresToShow = useMemo(() => {
-    if (!genres.length) return [];
-    // If no enabled genres defined yet (undefined), show all genres
-    if (enabledGenreIds === undefined) {
-      return genres;
-    }
-    // Show all enabled genres (user chose these in Settings)
-    return genres.filter(g => enabledGenreIds.includes(g.id));
-  }, [genres, enabledGenreIds]);
-
-  // Get genre IDs for pre-fetching
-  const genreIdsToFetch = useMemo(
-    () => genresToShow.map(g => g.id),
-    [genresToShow]
-  );
-
-  // Pre-fetch all genre data at once (not lazily per-carousel)
-  // This ensures smooth scrolling - data is ready before carousels render
-  const movieGenreData = useMultipleMoviesByGenre(
-    type === 'movie' ? tmdbApiKey : null,
-    type === 'movie' ? genreIdsToFetch : []
-  );
-  const seriesGenreData = useMultipleSeriesByGenre(
-    type === 'series' ? tmdbApiKey : null,
-    type === 'series' ? genreIdsToFetch : []
-  );
-  const genreData = type === 'movie' ? movieGenreData : seriesGenreData;
 
   // Build carousel rows for virtualization
   // Only includes rows that have content (or are still loading)
@@ -278,29 +232,12 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
       });
     }
 
-    // Genre carousels - use pre-fetched data (only if has content or still loading)
-    for (const genre of genresToShow) {
-      const data = genreData.get(genre.id);
-      const items = data?.items || [];
-      const loading = data?.loading ?? true;
-      // Only add row if it has content or is still loading
-      if (items.length > 0 || loading) {
-        rows.push({
-          key: `genre-${genre.id}`,
-          title: genre.name,
-          items,
-          loading,
-        });
-      }
-    }
-
     return rows;
   }, [
     trendingItems, trendingLoading,
     popularItems, popularLoading,
     topRatedItems, topRatedLoading,
     nowOrOnAirItems, nowOrOnAirLoading,
-    genresToShow, genreData,
     type, localPopularItems,
   ]);
 

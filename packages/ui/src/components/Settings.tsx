@@ -5,8 +5,6 @@ import { SourcesTab } from './settings/SourcesTab';
 import { TmdbTab } from './settings/TmdbTab';
 import { DataRefreshTab } from './settings/DataRefreshTab';
 import { ChannelsTab } from './settings/ChannelsTab';
-import { MoviesTab } from './settings/MoviesTab';
-import { SeriesTab } from './settings/SeriesTab';
 import { PosterDbTab } from './settings/PosterDbTab';
 import { SecurityTab } from './settings/SecurityTab';
 import { DebugTab } from './settings/DebugTab';
@@ -46,10 +44,6 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   // Refresh settings state
   const [vodRefreshHours, setVodRefreshHours] = useState(24);
   const [epgRefreshHours, setEpgRefreshHours] = useState(6);
-
-  // Genre settings state
-  const [movieGenresEnabled, setMovieGenresEnabled] = useState<number[] | undefined>(undefined);
-  const [seriesGenresEnabled, setSeriesGenresEnabled] = useState<number[] | undefined>(undefined);
 
   // PosterDB state
   const [posterDbApiKey, setPosterDbApiKey] = useState('');
@@ -148,8 +142,6 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         tmdbApiKey?: string;
         vodRefreshHours?: number;
         epgRefreshHours?: number;
-        movieGenresEnabled?: number[];
-        seriesGenresEnabled?: number[];
         posterDbApiKey?: string;
         rpdbBackdropsEnabled?: boolean;
         allowLanSources?: boolean;
@@ -190,10 +182,6 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       if (settings.epgRefreshHours !== undefined) {
         setEpgRefreshHours(settings.epgRefreshHours);
       }
-
-      // Load genre settings
-      setMovieGenresEnabled(settings.movieGenresEnabled);
-      setSeriesGenresEnabled(settings.seriesGenresEnabled);
 
       // Load PosterDB key
       const rpdbKey = settings.posterDbApiKey || '';
@@ -258,25 +246,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     setSettingsLoaded(true);
   }
 
-  // Check if any VOD source exists (Xtream or Stalker) for showing Movies/Series tabs
+  // Check if any VOD source exists (Xtream or Stalker) for showing tabs
   const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
-
-  // Reset to sources tab if current tab becomes hidden
-  useEffect(() => {
-    const libraryTabs: SettingsTabId[] = ['movies', 'series'];
-    if (libraryTabs.includes(activeTab) && !hasVodSource) {
-      setActiveTab('sources');
-    }
-  }, [hasVodSource, activeTab]);
-
-  // Memoized callbacks for genre changes
-  const handleMovieGenresChange = useCallback((genres: number[]) => {
-    setMovieGenresEnabled(genres);
-  }, []);
-
-  const handleSeriesGenresChange = useCallback((genres: number[]) => {
-    setSeriesGenresEnabled(genres);
-  }, []);
 
   const handleMpvParamsChange = async (params: string) => {
     setMpvParams(params);
@@ -433,24 +404,6 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onIncludeSourceInSearchChange={handleIncludeSourceInSearchChange}
             maxSearchResults={maxSearchResults}
             onMaxSearchResultsChange={handleMaxSearchResultsChange}
-          />
-        );
-      case 'movies':
-        return (
-          <MoviesTab
-            tmdbApiKey={tmdbApiKey || null}
-            enabledGenres={movieGenresEnabled}
-            onEnabledGenresChange={handleMovieGenresChange}
-            settingsLoaded={settingsLoaded}
-          />
-        );
-      case 'series':
-        return (
-          <SeriesTab
-            tmdbApiKey={tmdbApiKey || null}
-            enabledGenres={seriesGenresEnabled}
-            onEnabledGenresChange={handleSeriesGenresChange}
-            settingsLoaded={settingsLoaded}
           />
         );
       case 'posterdb':
