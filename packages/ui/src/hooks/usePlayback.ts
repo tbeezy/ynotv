@@ -179,6 +179,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     mpvReady, playing, volume, muted, position, duration, error,
     volumeDraggingRef, seekingRef,
     setError, setPlaying, setPosition, setVolume,
+    setIgnoreHttpErrors,
   } = mpvListeners;
 
   // Pending seek ref for deferred scrubbing
@@ -305,16 +306,29 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     setCatchupInfo(null);
 
     let resolved;
+    let sourceData: { type?: string } | undefined;
     try {
+      // Look up source type so we can decide whether to suppress HTTP errors
+      if (window.storage && info.source_id) {
+        const srcResult = await window.storage.getSource(info.source_id);
+        sourceData = srcResult?.data;
+      }
       resolved = await resolvePlayUrl(info.source_id, info.url);
     } catch (err) {
-      console.error('Failed to resolve Source info:', err);
+      logError('Failed to resolve Source info:', err);
       setError('Failed to resolve stream URL');
       return;
     }
 
+    // Stalker/MAC sources require session headers that MPV doesn't send,
+    // so they always trigger a 401/403 HTTP error — but the stream plays fine.
+    // Suppress these false positives.
+    const isStalker = sourceData?.type === 'stalker';
+    setIgnoreHttpErrors(isStalker);
+
     const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
+      setIgnoreHttpErrors(false);
       setError(result.error ?? 'Failed to load stream');
     } else {
       const workingUrl = result.url;
@@ -332,7 +346,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       // Close the VOD page when playing
       onCloseView?.();
     }
-  }, []);
+  }, [setIgnoreHttpErrors]);
 
   const handlePlayRecording = useCallback(async (recording: import('../db').DvrRecording, onCloseView?: () => void) => {
     setError(null);

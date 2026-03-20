@@ -36,10 +36,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const [sources, setSources] = useState<Source[]>([]);
   const [isEncryptionAvailable, setIsEncryptionAvailable] = useState(true);
 
-  // TMDB API key state
   const [tmdbApiKey, setTmdbApiKey] = useState('');
   const [tmdbKeyValid, setTmdbKeyValid] = useState<boolean | null>(null);
-  const [tmdbMatchingEnabled, setTmdbMatchingEnabled] = useState(true);
 
   // Refresh settings state
   const [vodRefreshHours, setVodRefreshHours] = useState(24);
@@ -149,7 +147,6 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         channelSortOrder?: 'alphabetical' | 'number';
         includeSourceInSearch?: boolean;
         maxSearchResults?: number;
-        tmdbMatchingEnabled?: boolean;
         shortcuts?: ShortcutsMap;
         channelFontSize?: number;
         categoryFontSize?: number;
@@ -173,7 +170,6 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       if (key) {
         setTmdbKeyValid(true); // Assume valid if previously saved
       }
-      setTmdbMatchingEnabled(settings.tmdbMatchingEnabled ?? true);
 
       // Load refresh settings
       if (settings.vodRefreshHours !== undefined) {
@@ -382,8 +378,6 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             tmdbKeyValid={tmdbKeyValid}
             onApiKeyChange={setTmdbApiKey}
             onApiKeyValidChange={setTmdbKeyValid}
-            tmdbMatchingEnabled={tmdbMatchingEnabled}
-            onTmdbMatchingEnabledChange={setTmdbMatchingEnabled}
           />
         );
       case 'refresh':
