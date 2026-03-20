@@ -188,6 +188,7 @@ export function LiveScoresTab({ onSearchChannels }: LiveScoresTabProps) {
                     event={event}
                     onClick={() => setSelectedEvent(event)}
                     onChannelClick={handleChannelClick}
+                    onSearchTeams={onSearchChannels}
                   />
                 ))}
               </div>

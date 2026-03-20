@@ -191,6 +191,9 @@
   padding: 12px 16px;
   background: var(--bg-secondary, rgba(255, 255, 255, 0.03));
   border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .game-card-channels {
@@ -198,6 +201,31 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.game-card-search-teams-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(0, 200, 150, 0.12), rgba(0, 180, 220, 0.12));
+  border: 1px solid rgba(0, 200, 150, 0.3);
+  color: rgba(0, 210, 160, 1);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.game-card-search-teams-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 200, 150, 0.25), rgba(0, 180, 220, 0.25));
+  border-color: rgba(0, 200, 150, 0.6);
+  color: #00e8b0;
+  box-shadow: 0 0 8px rgba(0, 200, 150, 0.2);
 }
 
 .game-card-channel-btn {

@@ -1,14 +1,51 @@
 import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
+import './styles/GameCard.css';
+
+// Generic tokens that are too common to be meaningful search terms on their own.
+// We prefer to skip these when a team name has other words available.
+const GENERIC_TEAM_TOKENS = new Set([
+  'fc', 'afc', 'sc', 'cf', 'ac', 'as', 'rc', 'bfc', 'utd',
+  'united', 'city', 'town', 'rovers', 'wanderers', 'athletic', 'albion',
+  'hotspur', 'county', 'vale', 'orient', 'palace', 'wednesday',
+  'rangers', 'united', 'real', 'club', 'sporting', 'dynamo', 'lokomotiv',
+]);
+
+/**
+ * Build the best possible AND-style search query for the two teams.
+ * Strategy:
+ *   1. Split each team name into words.
+ *   2. From each team, pick the most distinctive word (longest non-generic token).
+ *   3. Join them with a space so the multi-word AND search finds both.
+ * Example: "Manchester United" + "AFC Bournemouth" → "Manchester Bournemouth"
+ */
+function buildTeamSearchQuery(homeTeam: string, awayTeam: string): string {
+  function bestWord(name: string): string {
+    const words = name
+      .replace(/[()&.]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 1);
+
+    // Prefer words that are NOT in the generic set, sorted longest-first
+    const significant = words.filter(w => !GENERIC_TEAM_TOKENS.has(w.toLowerCase()));
+    const candidates = significant.length > 0 ? significant : words;
+    return candidates.sort((a, b) => b.length - a.length)[0] ?? name;
+  }
+
+  const homeWord = bestWord(homeTeam);
+  const awayWord = bestWord(awayTeam);
+  return `${homeWord} ${awayWord}`;
+}
 
 interface GameCardProps {
   event: SportsEvent;
   onClick?: () => void;
   onChannelClick?: (channelName: string) => void;
+  onSearchTeams?: (query: string) => void;
   compact?: boolean;
 }
 
-export function GameCard({ event, onClick, onChannelClick, compact = false }: GameCardProps) {
+export function GameCard({ event, onClick, onChannelClick, onSearchTeams, compact = false }: GameCardProps) {
   const isLive = event.status === 'live';
   const isFinished = event.status === 'finished';
   const sport = event.league.sport.toLowerCase();
@@ -158,22 +195,37 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
         {renderSportSpecificInfo()}
       </div>
 
-      {event.channels.length > 0 && (
+      {(event.channels.length > 0 || onSearchTeams) && (
         <div className="game-card-footer">
-          <div className="game-card-channels">
-            {event.channels.map((channel, idx) => (
-              <button
-                key={idx}
-                className="game-card-channel-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChannelClick?.(channel.name);
-                }}
-              >
-                {channel.name}
-              </button>
-            ))}
-          </div>
+          {event.channels.length > 0 && (
+            <div className="game-card-channels">
+              {event.channels.map((channel, idx) => (
+                <button
+                  key={idx}
+                  className="game-card-channel-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChannelClick?.(channel.name);
+                  }}
+                >
+                  {channel.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {onSearchTeams && (
+            <button
+              className="game-card-search-teams-btn"
+              title={`Search channels & EPG for ${event.homeTeam.name} vs ${event.awayTeam.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const query = buildTeamSearchQuery(event.homeTeam.name, event.awayTeam.name);
+                onSearchTeams(query);
+              }}
+            >
+              🔍 Search Teams
+            </button>
+          )}
         </div>
       )}
     </div>
