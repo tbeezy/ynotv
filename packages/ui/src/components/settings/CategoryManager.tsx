@@ -16,6 +16,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
     const [categories, setCategories] = useState<StoredCategory[]>([]);
     const [isDirty, setIsDirty] = useState(false);
     const [hideUnselected, setHideUnselected] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const [managingCategory, setManagingCategory] = useState<{ id: string; name: string } | null>(null);
     const isSavingRef = useRef(false);
 
@@ -133,17 +134,31 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
         setDragOverIdx(null);
     }, []);
 
-    // Select all
+    // Select all visible
     const handleSelectAll = useCallback(() => {
-        setCategories(cats => cats.map(cat => ({ ...cat, enabled: true })));
+        setCategories(cats => cats.map(cat => {
+            const isVisible = (!hideUnselected || cat.enabled !== false) && 
+                              (!searchQuery.trim() || cat.category_name.toLowerCase().includes(searchQuery.toLowerCase()));
+            if (isVisible) {
+                return { ...cat, enabled: true };
+            }
+            return cat;
+        }));
         setIsDirty(true);
-    }, []);
+    }, [hideUnselected, searchQuery]);
 
-    // Select none
+    // Select none visible
     const handleSelectNone = useCallback(() => {
-        setCategories(cats => cats.map(cat => ({ ...cat, enabled: false })));
+        setCategories(cats => cats.map(cat => {
+            const isVisible = (!hideUnselected || cat.enabled !== false) && 
+                              (!searchQuery.trim() || cat.category_name.toLowerCase().includes(searchQuery.toLowerCase()));
+            if (isVisible) {
+                return { ...cat, enabled: false };
+            }
+            return cat;
+        }));
         setIsDirty(true);
-    }, []);
+    }, [hideUnselected, searchQuery]);
 
     // Save changes
     const handleSave = useCallback(async () => {
@@ -151,14 +166,16 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
             // Mark that we're saving to prevent useEffect from resetting state
             isSavingRef.current = true;
 
-            // Save ALL categories with their current state
-            const updates = categories.map(cat => ({
-                categoryId: cat.category_id,
+            // Save ALL categories with their current state using fast bulkPut
+            const categoriesToUpdate = categories.map((cat, i) => ({
+                ...cat,
                 enabled: cat.enabled ?? true,
-                displayOrder: cat.display_order ?? 0
+                display_order: i
             }));
 
-            const result = await updateCategoriesBatch(updates);
+            if (categoriesToUpdate.length > 0) {
+                await db.categories.bulkPut(categoriesToUpdate);
+            }
 
             // Wait for database to commit
             await new Promise(resolve => setTimeout(resolve, 300));
@@ -176,12 +193,24 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
         }
     }, [categories, onChange, onClose]);
 
-    // Get visible categories based on filter
+    // Get visible categories based on filter and search
     const visibleCategories = useMemo(() => {
-        return hideUnselected
-            ? categories.filter(c => c.enabled !== false)
-            : categories;
-    }, [categories, hideUnselected]);
+        let filtered = categories;
+
+        if (hideUnselected) {
+            filtered = filtered.filter(c => c.enabled !== false);
+        }
+
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(c => c.category_name.toLowerCase().includes(query));
+        }
+
+        return filtered;
+    }, [categories, hideUnselected, searchQuery]);
+
+    const enabledCount = categories.filter(c => c.enabled !== false).length;
+    const totalCount = categories.length;
 
     const modalContent = (
         <div className="category-manager-overlay" onClick={onClose}>
@@ -189,6 +218,10 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
                 <div className="category-manager-header">
                     <h2>Manage Categories - {sourceName}</h2>
                     <button className="close-btn" onClick={onClose}>✕</button>
+                </div>
+
+                <div className="category-manager-stats">
+                    {enabledCount} of {totalCount} categories enabled
                 </div>
 
                 <div className="category-manager-actions">
@@ -201,6 +234,15 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange }: Cat
                     >
                         {hideUnselected ? '👁 Show All' : '👁‍🗨 Hide Unselected'}
                     </button>
+                </div>
+
+                <div className="category-search">
+                    <input
+                        type="text"
+                        placeholder="Search categories..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
 
                 <div
