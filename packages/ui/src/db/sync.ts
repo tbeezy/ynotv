@@ -1170,11 +1170,12 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
 
     await Promise.all(promises);
 
-    // Store sync metadata
+    // Store sync metadata (without last_synced — that gets written after EPG sync completes)
+    // This ensures that if EPG sync fails, the source is not marked as fresh and will
+    // be retried on the next startup autosync cycle.
     const meta: SourceMeta = {
       source_id: source.id,
       epg_url: epgUrl,
-      last_synced: new Date(),
       channel_count: channels.length,
       category_count: categories.length,
     };
@@ -1197,11 +1198,10 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
       }
     }
 
-    // Update source metadata using optimized operation
+    // Write channel/category counts and connection metadata — but NOT last_synced yet
     await bulkOps.updateSourceMeta({
       source_id: meta.source_id,
       epg_url: meta.epg_url,
-      last_synced: meta.last_synced instanceof Date ? meta.last_synced.toISOString() : meta.last_synced,
       channel_count: meta.channel_count,
       category_count: meta.category_count,
       expiry_date: meta.expiry_date,
@@ -1263,6 +1263,15 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     debugLog(`Sync complete for ${source.name}: ${channels.length} channels, ${categories.length} categories, ${programCount} programs`, 'sync');
     console.timeEnd('sync-total');
     debugLog(`Total sync time: ${((performance.now() - startTime) / 1000).toFixed(2)}s`, 'sync');
+
+    // NOW stamp last_synced — EPG sync has completed (or was skipped for sources without EPG).
+    // Writing this after EPG ensures a failed/empty EPG sync will cause the next autosync
+    // cycle to retry the source rather than treating it as fresh.
+    await bulkOps.updateSourceMeta({
+      source_id: source.id,
+      last_synced: new Date().toISOString(),
+    });
+    debugLog('Source marked as synced after EPG step completed', 'sync');
 
     // Checkpoint WAL after sync completes to reclaim space
     // TRUNCATE mode = wait for all readers/writers, then checkpoint and truncate WAL to 0

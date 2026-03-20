@@ -96,7 +96,7 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
                         console.log(`[AutoSync] Periodic check: ${staleSources.length} stale EPG sources found`);
                         setSyncingState(true);
                         hasSynced = true;
-                        const CONCURRENCY = 10;
+                        const CONCURRENCY = 3;
                         const total = staleSources.length;
                         for (let i = 0; i < total; i += CONCURRENCY) {
                             const batch = staleSources.slice(i, i + CONCURRENCY);
@@ -198,7 +198,7 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
 
                 if (staleSources.length > 0) {
                     setSyncingState(true);
-                    const CONCURRENCY = 10;
+                    const CONCURRENCY = 3;
                     const total = staleSources.length;
                     for (let i = 0; i < total; i += CONCURRENCY) {
                         const batch = staleSources.slice(i, i + CONCURRENCY);
