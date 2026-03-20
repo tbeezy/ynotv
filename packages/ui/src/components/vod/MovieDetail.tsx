@@ -5,7 +5,7 @@
  * Slides in as a full page, not a modal.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { getTmdbImageUrl, TMDB_POSTER_SIZES } from '../../services/tmdb';
 import { useLazyBackdrop } from '../../hooks/useLazyBackdrop';
 import { useLazyPlot } from '../../hooks/useLazyPlot';
@@ -43,6 +43,15 @@ export function MovieDetail({ movie, onClose, onPlay, apiKey }: MovieDetailProps
   const handlePlay = useCallback(() => {
     onPlay?.(movie, lazyPlot || movie.plot);
   }, [movie, onPlay, lazyPlot]);
+
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(() => {
+    if (movie.direct_url) {
+      navigator.clipboard.writeText(movie.direct_url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [movie.direct_url]);
 
   // Load RPDB settings for poster
   const { apiKey: rpdbApiKey } = useRpdbSettings();
@@ -156,6 +165,23 @@ export function MovieDetail({ movie, onClose, onPlay, apiKey }: MovieDetailProps
                 </svg>
                 Play
               </button>
+              
+              {movie.direct_url && (
+                <button
+                  className={`movie-detail__btn movie-detail__btn--secondary ${copied ? 'copied' : ''}`}
+                  onClick={handleCopy}
+                  title="Copy Stream URL"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {copied ? (
+                      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                    ) : (
+                      <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                    )}
+                  </svg>
+                  {copied ? 'Copied URL!' : 'Copy Stream URL'}
+                </button>
+              )}
             </div>
 
             {/* Credits */}

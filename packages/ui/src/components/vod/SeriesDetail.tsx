@@ -75,6 +75,16 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesD
     [series, onPlayEpisode, lazyPlot]
   );
 
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const handleCopy = useCallback((episode: StoredEpisode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (episode.direct_url) {
+      navigator.clipboard.writeText(episode.direct_url);
+      setCopiedId(episode.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  }, []);
+
   // Load RPDB settings for poster
   const { apiKey: rpdbApiKey } = useRpdbSettings();
   const rpdbPosterUrl = rpdbApiKey && series.tmdb_id
@@ -228,32 +238,50 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesD
             ) : (
               <div className="series-detail__episode-list">
                 {currentEpisodes.map((episode) => (
-                  <button
-                    key={episode.id}
-                    className="series-detail__episode"
-                    onClick={() => handlePlayEpisode(episode)}
-                  >
-                    <span className="series-detail__episode-number">
-                      {episode.episode_num}
-                    </span>
-                    <div className="series-detail__episode-info">
-                      <span className="series-detail__episode-title">
-                        {episode.title || `Episode ${episode.episode_num}`}
-                      </span>
-                      {(episode.duration ?? (episode.info?.duration as number | undefined)) ? (
-                        <span className="series-detail__episode-duration">
-                          {Math.round((episode.duration ?? Number(episode.info?.duration) ?? 0) / 60)}m
-                        </span>
-                      ) : null}
-                    </div>
-                    <svg
-                      className="series-detail__episode-play"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
+                  <div key={episode.id} className="series-detail__episode-row">
+                    <button
+                      className="series-detail__episode"
+                      onClick={() => handlePlayEpisode(episode)}
                     >
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </button>
+                      <span className="series-detail__episode-number">
+                        {episode.episode_num}
+                      </span>
+                      <div className="series-detail__episode-info">
+                        <span className="series-detail__episode-title">
+                          {episode.title || `Episode ${episode.episode_num}`}
+                        </span>
+                        {(episode.duration ?? (episode.info?.duration as number | undefined)) ? (
+                          <span className="series-detail__episode-duration">
+                            {Math.round((episode.duration ?? Number(episode.info?.duration) ?? 0) / 60)}m
+                          </span>
+                        ) : null}
+                      </div>
+                      <svg
+                        className="series-detail__episode-play"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </button>
+                    {episode.direct_url && (
+                      <button
+                        className={`series-detail__episode-copy ${copiedId === episode.id ? 'copied' : ''}`}
+                        onClick={(e) => handleCopy(episode, e)}
+                        title="Copy Stream URL"
+                      >
+                        {copiedId === episode.id ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
