@@ -14,12 +14,10 @@ import {
   usePopularMovies,
   useTopRatedMovies,
   useNowPlayingMovies,
-  useLocalPopularMovies,
   useTrendingSeries,
   usePopularSeries,
   useTopRatedSeries,
   useOnTheAirSeries,
-  useLocalPopularSeries,
   useFeaturedContent,
   useTmdbApiKey,
 } from '../hooks/useTmdbLists';
@@ -46,7 +44,6 @@ interface HomeVirtuosoContext {
   type: VodType;
   tmdbApiKey: string | null;
   featuredItems: MediaItem[];
-  localPopularItems: MediaItem[];
   heroLoading: boolean;
   onItemClick: (item: MediaItem) => void;
   onHeroPlay: (item: MediaItem) => void;
@@ -55,10 +52,13 @@ interface HomeVirtuosoContext {
 // Header component for Virtuoso (defined outside render to prevent remounting)
 const HomeHeader: React.ComponentType<{ context?: HomeVirtuosoContext }> = ({ context }) => {
   if (!context) return null;
-  const { featuredItems, localPopularItems, type, onHeroPlay, onItemClick, tmdbApiKey, heroLoading } = context;
+  const { featuredItems, type, onHeroPlay, onItemClick, tmdbApiKey, heroLoading } = context;
+  
+  if (featuredItems.length === 0 && !heroLoading) return null;
+  
   return (
     <HeroSection
-      items={featuredItems.length > 0 ? featuredItems : localPopularItems.slice(0, 5)}
+      items={featuredItems}
       type={type}
       onPlay={onHeroPlay}
       onMoreInfo={onItemClick}
@@ -147,11 +147,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const nowOrOnAirItems = type === 'movie' ? nowPlayingMovies : onTheAirSeries;
   const nowOrOnAirLoading = type === 'movie' ? nowPlayingLoading : onTheAirLoading;
 
-  // Fallback: local popularity
-  const { movies: localPopularMovies } = useLocalPopularMovies(type === 'movie' ? 20 : 0);
-  const { series: localPopularSeries } = useLocalPopularSeries(type === 'series' ? 20 : 0);
-  const localPopularItems = type === 'movie' ? localPopularMovies : localPopularSeries;
-
   // VOD categories
   const { categories } = useVodCategories(type);
 
@@ -168,7 +163,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
                                    (popularItems.length > 0 && !popularLoading) || 
                                    (topRatedItems.length > 0 && !topRatedLoading);
 
-    // Trending - use local popular as fallback if no TMDB matches
+    // Trending
     if (trendingItems.length > 0) {
       rows.push({
         key: 'trending',
@@ -183,17 +178,9 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         items: [],
         loading: true,
       });
-    } else if (!hasMatchedTmdbContent && localPopularItems.length > 0) {
-      // Fallback: show local popular content as "Trending" when no TMDB matches
-      rows.push({
-        key: 'trending-local',
-        title: 'Trending Now',
-        items: localPopularItems.slice(0, 20),
-        loading: false,
-      });
     }
 
-    // Popular - use local popular as fallback if no TMDB matches
+    // Popular
     if (popularItems.length > 0) {
       rows.push({
         key: 'popular',
@@ -207,14 +194,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         title: 'Popular',
         items: [],
         loading: true,
-      });
-    } else if (!hasMatchedTmdbContent && localPopularItems.length > 0) {
-      // Fallback: show local popular content
-      rows.push({
-        key: 'popular-local',
-        title: 'Popular',
-        items: localPopularItems.slice(0, 20),
-        loading: false,
       });
     }
 
@@ -244,7 +223,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     popularItems, popularLoading,
     topRatedItems, topRatedLoading,
     nowOrOnAirItems, nowOrOnAirLoading,
-    type, localPopularItems,
+    type,
   ]);
 
   const handleItemClick = useCallback((item: MediaItem) => {
@@ -299,7 +278,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   // Hero is loading if we have no items AND data is still being fetched
   const heroLoading = featuredItems.length === 0 &&
-    localPopularItems.length === 0 &&
     (trendingLoading || popularLoading);
 
   // Memoized context for Virtuoso to prevent unnecessary re-renders
@@ -307,11 +285,10 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     type,
     tmdbApiKey,
     featuredItems,
-    localPopularItems,
     heroLoading,
     onItemClick: handleItemClick,
     onHeroPlay: handleHeroPlay,
-  }), [type, tmdbApiKey, featuredItems, localPopularItems, heroLoading, handleItemClick, handleHeroPlay]);
+  }), [type, tmdbApiKey, featuredItems, heroLoading, handleItemClick, handleHeroPlay]);
 
   // Handle category selection - also close detail view
   const handleCategorySelect = useCallback((id: string | null) => {
@@ -445,10 +422,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
           sourceName={contextMenu.sourceName}
           position={{ x: contextMenu.x, y: contextMenu.y }}
           onClose={() => setContextMenu(null)}
-          onEditSource={() => {
-            // Can be implemented if edit source exists in settings
-            console.log('Edit source', contextMenu.sourceId);
-          }}
           onManageVodCategories={(id, name) => {
             setManageCategoriesSource({ id, name });
           }}

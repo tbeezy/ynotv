@@ -9,7 +9,7 @@ interface SourceContextMenuProps {
     onClose: () => void;
     onManageCategories?: (sourceId: string, sourceName: string) => void;
     onManageVodCategories?: (sourceId: string, sourceName: string) => void;
-    onEditSource: (sourceId: string) => void;
+    onEditSource?: (sourceId: string) => void;
 }
 
 export function SourceContextMenu({
@@ -91,12 +91,14 @@ export function SourceContextMenu({
             )}
             {onManageVodCategories && (
                 <div className="context-menu-item" onClick={() => { onManageVodCategories(sourceId, sourceName); onClose(); }}>
-                    🎬 Manage VOD Categories
+                    Manage VOD Categories
                 </div>
             )}
-            <div className="context-menu-item" onClick={() => { onEditSource(sourceId); onClose(); }}>
-                ⚙️ Edit Source
-            </div>
+            {onEditSource && (
+                <div className="context-menu-item" onClick={() => { onEditSource(sourceId); onClose(); }}>
+                    ⚙️ Edit Source
+                </div>
+            )}
         </div>,
         document.body
     );

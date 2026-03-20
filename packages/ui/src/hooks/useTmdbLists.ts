@@ -306,9 +306,7 @@ export function useUpcomingMovies(accessToken: string | null) {
 export function useLocalPopularMovies(limit = 20) {
   const movies = useLiveQuery(async () => {
     const withPopularity = await db.vodMovies
-      .orderBy('popularity')
-      .reverse()
-      .filter((m) => m.popularity !== undefined && m.popularity > 0)
+      .whereRaw('popularity IS NOT NULL AND popularity > 0 ORDER BY popularity DESC')
       .limit(limit)
       .toArray();
 
@@ -317,8 +315,7 @@ export function useLocalPopularMovies(limit = 20) {
     }
 
     return db.vodMovies
-      .orderBy('added')
-      .reverse()
+      .whereRaw('1=1 ORDER BY added DESC')
       .limit(limit)
       .toArray();
   }, [limit]);
@@ -392,9 +389,7 @@ export function useAiringTodaySeries(accessToken: string | null) {
 export function useLocalPopularSeries(limit = 20) {
   const series = useLiveQuery(async () => {
     const withPopularity = await db.vodSeries
-      .orderBy('popularity')
-      .reverse()
-      .filter((s) => s.popularity !== undefined && s.popularity > 0)
+      .whereRaw('popularity IS NOT NULL AND popularity > 0 ORDER BY popularity DESC')
       .limit(limit)
       .toArray();
 
@@ -403,8 +398,7 @@ export function useLocalPopularSeries(limit = 20) {
     }
 
     return db.vodSeries
-      .orderBy('added')
-      .reverse()
+      .whereRaw('1=1 ORDER BY added DESC')
       .limit(limit)
       .toArray();
   }, [limit]);
