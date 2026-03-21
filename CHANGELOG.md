@@ -6,9 +6,14 @@
   - Max Search Limit setting(Settings -> Channels)
   - Option to right click a channel and copy stream url if you want to play in external player for M3U and Xtream sources
   - Copy Stream URL for Vods of Xtream Code sources
+  - Draggable Preview resize for EPG and Sports preview video. Bottom Right of preview stream in EPG/LiveTV view is draggable, bottom for Alternate View. Right click the drag part to reset back to default.
+  - Alternate EPG view, Default shortcut E to swap views, or in Settings -> LiveTV -> EPG View Layout
+  - Hide Sports Categories button added in top right of Sidebar. 
   - Better search query for multi words
   - New Search Team option in Sports for Live Games, clicking the new Search Teams button on a Match Card will do a search for both team names in your playlist for better matching
+  - Show Search Results option on Sports Live Now Match cards, clicking it will display all channels with the game inside the card, clicking a channel will play the stream so you can easily swap between Live Games inside Sports View.
   - Up/Down channel button in Preview and Now Playing bar
+  - Channel list will smoothly scroll when using Up/Down shortcut or button
   - List Vod Movies/series by sources
   - Manage Vod categories, Right click the source in Movies/Series and you can enable/disable categories
   - Better debug logging when debug is enabled
