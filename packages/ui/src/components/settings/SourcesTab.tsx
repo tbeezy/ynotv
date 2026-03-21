@@ -298,6 +298,25 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
     e.preventDefault();
     if (!window.storage) return;
 
+    // Helper to detect LAN URLs (RFC 1918 private IPs, localhost, etc)
+    function isLanUrl(urlString: string): boolean {
+      try {
+        const url = new URL(urlString);
+        const host = url.hostname;
+        if (host === 'localhost' || host === '127.0.0.1') return true;
+        if (host.startsWith('10.')) return true;
+        if (host.startsWith('192.168.')) return true;
+        if (host.startsWith('172.')) {
+          const octet = parseInt(host.split('.')[1], 10);
+          if (octet >= 16 && octet <= 31) return true;
+        }
+        if (host.endsWith('.local') || host.endsWith('.lan')) return true;
+        return false;
+      } catch (e) {
+        return false;
+      }
+    }
+
     // Validation
     if (!formData.name.trim()) {
       setError('Name is required');
@@ -315,6 +334,17 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
     if (formData.type === 'stalker' && !formData.mac.trim()) {
       setError('MAC Address is required for Stalker Portal');
       return;
+    }
+
+    // Security check for LAN sources
+    const urlToCheck = importedM3U ? '' : formData.url.trim();
+    if (urlToCheck && isLanUrl(urlToCheck)) {
+      const settingsReq = await window.storage.getSettings();
+      const allowLan = settingsReq.data?.allowLanSources === true;
+      if (!allowLan) {
+        setError('LAN sources are disabled. Enable "Allow LAN Sources" in Security settings first.');
+        return;
+      }
     }
 
     const sourceId = editingId || crypto.randomUUID();

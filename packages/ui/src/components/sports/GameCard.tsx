@@ -69,14 +69,51 @@ function stripCityPrefix(name: string): string {
   return trimmed; // No known prefix found — use the full name
 }
 
+/** League IDs that use college/NCAA naming conventions (school name, not mascot). */
+const NCAA_LEAGUE_IDS = new Set([
+  'mens-college-basketball',
+  'womens-college-basketball',
+  'college-football',
+  'college-baseball',
+  'college-softball',
+]);
+
 /**
- * Build a search query using team nicknames (city prefix stripped).
- * Example: "St. Louis Cardinals" + "New York Mets" → "Cardinals Mets"
+ * For NCAA/college teams, EPG channels list games by SCHOOL name, not mascot.
+ * This strips the mascot (last word) and any parenthetical state qualifier.
+ *
+ * Examples:
+ *   "Miami (OH) Redhawks"     → "Miami"
+ *   "Tennessee Volunteers"    → "Tennessee"
+ *   "Santa Clara Broncos"     → "Santa Clara"
+ *   "UCF Knights"             → "UCF"
+ *   "UCLA Bruins"             → "UCLA"
+ *   "Kentucky Wildcats"       → "Kentucky"
+ *   "Troy Trojans"            → "Troy"
  */
-function buildTeamSearchQuery(homeTeam: string, awayTeam: string): string {
-  const homeNickname = stripCityPrefix(homeTeam);
-  const awayNickname = stripCityPrefix(awayTeam);
-  return `${homeNickname} ${awayNickname}`;
+function stripMascotForCollege(name: string): string {
+  // Remove parenthetical state qualifiers like "(OH)", "(FL)"
+  // e.g. "Miami (OH) Redhawks" → "Miami  Redhawks" → (after trim) "Miami Redhawks"
+  let cleaned = name.replace(/\([^)]*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+
+  // Drop the last word (the mascot/nickname)
+  const words = cleaned.split(/\s+/);
+  if (words.length <= 1) return cleaned; // Single-word school name like "Tennessee"
+  return words.slice(0, -1).join(' ');
+}
+
+/**
+ * Build a search query based on the league type:
+ * - NCAA/college: search by school name (strip mascot)
+ *   "Tennessee Volunteers" + "Santa Clara Broncos" → "Tennessee Santa Clara"
+ * - Pro sports: search by team nickname (strip city prefix)
+ *   "St. Louis Cardinals" + "New York Mets" → "Cardinals Mets"
+ */
+function buildTeamSearchQuery(homeTeam: string, awayTeam: string, leagueId?: string): string {
+  if (leagueId && NCAA_LEAGUE_IDS.has(leagueId)) {
+    return `${stripMascotForCollege(homeTeam)} ${stripMascotForCollege(awayTeam)}`;
+  }
+  return `${stripCityPrefix(homeTeam)} ${stripCityPrefix(awayTeam)}`;
 }
 
 
@@ -262,7 +299,11 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, compac
               title={`Search channels & EPG for ${event.homeTeam.name} vs ${event.awayTeam.name}`}
               onClick={(e) => {
                 e.stopPropagation();
-                const query = buildTeamSearchQuery(event.homeTeam.name, event.awayTeam.name);
+                const query = buildTeamSearchQuery(
+                  event.homeTeam.name,
+                  event.awayTeam.name,
+                  event.league.id,
+                );
                 onSearchTeams(query);
               }}
             >
