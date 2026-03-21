@@ -3,14 +3,13 @@
 
   ## v1.6.1
   Added:
-  - Max Search Limit setting(Settings -> LiveTV)
-  - Playback debug log info
-  - Right click for URL on Channels if you want to play in external player for M3U and Xtream sources
+  - Max Search Limit setting(Settings -> Channels)
+  - Option to right click a channel and copy stream url if you want to play in external player for M3U and Xtream sources
   - Copy Stream URL for Vods of Xtream Code sources
   - Better search query for multi words
   - New Search Team option in Sports for Live Games, clicking the new Search Teams button on a Match Card will do a search for both team names in your playlist for better matching
   - Up/Down channel button in Preview and Now Playing bar
-  - List Vod Movies/series by sources so its not one big List
+  - List Vod Movies/series by sources
   - Manage Vod categories, Right click the source in Movies/Series and you can enable/disable categories
   - Better debug logging when debug is enabled
 
