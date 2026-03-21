@@ -147,6 +147,12 @@ export function ChannelPanel({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [availableWidth, setAvailableWidth] = useState(800);
 
+  // Resize persistence state
+  const [previewWidthPct, setPreviewWidthPct] = useState(() => {
+    const saved = localStorage.getItem('guidePreviewWidth');
+    return saved ? parseFloat(saved) : 42;
+  });
+
   // Get active recordings for showing indicators
   const { recordings: activeRecordings } = useActiveRecordings(5000);
 
@@ -630,6 +636,84 @@ export function ChannelPanel({
     }
   };
 
+  // Drag-to-resize logic for the video preview pane
+  const isResizingRef = useRef(false);
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isResizingRef.current = true;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    
+    // Read current width percentage directly from the style if it exists, otherwise use state
+    let startPct = previewWidthPct;
+    if (previewPaneRef.current) {
+      const match = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
+      if (match && match[1]) {
+        startPct = parseFloat(match[1]);
+      }
+    }
+
+    const container = gridContainerRef.current;
+    if (!container) return;
+    const containerWidth = container.getBoundingClientRect().width;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isResizingRef.current || !previewPaneRef.current) return;
+      
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+      
+      // Determine dominant drag direction: horizontal or vertical, adjusted for 16:9 aspect ratio
+      let dw = dx;
+      if (Math.abs(dy * (16 / 9)) > Math.abs(dx)) {
+        dw = dy * (16 / 9);
+      }
+
+      // Convert width pixel delta to a percentage delta relative to container
+      const deltaPct = (dw / containerWidth) * 100;
+      let newPct = startPct + deltaPct;
+
+      // Clamp the size between 20% and 80%
+      newPct = Math.max(20, Math.min(newPct, 80));
+
+      // Direct DOM mutation for buttery smooth 60fps drag without React rerenders
+      previewPaneRef.current.style.flex = `0 0 ${newPct}%`;
+    };
+
+    const handleMouseUp = () => {
+      if (!isResizingRef.current) return;
+      isResizingRef.current = false;
+      
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      // Save final width back to React state and localStorage
+      if (previewPaneRef.current) {
+        const match = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
+        if (match && match[1]) {
+          const finalPct = parseFloat(match[1]);
+          setPreviewWidthPct(finalPct);
+          localStorage.setItem('guidePreviewWidth', String(finalPct));
+        }
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [previewWidthPct]);
+
+  const handleResizeContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPreviewWidthPct(42);
+    localStorage.setItem('guidePreviewWidth', '42');
+    if (previewPaneRef.current) {
+      previewPaneRef.current.style.flex = `0 0 42%`;
+    }
+  }, []);
+
   // Refresh search results when favorites change
   const refreshSearchResults = useCallback(async () => {
     if (!isSearchMode) return;
@@ -838,7 +922,21 @@ export function ChannelPanel({
     >
       {/* Top Section: Preview & Info */}
       <div className="guide-top-section">
-        <div className="guide-preview-pane" ref={previewPaneRef}>
+        <div 
+          className="guide-preview-pane" 
+          ref={previewPaneRef}
+          style={{ flex: `0 0 ${previewWidthPct}%` }}
+        >
+          {/* Resizer Handle */}
+          <div 
+            className="guide-preview-resizer" 
+            onMouseDown={handleResizeMouseDown}
+            onContextMenu={handleResizeContextMenu}
+            title="Drag to resize preview | Right-click to reset"
+          >
+            <div className="resizer-dot"></div>
+          </div>
+
           {/* Video container - holds the MPV video and overlays */}
           <div
             className="guide-preview-video"
