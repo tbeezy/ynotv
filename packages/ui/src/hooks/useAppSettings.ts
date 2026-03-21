@@ -21,6 +21,7 @@ export interface AppSettings {
 
   // LiveTV
   miniMediaBarForEpgPreview: boolean;
+  epgView: 'traditional' | 'alternate';
 
   // Theme
   theme: ThemeId;
@@ -59,6 +60,7 @@ export function useAppSettings(): AppSettings {
 
   // LiveTV settings
   const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
+  const [epgView, setEpgView] = useState<'traditional' | 'alternate'>('traditional');
 
   // Theme state
   const [theme, setThemeState] = useState<ThemeId>('glass-neon');
@@ -110,6 +112,7 @@ export function useAppSettings(): AppSettings {
           setIncludeSourceInSearch(result.data.includeSourceInSearch ?? false);
           setMaxSearchResults(result.data.maxSearchResults ?? 200);
           setMiniMediaBarForEpgPreview(result.data.miniMediaBarForEpgPreview ?? false);
+          setEpgView(result.data.epgView ?? 'traditional');
 
           // Apply EPG darken current setting on load
           if (result.data.epgDarkenCurrent) {
@@ -177,6 +180,7 @@ export function useAppSettings(): AppSettings {
     includeSourceInSearch,
     maxSearchResults,
     miniMediaBarForEpgPreview,
+    epgView,
     theme,
     shortcuts,
     showSidebar,

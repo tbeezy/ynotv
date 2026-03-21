@@ -11,7 +11,7 @@ import { ChannelManager } from './settings/ChannelManager';
 import { FavoriteManager } from './settings/FavoriteManager';
 import { CustomGroupManager } from './CustomGroupManager';
 
-import { useChannelSortOrder } from '../stores/uiStore';
+import { useChannelSortOrder, useEpgView } from '../stores/uiStore';
 import type { StoredChannel, StoredProgram, WatchlistItem } from '../db';
 import { db } from '../db';
 import { VideoErrorOverlay } from './VideoErrorOverlay';
@@ -134,6 +134,8 @@ export function ChannelPanel({
   onChannelUp,
   onChannelDown,
 }: ChannelPanelProps) {
+  const epgView = useEpgView();
+
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);
   }, [error]);
@@ -151,6 +153,11 @@ export function ChannelPanel({
   const [previewWidthPct, setPreviewWidthPct] = useState(() => {
     const saved = localStorage.getItem('guidePreviewWidth');
     return saved ? parseFloat(saved) : 42;
+  });
+
+  const [previewHeightPx, setPreviewHeightPx] = useState(() => {
+    const saved = localStorage.getItem('guidePreviewHeight');
+    return saved ? parseInt(saved) : 360; // default 360px
   });
 
   // Get active recordings for showing indicators
@@ -646,40 +653,52 @@ export function ChannelPanel({
     const startX = e.clientX;
     const startY = e.clientY;
     
-    // Read current width percentage directly from the style if it exists, otherwise use state
     let startPct = previewWidthPct;
-    if (previewPaneRef.current) {
+    if (previewPaneRef.current && epgView === 'traditional') {
       const match = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
       if (match && match[1]) {
         startPct = parseFloat(match[1]);
       }
     }
 
+    let startHeightPx = previewHeightPx;
+    if (previewPaneRef.current && epgView === 'alternate') {
+      const heightStr = previewPaneRef.current.style.height;
+      if (heightStr && heightStr.endsWith('px')) {
+         startHeightPx = parseInt(heightStr);
+      }
+    }
+
     const container = gridContainerRef.current;
     if (!container) return;
     const containerWidth = container.getBoundingClientRect().width;
+    const containerHeight = container.getBoundingClientRect().height;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!isResizingRef.current || !previewPaneRef.current) return;
       
-      const dx = moveEvent.clientX - startX;
-      const dy = moveEvent.clientY - startY;
-      
-      // Determine dominant drag direction: horizontal or vertical, adjusted for 16:9 aspect ratio
-      let dw = dx;
-      if (Math.abs(dy * (16 / 9)) > Math.abs(dx)) {
-        dw = dy * (16 / 9);
+      if (epgView === 'alternate') {
+        const dy = moveEvent.clientY - startY;
+        let newHeightPx = startHeightPx + dy;
+        // Clamp height
+        newHeightPx = Math.max(150, Math.min(newHeightPx, containerHeight - 150));
+        previewPaneRef.current.style.height = `${newHeightPx}px`;
+      } else {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        
+        let dw = dx;
+        if (Math.abs(dy * (16 / 9)) > Math.abs(dx)) {
+          dw = dy * (16 / 9);
+        }
+
+        const deltaPct = (dw / containerWidth) * 100;
+        let newPct = startPct + deltaPct;
+
+        newPct = Math.max(20, Math.min(newPct, 80));
+
+        previewPaneRef.current.style.flex = `0 0 ${newPct}%`;
       }
-
-      // Convert width pixel delta to a percentage delta relative to container
-      const deltaPct = (dw / containerWidth) * 100;
-      let newPct = startPct + deltaPct;
-
-      // Clamp the size between 20% and 80%
-      newPct = Math.max(20, Math.min(newPct, 80));
-
-      // Direct DOM mutation for buttery smooth 60fps drag without React rerenders
-      previewPaneRef.current.style.flex = `0 0 ${newPct}%`;
     };
 
     const handleMouseUp = () => {
@@ -689,30 +708,46 @@ export function ChannelPanel({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       
-      // Save final width back to React state and localStorage
       if (previewPaneRef.current) {
-        const match = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
-        if (match && match[1]) {
-          const finalPct = parseFloat(match[1]);
-          setPreviewWidthPct(finalPct);
-          localStorage.setItem('guidePreviewWidth', String(finalPct));
+        if (epgView === 'alternate') {
+          const heightStr = previewPaneRef.current.style.height;
+          if (heightStr && heightStr.endsWith('px')) {
+            const finalHeight = parseInt(heightStr);
+            setPreviewHeightPx(finalHeight);
+            localStorage.setItem('guidePreviewHeight', String(finalHeight));
+          }
+        } else {
+          const match = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
+          if (match && match[1]) {
+            const finalPct = parseFloat(match[1]);
+            setPreviewWidthPct(finalPct);
+            localStorage.setItem('guidePreviewWidth', String(finalPct));
+          }
         }
       }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [previewWidthPct]);
+  }, [previewWidthPct, previewHeightPx, epgView]);
 
   const handleResizeContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setPreviewWidthPct(42);
-    localStorage.setItem('guidePreviewWidth', '42');
-    if (previewPaneRef.current) {
-      previewPaneRef.current.style.flex = `0 0 42%`;
+    if (epgView === 'alternate') {
+      setPreviewHeightPx(360);
+      localStorage.setItem('guidePreviewHeight', '360');
+      if (previewPaneRef.current) {
+        previewPaneRef.current.style.height = `360px`;
+      }
+    } else {
+      setPreviewWidthPct(42);
+      localStorage.setItem('guidePreviewWidth', '42');
+      if (previewPaneRef.current) {
+        previewPaneRef.current.style.flex = `0 0 42%`;
+      }
     }
-  }, []);
+  }, [epgView]);
 
   // Refresh search results when favorites change
   const refreshSearchResults = useCallback(async () => {
@@ -860,24 +895,59 @@ export function ChannelPanel({
       const windowW = window.innerWidth;
       const windowH = window.innerHeight;
 
-      // Calculate Scale Factor
-      const scale = rect.width / windowW;
-      const zoom = Math.log2(scale);
+      if (epgView === 'alternate') {
+        let videoNativeW = windowW;
+        let videoNativeH = windowW * (9 / 16);
 
-      // Calculate Alignment X
-      const targetCenterX = rect.left + (rect.width / 2);
-      const shiftX = targetCenterX - (windowW / 2);
-      const availSpaceX = windowW - rect.width;
-      const alignX = Math.abs(availSpaceX) < 1 ? 0 : (2 * shiftX) / availSpaceX;
+        if (videoNativeH > windowH) {
+          videoNativeH = windowH;
+          videoNativeW = windowH * (16 / 9);
+        }
 
-      // Calculate Alignment Y
-      const topOffset = rect.top;
-      const availSpaceY = windowH - rect.height;
-      const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * topOffset) / availSpaceY - 1;
+        const scaleX = rect.width / videoNativeW;
+        const scaleY = rect.height / videoNativeH;
+        const scale = Math.min(scaleX, scaleY);
+        
+        const zoom = Math.log2(scale);
 
-      Bridge.setProperty('video-zoom', zoom);
-      Bridge.setProperty('video-align-x', alignX);
-      Bridge.setProperty('video-align-y', alignY);
+        const actualVideoW = videoNativeW * scale;
+        const actualVideoH = videoNativeH * scale;
+
+        const targetCenterX = rect.left + (rect.width / 2);
+        const targetCenterY = rect.top + (rect.height / 2);
+
+        const shiftX = targetCenterX - (windowW / 2);
+        const shiftY = targetCenterY - (windowH / 2);
+
+        const availSpaceX = windowW - actualVideoW;
+        const alignX = Math.abs(availSpaceX) < 1 ? 0 : (2 * shiftX) / availSpaceX;
+
+        const availSpaceY = windowH - actualVideoH;
+        const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * shiftY) / availSpaceY;
+
+        Bridge.setProperty('video-zoom', zoom);
+        Bridge.setProperty('video-align-x', alignX);
+        Bridge.setProperty('video-align-y', alignY);
+      } else {
+        // Calculate Scale Factor
+        const scale = rect.width / windowW;
+        const zoom = Math.log2(scale);
+
+        // Calculate Alignment X
+        const targetCenterX = rect.left + (rect.width / 2);
+        const shiftX = targetCenterX - (windowW / 2);
+        const availSpaceX = windowW - rect.width;
+        const alignX = Math.abs(availSpaceX) < 1 ? 0 : (2 * shiftX) / availSpaceX;
+
+        // Calculate Alignment Y
+        const topOffset = rect.top;
+        const availSpaceY = windowH - rect.height;
+        const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * topOffset) / availSpaceY - 1;
+
+        Bridge.setProperty('video-zoom', zoom);
+        Bridge.setProperty('video-align-x', alignX);
+        Bridge.setProperty('video-align-y', alignY);
+      }
     };
 
     const observer = new ResizeObserver(() => {
@@ -921,15 +991,15 @@ export function ChannelPanel({
       className={`guide-panel ${visible ? 'visible' : 'hidden'} ${categoryStripOpen ? 'with-categories' : ''} ${sidebarExpanded ? 'sidebar-expanded' : ''} ${showSidebar ? 'with-sidebar' : 'no-sidebar'}`}
     >
       {/* Top Section: Preview & Info */}
-      <div className="guide-top-section">
+      <div className={`guide-top-section ${epgView === 'alternate' ? 'alternate-view' : ''}`}>
         <div 
           className="guide-preview-pane" 
           ref={previewPaneRef}
-          style={{ flex: `0 0 ${previewWidthPct}%` }}
+          style={epgView === 'alternate' ? { height: `${previewHeightPx}px` } : { flex: `0 0 ${previewWidthPct}%` }}
         >
           {/* Resizer Handle */}
           <div 
-            className="guide-preview-resizer" 
+            className={`guide-preview-resizer ${epgView === 'alternate' ? 'vertical' : 'horizontal'}`} 
             onMouseDown={handleResizeMouseDown}
             onContextMenu={handleResizeContextMenu}
             title="Drag to resize preview | Right-click to reset"
@@ -1037,28 +1107,53 @@ export function ChannelPanel({
         </div>
         <div className="guide-info-pane">
           {selectedChannel ? (
-            <>
-              <div className="guide-program-title">
-                {selectedProgram ? selectedProgram.title : (selectedChannel.name || 'No Program Name')}
-              </div>
-              <div className="guide-program-meta">
-                <span>{selectedProgram ? `${formatTime(new Date(selectedProgram.start))} - ${formatTime(new Date(selectedProgram.end))}` : ''}</span>
-                {selectedProgram && (
-                  <div className="guide-program-progress-bar">
-                    <div className="guide-program-progress-fill" style={{ width: `${progressPercent}%` }} />
+            epgView === 'alternate' ? (
+              <div className="guide-info-alternate-container">
+                <div className="guide-info-alternate-main">
+                  <div className="guide-program-title">
+                    {selectedProgram ? selectedProgram.title : (selectedChannel.name || 'No Program Name')}
                   </div>
-                )}
-                <span>{categoryName}</span>
-              </div>
-              <div className="guide-program-description">
-                {selectedProgram?.description || 'No description available.'}
-              </div>
-              {selectedChannel && (
-                <div style={{ marginTop: '8px' }}>
+                  <div className="guide-program-meta">
+                    <span>{selectedProgram ? `${formatTime(new Date(selectedProgram.start))} - ${formatTime(new Date(selectedProgram.end))}` : ''}</span>
+                    {selectedProgram && (
+                      <div className="guide-program-progress-bar">
+                        <div className="guide-program-progress-fill" style={{ width: `${progressPercent}%` }} />
+                      </div>
+                    )}
+                    <span>{categoryName}</span>
+                  </div>
+                  <div className="guide-program-description">
+                    {selectedProgram?.description || 'No description available.'}
+                  </div>
+                </div>
+                <div className="guide-info-alternate-side">
                   <MetadataBadge streamId={selectedChannel.stream_id} variant="detailed" />
                 </div>
-              )}
-            </>
+              </div>
+            ) : (
+              <>
+                <div className="guide-program-title">
+                  {selectedProgram ? selectedProgram.title : (selectedChannel.name || 'No Program Name')}
+                </div>
+                <div className="guide-program-meta">
+                  <span>{selectedProgram ? `${formatTime(new Date(selectedProgram.start))} - ${formatTime(new Date(selectedProgram.end))}` : ''}</span>
+                  {selectedProgram && (
+                    <div className="guide-program-progress-bar">
+                      <div className="guide-program-progress-fill" style={{ width: `${progressPercent}%` }} />
+                    </div>
+                  )}
+                  <span>{categoryName}</span>
+                </div>
+                <div className="guide-program-description">
+                  {selectedProgram?.description || 'No description available.'}
+                </div>
+                {selectedChannel && (
+                  <div style={{ marginTop: '8px' }}>
+                    <MetadataBadge streamId={selectedChannel.stream_id} variant="detailed" />
+                  </div>
+                )}
+              </>
+            )
           ) : (
             <div className="guide-program-title">Select a channel</div>
           )}

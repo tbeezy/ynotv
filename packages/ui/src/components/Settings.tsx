@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Source } from '@ynotv/core';
+import { useEpgView, useSetEpgView } from '../stores/uiStore';
 import { SettingsSidebar, type SettingsTabId } from './settings/SettingsSidebar';
 import { SourcesTab } from './settings/SourcesTab';
 import { TmdbTab } from './settings/TmdbTab';
@@ -89,6 +90,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   // LiveTV settings state
   const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
   const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
+  const epgView = useEpgView();
+  const setEpgView = useSetEpgView();
 
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -162,6 +165,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         liveBufferOffset?: number;
         epgDarkenCurrent?: boolean;
         miniMediaBarForEpgPreview?: boolean;
+        epgView?: 'traditional' | 'alternate';
       };
 
       // Load TMDB API key
@@ -238,6 +242,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
       // Load mini media bar setting
       setMiniMediaBarForEpgPreview(settings.miniMediaBarForEpgPreview ?? false);
+      
+      // Load EPG view layout setting
+      setEpgView(settings.epgView ?? 'traditional');
     }
     setSettingsLoaded(true);
   }
@@ -287,6 +294,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     setMiniMediaBarForEpgPreview(enabled);
     if (window.storage) {
       await window.storage.updateSettings({ miniMediaBarForEpgPreview: enabled });
+    }
+  };
+
+  const handleEpgViewChange = async (view: 'traditional' | 'alternate') => {
+    setEpgView(view);
+    if (window.storage) {
+      await window.storage.updateSettings({ epgView: view });
     }
   };
 
@@ -485,6 +499,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onEpgDarkenCurrentChange={handleEpgDarkenCurrentChange}
             miniMediaBarForEpgPreview={miniMediaBarForEpgPreview}
             onMiniMediaBarForEpgPreviewChange={handleMiniMediaBarForEpgPreviewChange}
+            epgView={epgView}
+            onEpgViewChange={handleEpgViewChange}
           />
         );
       case 'about':

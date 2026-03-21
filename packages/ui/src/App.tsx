@@ -30,7 +30,8 @@ import {
   useSetChannelSyncing,
   useSetVodSyncing,
   useSetSyncStatusMessage,
-  useSetChannelSortOrder
+  useSetChannelSortOrder,
+  useSetEpgView
 } from './stores/uiStore';
 import type { StoredChannel } from './db';
 import { db } from './db';
@@ -313,6 +314,7 @@ function App() {
   const setVodSyncing = useSetVodSyncing();
   const setSyncStatusMessage = useSetSyncStatusMessage();
   const setChannelSortOrder = useSetChannelSortOrder();
+  const setEpgView = useSetEpgView();
 
   // ==========================================================================
   // TimeShift State
@@ -505,6 +507,9 @@ function App() {
           // Apply other settings
           if (settingsResult.data.channelSortOrder) {
             setChannelSortOrder(settingsResult.data.channelSortOrder as 'alphabetical' | 'number');
+          }
+          if (settingsResult.data.epgView) {
+            setEpgView(settingsResult.data.epgView as 'traditional' | 'alternate');
           }
         }
 

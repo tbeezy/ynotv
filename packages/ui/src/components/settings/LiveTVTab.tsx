@@ -5,6 +5,8 @@ interface LiveTVTabProps {
   onEpgDarkenCurrentChange: (enabled: boolean) => void;
   miniMediaBarForEpgPreview: boolean;
   onMiniMediaBarForEpgPreviewChange: (enabled: boolean) => void;
+  epgView: 'traditional' | 'alternate';
+  onEpgViewChange: (view: 'traditional' | 'alternate') => void;
 }
 
 export function LiveTVTab({
@@ -12,6 +14,8 @@ export function LiveTVTab({
   onEpgDarkenCurrentChange,
   miniMediaBarForEpgPreview,
   onMiniMediaBarForEpgPreviewChange,
+  epgView,
+  onEpgViewChange,
 }: LiveTVTabProps) {
   return (
     <div className="settings-tab-content playback-tab-content">
@@ -83,6 +87,22 @@ export function LiveTVTab({
         </p>
 
         <div className="timeshift-settings">
+          {/* EPG View Dropdown */}
+          <div className="timeshift-toggle-row">
+            <div className="timeshift-toggle-info">
+              <span className="timeshift-toggle-label">EPG View Layout</span>
+              <span className="timeshift-toggle-sub">Select between the standard left-to-right setup or the full-width cinematic format.</span>
+            </div>
+            <select
+              style={{ padding: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+              value={epgView}
+              onChange={(e) => onEpgViewChange(e.target.value as 'traditional' | 'alternate')}
+            >
+              <option value="traditional">Traditional EPG View</option>
+              <option value="alternate">Alternate EPG View</option>
+            </select>
+          </div>
+
           {/* Enable mini media bar for EPG preview */}
           <div className="timeshift-toggle-row">
             <div className="timeshift-toggle-info">

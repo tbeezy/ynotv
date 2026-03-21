@@ -38,6 +38,8 @@ interface UIState {
   // Channel display settings
   channelSortOrder: 'alphabetical' | 'number';
   setChannelSortOrder: (value: 'alphabetical' | 'number') => void;
+  epgView: 'traditional' | 'alternate';
+  setEpgView: (value: 'traditional' | 'alternate') => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -70,6 +72,8 @@ export const useUIStore = create<UIState>((set) => ({
   // Channel display settings
   channelSortOrder: 'number',
   setChannelSortOrder: (value) => set({ channelSortOrder: value }),
+  epgView: 'traditional',
+  setEpgView: (value) => set({ epgView: value }),
 
 }));
 
@@ -96,6 +100,8 @@ export const useSetSyncStatusMessage = () => useUIStore((s) => s.setSyncStatusMe
 // Channel display settings selectors
 export const useChannelSortOrder = () => useUIStore((s) => s.channelSortOrder);
 export const useSetChannelSortOrder = () => useUIStore((s) => s.setChannelSortOrder);
+export const useEpgView = () => useUIStore((s) => s.epgView);
+export const useSetEpgView = () => useUIStore((s) => s.setEpgView);
 
 // Sports Hub selectors
 export const useSportsSelectedTab = () => useUIStore((s) => s.sportsSelectedTab);

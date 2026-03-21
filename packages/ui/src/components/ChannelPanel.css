@@ -125,6 +125,10 @@
   background: transparent;
 }
 
+.guide-top-section.alternate-view {
+  flex-direction: column;
+}
+
 .guide-preview-pane {
   flex: 0 0 42%;
   /* Video width increased by ~30% from 32% */
@@ -137,6 +141,14 @@
   align-items: stretch;
   justify-content: flex-start;
   position: relative;
+}
+
+.guide-top-section.alternate-view .guide-preview-pane {
+  flex: none;
+  width: 100%;
+  aspect-ratio: auto;
+  border-right: none;
+  border-bottom: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
 }
 
 /* Video container that holds the MPV video */
@@ -258,6 +270,28 @@
   border-bottom: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
 }
 
+.guide-top-section.alternate-view .guide-info-pane {
+  flex: none;
+  width: 100%;
+  padding: 16px 24px;
+}
+
+.guide-top-section.alternate-view .guide-info-alternate-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+}
+
+.guide-top-section.alternate-view .guide-info-alternate-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
 .guide-grid-section {
   flex: 1;
   display: flex;
@@ -309,6 +343,22 @@
   line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.guide-top-section.alternate-view .guide-program-title {
+  font-size: 1.4rem;
+  margin-bottom: 0;
+}
+
+.guide-top-section.alternate-view .guide-program-meta {
+  margin-bottom: 0;
+}
+
+.guide-top-section.alternate-view .guide-program-description {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 0.95rem;
+  max-width: 100%;
 }
 
 /* Header */
@@ -1272,6 +1322,16 @@
   background: transparent;
 }
 
+.guide-preview-resizer.vertical {
+  width: 40px;
+  height: 16px;
+  bottom: -8px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
 .resizer-dot {
   width: 8px;
   height: 8px;
@@ -1281,13 +1341,27 @@
   transition: all 0.2s ease;
 }
 
+.guide-preview-resizer.vertical .resizer-dot {
+  width: 32px;
+  height: 6px;
+  border-radius: 3px;
+}
+
 .guide-preview-resizer:hover .resizer-dot {
   background: var(--accent-primary, #00d4ff);
   transform: scale(1.3);
   box-shadow: 0 0 8px var(--accent-primary, #00d4ff);
 }
 
+.guide-preview-resizer.vertical:hover .resizer-dot {
+  transform: scaleY(1.3);
+}
+
 .guide-preview-resizer:active .resizer-dot {
   transform: scale(0.9);
   background: white;
+}
+
+.guide-preview-resizer.vertical:active .resizer-dot {
+  transform: scaleY(0.9);
 }
