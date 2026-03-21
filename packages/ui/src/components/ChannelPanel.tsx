@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { useChannels, useCategories, useAllPrograms } from '../hooks/useChannels';
 import { useTimeGrid } from '../hooks/useTimeGrid';
 import { useActiveRecordings } from '../hooks/useActiveRecordings';
@@ -540,18 +540,21 @@ export function ChannelPanel({
   // Also re-sync when becoming visible to ensure preview matches current channel
   useEffect(() => {
     if (currentChannel?.stream_id) {
-      // Update selectedChannel to match currentChannel
-      if (currentChannel.stream_id !== selectedChannel?.stream_id) {
-        setSelectedChannel(currentChannel);
-      }
+      setSelectedChannel((prev) => {
+        if (prev?.stream_id !== currentChannel.stream_id) {
+          return currentChannel;
+        }
+        return prev;
+      });
     }
-  }, [currentChannel, selectedChannel?.stream_id, visible]);
+  }, [currentChannel, visible]);
 
   // Track if we have a channel to show
   const hasSelectedChannel = selectedChannel !== null;
 
   // Handle Channel Click: Preview vs Fullscreen
   const handleChannelClick = useCallback((channel: StoredChannel) => {
+    blockAutoScrollRef.current = true;
     if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> Go Fullscreen (Close Guide)
       onClose();
@@ -596,6 +599,7 @@ export function ChannelPanel({
 
   // Handle search result click - same logic as regular channel click
   const handleSearchChannelClick = (channel: StoredChannel) => {
+    blockAutoScrollRef.current = true;
     if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> Go Fullscreen (Close Guide)
       onClose();
@@ -612,6 +616,7 @@ export function ChannelPanel({
   const handleSearchProgramClick = async (program: StoredProgram) => {
     const channel = await db.channels.get(program.stream_id);
     if (channel) {
+      blockAutoScrollRef.current = true;
       if (selectedChannel?.stream_id === channel.stream_id) {
         // Already selected/previewing -> Go Fullscreen (Close Guide)
         onClose();
@@ -699,6 +704,49 @@ export function ChannelPanel({
   const previewPaneRef = useRef<HTMLDivElement>(null);
   // Track last channel ID to maintain resize when channel data is loading
   const lastChannelIdRef = useRef<string | null>(null);
+
+  // Virtuoso scrolling refs
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const visibleRangeRef = useRef({ startIndex: 0, endIndex: 0 });
+  const blockAutoScrollRef = useRef(false);
+
+  // Handle auto-scrolling to keep the selected channel near the middle/visible
+  useEffect(() => {
+    if (!selectedChannel || !channels.length || !virtuosoRef.current) return;
+    if (isSearchMode || isWatchlistMode) return;
+
+    if (blockAutoScrollRef.current) {
+      blockAutoScrollRef.current = false;
+      return;
+    }
+
+    const index = channels.findIndex((c) => c.stream_id === selectedChannel.stream_id);
+    if (index === -1) return;
+
+    const { startIndex, endIndex } = visibleRangeRef.current;
+
+    // If list hasn't rendered yet (endIndex is 0), or item is completely out of view, center it.
+    if (endIndex === 0 || index < startIndex || index > endIndex) {
+      virtuosoRef.current.scrollToIndex({ index, align: 'center', behavior: 'auto' });
+      return;
+    }
+
+    const PADDING = 2; // Keep at least 2 items below/above
+
+    if (index >= endIndex - PADDING) {
+      virtuosoRef.current.scrollToIndex({
+        index: Math.min(channels.length - 1, index + PADDING),
+        align: 'end',
+        behavior: 'smooth',
+      });
+    } else if (index <= startIndex + PADDING) {
+      virtuosoRef.current.scrollToIndex({
+        index: Math.max(0, index - PADDING),
+        align: 'start',
+        behavior: 'smooth',
+      });
+    }
+  }, [selectedChannel?.stream_id, channels.length, isSearchMode, isWatchlistMode]);
 
   // Update last channel ID when selected channel changes
   useEffect(() => {
@@ -1233,8 +1281,12 @@ export function ChannelPanel({
             /* Normal EPG Grid View */
             <Virtuoso
               key={`channel-list-${categoryId ?? 'all'}-${favoritesVersion}`}
+              ref={virtuosoRef}
               data={channels}
               className="guide-channels"
+              rangeChanged={(range) => {
+                visibleRangeRef.current = range;
+              }}
               itemContent={(index, channel, context) => (
                 <ChannelRowVirtuoso
                   index={index}
