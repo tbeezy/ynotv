@@ -19,6 +19,7 @@
   - Removed Genre carousel for Vods as it was causing slowdown in loading the Movies/Series page.
   - Vod optimization, categories should show instantly now
   - Fixed Stalker/MAC portal VOD so it doesn't display error message for working streams
+  - Now Playing bar not appearing when text is in search field
   
     ## v1.6.0
 
