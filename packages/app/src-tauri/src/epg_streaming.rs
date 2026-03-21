@@ -199,11 +199,6 @@ fn merge_with_display_names(
                     .entry(epg_channel_id.clone())
                     .or_default()
                     .extend(stream_ids.clone());
-
-                info!(
-                    "[EPG] Linked M3U '{}' (normalized: '{}') to EPG channel ID '{}'",
-                    m3u_name, normalized_m3u, epg_channel_id
-                );
             }
         }
     }

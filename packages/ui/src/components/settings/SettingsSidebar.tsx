@@ -5,8 +5,6 @@ export type SettingsTabId =
   | 'tmdb'
   | 'refresh'
   | 'channels'
-  | 'movies'
-  | 'series'
   | 'posterdb'
   | 'security'
   | 'debug'
@@ -47,8 +45,6 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
     tabs: [
       { id: 'channels', label: 'Channels' },
       { id: 'livetv', label: 'LiveTV' },
-      { id: 'movies', label: 'Movies' },
-      { id: 'series', label: 'Series' },
     ],
   },
   {
@@ -89,12 +85,6 @@ export function SettingsSidebar({
             <div className="settings-category-header">{category.label}</div>
           )}
           {category.tabs.map((tab) => {
-            // Hide Movies/Series tabs if no VOD source (Xtream or Stalker)
-            const isLibraryTab = tab.id === 'movies' || tab.id === 'series';
-            if (isLibraryTab && !hasVodSource) {
-              return null;
-            }
-
             return (
               <button
                 key={tab.id}

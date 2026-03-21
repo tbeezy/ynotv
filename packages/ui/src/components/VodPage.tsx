@@ -6,26 +6,20 @@ import { VerticalSidebar } from './vod/VerticalSidebar';
 import { VodBrowse } from './vod/VodBrowse';
 import { MovieDetail } from './vod/MovieDetail';
 import { SeriesDetail } from './vod/SeriesDetail';
+import { SourceContextMenu } from './SourceContextMenu';
+import { ManageVodCategories } from './vod/ManageVodCategories';
 import { useVodCategories } from '../hooks/useVod';
 import {
   useTrendingMovies,
   usePopularMovies,
   useTopRatedMovies,
   useNowPlayingMovies,
-  useLocalPopularMovies,
   useTrendingSeries,
   usePopularSeries,
   useTopRatedSeries,
   useOnTheAirSeries,
-  useLocalPopularSeries,
   useFeaturedContent,
   useTmdbApiKey,
-  useMovieGenres,
-  useTvGenres,
-  useEnabledMovieGenres,
-  useEnabledSeriesGenres,
-  useMultipleMoviesByGenre,
-  useMultipleSeriesByGenre,
 } from '../hooks/useTmdbLists';
 import {
   useMoviesCategory,
@@ -50,7 +44,6 @@ interface HomeVirtuosoContext {
   type: VodType;
   tmdbApiKey: string | null;
   featuredItems: MediaItem[];
-  localPopularItems: MediaItem[];
   heroLoading: boolean;
   onItemClick: (item: MediaItem) => void;
   onHeroPlay: (item: MediaItem) => void;
@@ -59,10 +52,13 @@ interface HomeVirtuosoContext {
 // Header component for Virtuoso (defined outside render to prevent remounting)
 const HomeHeader: React.ComponentType<{ context?: HomeVirtuosoContext }> = ({ context }) => {
   if (!context) return null;
-  const { featuredItems, localPopularItems, type, onHeroPlay, onItemClick, tmdbApiKey, heroLoading } = context;
+  const { featuredItems, type, onHeroPlay, onItemClick, tmdbApiKey, heroLoading } = context;
+  
+  if (featuredItems.length === 0 && !heroLoading) return null;
+  
   return (
     <HeroSection
-      items={featuredItems.length > 0 ? featuredItems : localPopularItems.slice(0, 5)}
+      items={featuredItems}
       type={type}
       onPlay={onHeroPlay}
       onMoreInfo={onItemClick}
@@ -107,6 +103,10 @@ interface VodPageProps {
 export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Context Menu & Management State
+  const [contextMenu, setContextMenu] = useState<{ sourceId: string; sourceName: string; x: number; y: number } | null>(null);
+  const [manageCategoriesSource, setManageCategoriesSource] = useState<{ id: string; name: string } | null>(null);
 
   // Category state - use the appropriate store based on type
   const moviesCategory = useMoviesCategory();
@@ -119,11 +119,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   // API key for TMDB
   const tmdbApiKey = useTmdbApiKey();
-
-  // Genres from TMDB
-  const { genres: movieGenres } = useMovieGenres(type === 'movie' ? tmdbApiKey : null);
-  const { genres: tvGenres } = useTvGenres(type === 'series' ? tmdbApiKey : null);
-  const genres = type === 'movie' ? movieGenres : tvGenres;
 
   // Featured content for hero
   const { items: featuredItems } = useFeaturedContent(tmdbApiKey, type === 'movie' ? 'movies' : 'series', 5);
@@ -152,51 +147,11 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const nowOrOnAirItems = type === 'movie' ? nowPlayingMovies : onTheAirSeries;
   const nowOrOnAirLoading = type === 'movie' ? nowPlayingLoading : onTheAirLoading;
 
-  // Fallback: local popularity
-  const { movies: localPopularMovies } = useLocalPopularMovies(type === 'movie' ? 20 : 0);
-  const { series: localPopularSeries } = useLocalPopularSeries(type === 'series' ? 20 : 0);
-  const localPopularItems = type === 'movie' ? localPopularMovies : localPopularSeries;
-
   // VOD categories
   const { categories } = useVodCategories(type);
 
   // Get selected category name for VodBrowse
   const selectedCategory = categories.find(c => c.category_id === selectedCategoryId);
-
-  // Enabled genres from settings
-  const enabledMovieGenres = useEnabledMovieGenres();
-  const enabledSeriesGenres = useEnabledSeriesGenres();
-  const enabledGenreIds = type === 'movie' ? enabledMovieGenres : enabledSeriesGenres;
-
-  // Filter genres to only show enabled ones
-  // No hard limit - user controls via Settings which genres to show
-  const genresToShow = useMemo(() => {
-    if (!genres.length) return [];
-    // If no enabled genres defined yet (undefined), show all genres
-    if (enabledGenreIds === undefined) {
-      return genres;
-    }
-    // Show all enabled genres (user chose these in Settings)
-    return genres.filter(g => enabledGenreIds.includes(g.id));
-  }, [genres, enabledGenreIds]);
-
-  // Get genre IDs for pre-fetching
-  const genreIdsToFetch = useMemo(
-    () => genresToShow.map(g => g.id),
-    [genresToShow]
-  );
-
-  // Pre-fetch all genre data at once (not lazily per-carousel)
-  // This ensures smooth scrolling - data is ready before carousels render
-  const movieGenreData = useMultipleMoviesByGenre(
-    type === 'movie' ? tmdbApiKey : null,
-    type === 'movie' ? genreIdsToFetch : []
-  );
-  const seriesGenreData = useMultipleSeriesByGenre(
-    type === 'series' ? tmdbApiKey : null,
-    type === 'series' ? genreIdsToFetch : []
-  );
-  const genreData = type === 'movie' ? movieGenreData : seriesGenreData;
 
   // Build carousel rows for virtualization
   // Only includes rows that have content (or are still loading)
@@ -208,7 +163,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
                                    (popularItems.length > 0 && !popularLoading) || 
                                    (topRatedItems.length > 0 && !topRatedLoading);
 
-    // Trending - use local popular as fallback if no TMDB matches
+    // Trending
     if (trendingItems.length > 0) {
       rows.push({
         key: 'trending',
@@ -223,17 +178,9 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         items: [],
         loading: true,
       });
-    } else if (!hasMatchedTmdbContent && localPopularItems.length > 0) {
-      // Fallback: show local popular content as "Trending" when no TMDB matches
-      rows.push({
-        key: 'trending-local',
-        title: 'Trending Now',
-        items: localPopularItems.slice(0, 20),
-        loading: false,
-      });
     }
 
-    // Popular - use local popular as fallback if no TMDB matches
+    // Popular
     if (popularItems.length > 0) {
       rows.push({
         key: 'popular',
@@ -247,14 +194,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         title: 'Popular',
         items: [],
         loading: true,
-      });
-    } else if (!hasMatchedTmdbContent && localPopularItems.length > 0) {
-      // Fallback: show local popular content
-      rows.push({
-        key: 'popular-local',
-        title: 'Popular',
-        items: localPopularItems.slice(0, 20),
-        loading: false,
       });
     }
 
@@ -278,33 +217,25 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
       });
     }
 
-    // Genre carousels - use pre-fetched data (only if has content or still loading)
-    for (const genre of genresToShow) {
-      const data = genreData.get(genre.id);
-      const items = data?.items || [];
-      const loading = data?.loading ?? true;
-      // Only add row if it has content or is still loading
-      if (items.length > 0 || loading) {
-        rows.push({
-          key: `genre-${genre.id}`,
-          title: genre.name,
-          items,
-          loading,
-        });
-      }
-    }
-
     return rows;
   }, [
     trendingItems, trendingLoading,
     popularItems, popularLoading,
     topRatedItems, topRatedLoading,
     nowOrOnAirItems, nowOrOnAirLoading,
-    genresToShow, genreData,
-    type, localPopularItems,
+    type,
   ]);
 
   const handleItemClick = useCallback((item: MediaItem) => {
+    if (item.source_id === 'tmdb') {
+      const title = item.title || item.name || '';
+      if (title) {
+        setSearchQuery(title);
+        setSelectedCategoryId('all');
+        setSelectedItem(null);
+      }
+      return;
+    }
     setSelectedItem(item);
   }, []);
 
@@ -320,6 +251,16 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   // Handle hero play button - movies play directly, series open detail
   const handleHeroPlay = useCallback((item: MediaItem) => {
+    if (item.source_id === 'tmdb') {
+      const title = item.title || item.name || '';
+      if (title) {
+        setSearchQuery(title);
+        setSelectedCategoryId('all');
+        setSelectedItem(null);
+      }
+      return;
+    }
+
     if (type === 'movie') {
       const movie = item as StoredMovie;
       handlePlay({
@@ -337,7 +278,6 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   // Hero is loading if we have no items AND data is still being fetched
   const heroLoading = featuredItems.length === 0 &&
-    localPopularItems.length === 0 &&
     (trendingLoading || popularLoading);
 
   // Memoized context for Virtuoso to prevent unnecessary re-renders
@@ -345,11 +285,10 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     type,
     tmdbApiKey,
     featuredItems,
-    localPopularItems,
     heroLoading,
     onItemClick: handleItemClick,
     onHeroPlay: handleHeroPlay,
-  }), [type, tmdbApiKey, featuredItems, localPopularItems, heroLoading, handleItemClick, handleHeroPlay]);
+  }), [type, tmdbApiKey, featuredItems, heroLoading, handleItemClick, handleHeroPlay]);
 
   // Handle category selection - also close detail view
   const handleCategorySelect = useCallback((id: string | null) => {
@@ -394,17 +333,25 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     <div className="vod-page">
       {/* Sidebar: Categories + Search + Back */}
       <VerticalSidebar
-        categories={categories.map(c => ({ id: c.category_id, name: c.name }))}
+        categories={categories.map(c => ({ id: c.category_id, name: c.name, source_id: c.source_id }))}
         selectedId={selectedCategoryId}
         onSelect={handleCategorySelect}
         type={type}
         onBack={onClose}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(query) => {
+          setSearchQuery(query);
+          if (query.trim() && selectedCategoryId === null) {
+            setSelectedCategoryId('all');
+          }
+        }}
         onSearchSubmit={() => {
           if (searchQuery.trim() && selectedCategoryId === null) {
             setSelectedCategoryId('all');
           }
+        }}
+        onContextMenu={(e, sourceId, sourceName) => {
+          setContextMenu({ sourceId, sourceName, x: e.clientX, y: e.clientY });
         }}
       />
 
@@ -465,6 +412,28 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
           onClose={handleCloseDetail}
           onPlayEpisode={handlePlay}
           apiKey={tmdbApiKey}
+        />
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <SourceContextMenu
+          sourceId={contextMenu.sourceId}
+          sourceName={contextMenu.sourceName}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={() => setContextMenu(null)}
+          onManageVodCategories={(id, name) => {
+            setManageCategoriesSource({ id, name });
+          }}
+        />
+      )}
+
+      {/* Manage VOD Categories Modal */}
+      {manageCategoriesSource && (
+        <ManageVodCategories
+          sourceId={manageCategoriesSource.id}
+          sourceName={manageCategoriesSource.name}
+          onClose={() => setManageCategoriesSource(null)}
         />
       )}
     </div>

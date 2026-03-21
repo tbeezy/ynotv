@@ -299,3 +299,37 @@
     cursor: not-allowed;
     filter: grayscale(0.5);
 }
+
+.category-manager-stats {
+    padding: 12px 24px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    text-align: right;
+}
+
+.category-search {
+    padding: 0 24px 16px;
+    border-bottom: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
+}
+
+.category-search input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface-color, rgba(0, 0, 0, 0.2));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: var(--text-primary, white);
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.category-search input:focus {
+    border-color: var(--accent-primary, #00d4ff);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.category-search input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}

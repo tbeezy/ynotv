@@ -423,38 +423,41 @@ export function useChannelSearch(query: string, limit = 50, includeSourceInSearc
         }
       }
 
-      // Search channels that match the name and belong to an enabled category
-      // json_each lets SQLite expand the category_ids JSON array inline
+      // Split query into individual words for AND matching
+      // e.g. "Manchester Bournemouth" → must contain BOTH words anywhere in the name
+      const queryWords = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      const wordLikeClauses = queryWords.map(() => `c.name LIKE ?`).join(' AND ');
+      const wordLikeParams = queryWords.map(w => `%${w}%`);
       const categoryPlaceholders = Array.from(enabledCategoryIds).map(() => '?').join(',');
 
       let filteredChannels: any[];
 
       if (includeSourceInSearch && sourceNameMatches.length > 0) {
-        // Include channels where name matches OR source_id matches the source name search
+        // Include channels where name matches all words OR source_id matches the source name search
         const sourceMatchPlaceholders = sourceNameMatches.map(() => '?').join(',');
         filteredChannels = await dbInstance.select(
           `SELECT DISTINCT c.*
            FROM channels c
            CROSS JOIN json_each(c.category_ids) AS cat
-           WHERE (c.name LIKE ? OR c.source_id IN (${sourceMatchPlaceholders}))
+           WHERE ((${wordLikeClauses}) OR c.source_id IN (${sourceMatchPlaceholders}))
            AND c.source_id IN (${sourcePlaceholders})
            AND (c.enabled IS NULL OR c.enabled != 0)
            AND cat.value IN (${categoryPlaceholders})
            LIMIT ?`,
-          [`%${query}%`, ...sourceNameMatches, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
+          [...wordLikeParams, ...sourceNameMatches, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
         );
       } else {
-        // Original search - only by channel name
+        // Multi-word AND search — each word must appear somewhere in the channel name
         filteredChannels = await dbInstance.select(
           `SELECT DISTINCT c.*
            FROM channels c
            CROSS JOIN json_each(c.category_ids) AS cat
-           WHERE c.name LIKE ?
+           WHERE (${wordLikeClauses})
            AND c.source_id IN (${sourcePlaceholders})
            AND (c.enabled IS NULL OR c.enabled != 0)
            AND cat.value IN (${categoryPlaceholders})
            LIMIT ?`,
-          [`%${query}%`, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
+          [...wordLikeParams, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
         );
       }
 
@@ -530,8 +533,11 @@ export function useProgramSearch(query: string, limit = 50) {
         return [];
       }
 
-      // Step 3: Search programs natively through an INNER JOIN on enabled channels
-      // Also filter out any past programs (p.end <= now) so limits are accurate
+      // Split query into individual words for AND matching across all words
+      const queryWords = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      const wordLikeClauses = queryWords.map(() => `p.title LIKE ?`).join(' AND ');
+      const wordLikeParams = queryWords.map(w => `%${w}%`);
+
       const nowIso = new Date().toISOString();
       const programResults = await dbInstance.select(
         `SELECT p.* 
@@ -543,9 +549,9 @@ export function useProgramSearch(query: string, limit = 50) {
            AND (c.enabled IS NULL OR c.enabled != 0)
            AND cat.value IN (${categoryPlaceholders})
          ) ec ON p.stream_id = ec.stream_id
-         WHERE p.title LIKE ? AND p.end > ?
+         WHERE (${wordLikeClauses}) AND p.end > ?
          LIMIT ?`,
-        [...sourceIdsList, ...enabledCategoryIds, `%${query}%`, nowIso, limit * 2]
+        [...sourceIdsList, ...enabledCategoryIds, ...wordLikeParams, nowIso, limit * 2]
       );
 
       // Step 4: Decompress descriptions for exactly the valid programs

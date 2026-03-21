@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import * as fs from '@tauri-apps/plugin-fs';
 import { Store } from '@tauri-apps/plugin-store';
+import { attachConsole } from '@tauri-apps/plugin-log';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { appLogDir, join } from '@tauri-apps/api/path';
 import { debug as logDebug, info as logInfo, warn as logWarn, error as logError } from '@tauri-apps/plugin-log';
@@ -310,7 +311,6 @@ export const Bridge = {
     async getSettings() {
         const s = await getStore();
         const settings = await s.get('settings');
-        console.log('[Bridge] getSettings returning:', settings);
         return { success: true, data: settings || {} };
     },
 
@@ -355,13 +355,27 @@ export async function initPolyfills() {
     const existingDebug = (window as any).debug || {};
     
     // Check if debug logging is enabled from settings
+    // NOTE: DebugTab stores this inside the 'settings' object via updateSettings(),
+    // so we must read it from store.get('settings').debugLoggingEnabled, NOT store.get('debugLoggingEnabled')
     let debugLoggingEnabled = false;
     try {
         const store = await getStore();
-        debugLoggingEnabled = await store.get('debugLoggingEnabled') ?? false;
+        const settings: any = await store.get('settings') ?? {};
+        debugLoggingEnabled = settings.debugLoggingEnabled ?? false;
         console.log('[TauriBridge] Debug logging enabled:', debugLoggingEnabled);
     } catch (e) {
         console.warn('[TauriBridge] Failed to read debug logging setting:', e);
+    }
+
+    // If debug logging is enabled at startup, attach console NOW so all subsequent
+    // console.info/warn/error calls are forwarded to the native log file.
+    if (debugLoggingEnabled) {
+        try {
+            await attachConsole();
+            console.info('[TauriBridge] Console attached to Tauri log plugin on startup');
+        } catch (err) {
+            console.error('[TauriBridge] Failed to attach console on startup:', err);
+        }
     }
     
     // Set global flag for sync debug logs
@@ -383,6 +397,14 @@ export async function initPolyfills() {
             debugLoggingEnabled = enabled;
             (window as any).__debugLoggingEnabled = enabled;
             console.log('[TauriBridge] Debug logging state updated:', enabled);
+
+            // If debug logging is enabled, attempt to attach console
+            if (enabled) {
+                attachConsole().catch(err => console.error("[TauriBridge] Failed to attach console dynamically:", err));
+            }
+            // Note: We don't un-mock console.log here if it was mocked,
+            // as that would require storing original console methods.
+            // For simplicity, once mocked, they stay mocked until app restart.
         },
         getLogPath: async () => {
             try {

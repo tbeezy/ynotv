@@ -69,6 +69,7 @@ export interface StoredMovie extends Omit<Movie, 'category_ids'> {
   popularity?: number;
   match_attempted?: Date | string; // When TMDB matching was last attempted (even if no match found)
   category_ids?: string; // stored as JSON/string in SQLite
+  category_id?: string; // Singular category ID (Xtream mainly)
 }
 
 // VOD Series with TMDB enrichment
@@ -81,6 +82,7 @@ export interface StoredSeries extends Series {
   match_attempted?: Date | string; // When TMDB matching was last attempted (even if no match found)
   _stalker_category?: string; // Stalker: store parent category for episode fetching
   _stalker_raw_id?: string; // Stalker: store raw ID for episode/season fetching
+  category_id?: string; // Singular category ID
 }
 
 // VOD Episode
@@ -94,6 +96,8 @@ export interface VodCategory {
   source_id: string;
   name: string;
   type: 'movie' | 'series';
+  enabled?: boolean;
+  display_order?: number;
 }
 
 // User preferences (last selected category, etc.)
@@ -706,6 +710,10 @@ class YnotvDatabase extends SqliteDatabase {
     try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN rating_5based REAL`); } catch (e) {}
     try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN category_id TEXT`); } catch (e) {}
     try { await db.execute(`ALTER TABLE vodSeries ADD COLUMN _stalker_raw_id TEXT`); } catch (e) {}
+
+    // Add enabled and display_order columns to vodCategories
+    try { await db.execute(`ALTER TABLE vodCategories ADD COLUMN enabled INTEGER DEFAULT 1`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE vodCategories ADD COLUMN display_order INTEGER`); } catch (e) {}
 
     console.log('[DB] Schema initialization complete');
   }

@@ -1,14 +1,131 @@
 import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
+import './styles/GameCard.css';
+
+/**
+ * Known city/location prefixes used in major sports team names.
+ * Multi-word prefixes (e.g. "St. Louis", "New York") must be listed before
+ * single-word ones so they match greedily.
+ */
+const TEAM_CITY_PREFIXES: string[] = [
+  // Multi-word US/Canada cities (must come first)
+  'St. Louis', 'St Louis', 'New York', 'Los Angeles', 'San Francisco', 'San Diego',
+  'San Jose', 'Kansas City', 'Oklahoma City', 'Salt Lake', 'New Orleans',
+  'Las Vegas', 'Green Bay', 'Tampa Bay', 'Bay Area', 'Golden State',
+  'New England', 'Carolina', 'Rhode Island',
+  'Fort Worth', 'Fort Lauderdale', 'El Paso', 'San Antonio', 'Little Rock',
+  'Baton Rouge', 'West Ham', 'Crystal Palace', 'Brighton', 'Sheffield',
+  'Nottingham', 'Wolverhampton', 'Aston', 'Porto Alegre',
+  'Porto', 'Real Madrid', 'Real Sociedad', 'Real Betis', 'Real Valladolid',
+  'Atletico', 'Athletic',
+  // Single-word US/Canada cities
+  'Atlanta', 'Baltimore', 'Boston', 'Buffalo', 'Charlotte', 'Chicago',
+  'Cincinnati', 'Cleveland', 'Colorado', 'Columbus', 'Dallas', 'Denver',
+  'Detroit', 'Edmonton', 'Florida', 'Houston', 'Indiana', 'Jacksonville',
+  'Louisville', 'Memphis', 'Miami', 'Milwaukee', 'Minnesota', 'Montreal',
+  'Nashville', 'Newark', 'Oakland', 'Orlando', 'Ottawa', 'Philadelphia',
+  'Phoenix', 'Pittsburgh', 'Portland', 'Sacramento', 'Seattle', 'Toronto',
+  'Utah', 'Vancouver', 'Washington', 'Winnipeg', 'Arizona', 'Cincinnati',
+  'Jacksonville', 'Tennessee', 'Mississippi', 'Alabama', 'Georgia', 'Oregon',
+  // Soccer — Premier League / La Liga / Bundesliga / Serie A / Ligue 1 / etc.
+  'Arsenal', 'Chelsea', 'Everton', 'Leicester', 'Liverpool', 'Fulham',
+  'Brentford', 'Bournemouth', 'Burnley', 'Watford', 'Sunderland', 'Middlesbrough',
+  'Bayern', 'Dortmund', 'Leverkusen', 'Leipzig', 'Frankfurt', 'Stuttgart',
+  'Bremen', 'Hamburg', 'Freiburg', 'Augsburg', 'Wolfsburg', 'Mainz', 'Bochum',
+  'Barcelona', 'Sevilla', 'Valencia', 'Villarreal', 'Bilbao', 'Getafe',
+  'Girona', 'Alaves', 'Mallorca', 'Celta', 'Rayo', 'Osasuna', 'Cadiz',
+  'Juventus', 'Napoli', 'Milan', 'Roma', 'Lazio', 'Atalanta', 'Fiorentina',
+  'Torino', 'Udine', 'Monza', 'Bologna', 'Genoa', 'Lecce', 'Frosinone',
+  'Paris', 'Lyon', 'Marseille', 'Lens', 'Lille', 'Monaco', 'Montpellier',
+  'Toulouse', 'Nantes', 'Strasbourg', 'Reims', 'Rennes', 'Brest', 'Clermont',
+  'Ajax', 'Feyenoord', 'Eindhoven', 'Bruges', 'Anderlecht', 'Lisbon', 'Benfica',
+  'Sporting', 'Porto', 'Amsterdam', 'Galatasaray', 'Fenerbahce', 'Besiktas',
+  'Flamengo', 'Palmeiras', 'Santos', 'Corinthians', 'Botafogo', 'Fluminense',
+  'Gremio', 'Internacional',
+  // International / club prefix words
+  'Inter', 'Internazionale', 'Manchester', 'Tottenham', 'Blackburn', 'Blackpool',
+  'Newcastle', 'Swindon', 'Coventry', 'Luton', 'Cambridge',
+  'Rangers', 'Celtic', 'Aberdeen', 'Hibernian', 'Hearts',
+];
+
+// Sort longest-first so multi-word prefixes match before single-word
+TEAM_CITY_PREFIXES.sort((a, b) => b.length - a.length);
+
+/**
+ * Strip a known city/location prefix from a team name, returning only the nickname.
+ * Example: "St. Louis Cardinals" → "Cardinals"
+ *          "New York Mets"       → "Mets"
+ *          "Twins"               → "Twins" (no prefix to remove)
+ */
+function stripCityPrefix(name: string): string {
+  const trimmed = name.trim();
+  for (const city of TEAM_CITY_PREFIXES) {
+    // Match case-insensitively at the start, followed by a space
+    if (trimmed.toLowerCase().startsWith(city.toLowerCase() + ' ')) {
+      const nickname = trimmed.slice(city.length).trim();
+      if (nickname.length > 0) return nickname;
+    }
+  }
+  return trimmed; // No known prefix found — use the full name
+}
+
+/** League IDs that use college/NCAA naming conventions (school name, not mascot). */
+const NCAA_LEAGUE_IDS = new Set([
+  'mens-college-basketball',
+  'womens-college-basketball',
+  'college-football',
+  'college-baseball',
+  'college-softball',
+]);
+
+/**
+ * For NCAA/college teams, EPG channels list games by SCHOOL name, not mascot.
+ * This strips the mascot (last word) and any parenthetical state qualifier.
+ *
+ * Examples:
+ *   "Miami (OH) Redhawks"     → "Miami"
+ *   "Tennessee Volunteers"    → "Tennessee"
+ *   "Santa Clara Broncos"     → "Santa Clara"
+ *   "UCF Knights"             → "UCF"
+ *   "UCLA Bruins"             → "UCLA"
+ *   "Kentucky Wildcats"       → "Kentucky"
+ *   "Troy Trojans"            → "Troy"
+ */
+function stripMascotForCollege(name: string): string {
+  // Remove parenthetical state qualifiers like "(OH)", "(FL)"
+  // e.g. "Miami (OH) Redhawks" → "Miami  Redhawks" → (after trim) "Miami Redhawks"
+  let cleaned = name.replace(/\([^)]*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+
+  // Drop the last word (the mascot/nickname)
+  const words = cleaned.split(/\s+/);
+  if (words.length <= 1) return cleaned; // Single-word school name like "Tennessee"
+  return words.slice(0, -1).join(' ');
+}
+
+/**
+ * Build a search query based on the league type:
+ * - NCAA/college: search by school name (strip mascot)
+ *   "Tennessee Volunteers" + "Santa Clara Broncos" → "Tennessee Santa Clara"
+ * - Pro sports: search by team nickname (strip city prefix)
+ *   "St. Louis Cardinals" + "New York Mets" → "Cardinals Mets"
+ */
+function buildTeamSearchQuery(homeTeam: string, awayTeam: string, leagueId?: string): string {
+  if (leagueId && NCAA_LEAGUE_IDS.has(leagueId)) {
+    return `${stripMascotForCollege(homeTeam)} ${stripMascotForCollege(awayTeam)}`;
+  }
+  return `${stripCityPrefix(homeTeam)} ${stripCityPrefix(awayTeam)}`;
+}
+
 
 interface GameCardProps {
   event: SportsEvent;
   onClick?: () => void;
   onChannelClick?: (channelName: string) => void;
+  onSearchTeams?: (query: string) => void;
   compact?: boolean;
 }
 
-export function GameCard({ event, onClick, onChannelClick, compact = false }: GameCardProps) {
+export function GameCard({ event, onClick, onChannelClick, onSearchTeams, compact = false }: GameCardProps) {
   const isLive = event.status === 'live';
   const isFinished = event.status === 'finished';
   const sport = event.league.sport.toLowerCase();
@@ -158,22 +275,41 @@ export function GameCard({ event, onClick, onChannelClick, compact = false }: Ga
         {renderSportSpecificInfo()}
       </div>
 
-      {event.channels.length > 0 && (
+      {(event.channels.length > 0 || onSearchTeams) && (
         <div className="game-card-footer">
-          <div className="game-card-channels">
-            {event.channels.map((channel, idx) => (
-              <button
-                key={idx}
-                className="game-card-channel-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChannelClick?.(channel.name);
-                }}
-              >
-                {channel.name}
-              </button>
-            ))}
-          </div>
+          {event.channels.length > 0 && (
+            <div className="game-card-channels">
+              {event.channels.map((channel, idx) => (
+                <button
+                  key={idx}
+                  className="game-card-channel-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChannelClick?.(channel.name);
+                  }}
+                >
+                  {channel.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {onSearchTeams && (
+            <button
+              className="game-card-search-teams-btn"
+              title={`Search channels & EPG for ${event.homeTeam.name} vs ${event.awayTeam.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const query = buildTeamSearchQuery(
+                  event.homeTeam.name,
+                  event.awayTeam.name,
+                  event.league.id,
+                );
+                onSearchTeams(query);
+              }}
+            >
+              🔍 Search Teams
+            </button>
+          )}
         </div>
       )}
     </div>

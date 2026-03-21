@@ -43,6 +43,12 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
     const volumeDraggingRef = useRef(false);
     const seekingRef = useRef(false);
 
+    // When true, the mpv-http-error event is silenced.
+    // Used for Stalker/MAC sources where auth headers cause false 401/403 errors
+    // even when the stream actually plays successfully.
+    const ignoreHttpErrorsRef = useRef(false);
+    const setIgnoreHttpErrors = (val: boolean) => { ignoreHttpErrorsRef.current = val; };
+
     // Keep a ref to the onReady callback to avoid re-running the effect on identity changes
     const onReadyRef = useRef(options.onReady);
     useEffect(() => { onReadyRef.current = options.onReady; }, [options.onReady]);
@@ -91,7 +97,11 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
             });
 
             const unlistenHttpError = await listen('mpv-http-error', (e: any) => {
-                setError(e.payload);
+                // Suppress HTTP errors for Stalker/MAC sources where auth headers
+                // cause false 401/403 errors but the stream plays fine.
+                if (!ignoreHttpErrorsRef.current) {
+                    setError(e.payload);
+                }
             });
 
             const unlistenEndFileError = await listen('mpv-end-file-error', (e: any) => {
@@ -120,5 +130,6 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
         volumeDraggingRef, seekingRef,
         setError, setPlaying, setPosition, setVolume, setMuted,
         setDuration, setMpvReady,
+        setIgnoreHttpErrors,
     };
 }

@@ -77,6 +77,7 @@ function App() {
     timeshiftCacheBytes,
     liveBufferOffset,
     includeSourceInSearch,
+    maxSearchResults,
     miniMediaBarForEpgPreview,
     theme,
     shortcuts,
@@ -339,8 +340,8 @@ function App() {
   // ==========================================================================
   // Search Results
   // ==========================================================================
-  const searchChannels = useChannelSearch(debouncedSearchQuery, 200, includeSourceInSearch);
-  const searchPrograms = useProgramSearch(debouncedSearchQuery, 200);
+  const searchChannels = useChannelSearch(debouncedSearchQuery, maxSearchResults, includeSourceInSearch);
+  const searchPrograms = useProgramSearch(debouncedSearchQuery, maxSearchResults);
 
   // ==========================================================================
   // Track Selection Modal State
@@ -407,6 +408,37 @@ function App() {
     if (channel) {
       addToRecentChannels(channel);
       handlePlayChannel(channel);
+    }
+  }, [handlePlayChannel]);
+
+  // ==========================================================================
+  // Handle Channel Navigation (Up/Down)
+  // ==========================================================================
+  const handleChannelUp = useCallback(() => {
+    const channels = currentChannelsRef.current;
+    const currentCh = currentChannelRef.current;
+    if (channels.length > 0 && currentCh) {
+      const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
+      if (currentIndex > 0) {
+        handlePlayChannel(channels[currentIndex - 1]);
+      } else if (currentIndex === 0) {
+        // Wrap to last channel
+        handlePlayChannel(channels[channels.length - 1]);
+      }
+    }
+  }, [handlePlayChannel]);
+
+  const handleChannelDown = useCallback(() => {
+    const channels = currentChannelsRef.current;
+    const currentCh = currentChannelRef.current;
+    if (channels.length > 0 && currentCh) {
+      const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
+      if (currentIndex >= 0 && currentIndex < channels.length - 1) {
+        handlePlayChannel(channels[currentIndex + 1]);
+      } else if (currentIndex === channels.length - 1) {
+        // Wrap to first channel
+        handlePlayChannel(channels[0]);
+      }
     }
   }, [handlePlayChannel]);
 
@@ -913,6 +945,8 @@ function App() {
             handleSeek(Math.max(0, timeshiftState.cacheEnd - liveBufferOffset));
           }
         }}
+        onChannelUp={handleChannelUp}
+        onChannelDown={handleChannelDown}
       />
 
       {/* Multiview Layout */}
@@ -1005,6 +1039,8 @@ function App() {
         miniMediaBarForEpgPreview={miniMediaBarForEpgPreview}
         onTogglePlay={handleTogglePlay}
         isPlaying={playing}
+        onChannelUp={handleChannelUp}
+        onChannelDown={handleChannelDown}
       />
 
       {/* Settings Panel */}

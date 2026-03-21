@@ -118,6 +118,34 @@ export function ChannelContextMenu({
         return () => document.removeEventListener('keydown', handleEscape);
     }, [onClose]);
 
+    async function handleCopyStreamUrl() {
+        try {
+            let streamUrl = channel.direct_url || '';
+
+            // If it's an Xtream source and direct_url isn't already a full URL, we need to build it
+            if (channel.source_id && window.storage && !streamUrl.startsWith('http')) {
+                const sourceRes = await window.storage.getSource(channel.source_id);
+                if (sourceRes.data?.type === 'xtream' && sourceRes.data.username && sourceRes.data.password) {
+                    const baseUrl = sourceRes.data.url.replace(/\/+$/, '');
+                    const rawStreamId = channel.stream_id.replace(`${channel.source_id}_`, '');
+                    streamUrl = `${baseUrl}/live/${encodeURIComponent(sourceRes.data.username)}/${encodeURIComponent(sourceRes.data.password)}/${rawStreamId}.ts`;
+                }
+            }
+
+            if (streamUrl) {
+                await navigator.clipboard.writeText(streamUrl);
+                showSuccess('Copied', 'Stream URL copied to clipboard');
+            } else {
+                showError('Error', 'Could not resolve stream URL');
+            }
+        } catch (e: any) {
+            console.error('Failed to copy stream URL:', e);
+            showError('Error', e?.message || 'Failed to copy stream URL');
+        } finally {
+            onClose();
+        }
+    }
+
     async function createRecording(startTimestamp: number, endTimestamp: number, title: string) {
         let resolvedUrl: string | undefined;
 
@@ -397,6 +425,10 @@ export function ChannelContextMenu({
             <div className="context-menu-separator" />
             <div className="context-menu-item" onClick={() => setCurrentView('group')}>
                 📋 Add to Group →
+            </div>
+            <div className="context-menu-separator" />
+            <div className="context-menu-item" onClick={handleCopyStreamUrl}>
+                🔗 Copy Stream URL
             </div>
             <div className="context-menu-separator" />
             <div className="context-menu-item" onClick={() => setShowTVMazeModal(true)}>

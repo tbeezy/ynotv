@@ -7,6 +7,7 @@ import { resolvePlayUrl } from '../services/stream-resolver';
 import { addToRecentChannels } from '../utils/recentChannels';
 import { db } from '../db';
 import type { useMpvListeners } from './useMpvListeners';
+import { logInfo, logWarn, logError } from '../utils/logger';
 
 /**
  * Generate fallback stream URLs when primary fails.
@@ -55,31 +56,43 @@ async function tryLoadWithFallbacks(
   userAgent?: string,
   onError?: (msg: string) => void
 ): Promise<{ success: boolean; url: string; error?: string }> {
+  logInfo('[Playback] Setting User-Agent:', userAgent || '(using default)');
+
   if (userAgent) {
     try {
       await Bridge.setProperty('user-agent', userAgent);
     } catch (e) {
-      console.warn('Failed to set user-agent:', e);
+      logWarn('Failed to set user-agent:', e);
     }
   }
 
+  logInfo('[Playback] Loading URL:', primaryUrl);
   const result = await Bridge.loadVideo(primaryUrl);
 
   if (result.success) {
+    logInfo('[Playback] Successfully loaded:', primaryUrl);
     return { success: true, url: primaryUrl };
   }
 
   const errorMsg = (result as any).error || 'Unknown error';
+  logWarn('[Playback] Failed to load:', primaryUrl, 'Error:', errorMsg);
 
   const fallbacks = getStreamFallbacks(primaryUrl, isLive);
-
-  for (const fallbackUrl of fallbacks) {
-    const fallbackResult = await Bridge.loadVideo(fallbackUrl);
-    if (fallbackResult.success) {
-      return { success: true, url: fallbackUrl };
-    }
+  if (fallbacks.length > 0) {
+    logInfo('[Playback] Trying fallback URLs:', fallbacks);
   }
 
+  for (const fallbackUrl of fallbacks) {
+    logInfo('[Playback] Trying fallback:', fallbackUrl);
+    const fallbackResult = await Bridge.loadVideo(fallbackUrl);
+    if (fallbackResult.success) {
+      logInfo('[Playback] Fallback succeeded:', fallbackUrl);
+      return { success: true, url: fallbackUrl };
+    }
+    logWarn('[Playback] Fallback failed:', fallbackUrl);
+  }
+
+  logError('[Playback] All URLs failed. Final error:', errorMsg);
   return { success: false, url: primaryUrl, error: errorMsg };
 }
 
@@ -166,6 +179,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     mpvReady, playing, volume, muted, position, duration, error,
     volumeDraggingRef, seekingRef,
     setError, setPlaying, setPosition, setVolume,
+    setIgnoreHttpErrors,
   } = mpvListeners;
 
   // Pending seek ref for deferred scrubbing
@@ -198,14 +212,21 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     // Clear error immediately - stale errors from old channel will be ignored
     setError(null);
 
+    logInfo('[Playback] Loading channel:', channel.name);
+    logInfo('[Playback] Raw URL:', channel.direct_url);
+
     let resolved;
     try {
       resolved = await resolvePlayUrl(channel.source_id, channel.direct_url);
     } catch (e) {
-      console.error('Stalker resolution failed:', e);
+      logError('Stalker resolution failed:', e);
       setError('Failed to resolve Stalker link');
       return;
     }
+
+    logInfo('[Playback] Resolved URL:', resolved.url);
+    logInfo('[Playback] User-Agent:', resolved.userAgent || '(default)');
+    logInfo('[Playback] Source:', resolved.sourceName || channel.source_id);
 
     const result = await tryLoadWithFallbacks(
       resolved.url,
@@ -285,16 +306,29 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     setCatchupInfo(null);
 
     let resolved;
+    let sourceData: { type?: string } | undefined;
     try {
+      // Look up source type so we can decide whether to suppress HTTP errors
+      if (window.storage && info.source_id) {
+        const srcResult = await window.storage.getSource(info.source_id);
+        sourceData = srcResult?.data;
+      }
       resolved = await resolvePlayUrl(info.source_id, info.url);
     } catch (err) {
-      console.error('Failed to resolve Source info:', err);
+      logError('Failed to resolve Source info:', err);
       setError('Failed to resolve stream URL');
       return;
     }
 
+    // Stalker/MAC sources require session headers that MPV doesn't send,
+    // so they always trigger a 401/403 HTTP error — but the stream plays fine.
+    // Suppress these false positives.
+    const isStalker = sourceData?.type === 'stalker';
+    setIgnoreHttpErrors(isStalker);
+
     const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
+      setIgnoreHttpErrors(false);
       setError(result.error ?? 'Failed to load stream');
     } else {
       const workingUrl = result.url;
@@ -312,7 +346,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       // Close the VOD page when playing
       onCloseView?.();
     }
-  }, []);
+  }, [setIgnoreHttpErrors]);
 
   const handlePlayRecording = useCallback(async (recording: import('../db').DvrRecording, onCloseView?: () => void) => {
     setError(null);

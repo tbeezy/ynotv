@@ -1,6 +1,6 @@
 [package]
 name = "ynotv"
-version = "1.6.0"
+version = "1.6.1"
 description = "A Tauri App"
 authors = ["tbeezy"]
 edition = "2021"
@@ -64,6 +64,7 @@ flate2 = "1.0"
 
 # HTTP client for TMDB caching and EPG streaming
 reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls", "gzip"], default-features = false }
+log = "0.4.29"
 
 # Win32 APIs for MPV HWND resizing (Windows only)
 [target.'cfg(target_os = "windows")'.dependencies]

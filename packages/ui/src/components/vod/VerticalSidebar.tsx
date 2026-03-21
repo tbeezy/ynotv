@@ -8,12 +8,33 @@
  * - Back button
  */
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import './VerticalSidebar.css';
+
+// Chevron Icon for expand/collapse
+const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
+    <svg
+        width="16" height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+            marginRight: '8px'
+        }}
+    >
+        <path d="M9 6l6 6-6 6" />
+    </svg>
+);
 
 interface Category {
     id: string;
     name: string;
+    source_id?: string;
 }
 
 export interface VerticalSidebarProps {
@@ -25,6 +46,7 @@ export interface VerticalSidebarProps {
     searchQuery?: string;
     onSearchChange?: (query: string) => void;
     onSearchSubmit?: () => void;
+    onContextMenu?: (e: React.MouseEvent, sourceId: string, sourceName: string) => void;
 }
 
 // Icons
@@ -77,7 +99,46 @@ export function VerticalSidebar({
     searchQuery = '',
     onSearchChange,
     onSearchSubmit,
+    onContextMenu,
 }: VerticalSidebarProps) {
+    const [sources, setSources] = useState<Record<string, string>>({});
+    const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
+
+    // Fetch sources to resolve names and initialize expanded state
+    useEffect(() => {
+        async function fetchSources() {
+            if (window.storage) {
+                const result = await window.storage.getSources();
+                if (result.data) {
+                    const data = result.data;
+                    const sourceMap = data.reduce((acc: Record<string, string>, s: any) => {
+                        acc[s.id] = s.name;
+                        return acc;
+                    }, {});
+                    setSources(sourceMap);
+
+                    // Initialize expanded state for sources
+                    setExpandedSources(prev => {
+                        const next = { ...prev };
+                        data.forEach((s: any) => {
+                            if (next[s.id] === undefined) {
+                                next[s.id] = true; // default expanded
+                            }
+                        });
+                        return next;
+                    });
+                }
+            }
+        }
+        fetchSources();
+    }, []);
+
+    const toggleSource = (sourceId: string) => {
+        setExpandedSources(prev => ({
+            ...prev,
+            [sourceId]: !prev[sourceId]
+        }));
+    };
 
     // Process categories: strip prefixes and sort alphabetically
     const processedCategories = useMemo(() => {
@@ -90,6 +151,32 @@ export function VerticalSidebar({
             }))
             .sort((a, b) => a.displayName.localeCompare(b.displayName));
     }, [categories]);
+
+    // Group categories by source
+    const groupedCategories = useMemo(() => {
+        const groups: Record<string, typeof processedCategories> = {};
+        const orphans: typeof processedCategories = [];
+
+        for (const cat of processedCategories) {
+            if (cat.source_id) {
+                if (!groups[cat.source_id]) {
+                    groups[cat.source_id] = [];
+                }
+                groups[cat.source_id].push(cat);
+            } else {
+                orphans.push(cat);
+            }
+        }
+
+        // Sort groups by source name
+        const sortedGroupEntries = Object.entries(groups).sort(([aId], [bId]) => {
+            const nameA = sources[aId] || '';
+            const nameB = sources[bId] || '';
+            return nameA.localeCompare(nameB);
+        });
+
+        return { entries: sortedGroupEntries, orphans };
+    }, [processedCategories, sources]);
 
     // Handle search key down
     const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -164,8 +251,42 @@ export function VerticalSidebar({
 
                 <div className="vertical-sidebar__separator" />
 
-                {/* Categories */}
-                {processedCategories.map((cat) => (
+                {/* Categories grouped by Source */}
+                {groupedCategories.entries.map(([sourceId, sourceCats]) => (
+                    <div key={sourceId} className="vertical-sidebar__source-group">
+                        <button
+                            className="vertical-sidebar__source-header"
+                            onClick={() => toggleSource(sourceId)}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                onContextMenu?.(e, sourceId, sources[sourceId] || 'Unknown Source');
+                            }}
+                        >
+                            <div className="source-header-left">
+                                <ChevronIcon expanded={!!expandedSources[sourceId]} />
+                                <span className="source-name">{sources[sourceId] || 'Loading...'}</span>
+                            </div>
+                            <span className="source-count">{sourceCats.length}</span>
+                        </button>
+
+                        {expandedSources[sourceId] && (
+                            <div className="vertical-sidebar__source-content">
+                                {sourceCats.map((cat) => (
+                                    <button
+                                        key={cat.id}
+                                        className={`vertical-sidebar__item nested ${selectedId === cat.id ? 'active' : ''}`}
+                                        onClick={() => onSelect(cat.id)}
+                                    >
+                                        {cat.displayName}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+
+                {/* Orphan Categories (if any) */}
+                {groupedCategories.orphans.map((cat) => (
                     <button
                         key={cat.id}
                         className={`vertical-sidebar__item ${selectedId === cat.id ? 'active' : ''}`}

@@ -1,6 +1,27 @@
   # Changelog
   
-  ## v1.6.0
+
+  ## v1.6.1
+  Added:
+  - Max Search Limit setting(Settings -> LiveTV)
+  - Playback debug log info
+  - Right click for URL on Channels if you want to play in external player for M3U and Xtream sources
+  - Copy Stream URL for Vods of Xtream Code sources
+  - Better search query for multi words
+  - New Search Team option in Sports for Live Games, clicking the new Search Teams button on a Match Card will do a search for both team names in your playlist for better matching
+  - Up/Down channel button in Preview and Now Playing bar
+  - List Vod Movies/series by sources so its not one big List
+  - Manage Vod categories, Right click the source in Movies/Series and you can enable/disable categories
+  - Better debug logging when debug is enabled
+
+  Fixes:
+  - Removed TMDB automatic matching, was causing slowdowns. It will instead display Trending Now, Top Rated, On the Air, and Popular categories in Home view of Movies/Series. Clicking on one of the movies/series will do a search within your playlist for that specific title.
+  - Removed Genre carousel for Vods as it was causing slowdown in loading the Movies/Series page.
+  - Vod optimization, categories should show instantly now
+  - Fixed Stalker/MAC portal VOD so it doesn't display error message for working streams
+  
+    ## v1.6.0
+
   Added:
   - Current watching channel is now highlighted in LiveTV/EPG
   - Added new option in Settings -> LiveTV. Enable pause/volume control in the Preview video for EPG. Restart is needed for it to take effect.

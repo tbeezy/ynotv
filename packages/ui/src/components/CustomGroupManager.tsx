@@ -43,6 +43,15 @@ function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceI
 
         async function search() {
             try {
+                // Load max search results setting
+                let maxSearchResults = 200;
+                if (window.storage) {
+                    const settings = await window.storage.getSettings();
+                    if (settings.data?.maxSearchResults) {
+                        maxSearchResults = settings.data.maxSearchResults;
+                    }
+                }
+
                 console.log('[CustomGroupManager] Searching for:', query);
 
                 // Get enabled category IDs for category filtering
@@ -66,9 +75,9 @@ function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceI
                     all = await db.channels.whereRaw(
                         `LOWER(name) LIKE ? AND source_id IN (${placeholders})`,
                         [`%${searchTerm}%`, ...sourceList]
-                    ).limit(200).toArray();
+                    ).limit(maxSearchResults).toArray();
                 } else {
-                    all = await db.channels.whereRaw('LOWER(name) LIKE ?', [`%${searchTerm}%`]).limit(200).toArray();
+                    all = await db.channels.whereRaw('LOWER(name) LIKE ?', [`%${searchTerm}%`]).limit(maxSearchResults).toArray();
                 }
                 console.log('[CustomGroupManager] Raw results:', all.length, 'for query:', query);
 
@@ -84,7 +93,7 @@ function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceI
                         if (!hasEnabledCategory) return false;
                     }
                     return true;
-                }).slice(0, 100);
+                }).slice(0, maxSearchResults);
                 console.log('[CustomGroupManager] Filtered results:', filtered.length, 'for query:', query);
                 if (isMounted) setResults(filtered);
             } catch (err) {
