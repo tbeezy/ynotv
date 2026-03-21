@@ -11,11 +11,12 @@ interface GameDetailProps {
   event: SportsEvent;
   onClose: () => void;
   onChannelClick?: (channelName: string) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
 type TabId = 'stats' | 'players' | 'scoring' | 'info';
 
-export function GameDetail({ event, onClose, onChannelClick }: GameDetailProps) {
+export function GameDetail({ event, onClose, onChannelClick, onPlayChannel }: GameDetailProps) {
   const [summary, setSummary] = useState<GameSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('stats');

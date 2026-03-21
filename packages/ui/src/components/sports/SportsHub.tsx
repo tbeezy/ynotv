@@ -21,9 +21,10 @@ interface SportsHubProps {
   onSearchChannels?: (query: string) => void;
   previewEnabled?: boolean;
   onTogglePreview?: () => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
-export function SportsHub({ onClose, onSearchChannels, previewEnabled, onTogglePreview }: SportsHubProps) {
+export function SportsHub({ onClose, onSearchChannels, previewEnabled, onTogglePreview, onPlayChannel }: SportsHubProps) {
   const previewRef = useRef<HTMLDivElement>(null);
   const activeTab = useSportsSelectedTab();
   const setActiveTab = useSetSportsSelectedTab();
@@ -334,13 +335,13 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
     const tabContent = (() => {
       switch (activeTab) {
         case 'live':
-          return <LiveScoresTab onSearchChannels={handleSearchChannels} />;
+          return <LiveScoresTab onSearchChannels={handleSearchChannels} onPlayChannel={onPlayChannel} />;
         case 'upcoming':
-          return <UpcomingTab onSearchChannels={handleSearchChannels} />;
+          return <UpcomingTab onSearchChannels={handleSearchChannels} onPlayChannel={onPlayChannel} />;
         case 'leagues':
-          return <LeaguesTab onSearchChannels={handleSearchChannels} />;
+          return <LeaguesTab onSearchChannels={handleSearchChannels} onPlayChannel={onPlayChannel} />;
         case 'favorites':
-          return <FavoritesTab onSearchChannels={handleSearchChannels} />;
+          return <FavoritesTab onSearchChannels={handleSearchChannels} onPlayChannel={onPlayChannel} />;
         case 'news':
           return <NewsTab onSearchChannels={handleSearchChannels} />;
         case 'leaders':

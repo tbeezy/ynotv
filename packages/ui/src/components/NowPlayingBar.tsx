@@ -646,7 +646,11 @@ export function NowPlayingBar({
               {onChannelUp && (
                 <button
                   className="npb-btn"
-                  onClick={onChannelUp}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onChannelUp();
+                  }}
                   disabled={!canControl}
                   title="Previous Channel (Up)"
                 >
@@ -656,7 +660,11 @@ export function NowPlayingBar({
               {onChannelDown && (
                 <button
                   className="npb-btn"
-                  onClick={onChannelDown}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onChannelDown();
+                  }}
                   disabled={!canControl}
                   title="Next Channel (Down)"
                 >

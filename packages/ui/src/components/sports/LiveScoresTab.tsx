@@ -13,9 +13,10 @@ import './LoadingSkeleton.css';
 
 interface LiveScoresTabProps {
   onSearchChannels?: (channelName: string) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
-export function LiveScoresTab({ onSearchChannels }: LiveScoresTabProps) {
+export function LiveScoresTab({ onSearchChannels, onPlayChannel }: LiveScoresTabProps) {
   const [selectedEvent, setSelectedEvent] = useState<SportsEvent | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
@@ -189,6 +190,7 @@ export function LiveScoresTab({ onSearchChannels }: LiveScoresTabProps) {
                     onClick={() => setSelectedEvent(event)}
                     onChannelClick={handleChannelClick}
                     onSearchTeams={onSearchChannels}
+                    onPlayChannel={onPlayChannel}
                   />
                 ))}
               </div>

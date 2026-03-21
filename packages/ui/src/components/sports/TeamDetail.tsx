@@ -15,11 +15,12 @@ interface TeamDetailProps {
   team: SportsTeam;
   onClose: () => void;
   onChannelClick?: (channelName: string) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
 type TabId = 'schedule' | 'roster';
 
-export function TeamDetail({ team, onClose, onChannelClick }: TeamDetailProps) {
+export function TeamDetail({ team, onClose, onChannelClick, onPlayChannel }: TeamDetailProps) {
   const [details, setDetails] = useState<TeamDetails | null>(null);
   const [upcoming, setUpcoming] = useState<SportsEvent[]>([]);
   const [past, setPast] = useState<SportsEvent[]>([]);
@@ -64,6 +65,7 @@ export function TeamDetail({ team, onClose, onChannelClick }: TeamDetailProps) {
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
         onChannelClick={onChannelClick}
+        onPlayChannel={onPlayChannel}
       />
     );
   }

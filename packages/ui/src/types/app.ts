@@ -30,6 +30,7 @@ export type ShortcutAction =
     | 'layout2x2'
     | 'channelUp'
     | 'channelDown'
+    | 'toggleEpgView'
     | 'replayLastStream';
 
 export interface SavedChannelState {

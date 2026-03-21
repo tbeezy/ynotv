@@ -42,6 +42,7 @@ export interface UseKeyboardShortcutsOptions {
     handleShowSubtitleModalRef: MutableRefObject<() => void>;
     handleShowAudioModalRef: MutableRefObject<() => void>;
     handleSeekRef: MutableRefObject<(position: number) => void>;
+    handleToggleEpgViewRef: MutableRefObject<() => void>;
     setActiveViewRef: MutableRefObject<React.Dispatch<React.SetStateAction<View>>>;
     setCategoriesOpenRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
     setSidebarExpandedRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
@@ -74,6 +75,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         handleShowSubtitleModalRef,
         handleShowAudioModalRef,
         handleSeekRef,
+        handleToggleEpgViewRef,
         setActiveViewRef,
         setCategoriesOpenRef,
         setSidebarExpandedRef,
@@ -163,6 +165,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 const currentActiveView = activeViewRef.current;
                 setCategoriesOpenRef.current(false);
                 setActiveViewRef.current(currentActiveView === 'calendar' ? 'none' : 'calendar');
+            } else if (matches('toggleEpgView', e.key)) {
+                e.preventDefault();
+                handleToggleEpgViewRef.current();
             } else if (matches('focusSearch', e.key)) {
                 e.preventDefault();
                 setShowControlsRef.current(true);

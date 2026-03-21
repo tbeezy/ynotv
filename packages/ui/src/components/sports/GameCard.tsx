@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
+import { db } from '../../db';
+import type { StoredChannel } from '../../db';
 import './styles/GameCard.css';
 
 /**
@@ -122,13 +125,19 @@ interface GameCardProps {
   onClick?: () => void;
   onChannelClick?: (channelName: string) => void;
   onSearchTeams?: (query: string) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
   compact?: boolean;
 }
 
-export function GameCard({ event, onClick, onChannelClick, onSearchTeams, compact = false }: GameCardProps) {
+const inlineSearchCache = new Map<string, import('../../db').StoredChannel[]>();
+
+export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlayChannel, compact = false }: GameCardProps) {
   const isLive = event.status === 'live';
   const isFinished = event.status === 'finished';
   const sport = event.league.sport.toLowerCase();
+
+  const [isSearching, setIsSearching] = useState(false);
+  const [localSearchChannels, setLocalSearchChannels] = useState<StoredChannel[] | null>(() => inlineSearchCache.get(event.id) || null);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -281,7 +290,7 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, compac
             <div className="game-card-channels">
               {event.channels.map((channel, idx) => (
                 <button
-                  key={idx}
+                  key={`api-ch-${idx}`}
                   className="game-card-channel-btn"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -294,21 +303,146 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, compac
             </div>
           )}
           {onSearchTeams && (
-            <button
-              className="game-card-search-teams-btn"
-              title={`Search channels & EPG for ${event.homeTeam.name} vs ${event.awayTeam.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                const query = buildTeamSearchQuery(
-                  event.homeTeam.name,
-                  event.awayTeam.name,
-                  event.league.id,
-                );
-                onSearchTeams(query);
-              }}
-            >
-              🔍 Search Teams
-            </button>
+            <div className="game-card-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: event.channels.length > 0 ? '8px' : '0' }}>
+              <button
+                className="game-card-search-teams-btn"
+                title={`Search EPG for ${event.homeTeam.name} vs ${event.awayTeam.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const query = buildTeamSearchQuery(
+                    event.homeTeam.name,
+                    event.awayTeam.name,
+                    event.league.id,
+                  );
+                  onSearchTeams(query);
+                }}
+              >
+                🔍 Search Teams
+              </button>
+              {onChannelClick && (
+                <button
+                  className="game-card-search-teams-btn"
+                  title={`Find streams inline for ${event.homeTeam.name} vs ${event.awayTeam.name}`}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (localSearchChannels && localSearchChannels.length > 0) {
+                      setLocalSearchChannels(null);
+                      inlineSearchCache.delete(event.id);
+                      return;
+                    }
+
+                    setIsSearching(true);
+                    try {
+                      const query = buildTeamSearchQuery(
+                        event.homeTeam.name,
+                        event.awayTeam.name,
+                        event.league.id,
+                      );
+                      const queryWords = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
+                      if (queryWords.length === 0) return;
+
+                      const dbInstance = await (db as any).dbPromise;
+                      const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
+                      const enabledSources = sourcesResult.data?.filter(s => s.enabled !== false).map(s => s.id) || [];
+                      
+                      if (enabledSources.length === 0) {
+                        setLocalSearchChannels([]);
+                        return;
+                      }
+
+                      const sourcePlaceholders = enabledSources.map(() => '?').join(',');
+                      const enabledCategoryRows = await dbInstance.select(
+                        `SELECT category_id FROM categories WHERE source_id IN (${sourcePlaceholders}) AND (enabled IS NULL OR enabled != 0)`,
+                        enabledSources
+                      );
+                      const enabledCategoryIds = enabledCategoryRows.map((r: any) => r.category_id);
+                     
+                      if (enabledCategoryIds.length === 0) {
+                        setLocalSearchChannels([]);
+                        return;
+                      }
+                      
+                      const categoryPlaceholders = enabledCategoryIds.map(() => '?').join(',');
+                      const wordLikeClauses = queryWords.map(() => `c.name LIKE ?`).join(' AND ');
+                      const progLikeClauses = queryWords.map(() => `p.title LIKE ?`).join(' AND ');
+                      const wordParams = queryWords.map(w => `%${w}%`);
+                      const nowIso = new Date().toISOString();
+
+                      // Query 1: Channel name matches
+                      const channelMatches = await dbInstance.select(
+                        `SELECT DISTINCT c.*
+                         FROM channels c
+                         CROSS JOIN json_each(c.category_ids) AS cat
+                         WHERE (${wordLikeClauses})
+                         AND c.source_id IN (${sourcePlaceholders})
+                         AND (c.enabled IS NULL OR c.enabled != 0)
+                         AND cat.value IN (${categoryPlaceholders})
+                         LIMIT 15`,
+                        [...wordParams, ...enabledSources, ...enabledCategoryIds]
+                      );
+
+                      // Query 2: Program title matches (EPG)
+                      const programMatches = await dbInstance.select(
+                        `SELECT DISTINCT c.*
+                         FROM channels c
+                         INNER JOIN programs p ON p.stream_id = c.stream_id
+                         CROSS JOIN json_each(c.category_ids) AS cat
+                         WHERE (${progLikeClauses})
+                         AND p.end > ?
+                         AND c.source_id IN (${sourcePlaceholders})
+                         AND (c.enabled IS NULL OR c.enabled != 0)
+                         AND cat.value IN (${categoryPlaceholders})
+                         LIMIT 15`,
+                        [...wordParams, nowIso, ...enabledSources, ...enabledCategoryIds]
+                      );
+
+                      // Merge unique channels efficiently
+                      const mergedMap = new Map<string, StoredChannel>();
+                      for (const ch of channelMatches) mergedMap.set(ch.stream_id, ch as StoredChannel);
+                      for (const ch of programMatches) mergedMap.set(ch.stream_id, ch as StoredChannel);
+
+                      const results = Array.from(mergedMap.values()).slice(0, 15);
+                      inlineSearchCache.set(event.id, results);
+                      setLocalSearchChannels(results);
+                    } catch (err) {
+                      console.error('Inline local search failed:', err);
+                      setLocalSearchChannels([]);
+                      inlineSearchCache.set(event.id, []);
+                    } finally {
+                      setIsSearching(false);
+                    }
+                  }}
+                >
+                  {isSearching ? '⏳ Searching...' : (localSearchChannels && localSearchChannels.length > 0) ? `Hide Results` : '🔍 Show Search Results'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {localSearchChannels && localSearchChannels.length > 0 && (
+            <div className="game-card-channels" style={{ marginTop: '8px' }}>
+              {localSearchChannels.map((channel, idx) => (
+                <button
+                  key={`local-ch-${idx}`}
+                  className="game-card-channel-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onPlayChannel && channel) {
+                      onPlayChannel(channel);
+                    } else {
+                      onChannelClick?.(channel.name);
+                    }
+                  }}
+                >
+                  {channel.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {localSearchChannels && localSearchChannels.length === 0 && (
+            <div className="game-card-no-results" style={{ width: '100%', marginTop: '8px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
+               No results found
+            </div>
           )}
         </div>
       )}

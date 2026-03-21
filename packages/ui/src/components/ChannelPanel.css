@@ -361,6 +361,20 @@
   max-width: 100%;
 }
 
+.guide-top-section.alternate-view .guide-preview-minibar {
+  display: none !important;
+}
+
+.guide-top-section.alternate-view .now-playing-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 100;
+  padding-bottom: 24px;
+}
+
 /* Header */
 .guide-header {
   display: flex;

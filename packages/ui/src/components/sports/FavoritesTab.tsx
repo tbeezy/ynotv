@@ -5,9 +5,10 @@ import { TeamDetail } from './TeamDetail';
 
 interface FavoritesTabProps {
   onSearchChannels?: (channelName: string) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
-export function FavoritesTab({ onSearchChannels }: FavoritesTabProps) {
+export function FavoritesTab({ onSearchChannels, onPlayChannel }: FavoritesTabProps) {
   const favorites = useFavoriteTeams();
   const removeFavorite = useRemoveFavorite();
   const [selectedTeam, setSelectedTeam] = useState<SportsTeam | null>(null);
@@ -24,6 +25,7 @@ export function FavoritesTab({ onSearchChannels }: FavoritesTabProps) {
         team={selectedTeam}
         onClose={() => setSelectedTeam(null)}
         onChannelClick={handleChannelClick}
+        onPlayChannel={onPlayChannel}
       />
     );
   }

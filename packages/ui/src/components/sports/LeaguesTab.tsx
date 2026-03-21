@@ -23,6 +23,7 @@ import { GameDetail } from './GameDetail';
 
 interface LeaguesTabProps {
   onSearchChannels?: (channelName: string) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
 type LeagueView = 'teams' | 'schedule' | 'standings';
@@ -30,7 +31,7 @@ type LeagueView = 'teams' | 'schedule' | 'standings';
 // Sports that are individual (no teams)
 const INDIVIDUAL_SPORTS = ['ufc', 'pga', 'lpga', 'atp', 'wta', 'f1', 'nascar', 'indycar'];
 
-export function LeaguesTab({ onSearchChannels }: LeaguesTabProps) {
+export function LeaguesTab({ onSearchChannels, onPlayChannel }: LeaguesTabProps) {
   const [leagues, setLeagues] = useState<SportsLeague[]>([]);
   const [selectedLeague, setSelectedLeague] = useState<SportsLeague | null>(null);
   const [leagueEvents, setLeagueEvents] = useState<SportsEvent[]>([]);
@@ -163,11 +164,13 @@ export function LeaguesTab({ onSearchChannels }: LeaguesTabProps) {
           onTeamSelect={setSelectedTeam}
           onChannelClick={handleChannelClick}
           onEventSelect={setSelectedEvent}
+          onPlayChannel={onPlayChannel}
         />
         <GameDetail
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
           onChannelClick={handleChannelClick}
+          onPlayChannel={onPlayChannel}
         />
       </>
     );
@@ -254,6 +257,7 @@ interface LeagueDetailProps {
   onTeamSelect: (team: SportsTeam) => void;
   onChannelClick?: (channelName: string) => void;
   onEventSelect?: (event: SportsEvent) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
 function LeagueDetail({
@@ -273,6 +277,7 @@ function LeagueDetail({
   onTeamSelect,
   onChannelClick,
   onEventSelect,
+  onPlayChannel,
 }: LeagueDetailProps) {
   const isUFC = league.id === 'ufc';
   const isGolf = league.id === 'pga' || league.id === 'lpga';

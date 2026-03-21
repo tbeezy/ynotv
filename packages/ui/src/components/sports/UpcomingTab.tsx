@@ -12,9 +12,10 @@ import './LoadingSkeleton.css';
 
 interface UpcomingTabProps {
   onSearchChannels?: (channelName: string) => void;
+  onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
 }
 
-export function UpcomingTab({ onSearchChannels }: UpcomingTabProps) {
+export function UpcomingTab({ onSearchChannels, onPlayChannel }: UpcomingTabProps) {
   const [selectedEvent, setSelectedEvent] = useState<SportsEvent | null>(null);
   const [daysAhead, setDaysAhead] = useState(3);
 
@@ -131,6 +132,8 @@ export function UpcomingTab({ onSearchChannels }: UpcomingTabProps) {
                   event={event}
                   onClick={() => setSelectedEvent(event)}
                   onChannelClick={handleChannelClick}
+                  onSearchTeams={onSearchChannels}
+                  onPlayChannel={onPlayChannel}
                 />
               ))}
             </div>

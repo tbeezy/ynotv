@@ -12,6 +12,7 @@ import { FavoriteManager } from './settings/FavoriteManager';
 import { CustomGroupManager } from './CustomGroupManager';
 
 import { useChannelSortOrder, useEpgView } from '../stores/uiStore';
+import { NowPlayingBar } from './NowPlayingBar';
 import type { StoredChannel, StoredProgram, WatchlistItem } from '../db';
 import { db } from '../db';
 import { VideoErrorOverlay } from './VideoErrorOverlay';
@@ -105,6 +106,42 @@ interface ChannelPanelProps {
   isPlaying?: boolean;
   onChannelUp?: () => void;
   onChannelDown?: () => void;
+
+  // Playback state & controls for Alternate View NowPlayingBar overlay
+  mpvReady?: boolean;
+  duration?: number;
+  position?: number;
+  muted?: boolean;
+  volume?: number;
+  isVod?: boolean;
+  vodInfo?: import('../types/media').VodPlayInfo | null;
+  isCatchup?: boolean;
+  catchupInfo?: {
+    channelId: string;
+    programTitle: string;
+    startTime: number;
+    duration: number;
+  } | null;
+  onStop?: () => void;
+  onToggleMute?: () => void;
+  onVolumeChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSeek?: (seconds: number) => void;
+  onCycleSubtitle?: () => void;
+  onCycleAudio?: () => void;
+  onToggleStats?: () => void;
+  onToggleFullscreen?: () => void;
+  onShowSubtitleModal?: () => void;
+  onShowAudioModal?: () => void;
+  onCatchupSeek?: (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number, seekSeconds: number) => void;
+  timeshiftEnabled?: boolean;
+  timeshiftState?: {
+    cacheStart: number;
+    cacheEnd: number;
+    timePos: number;
+    behindLive: number;
+    cachedDuration: number;
+  } | null;
+  onTimeshiftCatchUp?: () => void;
 }
 
 export function ChannelPanel({
@@ -133,6 +170,29 @@ export function ChannelPanel({
   isPlaying,
   onChannelUp,
   onChannelDown,
+  mpvReady = false,
+  duration = 0,
+  position = 0,
+  muted = false,
+  volume = 100,
+  isVod = false,
+  vodInfo = null,
+  isCatchup = false,
+  catchupInfo = null,
+  onStop,
+  onToggleMute,
+  onVolumeChange,
+  onSeek,
+  onCycleSubtitle,
+  onCycleAudio,
+  onToggleStats,
+  onToggleFullscreen,
+  onShowSubtitleModal,
+  onShowAudioModal,
+  onCatchupSeek,
+  timeshiftEnabled = false,
+  timeshiftState = null,
+  onTimeshiftCatchUp,
 }: ChannelPanelProps) {
   const epgView = useEpgView();
 
@@ -162,6 +222,37 @@ export function ChannelPanel({
 
   // Get active recordings for showing indicators
   const { recordings: activeRecordings } = useActiveRecordings(5000);
+
+  // Alternate view overlay tracking
+  const [alternateControlsVisible, setAlternateControlsVisible] = useState(false);
+  const mouseMoveTimeoutRef = useRef<number | null>(null);
+
+  const handlePreviewMouseMove = useCallback(() => {
+    if (epgView !== 'alternate') return;
+    setAlternateControlsVisible(true);
+    if (mouseMoveTimeoutRef.current) {
+      window.clearTimeout(mouseMoveTimeoutRef.current);
+    }
+    mouseMoveTimeoutRef.current = window.setTimeout(() => {
+      setAlternateControlsVisible(false);
+    }, 3000);
+  }, [epgView]);
+
+  const handlePreviewMouseLeave = useCallback(() => {
+    if (epgView !== 'alternate') return;
+    if (mouseMoveTimeoutRef.current) {
+      window.clearTimeout(mouseMoveTimeoutRef.current);
+    }
+    setAlternateControlsVisible(false);
+  }, [epgView]);
+
+  useEffect(() => {
+    return () => {
+      if (mouseMoveTimeoutRef.current) {
+        window.clearTimeout(mouseMoveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Cached source name map to avoid repeated Tauri calls
   const { version: sourceVersion } = useSourceVersion();
@@ -983,7 +1074,7 @@ export function ChannelPanel({
     // Re-run when layout changes (sidebar/category visibility) or when visibility/selection changes
     // Include selectedChannelId to trigger resize when returning to view with a selection
     // Include isWatchlistMode and categoryId to handle special view modes
-  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id, isWatchlistMode, categoryId, miniMediaBarForEpgPreview]);
+  }, [visible, categoryStripOpen, sidebarExpanded, selectedChannel?.stream_id, isWatchlistMode, categoryId, miniMediaBarForEpgPreview, epgView]);
 
   return (
     <div
@@ -996,6 +1087,8 @@ export function ChannelPanel({
           className="guide-preview-pane" 
           ref={previewPaneRef}
           style={epgView === 'alternate' ? { height: `${previewHeightPx}px` } : { flex: `0 0 ${previewWidthPct}%` }}
+          onMouseMove={handlePreviewMouseMove}
+          onMouseLeave={handlePreviewMouseLeave}
         >
           {/* Resizer Handle */}
           <div 
@@ -1104,33 +1197,48 @@ export function ChannelPanel({
               </div>
             </div>
           )}
+          {/* NowPlayingBar Overlay for Alternate View */}
+          {epgView === 'alternate' && (
+            <NowPlayingBar
+              visible={alternateControlsVisible}
+              channel={selectedChannel}
+              playing={!!isPlaying}
+              muted={muted}
+              volume={volume}
+              mpvReady={mpvReady}
+              position={position}
+              duration={duration}
+              isVod={isVod}
+              vodInfo={vodInfo}
+              isCatchup={isCatchup}
+              catchupInfo={catchupInfo}
+              onTogglePlay={onTogglePlay || (() => {})}
+              onStop={onStop || (() => {})}
+              onToggleMute={onToggleMute || (() => {})}
+              onVolumeChange={onVolumeChange || (() => {})}
+              onSeek={onSeek}
+              onCycleSubtitle={onCycleSubtitle || (() => {})}
+              onCycleAudio={onCycleAudio || (() => {})}
+              onToggleStats={onToggleStats || (() => {})}
+              onToggleFullscreen={onToggleFullscreen || (() => {})}
+              onShowSubtitleModal={onShowSubtitleModal || (() => {})}
+              onShowAudioModal={onShowAudioModal || (() => {})}
+              onCatchupSeek={onCatchupSeek}
+              onGoToLive={() => {
+                if (selectedChannel) onPlayChannel(selectedChannel);
+              }}
+              timeshiftEnabled={timeshiftEnabled}
+              timeshiftState={timeshiftState}
+              onTimeshiftCatchUp={onTimeshiftCatchUp}
+              onChannelUp={onChannelUp}
+              onChannelDown={onChannelDown}
+            />
+          )}
+
         </div>
-        <div className="guide-info-pane">
-          {selectedChannel ? (
-            epgView === 'alternate' ? (
-              <div className="guide-info-alternate-container">
-                <div className="guide-info-alternate-main">
-                  <div className="guide-program-title">
-                    {selectedProgram ? selectedProgram.title : (selectedChannel.name || 'No Program Name')}
-                  </div>
-                  <div className="guide-program-meta">
-                    <span>{selectedProgram ? `${formatTime(new Date(selectedProgram.start))} - ${formatTime(new Date(selectedProgram.end))}` : ''}</span>
-                    {selectedProgram && (
-                      <div className="guide-program-progress-bar">
-                        <div className="guide-program-progress-fill" style={{ width: `${progressPercent}%` }} />
-                      </div>
-                    )}
-                    <span>{categoryName}</span>
-                  </div>
-                  <div className="guide-program-description">
-                    {selectedProgram?.description || 'No description available.'}
-                  </div>
-                </div>
-                <div className="guide-info-alternate-side">
-                  <MetadataBadge streamId={selectedChannel.stream_id} variant="detailed" />
-                </div>
-              </div>
-            ) : (
+        {epgView !== 'alternate' && (
+          <div className="guide-info-pane">
+            {selectedChannel ? (
               <>
                 <div className="guide-program-title">
                   {selectedProgram ? selectedProgram.title : (selectedChannel.name || 'No Program Name')}
@@ -1153,11 +1261,11 @@ export function ChannelPanel({
                   </div>
                 )}
               </>
-            )
-          ) : (
-            <div className="guide-program-title">Select a channel</div>
-          )}
-        </div>
+            ) : (
+              <div className="guide-program-title">Select a channel</div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bottom Section: EPG Grid */}

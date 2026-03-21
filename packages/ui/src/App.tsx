@@ -31,6 +31,7 @@ import {
   useSetVodSyncing,
   useSetSyncStatusMessage,
   useSetChannelSortOrder,
+  useEpgView,
   useSetEpgView
 } from './stores/uiStore';
 import type { StoredChannel } from './db';
@@ -315,6 +316,17 @@ function App() {
   const setSyncStatusMessage = useSetSyncStatusMessage();
   const setChannelSortOrder = useSetChannelSortOrder();
   const setEpgView = useSetEpgView();
+  const epgView = useEpgView();
+
+  const handleToggleEpgView = useCallback(() => {
+    const nextView = epgView === 'traditional' ? 'alternate' : 'traditional';
+    setEpgView(nextView);
+    if (window.storage) {
+      window.storage.updateSettings({ epgView: nextView }).catch((err: any) => {
+        console.error('Failed to save epg view shortcut preference:', err);
+      });
+    }
+  }, [epgView, setEpgView]);
 
   // ==========================================================================
   // TimeShift State
@@ -368,6 +380,7 @@ function App() {
   const handleShowSubtitleModalRef = useRef(handleShowSubtitleModal);
   const handleShowAudioModalRef = useRef(handleShowAudioModal);
   const handleSeekRef = useRef(handleSeek);
+  const handleToggleEpgViewRef = useRef(handleToggleEpgView);
   const setActiveViewRef = useRef(setActiveView);
   const setCategoriesOpenRef = useRef(setCategoriesOpen);
   const setSidebarExpandedRef = useRef(setSidebarExpanded);
@@ -384,6 +397,7 @@ function App() {
   useEffect(() => { handleShowSubtitleModalRef.current = handleShowSubtitleModal; }, [handleShowSubtitleModal]);
   useEffect(() => { handleShowAudioModalRef.current = handleShowAudioModal; }, [handleShowAudioModal]);
   useEffect(() => { handleSeekRef.current = handleSeek; }, [handleSeek]);
+  useEffect(() => { handleToggleEpgViewRef.current = handleToggleEpgView; }, [handleToggleEpgView]);
   useEffect(() => { setActiveViewRef.current = setActiveView; }, [setActiveView]);
   useEffect(() => { setCategoriesOpenRef.current = setCategoriesOpen; }, [setCategoriesOpen]);
   useEffect(() => { setSidebarExpandedRef.current = setSidebarExpanded; }, [setSidebarExpanded]);
@@ -465,6 +479,7 @@ function App() {
     handleShowSubtitleModalRef,
     handleShowAudioModalRef,
     handleSeekRef,
+    handleToggleEpgViewRef,
     setActiveViewRef,
     setCategoriesOpenRef,
     setSidebarExpandedRef,
@@ -1045,6 +1060,31 @@ function App() {
         isPlaying={playing}
         onChannelUp={handleChannelUp}
         onChannelDown={handleChannelDown}
+
+        // Playback state & controls for Alternate View NowPlayingBar overlay
+        mpvReady={mpvReady}
+        duration={duration}
+        position={position}
+        muted={muted}
+        volume={volume}
+        isVod={currentChannel?.stream_id === 'vod' || currentChannel?.stream_id?.startsWith('recording_')}
+        vodInfo={vodInfo}
+        isCatchup={isCatchup}
+        catchupInfo={catchupInfo}
+        onStop={handleStop}
+        onToggleMute={handleToggleMute}
+        onVolumeChange={handleVolumeChange}
+        onSeek={handleSeek}
+        onCycleSubtitle={handleCycleSubtitle}
+        onCycleAudio={handleCycleAudio}
+        onToggleStats={handleToggleStats}
+        onToggleFullscreen={handleToggleFullscreen}
+        onShowSubtitleModal={handleShowSubtitleModal}
+        onShowAudioModal={handleShowAudioModal}
+        onCatchupSeek={handleCatchupSeek}
+        timeshiftEnabled={timeshiftEnabled}
+        timeshiftState={timeshiftState}
+        onTimeshiftCatchUp={timeshiftState ? () => handleSeek(timeshiftState.cacheEnd - 1) : undefined}
       />
 
       {/* Settings Panel */}
@@ -1099,6 +1139,7 @@ function App() {
           }}
           previewEnabled={true}
           onTogglePreview={() => {}}
+          onPlayChannel={handlePlayChannel}
         />
       )}
 
