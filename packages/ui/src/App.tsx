@@ -907,8 +907,7 @@ function App() {
         visible={
           showControls &&
           activeView !== 'guide' &&
-          !categoriesOpen &&
-          !isSearchMode
+          !categoriesOpen
         }
         channel={currentChannel}
         playing={playing}
