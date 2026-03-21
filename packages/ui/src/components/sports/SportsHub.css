@@ -225,6 +225,43 @@
   position: relative;
 }
 
+/* ==========================================================================
+   SPORTS VIDEO PREVIEW RESIZER
+   ========================================================================== */
+.sports-preview-resizer {
+  position: absolute;
+  bottom: -12px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  cursor: nwse-resize;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.sports-resizer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-border, rgba(255, 255, 255, 0.4));
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+}
+
+.sports-preview-resizer:hover .sports-resizer-dot {
+  background: var(--accent-primary, #00d4ff);
+  transform: scale(1.3);
+  box-shadow: 0 0 8px var(--accent-primary, #00d4ff);
+}
+
+.sports-preview-resizer:active .sports-resizer-dot {
+  transform: scale(0.9);
+  background: white;
+}
+
 .sports-info-pane {
   flex: 1;
   background: var(--bg-overlay, rgba(0, 0, 0, 0.95));

@@ -33,6 +33,12 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
   const [leagues, setLeagues] = useState<SportsLeague[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Resize persistence state
+  const [previewWidthPct, setPreviewWidthPct] = useState(() => {
+    const saved = localStorage.getItem('sportsPreviewWidth');
+    return saved ? parseFloat(saved) : 42;
+  });
+
   const sports = getAvailableSports();
 
   useEffect(() => {
@@ -138,6 +144,77 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
       // activeView to 'guide', so calling onClose() would immediately undo that.
     }
   }, [onSearchChannels]);
+
+  // Drag-to-resize logic for the video preview pane
+  const isResizingRef = useRef(false);
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isResizingRef.current = true;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    
+    let startPct = previewWidthPct;
+    if (previewRef.current) {
+      const match = previewRef.current.style.flex.match(/0 0 ([\d.]+)%/);
+      if (match && match[1]) {
+        startPct = parseFloat(match[1]);
+      }
+    }
+
+    const container = previewRef.current?.parentElement;
+    if (!container) return;
+    const containerWidth = container.getBoundingClientRect().width;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isResizingRef.current || !previewRef.current) return;
+      
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+      
+      let dw = dx;
+      if (Math.abs(dy * (16 / 9)) > Math.abs(dx)) {
+        dw = dy * (16 / 9);
+      }
+
+      const deltaPct = (dw / containerWidth) * 100;
+      let newPct = startPct + deltaPct;
+      newPct = Math.max(20, Math.min(newPct, 80));
+
+      previewRef.current.style.flex = `0 0 ${newPct}%`;
+    };
+
+    const handleMouseUp = () => {
+      if (!isResizingRef.current) return;
+      isResizingRef.current = false;
+      
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      if (previewRef.current) {
+        const match = previewRef.current.style.flex.match(/0 0 ([\d.]+)%/);
+        if (match && match[1]) {
+          const finalPct = parseFloat(match[1]);
+          setPreviewWidthPct(finalPct);
+          localStorage.setItem('sportsPreviewWidth', String(finalPct));
+        }
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [previewWidthPct]);
+
+  const handleResizeContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPreviewWidthPct(42);
+    localStorage.setItem('sportsPreviewWidth', '42');
+    if (previewRef.current) {
+      previewRef.current.style.flex = `0 0 42%`;
+    }
+  }, []);
 
   const handleBack = useCallback(() => {
     if (selectedTeam) {
@@ -314,7 +391,21 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
         <div className="sports-content-wrapper">
           {previewEnabled && (
             <div className="sports-top-section">
-              <div className="sports-preview-pane" ref={previewRef} />
+              <div 
+                className="sports-preview-pane" 
+                ref={previewRef}
+                style={{ flex: `0 0 ${previewWidthPct}%` }}
+              >
+                {/* Resizer Handle */}
+                <div 
+                  className="sports-preview-resizer" 
+                  onMouseDown={handleResizeMouseDown}
+                  onContextMenu={handleResizeContextMenu}
+                  title="Drag to resize preview | Right-click to reset"
+                >
+                  <div className="sports-resizer-dot"></div>
+                </div>
+              </div>
               <div className="sports-info-pane">
                 <div className="sports-info-content">
                   <h2 className="sports-info-title">Sports Hub</h2>
