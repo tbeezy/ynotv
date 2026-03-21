@@ -34,10 +34,22 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
   const [loading, setLoading] = useState(false);
 
   // Resize persistence state
-  const [previewWidthPct, setPreviewWidthPct] = useState(() => {
-    const saved = localStorage.getItem('sportsPreviewWidth');
-    return saved ? parseFloat(saved) : 42;
+  const [previewHeightPx, setPreviewHeightPx] = useState(() => {
+    const saved = localStorage.getItem('sportsPreviewHeight');
+    return saved ? parseInt(saved) : 400; // default 400px
   });
+
+  const [isSidebarHidden, setIsSidebarHidden] = useState(() => {
+    return localStorage.getItem('sportsSidebarHidden') === 'true';
+  });
+
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarHidden(prev => {
+      const next = !prev;
+      localStorage.setItem('sportsSidebarHidden', String(next));
+      return next;
+    });
+  }, []);
 
   const sports = getAvailableSports();
 
@@ -76,17 +88,37 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
       const windowW = window.innerWidth;
       const windowH = window.innerHeight;
 
-      const scale = rect.width / windowW;
+      // MPV natively fits the 16:9 video inside the window.
+      let videoNativeW = windowW;
+      let videoNativeH = windowW * (9 / 16);
+
+      if (videoNativeH > windowH) {
+        // Window is wider than 16:9, so the video is constrained by window height
+        videoNativeH = windowH;
+        videoNativeW = windowH * (16 / 9);
+      }
+
+      // Find the scale that fits the video fully inside the rect
+      const scaleX = rect.width / videoNativeW;
+      const scaleY = rect.height / videoNativeH;
+      const scale = Math.min(scaleX, scaleY);
+      
       const zoom = Math.log2(scale);
 
+      const actualVideoW = videoNativeW * scale;
+      const actualVideoH = videoNativeH * scale;
+
       const targetCenterX = rect.left + (rect.width / 2);
+      const targetCenterY = rect.top + (rect.height / 2);
+
       const shiftX = targetCenterX - (windowW / 2);
-      const availSpaceX = windowW - rect.width;
+      const shiftY = targetCenterY - (windowH / 2);
+
+      const availSpaceX = windowW - actualVideoW;
       const alignX = Math.abs(availSpaceX) < 1 ? 0 : (2 * shiftX) / availSpaceX;
 
-      const topOffset = rect.top;
-      const availSpaceY = windowH - rect.height;
-      const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * topOffset) / availSpaceY - 1;
+      const availSpaceY = windowH - actualVideoH;
+      const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * shiftY) / availSpaceY;
 
       try {
         await Bridge.setProperty('video-zoom', zoom);
@@ -145,44 +177,35 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
     }
   }, [onSearchChannels]);
 
-  // Drag-to-resize logic for the video preview pane
+  // Drag-to-resize logic for the video preview pane (Vertical)
   const isResizingRef = useRef(false);
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     isResizingRef.current = true;
 
-    const startX = e.clientX;
     const startY = e.clientY;
     
-    let startPct = previewWidthPct;
+    let startHeight = previewHeightPx;
     if (previewRef.current) {
-      const match = previewRef.current.style.flex.match(/0 0 ([\d.]+)%/);
-      if (match && match[1]) {
-        startPct = parseFloat(match[1]);
+      const currentHeight = parseInt(previewRef.current.style.height);
+      if (!isNaN(currentHeight)) {
+        startHeight = currentHeight;
+      } else {
+        startHeight = previewRef.current.getBoundingClientRect().height;
       }
     }
-
-    const container = previewRef.current?.parentElement;
-    if (!container) return;
-    const containerWidth = container.getBoundingClientRect().width;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!isResizingRef.current || !previewRef.current) return;
       
-      const dx = moveEvent.clientX - startX;
       const dy = moveEvent.clientY - startY;
+      let newHeight = startHeight + dy;
       
-      let dw = dx;
-      if (Math.abs(dy * (16 / 9)) > Math.abs(dx)) {
-        dw = dy * (16 / 9);
-      }
+      // Clamp between 150px and windowHeight - 100px so we don't eat the entire app
+      newHeight = Math.max(150, Math.min(newHeight, window.innerHeight - 100));
 
-      const deltaPct = (dw / containerWidth) * 100;
-      let newPct = startPct + deltaPct;
-      newPct = Math.max(20, Math.min(newPct, 80));
-
-      previewRef.current.style.flex = `0 0 ${newPct}%`;
+      previewRef.current.style.height = `${newHeight}px`;
     };
 
     const handleMouseUp = () => {
@@ -193,26 +216,26 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
       document.removeEventListener('mouseup', handleMouseUp);
       
       if (previewRef.current) {
-        const match = previewRef.current.style.flex.match(/0 0 ([\d.]+)%/);
-        if (match && match[1]) {
-          const finalPct = parseFloat(match[1]);
-          setPreviewWidthPct(finalPct);
-          localStorage.setItem('sportsPreviewWidth', String(finalPct));
+        let finalHeight = parseInt(previewRef.current.style.height);
+        if (isNaN(finalHeight)) {
+           finalHeight = previewRef.current.getBoundingClientRect().height;
         }
+        setPreviewHeightPx(finalHeight);
+        localStorage.setItem('sportsPreviewHeight', String(finalHeight));
       }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [previewWidthPct]);
+  }, [previewHeightPx]);
 
   const handleResizeContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setPreviewWidthPct(42);
-    localStorage.setItem('sportsPreviewWidth', '42');
+    setPreviewHeightPx(400);
+    localStorage.setItem('sportsPreviewHeight', '400');
     if (previewRef.current) {
-      previewRef.current.style.flex = `0 0 42%`;
+      previewRef.current.style.height = `400px`;
     }
   }, []);
 
@@ -336,50 +359,74 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
 
   return (
     <div className={`sports-hub ${previewEnabled ? 'with-preview' : ''}`}>
-      <aside className="sports-sidebar">
-        <div className="sports-sidebar-header">
-          <div className="sports-sidebar-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 className="sports-sidebar-title">Sports Hub</h2>
-            {onTogglePreview && (
-              <button
-                className={`sports-preview-toggle ${previewEnabled ? 'active' : ''}`}
-                onClick={onTogglePreview}
-                title={previewEnabled ? "Hide Video Preview" : "Show Video Preview"}
-                style={{ background: 'transparent', border: 'none', color: previewEnabled ? '#00d4ff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '4px' }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                  <line x1="8" y1="21" x2="16" y2="21" />
-                  <line x1="12" y1="17" x2="12" y2="21" />
-                </svg>
-              </button>
-            )}
+      {!isSidebarHidden ? (
+        <aside className="sports-sidebar">
+          <div className="sports-sidebar-header">
+            <div className="sports-sidebar-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 className="sports-sidebar-title">Sports Hub</h2>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {onTogglePreview && (
+                  <button
+                    className={`sports-preview-toggle ${previewEnabled ? 'active' : ''}`}
+                    onClick={onTogglePreview}
+                    title={previewEnabled ? "Hide Video Preview" : "Show Video Preview"}
+                    style={{ background: 'transparent', border: 'none', color: previewEnabled ? '#00d4ff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '4px' }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                  </button>
+                )}
+                <button
+                  className="sports-sidebar-collapse-btn"
+                  onClick={toggleSidebar}
+                  title="Hide Sidebar"
+                  style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '4px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <p className="sports-sidebar-subtitle">Live Scores & TV Listings</p>
           </div>
-          <p className="sports-sidebar-subtitle">Live Scores & TV Listings</p>
-        </div>
 
-        <nav className="sports-nav">
-          {(['live', 'upcoming', 'leagues', 'favorites', 'news', 'leaders', 'settings'] as SportsTabId[]).map((tab) => (
-            <button
-              key={tab}
-              className={`sports-nav-item ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              <span className="sports-nav-icon">{getTabIcon(tab)}</span>
-              <span className="sports-nav-label">{getTabLabel(tab)}</span>
+          <nav className="sports-nav">
+            {(['live', 'upcoming', 'leagues', 'favorites', 'news', 'leaders', 'settings'] as SportsTabId[]).map((tab) => (
+              <button
+                key={tab}
+                className={`sports-nav-item ${activeTab === tab ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                <span className="sports-nav-icon">{getTabIcon(tab)}</span>
+                <span className="sports-nav-label">{getTabLabel(tab)}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="sports-sidebar-footer">
+            <button className="sports-back-btn" onClick={onClose}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Back to TV
             </button>
-          ))}
-        </nav>
-
-        <div className="sports-sidebar-footer">
-          <button className="sports-back-btn" onClick={onClose}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Back to TV
-          </button>
-        </div>
-      </aside>
+          </div>
+        </aside>
+      ) : (
+        <button 
+          className="sports-sidebar-show-btn" 
+          onClick={toggleSidebar}
+          title="Show Sidebar"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      )}
 
       <main className="sports-main">
         {!previewEnabled && (
@@ -394,22 +441,16 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
               <div 
                 className="sports-preview-pane" 
                 ref={previewRef}
-                style={{ flex: `0 0 ${previewWidthPct}%` }}
+                style={{ height: `${previewHeightPx}px` }}
               >
                 {/* Resizer Handle */}
                 <div 
                   className="sports-preview-resizer" 
                   onMouseDown={handleResizeMouseDown}
                   onContextMenu={handleResizeContextMenu}
-                  title="Drag to resize preview | Right-click to reset"
+                  title="Drag up/down to resize preview | Right-click to reset"
                 >
-                  <div className="sports-resizer-dot"></div>
-                </div>
-              </div>
-              <div className="sports-info-pane">
-                <div className="sports-info-content">
-                  <h2 className="sports-info-title">Sports Hub</h2>
-                  <p className="sports-info-desc">Live scores, schedules, and more</p>
+                  <div className="sports-resizer-line"></div>
                 </div>
               </div>
             </div>

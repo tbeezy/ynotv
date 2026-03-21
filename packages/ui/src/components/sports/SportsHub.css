@@ -158,6 +158,42 @@
   color: var(--text-primary, #fff);
 }
 
+/* Sidebar Toggle Buttons */
+.sports-sidebar-collapse-btn:hover {
+  color: var(--text-primary, #fff) !important;
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1)) !important;
+  border-radius: 4px;
+}
+
+.sports-sidebar-show-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-color, rgba(26, 26, 26, 0.8));
+  border: 1px solid var(--border-color, rgba(42, 42, 42, 0.8));
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  padding: 16px 4px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  z-index: 110;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.sports-sidebar-show-btn:hover {
+  background: var(--surface-hover, rgba(42, 42, 42, 0.95));
+  color: var(--text-primary, #fff);
+  padding-left: 8px; /* Slight slide out on hover */
+  border-color: var(--accent-primary, rgba(229, 9, 20, 0.5));
+}
+
 /* Main Content */
 .sports-main {
   flex: 1;
@@ -207,18 +243,14 @@
 .sports-top-section {
   display: flex;
   width: 100%;
-  /* Height determined by children (aspect-ratio of preview pane) */
+  flex-direction: column;
   background: transparent;
   border-bottom: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
 }
 
 .sports-preview-pane {
-  flex: 0 0 42%;
-  /* Match the 42% width ratio used by ChannelPanel's guide-preview-pane */
-  /* Enforce a 16:9 box so App.tsx's math perfectly bounds the native MPV aspect ratio */
-  aspect-ratio: 16 / 9;
+  width: 100%;
   background: transparent;
-  border-right: var(--glass-border, 1px solid rgba(255, 255, 255, 0.1));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -226,15 +258,16 @@
 }
 
 /* ==========================================================================
-   SPORTS VIDEO PREVIEW RESIZER
+   SPORTS VIDEO PREVIEW RESIZER (VERTICAL)
    ========================================================================== */
 .sports-preview-resizer {
   position: absolute;
-  bottom: -12px;
-  right: -12px;
-  width: 24px;
-  height: 24px;
-  cursor: nwse-resize;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 16px;
+  cursor: ns-resize;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -242,23 +275,22 @@
   background: transparent;
 }
 
-.sports-resizer-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.sports-resizer-line {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
   background: var(--surface-border, rgba(255, 255, 255, 0.4));
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
   transition: all 0.2s ease;
 }
 
-.sports-preview-resizer:hover .sports-resizer-dot {
+.sports-preview-resizer:hover .sports-resizer-line {
   background: var(--accent-primary, #00d4ff);
-  transform: scale(1.3);
+  transform: scaleY(1.5);
   box-shadow: 0 0 8px var(--accent-primary, #00d4ff);
 }
 
-.sports-preview-resizer:active .sports-resizer-dot {
-  transform: scale(0.9);
+.sports-preview-resizer:active .sports-resizer-line {
   background: white;
 }
 
