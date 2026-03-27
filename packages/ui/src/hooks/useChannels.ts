@@ -310,7 +310,28 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         });
       }
       // Default: alphabetical
-      return results.sort((a, b) => a.name.localeCompare(b.name));
+      results = results.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Apply logo overrides from epg_channel_overrides so the guide shows
+      // the user-set channel icon without needing a full sync.
+      try {
+        const overrides = await db.epgChannelOverrides.toArray();
+        if (overrides.length > 0) {
+          const logoMap = new Map<string, string>();
+          for (const o of overrides) {
+            if (o.stream_icon) logoMap.set(o.stream_id, o.stream_icon);
+          }
+          if (logoMap.size > 0) {
+            results = results.map(ch =>
+              logoMap.has(ch.stream_id)
+                ? { ...ch, stream_icon: logoMap.get(ch.stream_id) }
+                : ch
+            );
+          }
+        }
+      } catch { /* ignore if overrides table not yet created */ }
+
+      return results;
     },
     [categoryId, sortOrder, enabledSourceKey, options?.skip]
   );

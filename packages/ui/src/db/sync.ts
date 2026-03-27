@@ -25,6 +25,23 @@ function debugLog(message: string, category = 'sync'): void {
   }
 }
 
+/**
+ * Load epg_channel_overrides as a streamId → epg_channel_id map.
+ * Used by all EPG sync paths to honour user-applied TVG-ID overrides.
+ */
+async function loadEpgChannelOverrideMap(): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const overrides = await db.epgChannelOverrides.toArray();
+    for (const o of overrides) {
+      if (o.epg_channel_id) map.set(o.stream_id, o.epg_channel_id);
+    }
+  } catch {
+    // Table may not exist on very old DBs — silently ignore
+  }
+  return map;
+}
+
 // Helper to detect and fix duplicated URLs (e.g., "urlurl" -> "url")
 function fixDuplicatedUrl(url: string | undefined): string | undefined {
   if (!url || url.length < 2) return url;
@@ -475,12 +492,15 @@ async function syncEpgFromUrl(
   debugLog(`Starting M3U EPG sync with streaming parser`, 'epg');
 
   try {
+    // Load user-applied EPG channel ID overrides so they win over the raw channel value
+    const epgOverrideMap = await loadEpgChannelOverrideMap();
+
     // Create channel mappings for Rust parser
     // Include all channels (even without epg_channel_id) for name-based fallback matching
     const channelMappings = channels
-      .filter((ch) => ch.epg_channel_id || ch.name)
+      .filter((ch) => epgOverrideMap.has(ch.stream_id) || ch.epg_channel_id || ch.name)
       .map((ch) => ({
-        epg_channel_id: ch.epg_channel_id || ch.name || '',
+        epg_channel_id: epgOverrideMap.get(ch.stream_id) || ch.epg_channel_id || ch.name || '',
         stream_id: ch.stream_id,
         channel_name: ch.name || '',
       }));
@@ -576,12 +596,16 @@ async function syncEpgFromUrlLegacy(
       return 0;
     }
 
-    // Build a map of epg_channel_id -> stream_id for matching
+    // Load user-applied EPG channel ID overrides
+    const epgOverrideMap = await loadEpgChannelOverrideMap();
+
+    // Build a map of epg_channel_id -> stream_id for matching (overrides win)
     const channelMap = new Map<string, string>();
     let channelsWithEpgId = 0;
     for (const ch of channels) {
-      if (ch.epg_channel_id) {
-        channelMap.set(ch.epg_channel_id, ch.stream_id);
+      const effectiveEpgId = epgOverrideMap.get(ch.stream_id) || ch.epg_channel_id;
+      if (effectiveEpgId) {
+        channelMap.set(effectiveEpgId, ch.stream_id);
         channelsWithEpgId++;
       }
     }
@@ -649,11 +673,14 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
   debugLog(`Streaming XMLTV from: ${xmltvUrl}`, 'epg');
 
   try {
-    // Build channel mappings for Rust parser
+    // Load user-applied EPG channel ID overrides so they win over the raw channel value
+    const epgOverrideMap = await loadEpgChannelOverrideMap();
+
+    // Build channel mappings for Rust parser (overrides take precedence)
     const channelMappings = channels
-      .filter(ch => ch.epg_channel_id)
+      .filter(ch => epgOverrideMap.has(ch.stream_id) || ch.epg_channel_id)
       .map(ch => ({
-        epg_channel_id: ch.epg_channel_id!,
+        epg_channel_id: epgOverrideMap.get(ch.stream_id) || ch.epg_channel_id!,
         stream_id: ch.stream_id,
         channel_name: ch.name || '',
       }));

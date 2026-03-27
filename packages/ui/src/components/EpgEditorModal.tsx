@@ -12,6 +12,9 @@ import {
   restoreProgramOverride,
   searchEpgChannels,
   autoMatchChannelName,
+  getPreviewProgramsForEpgId,
+  copyProgramsFromEpgChannel,
+  resetChannelToDefault,
   type EditorProgram,
   type ScoredEpgChannel,
 } from '../services/epg-overrides';
@@ -208,6 +211,39 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
   const [searchLoading, setSearchLoading] = useState(false);
   const [autoSearching, setAutoSearching] = useState(false);
 
+  // ── Search preview state (click a result to see its programs) ──
+  const [previewResult, setPreviewResult] = useState<ScoredEpgChannel | null>(null);
+  const [previewPrograms, setPreviewPrograms] = useState<EditorProgram[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
+
+  // Load programs when preview result changes
+  useEffect(() => {
+    if (!previewResult) { setPreviewPrograms([]); return; }
+    setPreviewLoading(true);
+    getPreviewProgramsForEpgId(previewResult.id)
+      .then(p => setPreviewPrograms(p.filter(prog => !prog.is_deleted)))
+      .catch(() => setPreviewPrograms([]))
+      .finally(() => setPreviewLoading(false));
+  }, [previewResult?.id, previewResult?.source_id]);
+
+  // ── Reset Confirm State ──
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // ── Source name map (id → friendly name) for search results ──
+  const [sourceNameMap, setSourceNameMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!window.storage) return;
+    window.storage.getSources().then((result: any) => {
+      if (result.data) {
+        const map = new Map<string, string>();
+        for (const s of result.data) map.set(s.id, s.name);
+        setSourceNameMap(map);
+      }
+    }).catch(() => {});
+  }, []);
+
   // ── Source tab state ──
   const [sourceChannels, setSourceChannels] = useState<StoredChannel[]>([]);
   const [sourceFilter, setSourceFilter] = useState('');
@@ -268,7 +304,7 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
     return () => clearTimeout(tid);
   }, [searchQuery, searchScope, activeTab, resolvedSourceId]);
 
-  // ── Close on overlay click / Escape ──
+  // ── Close on Escape ──
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -276,10 +312,6 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
-
-  function handleOverlayClick(e: React.MouseEvent) {
-    if (e.target === overlayRef.current) onClose();
-  }
 
   // ── Channel tab: save ──
   async function handleSaveChannel() {
@@ -392,26 +424,51 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
   // ── Search tab: apply match ──
   async function handleApplyMatch(epgChan: ScoredEpgChannel) {
     if (!channel) return;
-    const current = await getChannelOverride(channel.stream_id);
-    await upsertChannelOverride({
-      stream_id: channel.stream_id,
-      epg_channel_id: epgChan.id,
-      stream_icon: current?.stream_icon ?? channel.stream_icon,
-      timeshift_hours: current?.timeshift_hours ?? 0,
-    });
-    // Update Channel tab fields
-    setTvgId(epgChan.id);
-    if (epgChan.icon_url) setLogoUrl(epgChan.icon_url);
-    setChannelSaved(true);
-    setTimeout(() => setChannelSaved(false), 2500);
-    // Switch to channel tab so user can see the applied values
-    setActiveTab('channel');
+    setApplyingId(epgChan.id);
+    try {
+      const current = await getChannelOverride(channel.stream_id);
+      await upsertChannelOverride({
+        stream_id: channel.stream_id,
+        epg_channel_id: epgChan.id,
+        stream_icon: current?.stream_icon ?? channel.stream_icon,
+        timeshift_hours: current?.timeshift_hours ?? 0,
+      });
+      setTvgId(epgChan.id);
+      if (epgChan.icon_url) setLogoUrl(epgChan.icon_url);
+      setChannelSaved(true);
+      setTimeout(() => setChannelSaved(false), 2500);
+
+      // Immediately copy programs from the matched EPG channel so the
+      // user sees programs right away without waiting for a full sync.
+      try {
+        await copyProgramsFromEpgChannel(channel.stream_id, epgChan.id);
+      } catch (e) {
+        console.warn('[EPG Editor] Could not copy programs immediately:', e);
+      }
+
+      setActiveTab('channel');
+    } finally {
+      setApplyingId(null);
+    }
   }
 
   // ── Source tab: navigate to channel ──
   function handleOpenSourceChannel(ch: StoredChannel) {
     setChannel(ch);
     setActiveTab('channel');
+  }
+
+  // ── Channel tab: reset to default ──
+  function handleResetToDefault() {
+    if (!channel) return;
+    setShowResetConfirm(true);
+  }
+
+  async function executeResetToDefault() {
+    if (!channel) return;
+    await resetChannelToDefault(channel.stream_id);
+    setShowResetConfirm(false);
+    onClose(); // Close the modal since the channel is now reset
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -439,7 +496,7 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
     : sourceName ?? 'EPG Editor';
 
   return createPortal(
-    <div className="epg-editor-overlay" ref={overlayRef} onClick={handleOverlayClick}>
+    <div className="epg-editor-overlay" ref={overlayRef}>
       <div className="epg-editor-modal" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -521,6 +578,20 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
                     Shifts all EPG times for this channel by this many hours (use negative to shift back)
                   </span>
                 </div>
+              </div>
+
+              <div style={{ marginTop: 24, padding: 14, background: 'rgba(255,50,50,0.05)', border: '1px solid rgba(255,50,50,0.2)', borderRadius: 8 }}>
+                <div style={{ fontSize: '0.85rem', color: '#ffaaaa', marginBottom: 8 }}>
+                  <strong>Reset Channel</strong><br/>
+                  Clear all manual edits, custom programs, and logo overrides for this channel.
+                </div>
+                <button
+                  className="epg-editor-btn"
+                  style={{ background: 'rgba(255,50,50,0.15)', color: '#ffaaaa', border: '1px solid rgba(255,50,50,0.3)', padding: '6px 12px' }}
+                  onClick={handleResetToDefault}
+                >
+                  ↻ Reset to Default
+                </button>
               </div>
             </div>
           )}
@@ -659,31 +730,87 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
 
               {!searchLoading && searchResults.length > 0 && (
                 <div className="epg-search-results">
-                  {searchResults.map((r, i) => (
-                    <div key={r.id + r.source_id} className={`epg-search-result-row${i === 0 && r.score > 0.5 ? ' best-match' : ''}`}>
-                      {r.icon_url ? (
-                        <img src={r.icon_url} alt="" className="epg-search-result-icon"
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      ) : (
-                        <div className="epg-search-result-placeholder">📡</div>
-                      )}
-                      <div className="epg-search-result-info">
-                        <div className="epg-search-result-name">{r.display_name}</div>
-                        <div className="epg-search-result-id">{r.id}</div>
-                        {searchScope === 'all' && (
-                          <div className="epg-search-result-source">Source: {r.source_id}</div>
+                  {searchResults.map((r, i) => {
+                    const isPreviewOpen = previewResult?.id === r.id && previewResult?.source_id === r.source_id;
+                    return (
+                      <div key={r.id + r.source_id}>
+                        <div
+                          className={`epg-search-result-row${i === 0 && r.score > 0.5 ? ' best-match' : ''}${isPreviewOpen ? ' selected-preview' : ''}`}
+                          onClick={() => setPreviewResult(isPreviewOpen ? null : r)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {r.icon_url ? (
+                            <img src={r.icon_url} alt="" className="epg-search-result-icon"
+                              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <div className="epg-search-result-placeholder">📡</div>
+                          )}
+                          <div className="epg-search-result-info">
+                            <div className="epg-search-result-name">{r.display_name}</div>
+                            <div className="epg-search-result-id">{r.id}</div>
+                            {searchScope === 'all' && (
+                              <div className="epg-search-result-source">Source: {sourceNameMap.get(r.source_id) ?? r.source_id}</div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #888)', whiteSpace: 'nowrap' }}>
+                              {isPreviewOpen ? '▲ Hide' : '▼ Programs'}
+                            </span>
+                            <div className="epg-score-bar" title={`Match score: ${(r.score * 100).toFixed(0)}%`}>
+                              <div className="epg-score-pip" style={{ width: `${Math.min(100, r.score / 1.2 * 100)}%` }} />
+                            </div>
+                            {channel && (
+                              <button
+                                className="epg-search-apply-btn"
+                                disabled={applyingId === r.id}
+                                onClick={e => { e.stopPropagation(); handleApplyMatch(r); }}
+                              >
+                                {applyingId === r.id ? '…' : 'Apply'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Inline program preview panel for THIS search result */}
+                        {isPreviewOpen && (
+                          <div style={{
+                            margin: '4px 0 10px 0', border: '1px solid rgba(0,212,255,0.2)',
+                            borderRadius: 6, overflow: 'hidden',
+                            background: 'rgba(0,0,0,0.2)',
+                          }}>
+                            <div style={{
+                              padding: '6px 14px', background: 'rgba(0,212,255,0.07)',
+                              fontSize: '0.8rem', color: '#fff'
+                            }}>
+                              Programs for <strong>{r.display_name}</strong>
+                            </div>
+                            {previewLoading ? (
+                              <div className="epg-editor-loading" style={{ margin: '10px 0' }}>Loading programs…</div>
+                            ) : previewPrograms.length === 0 ? (
+                              <div className="epg-editor-empty" style={{ padding: '12px 14px' }}>
+                                No programs found. This EPG channel may not have data synced yet.
+                              </div>
+                            ) : (
+                              <div style={{ maxHeight: 200, overflowY: 'auto', padding: '4px 0' }}>
+                                {previewPrograms.map(p => (
+                                  <div key={p.id} style={{
+                                    display: 'flex', gap: 12, padding: '4px 14px',
+                                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                    fontSize: '0.81rem',
+                                  }}>
+                                    <span style={{ color: 'var(--text-secondary, #888)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                      {formatShortDatetime(p.start)}
+                                    </span>
+                                    <span style={{ color: '#fff' }}>{p.title}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <div className="epg-score-bar" title={`Match score: ${(r.score * 100).toFixed(0)}%`}>
-                        <div className="epg-score-pip" style={{ width: `${Math.min(100, r.score / 1.2 * 100)}%` }} />
-                      </div>
-                      {channel && (
-                        <button className="epg-search-apply-btn" onClick={() => handleApplyMatch(r)}>
-                          Apply
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -756,6 +883,46 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
           )}
         </div>
       </div>
+
+      {/* Reset Confirmation Modal Overlay */}
+      {showResetConfirm && channel && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 100, borderRadius: 16
+        }}>
+          <div style={{
+            background: 'var(--bg-elevated, #1a1a1a)',
+            border: '1px solid rgba(255,50,50,0.3)',
+            padding: 24, borderRadius: 12, maxWidth: 360, width: '100%',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.8)'
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#ff5555', fontSize: '1.2rem' }}>⚠ Reset Channel</h3>
+            <p style={{ margin: '0 0 24px 0', fontSize: '0.9rem', color: '#ccc', lineHeight: 1.5 }}>
+              Are you sure you want to reset <strong>"{channel.name}"</strong>?
+              <br/><br/>
+              This will permanently clear all EPG overrides, custom logos, and manually added programs, restoring the original data from your provider.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                className="epg-editor-btn"
+                style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', padding: '8px 16px' }}
+                onClick={() => setShowResetConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="epg-editor-btn"
+                style={{ background: 'rgba(255,50,50,0.15)', color: '#ffaaaa', border: '1px solid rgba(255,50,50,0.4)', padding: '8px 16px' }}
+                onClick={executeResetToDefault}
+              >
+                Yes, Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

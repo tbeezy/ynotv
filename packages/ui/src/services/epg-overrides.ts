@@ -135,6 +135,133 @@ export async function getEditorProgramsForStream(
   return all;
 }
 
+/**
+ * Load programs for preview when the user clicks a search result.
+ * Finds an existing channel that uses the given epg_channel_id and returns its programs.
+ */
+export async function getPreviewProgramsForEpgId(
+  epgChannelId: string,
+  windowDays = 3
+): Promise<EditorProgram[]> {
+  const dbInstance = await (db as any).dbPromise;
+
+  // Find a stream_id that already has programs for this epg_channel_id
+  // (checking both the raw channel value and any user-applied overrides)
+  const rows = await dbInstance.select(
+    `SELECT c.stream_id
+     FROM channels c
+     LEFT JOIN epg_channel_overrides o ON o.stream_id = c.stream_id
+     WHERE COALESCE(o.epg_channel_id, c.epg_channel_id) = $1
+     LIMIT 1`,
+    [epgChannelId]
+  ) as { stream_id: string }[];
+
+  if (rows.length === 0) return [];
+  return getEditorProgramsForStream(rows[0].stream_id, windowDays);
+}
+
+/**
+ * Immediately copy programs from the channel matched to epgChannelId into targetStreamId.
+ * Called after "Apply" so the channel shows programs right away without waiting for a sync.
+ * Returns the number of programs copied (0 if no source found).
+ */
+export async function copyProgramsFromEpgChannel(
+  targetStreamId: string,
+  epgChannelId: string
+): Promise<number> {
+  const dbInstance = await (db as any).dbPromise;
+
+  // Find a source stream that has programs for this epg_channel_id (not the target itself)
+  const rows = await dbInstance.select(
+    `SELECT stream_id FROM channels
+     WHERE epg_channel_id = $1 AND stream_id != $2
+     LIMIT 1`,
+    [epgChannelId, targetStreamId]
+  ) as { stream_id: string }[];
+
+  if (rows.length === 0) return 0;
+
+  const sourceStreamId = rows[0].stream_id;
+
+  // 1. Delete all existing *raw/synced* programs for the target stream so they don't merge
+  await dbInstance.execute(
+    `DELETE FROM programs WHERE stream_id = $1`,
+    [targetStreamId]
+  );
+
+  // 2. Copy future/current programs to the target stream with new IDs matching the sync format.
+  // INSERT OR REPLACE ensures the next sync can overwrite with official data seamlessly.
+  await dbInstance.execute(
+    `INSERT OR REPLACE INTO programs (id, stream_id, title, description, start, end, source_id)
+     SELECT
+       $1 || '_' || CAST(CAST(strftime('%s', start) AS INTEGER) * 1000 AS TEXT) AS id,
+       $1 AS stream_id,
+       title, description, start, end, source_id
+     FROM programs
+     WHERE stream_id = $2
+       AND end >= datetime('now', '-1 hour')`,
+    [targetStreamId, sourceStreamId]
+  );
+
+  const { dbEvents } = await import('../db/sqlite-adapter');
+  dbEvents.notify('programs', 'clear');
+  dbEvents.notify('programs', 'add');
+  return 1;
+}
+
+/**
+ * Resets a channel back to its default state.
+ * Deletes the channel override, custom programs, and restores tombstoned programs.
+ * Also copies the original programs back so a sync isn't needed.
+ */
+export async function resetChannelToDefault(streamId: string): Promise<void> {
+  const dbInstance = await (db as any).dbPromise;
+
+  // 1. Get original epg_channel_id before we delete the override
+  const rows = await dbInstance.select(
+    `SELECT epg_channel_id FROM channels WHERE stream_id = $1`,
+    [streamId]
+  ) as { epg_channel_id: string | null }[];
+  const originalEpgId = rows[0]?.epg_channel_id;
+
+  // 2. Delete overrides
+  await dbInstance.execute(`DELETE FROM epg_channel_overrides WHERE stream_id = $1`, [streamId]);
+  await dbInstance.execute(`DELETE FROM epg_program_overrides WHERE stream_id = $1`, [streamId]);
+
+  // 3. Restore original programs if we have an original epg_channel_id
+  if (originalEpgId) {
+    // Clear programs that belonged to the previous override
+    await dbInstance.execute(`DELETE FROM programs WHERE stream_id = $1`, [streamId]);
+
+    // Find a stream that has the original epg_channel_id (to copy its programs)
+    const srcRows = await dbInstance.select(
+      `SELECT stream_id FROM channels WHERE epg_channel_id = $1 AND stream_id != $2 LIMIT 1`,
+      [originalEpgId, streamId]
+    ) as { stream_id: string }[];
+
+    if (srcRows.length > 0) {
+      const sourceStreamId = srcRows[0].stream_id;
+      await dbInstance.execute(
+        `INSERT OR REPLACE INTO programs (id, stream_id, title, description, start, end, source_id)
+         SELECT
+           $1 || '_' || CAST(CAST(strftime('%s', start) AS INTEGER) * 1000 AS TEXT) AS id,
+           $1 AS stream_id,
+           title, description, start, end, source_id
+         FROM programs
+         WHERE stream_id = $2
+           AND end >= datetime('now', '-1 hour')`,
+        [streamId, sourceStreamId]
+      );
+    }
+  }
+
+  const { dbEvents } = await import('../db/sqlite-adapter');
+  dbEvents.notify('epg_channel_overrides', 'delete');
+  dbEvents.notify('epg_program_overrides', 'delete');
+  dbEvents.notify('programs', 'clear');
+  dbEvents.notify('programs', 'add');
+}
+
 export async function upsertProgramOverride(override: EpgProgramOverride): Promise<void> {
   const dbInstance = await (db as any).dbPromise;
   // Use explicit INSERT OR REPLACE so every column is guaranteed to be set,

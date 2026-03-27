@@ -805,6 +805,31 @@ class YnotvDatabase extends SqliteDatabase {
       WHERE is_custom = 1 AND is_deleted = 0
     `);
 
+    // ── channels_effective VIEW ───────────────────────────────────────────────
+    // Merges the raw channel with logo/epg_channel_id overrides from the editor.
+    // Always DROP + CREATE so the definition is current on every startup.
+    await db.execute(`DROP VIEW IF EXISTS channels_effective`);
+    await db.execute(`CREATE VIEW channels_effective AS
+      SELECT
+        c.stream_id,
+        c.source_id,
+        c.name,
+        COALESCE(o.stream_icon,      c.stream_icon)      AS stream_icon,
+        COALESCE(o.epg_channel_id,   c.epg_channel_id)   AS epg_channel_id,
+        c.channel_num,
+        c.is_favorite,
+        c.enabled,
+        c.category_ids,
+        c.category_id,
+        c.tv_archive,
+        c.tv_archive_duration,
+        c.direct_source,
+        c.added,
+        c.custom_url
+      FROM channels c
+      LEFT JOIN epg_channel_overrides o ON o.stream_id = c.stream_id
+    `);
+
     // ──────────────────────────────────────────────────────────────────────────
 
     console.log('[DB] Schema initialization complete');
