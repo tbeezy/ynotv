@@ -7,6 +7,7 @@ import { useModal } from './Modal';
 import { addChannelsToGroup } from '../services/custom-groups';
 import { addToRecentChannels } from '../utils/recentChannels';
 import { TVMazeSearchModal } from './TVMazeSearchModal';
+import { EpgEditorModal } from './EpgEditorModal';
 import './ProgramContextMenu.css'; // Reuse the same styles
 
 type MenuView = 'main' | 'quick' | 'custom' | 'group';
@@ -42,6 +43,7 @@ export function ChannelContextMenu({
     const [scheduling, setScheduling] = useState(false);
     const [adjustedPosition, setAdjustedPosition] = useState(position);
     const [showTVMazeModal, setShowTVMazeModal] = useState(false);
+    const [showEpgEditor, setShowEpgEditor] = useState(false);
     const { showSuccess, showError, ModalComponent } = useModal();
 
     // Group state
@@ -395,6 +397,18 @@ export function ChannelContextMenu({
         onClose();
     };
 
+    // ── EPG Editor: render OUTSIDE the context menu portal.
+    // The menu's mousedown-outside listener would otherwise fire on any modal
+    // tab click (since the modal portal is outside menuRef) and close everything.
+    if (showEpgEditor) {
+        return (
+            <EpgEditorModal
+                channel={channel}
+                onClose={() => { setShowEpgEditor(false); onClose(); }}
+            />
+        );
+    }
+
     return createPortal(
         <div
             ref={menuRef}
@@ -435,6 +449,10 @@ export function ChannelContextMenu({
                 📺 Track Show
             </div>
             <div className="context-menu-separator" />
+            <div className="context-menu-item" onClick={() => { setShowEpgEditor(true); }}>
+                ✏️ Edit EPG
+            </div>
+            <div className="context-menu-separator" />
             <div className="context-menu-item context-menu-item-secondary" onClick={onClose}>
                 Cancel
             </div>
@@ -451,3 +469,4 @@ export function ChannelContextMenu({
         document.body
     );
 }
+

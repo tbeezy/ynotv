@@ -10,6 +10,7 @@ interface SourceContextMenuProps {
     onManageCategories?: (sourceId: string, sourceName: string) => void;
     onManageVodCategories?: (sourceId: string, sourceName: string) => void;
     onEditSource?: (sourceId: string) => void;
+    onEditEpg?: (sourceId: string, sourceName: string) => void;
 }
 
 export function SourceContextMenu({
@@ -20,6 +21,7 @@ export function SourceContextMenu({
     onManageCategories,
     onManageVodCategories,
     onEditSource,
+    onEditEpg,
 }: SourceContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
     const [adjustedPosition, setAdjustedPosition] = useState(position);
@@ -97,6 +99,11 @@ export function SourceContextMenu({
             {onEditSource && (
                 <div className="context-menu-item" onClick={() => { onEditSource(sourceId); onClose(); }}>
                     ⚙️ Edit Source
+                </div>
+            )}
+            {onEditEpg && (
+                <div className="context-menu-item" onClick={() => { onEditEpg(sourceId, sourceName); onClose(); }}>
+                    ✏️ Edit EPG
                 </div>
             )}
         </div>,

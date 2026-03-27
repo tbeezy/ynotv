@@ -11,6 +11,7 @@ import { CustomGroupManager } from './CustomGroupManager';
 import { CategoryManager } from './settings/CategoryManager';
 import { FavoriteManager } from './settings/FavoriteManager';
 import { SourceContextMenu } from './SourceContextMenu';
+import { EpgEditorModal } from './EpgEditorModal';
 import './CategoryStrip.css';
 
 interface CategoryStripProps {
@@ -143,6 +144,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   // Source Context Menu additions
   const [sourceContextMenu, setSourceContextMenu] = useState<{ x: number, y: number, sourceId: string, sourceName: string } | null>(null);
   const [managingCategorySource, setManagingCategorySource] = useState<{ id: string, name: string } | null>(null);
+  const [epgEditorSource, setEpgEditorSource] = useState<{ id: string, name: string } | null>(null);
 
   // Favorites Context Menu additions
   const [favoritesContextMenu, setFavoritesContextMenu] = useState<{ x: number, y: number } | null>(null);
@@ -413,6 +415,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
               onEditSource(id);
             }
           }}
+          onEditEpg={(id, name) => setEpgEditorSource({ id, name })}
         />
       )}
 
@@ -471,6 +474,15 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
             }}
           />
         </div>
+      )}
+
+      {/* EPG Editor Modal — opened from source right-click */}
+      {epgEditorSource && (
+        <EpgEditorModal
+          sourceId={epgEditorSource.id}
+          sourceName={epgEditorSource.name}
+          onClose={() => setEpgEditorSource(null)}
+        />
       )}
     </div>
   );

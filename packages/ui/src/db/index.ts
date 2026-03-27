@@ -234,6 +234,26 @@ export interface CustomGroupChannel {
   added_at: number;
 }
 
+// EPG Channel Override — persistent overrides for a channel's EPG identity
+export interface EpgChannelOverride {
+  stream_id: string;          // PK – FK to channels.stream_id
+  epg_channel_id?: string;    // Override tvg-id (NULL = keep original)
+  stream_icon?: string;       // Override logo URL
+  timeshift_hours?: number;   // Per-channel EPG time offset (NULL = use source default)
+}
+
+// EPG Program Override — overrides or tombstones for synced programs, plus user-created programs
+export interface EpgProgramOverride {
+  id: string;           // Same compound key as programs.id  OR a uuid for custom programs
+  stream_id: string;
+  title?: string;
+  description?: string;
+  start?: string;       // ISO8601
+  end?: string;         // ISO8601
+  is_deleted?: number;  // 1 = tombstone (hide in guide, show struck-through in editor)
+  is_custom?: number;   // 1 = user-created (not from sync)
+}
+
 
 class YnotvDatabase extends SqliteDatabase {
   channels: SqliteTable<StoredChannel, string>;
@@ -253,6 +273,8 @@ class YnotvDatabase extends SqliteDatabase {
   watchlist: SqliteTable<WatchlistItem, number>;
   customGroups: SqliteTable<CustomGroup, string>;
   customGroupChannels: SqliteTable<CustomGroupChannel, number>;
+  epgChannelOverrides: SqliteTable<EpgChannelOverride, string>;
+  epgProgramOverrides: SqliteTable<EpgProgramOverride, string>;
 
 
   constructor() {
@@ -277,6 +299,8 @@ class YnotvDatabase extends SqliteDatabase {
     this.watchlist = new SqliteTable('watchlist', 'id', this.dbPromise);
     this.customGroups = new SqliteTable('custom_groups', 'group_id', this.dbPromise);
     this.customGroupChannels = new SqliteTable('custom_group_channels', 'id', this.dbPromise);
+    this.epgChannelOverrides = new SqliteTable('epg_channel_overrides', 'stream_id', this.dbPromise);
+    this.epgProgramOverrides = new SqliteTable('epg_program_overrides', 'id', this.dbPromise);
 
     // Initialize Schema (Async) - Chain to DB promise to ensure tables exist before usage
     const rawPromise = this.dbPromise;
@@ -303,6 +327,8 @@ class YnotvDatabase extends SqliteDatabase {
     this.watchlist.updateDbPromise(this.dbPromise);
     this.customGroups.updateDbPromise(this.dbPromise);
     this.customGroupChannels.updateDbPromise(this.dbPromise);
+    this.epgChannelOverrides.updateDbPromise(this.dbPromise);
+    this.epgProgramOverrides.updateDbPromise(this.dbPromise);
   }
 
   async initSchema(dbInstance?: Database) {
@@ -348,7 +374,7 @@ class YnotvDatabase extends SqliteDatabase {
     // Each version block runs exactly ONCE. To add new columns in the future,
     // increment DB_VERSION and add a new case (do NOT modify existing cases).
     // ─────────────────────────────────────────────────────────────────────────
-    const DB_VERSION = 1;
+    const DB_VERSION = 2;
     const versionResult = await db.select('PRAGMA user_version') as Array<{ user_version: number }>;
     const currentVersion = versionResult[0]?.user_version ?? 0;
 
@@ -395,6 +421,14 @@ class YnotvDatabase extends SqliteDatabase {
           await db.execute('UPDATE vodMovies SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
           await db.execute('UPDATE vodEpisodes SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
         } catch { /* columns may not exist on fresh installs */ }
+      }
+
+      if (currentVersion < 2) {
+        // v2: EPG Editor — new override tables and views (safe to run on existing DBs)
+        // Tables are created via CREATE TABLE IF NOT EXISTS below, so this block only
+        // handles the view recreation (DROP + CREATE to pick up any definition changes).
+        try { await db.execute('DROP VIEW IF EXISTS programs_effective'); } catch { /* */ }
+        try { await db.execute('DROP VIEW IF EXISTS epg_channels_effective'); } catch { /* */ }
       }
 
       // Bump the stored version so these migrations never run again
@@ -714,6 +748,64 @@ class YnotvDatabase extends SqliteDatabase {
     // Add enabled and display_order columns to vodCategories
     try { await db.execute(`ALTER TABLE vodCategories ADD COLUMN enabled INTEGER DEFAULT 1`); } catch (e) {}
     try { await db.execute(`ALTER TABLE vodCategories ADD COLUMN display_order INTEGER`); } catch (e) {}
+
+    // ── EPG Editor: Override Tables ───────────────────────────────────────────
+
+    // Per-channel EPG identity overrides (tvg-id, logo, timeshift)
+    await db.execute(`CREATE TABLE IF NOT EXISTS epg_channel_overrides (
+      stream_id       TEXT PRIMARY KEY,
+      epg_channel_id  TEXT,
+      stream_icon     TEXT,
+      timeshift_hours REAL
+    )`);
+
+    // Per-program overrides (edited fields) + custom programs + tombstones
+    await db.execute(`CREATE TABLE IF NOT EXISTS epg_program_overrides (
+      id          TEXT PRIMARY KEY,
+      stream_id   TEXT NOT NULL,
+      title       TEXT,
+      description TEXT,
+      start       TEXT,
+      end         TEXT,
+      is_deleted  INTEGER DEFAULT 0,
+      is_custom   INTEGER DEFAULT 0
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_epg_prog_override_stream ON epg_program_overrides(stream_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_epg_prog_override_custom ON epg_program_overrides(stream_id, is_custom)`);
+
+    // ── programs_effective VIEW ───────────────────────────────────────────────
+    // Always DROP + CREATE so the definition is guaranteed to be current,
+    // even on DBs that had a previous (possibly stale) version of the view.
+    // View DDL is essentially free so this is safe to do every startup.
+    await db.execute(`DROP VIEW IF EXISTS programs_effective`);
+    await db.execute(`CREATE VIEW programs_effective AS
+      SELECT
+        p.id,
+        p.stream_id,
+        COALESCE(o.title,       p.title)       AS title,
+        COALESCE(o.description, p.description) AS description,
+        COALESCE(o.start,       p.start)       AS start,
+        COALESCE(o.end,         p.end)         AS end,
+        p.source_id,
+        0 AS is_custom
+      FROM programs p
+      LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
+      WHERE COALESCE(o.is_deleted, 0) = 0
+      UNION ALL
+      SELECT
+        id,
+        stream_id,
+        title,
+        description,
+        start,
+        end,
+        '' AS source_id,
+        1  AS is_custom
+      FROM epg_program_overrides
+      WHERE is_custom = 1 AND is_deleted = 0
+    `);
+
+    // ──────────────────────────────────────────────────────────────────────────
 
     console.log('[DB] Schema initialization complete');
   }

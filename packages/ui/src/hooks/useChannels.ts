@@ -541,7 +541,7 @@ export function useProgramSearch(query: string, limit = 50) {
       const nowIso = new Date().toISOString();
       const programResults = await dbInstance.select(
         `SELECT p.* 
-         FROM programs p
+         FROM programs_effective p
          INNER JOIN (
            SELECT DISTINCT c.stream_id 
            FROM channels c, json_each(c.category_ids) AS cat
@@ -772,17 +772,19 @@ export function useCurrentProgram(streamId: string | null): StoredProgram | null
   const program = useLiveQuery(
     async () => {
       if (!streamId) return null;
-      const now = new Date();
+      const now = new Date().toISOString();
 
-      // Find program where start <= now < end
-      const prog = await db.programs
-        .where('stream_id')
-        .equals(streamId)
-        .filter((p) => p.start <= now && p.end > now)
-        .first();
+      // Query programs_effective so overrides + custom programs are reflected
+      const dbInstance = await (db as any).dbPromise;
+      const rows = await dbInstance.select(
+        `SELECT * FROM programs_effective
+         WHERE stream_id = ? AND start <= ? AND end > ?
+         ORDER BY start DESC LIMIT 1`,
+        [streamId, now, now]
+      ) as StoredProgram[];
 
+      const prog = rows[0] ?? null;
       if (prog) {
-        // Decompress description if needed
         return {
           ...prog,
           description: decompressEpgDescription(prog.description) ?? prog.description,
@@ -809,41 +811,36 @@ export function useProgramsInRange(
       if (streamIds.length === 0) return new Map<string, StoredProgram[]>();
 
       const result = new Map<string, StoredProgram[]>();
+      for (const id of streamIds) result.set(id, []);
 
-      // Initialize empty arrays for all channels
-      for (const id of streamIds) {
-        result.set(id, []);
-      }
+      const startIso = windowStart.toISOString();
+      const endIso = windowEnd.toISOString();
 
-      // Chunk streamIds to avoid SQLite "too many SQL variables" error
+      // Query programs_effective in chunks to respect SQLite variable limit
+      const dbInstance = await (db as any).dbPromise;
       const allPrograms: StoredProgram[] = [];
       for (let i = 0; i < streamIds.length; i += SQL_CHUNK_SIZE) {
         const chunk = streamIds.slice(i, i + SQL_CHUNK_SIZE);
-        const chunkPrograms = await db.programs
-          .where('stream_id')
-          .anyOf(chunk)
-          .filter((p) => {
-            const start = p.start instanceof Date ? p.start : new Date(p.start);
-            const end = p.end instanceof Date ? p.end : new Date(p.end);
-            return start < windowEnd && end > windowStart;
-          })
-          .toArray();
-        allPrograms.push(...chunkPrograms);
+        const placeholders = chunk.map(() => '?').join(',');
+        const rows = await dbInstance.select(
+          `SELECT * FROM programs_effective
+           WHERE stream_id IN (${placeholders})
+             AND start < ? AND end > ?
+           ORDER BY start ASC`,
+          [...chunk, endIso, startIso]
+        ) as StoredProgram[];
+        allPrograms.push(...rows);
       }
 
-      // Group by stream_id, decompress descriptions, and sort by start time
       for (const prog of allPrograms) {
         const existing = result.get(prog.stream_id) ?? [];
-        // Decompress description if needed
-        const decompressedProg = {
+        existing.push({
           ...prog,
           description: decompressEpgDescription(prog.description) ?? prog.description,
-        };
-        existing.push(decompressedProg);
+        });
         result.set(prog.stream_id, existing);
       }
 
-      // Sort each channel's programs by start time
       for (const [, progs] of result) {
         progs.sort((a, b) => {
           const aStart = a.start instanceof Date ? a.start.getTime() : new Date(a.start).getTime();
@@ -865,29 +862,25 @@ export function usePrograms(streamIds: string[]): Map<string, StoredProgram | nu
   const programs = useLiveQuery(
     async () => {
       if (streamIds.length === 0) return new Map();
-      const now = new Date();
+      const now = new Date().toISOString();
       const result = new Map<string, StoredProgram | null>();
-
-      // Initialize all to null so callers know these IDs were checked
       for (const id of streamIds) result.set(id, null);
 
-      // Single batched query instead of N separate round-trips
+      const dbInstance = await (db as any).dbPromise;
       const allPrograms: StoredProgram[] = [];
       for (let i = 0; i < streamIds.length; i += SQL_CHUNK_SIZE) {
         const chunk = streamIds.slice(i, i + SQL_CHUNK_SIZE);
-        const chunkPrograms = await db.programs
-          .where('stream_id')
-          .anyOf(chunk)
-          .filter((p) => {
-            const start = p.start instanceof Date ? p.start : new Date(p.start);
-            const end = p.end instanceof Date ? p.end : new Date(p.end);
-            return start <= now && end > now;
-          })
-          .toArray();
-        allPrograms.push(...chunkPrograms);
+        const placeholders = chunk.map(() => '?').join(',');
+        const rows = await dbInstance.select(
+          `SELECT * FROM programs_effective
+           WHERE stream_id IN (${placeholders})
+             AND start <= ? AND end > ?
+           ORDER BY start DESC`,
+          [...chunk, now, now]
+        ) as StoredProgram[];
+        allPrograms.push(...rows);
       }
 
-      // Pick first current program per channel (channels rarely have overlapping programs)
       for (const prog of allPrograms) {
         if (!result.get(prog.stream_id)) {
           result.set(prog.stream_id, prog);
@@ -909,43 +902,32 @@ export function useAllPrograms(streamIds: string[]): Map<string, StoredProgram[]
       if (streamIds.length === 0) return new Map<string, StoredProgram[]>();
 
       const result = new Map<string, StoredProgram[]>();
+      for (const id of streamIds) result.set(id, []);
 
-      // Initialize empty arrays for all channels
-      for (const id of streamIds) {
-        result.set(id, []);
-      }
-
-      // Load ALL programs for these channels (no time window filtering)
+      const dbInstance = await (db as any).dbPromise;
       const allPrograms: StoredProgram[] = [];
       for (let i = 0; i < streamIds.length; i += SQL_CHUNK_SIZE) {
         const chunk = streamIds.slice(i, i + SQL_CHUNK_SIZE);
-        const chunkPrograms = await db.programs
-          .where('stream_id')
-          .anyOf(chunk)
-          .toArray();
-        allPrograms.push(...chunkPrograms);
+        const placeholders = chunk.map(() => '?').join(',');
+        const rows = await dbInstance.select(
+          `SELECT * FROM programs_effective
+           WHERE stream_id IN (${placeholders})
+           ORDER BY start ASC`,
+          chunk
+        ) as StoredProgram[];
+        allPrograms.push(...rows);
       }
 
-      // Debug logging for EPG troubleshooting
-      if (allPrograms.length > 0) {
-        // console.log(`[useAllPrograms] Loaded ${allPrograms.length} programs for ${streamIds.length} channels`);
-        // console.log(`[useAllPrograms] Sample stream_ids queried:`, streamIds.slice(0, 3));
-        // console.log(`[useAllPrograms] Sample program stream_ids:`, allPrograms.slice(0, 3).map(p => p.stream_id));
-      }
-
-      // Group by stream_id, decompress descriptions, and sort by start time
       for (const prog of allPrograms) {
         const existing = result.get(prog.stream_id) ?? [];
-        // Decompress description if needed
-        const decompressedProg = {
+        existing.push({
           ...prog,
           description: decompressEpgDescription(prog.description) ?? prog.description,
-        };
-        existing.push(decompressedProg);
+        });
         result.set(prog.stream_id, existing);
       }
 
-      // Sort each channel's programs by start time
+      // Already sorted by ORDER BY above, but keep sort for safety on merge
       for (const [, progs] of result) {
         progs.sort((a, b) => {
           const aStart = a.start instanceof Date ? a.start.getTime() : new Date(a.start).getTime();
