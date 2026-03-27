@@ -784,11 +784,12 @@ class YnotvDatabase extends SqliteDatabase {
         p.stream_id,
         COALESCE(o.title,       p.title)       AS title,
         COALESCE(o.description, p.description) AS description,
-        COALESCE(o.start,       p.start)       AS start,
-        COALESCE(o.end,         p.end)         AS end,
+        COALESCE(o.start,       datetime(p.start, CAST(IFNULL(co.timeshift_hours, 0) * 60 AS INTEGER) || ' minutes')) AS start,
+        COALESCE(o.end,         datetime(p.end,   CAST(IFNULL(co.timeshift_hours, 0) * 60 AS INTEGER) || ' minutes')) AS end,
         p.source_id,
         0 AS is_custom
       FROM programs p
+      LEFT JOIN epg_channel_overrides co ON co.stream_id = p.stream_id
       LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
       WHERE COALESCE(o.is_deleted, 0) = 0
       UNION ALL
