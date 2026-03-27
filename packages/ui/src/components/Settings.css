@@ -1484,3 +1484,33 @@
 .shortcuts-scroll-container::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Global Select & Dropdown Styling for Settings */
+.settings-content select {
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.settings-content select:focus {
+  border-color: rgba(0, 212, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.settings-content select option {
+  background: #1a1a1a; /* Solid background for Windows/Chrome readability */
+  color: white;
+  padding: 8px 12px;
+}
+
+/* Ensure descriptions (small tags) are consistently grey */
+.settings-content small,
+.settings-section p.section-description {
+  color: rgba(255, 255, 255, 0.5) !important;
+}

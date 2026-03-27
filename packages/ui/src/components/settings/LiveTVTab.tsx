@@ -94,7 +94,6 @@ export function LiveTVTab({
               <span className="timeshift-toggle-sub">Select between the standard left-to-right setup or the full-width cinematic format.</span>
             </div>
             <select
-              style={{ padding: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
               value={epgView}
               onChange={(e) => onEpgViewChange(e.target.value as 'traditional' | 'alternate')}
             >

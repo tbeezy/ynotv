@@ -123,3 +123,36 @@ input:disabled + .toggle-slider {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Settings Option Layout */
+.settings-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 24px;
+}
+
+.settings-option:last-child {
+  border-bottom: none;
+}
+
+.option-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.option-label span {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.option-label small {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.4;
+}
