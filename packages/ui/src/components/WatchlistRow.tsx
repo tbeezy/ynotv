@@ -142,6 +142,7 @@ export function WatchlistRow({
           <div className="guide-channel-logo">
             {channel.stream_icon ? (
               <img
+                key={channel.stream_icon}
                 src={channel.stream_icon}
                 alt=""
                 onError={(e) => {

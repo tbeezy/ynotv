@@ -397,6 +397,7 @@ export function NowPlayingBar({
             <div className="npb-channel-section">
               {channel.stream_icon && (
                 <img
+                  key={channel.stream_icon}
                   src={channel.stream_icon}
                   alt=""
                   className="npb-channel-logo"

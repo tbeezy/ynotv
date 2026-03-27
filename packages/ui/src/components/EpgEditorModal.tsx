@@ -430,7 +430,7 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
       await upsertChannelOverride({
         stream_id: channel.stream_id,
         epg_channel_id: epgChan.id,
-        stream_icon: current?.stream_icon ?? channel.stream_icon,
+        stream_icon: epgChan.icon_url || current?.stream_icon || channel.stream_icon,
         timeshift_hours: current?.timeshift_hours ?? 0,
       });
       setTvgId(epgChan.id);
@@ -551,6 +551,7 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
                   />
                   {logoUrl ? (
                     <img
+                      key={logoUrl}
                       src={logoUrl}
                       alt="logo"
                       className="epg-editor-logo-preview"
@@ -847,8 +848,13 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
                       title="Click to edit EPG for this channel"
                     >
                       {ch.stream_icon ? (
-                        <img src={ch.stream_icon} alt="" className="epg-source-channel-icon"
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <img 
+                          key={ch.stream_icon}
+                          src={ch.stream_icon} 
+                          alt="" 
+                          className="epg-source-channel-icon"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                        />
                       ) : (
                         <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--bg-tertiary, rgba(255,255,255,0.05))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📡</div>
                       )}
