@@ -154,12 +154,12 @@
 }
 
 .category-strip-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 80%, transparent);
   border-radius: 2px;
 }
 
 .category-strip-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--accent-primary, #00d4ff);
 }
 
 .category-item {

@@ -581,12 +581,12 @@
 }
 
 .guide-channels::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 80%, transparent);
   border-radius: 3px;
 }
 
 .guide-channels::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--accent-primary, #00d4ff);
 }
 
 /* Channel Row */
@@ -1078,12 +1078,12 @@
 }
 
 .search-programs-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 80%, transparent);
   border-radius: 3px;
 }
 
 .search-programs-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--accent-primary, #00d4ff);
 }
 
 .search-program-slot {
