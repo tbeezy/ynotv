@@ -4,17 +4,12 @@
  * Attaches a global `keydown` listener and dispatches to action handlers
  * based on the user's configured shortcut map.
  *
- * Previously this was an inline useEffect inside App.tsx (lines 1086-1248).
- * All action handlers and refs are passed in via the options object so this
- * hook has zero knowledge of React state — it only reads refs and calls
- * callbacks. This makes the dependency array stay empty ([]) exactly as
- * it was before, avoiding re-registration on every render.
- *
- * The hook is intentionally NOT responsible for loading shortcuts from
- * storage — that's still done by useAutoSync which calls onShortcutsLoaded.
+ * Uses the "latest ref" pattern to access current state values without
+ * triggering re-registrations of the event listener. All options are stored
+ * in a single ref that is updated synchronously during render.
  */
 
-import { useEffect, type RefObject, type MutableRefObject } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ShortcutAction, ShortcutsMap } from '../types/app';
 import { DEFAULT_SHORTCUTS } from '../constants/shortcuts';
 import type { StoredChannel } from '../db';
@@ -22,65 +17,45 @@ import type { LayoutMode } from './useMultiview';
 import type { View } from '../components/Sidebar';
 
 export interface UseKeyboardShortcutsOptions {
-    // --- Refs to current state values (avoid stale closures) ---
-    shortcutsRef: MutableRefObject<ShortcutsMap>;
-    activeViewRef: MutableRefObject<View>;
-    categoriesOpenRef: MutableRefObject<boolean>;
-    positionRef: MutableRefObject<number>;
-    currentChannelsRef: MutableRefObject<StoredChannel[]>;
-    currentChannelRef: MutableRefObject<StoredChannel | null>;
-    switchLayoutRef: MutableRefObject<((layout: LayoutMode) => void) | null>;
-    titleBarSearchRef: RefObject<HTMLInputElement | null>;
-    handlePlayChannelRef: MutableRefObject<(channel: StoredChannel) => void>;
-    lastPlayedChannelRef: MutableRefObject<StoredChannel | null>;
+    // --- Current state values (accessed via latest ref pattern) ---
+    shortcuts: ShortcutsMap;
+    activeView: View;
+    categoriesOpen: boolean;
+    position: number;
+    currentChannels: StoredChannel[];
+    currentChannel: StoredChannel | null;
+    switchLayout: ((layout: LayoutMode) => void) | null;
+    titleBarSearchRef: React.RefObject<HTMLInputElement | null>;
+    handlePlayChannel: (channel: StoredChannel, autoSwitched?: boolean) => void;
+    lastPlayedChannel: StoredChannel | null;
 
-    // --- Action callbacks (as refs to avoid stale closures) ---
-    handleTogglePlayRef: MutableRefObject<() => void>;
-    handleToggleMuteRef: MutableRefObject<() => void>;
-    handleToggleStatsRef: MutableRefObject<() => void>;
-    handleToggleFullscreenRef: MutableRefObject<() => void>;
-    handleShowSubtitleModalRef: MutableRefObject<() => void>;
-    handleShowAudioModalRef: MutableRefObject<() => void>;
-    handleSeekRef: MutableRefObject<(position: number) => void>;
-    handleToggleEpgViewRef: MutableRefObject<() => void>;
-    setActiveViewRef: MutableRefObject<React.Dispatch<React.SetStateAction<View>>>;
-    setCategoriesOpenRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
-    setSidebarExpandedRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
-    setShowControlsRef: MutableRefObject<React.Dispatch<React.SetStateAction<boolean>>>;
+    // --- Action callbacks ---
+    handleTogglePlay: () => void;
+    handleToggleMute: () => void;
+    handleToggleStats: () => void;
+    handleToggleFullscreen: () => void;
+    handleShowSubtitleModal: () => void;
+    handleShowAudioModal: () => void;
+    handleSeek: (position: number) => void;
+    handleToggleEpgView: () => void;
+    setActiveView: React.Dispatch<React.SetStateAction<View>>;
+    setCategoriesOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    setSidebarExpanded: React.Dispatch<React.SetStateAction<boolean>>;
+    setShowControls: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 /**
  * Registers a global keydown listener that fires the appropriate action when
  * the user presses a configured shortcut key.
  *
- * Call once at the app root level with stable (ref-based) callbacks.
+ * Uses the latest ref pattern to avoid stale closures - all state is accessed
+ * through a single ref that is updated synchronously during render.
  * The listener is attached once on mount and removed on unmount.
  */
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
-    const {
-        shortcutsRef,
-        activeViewRef,
-        categoriesOpenRef,
-        positionRef,
-        currentChannelsRef,
-        currentChannelRef,
-        switchLayoutRef,
-        titleBarSearchRef,
-        handlePlayChannelRef,
-        lastPlayedChannelRef,
-        handleTogglePlayRef,
-        handleToggleMuteRef,
-        handleToggleStatsRef,
-        handleToggleFullscreenRef,
-        handleShowSubtitleModalRef,
-        handleShowAudioModalRef,
-        handleSeekRef,
-        handleToggleEpgViewRef,
-        setActiveViewRef,
-        setCategoriesOpenRef,
-        setSidebarExpandedRef,
-        setShowControlsRef,
-    } = options;
+    // Store all options in a single ref, updated synchronously during render
+    const latestRefs = useRef(options);
+    latestRefs.current = options;
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -92,11 +67,35 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 return;
             }
 
-            const currentShortcuts = shortcutsRef.current;
+            // Access all values through the latest ref
+            const {
+                shortcuts,
+                activeView,
+                categoriesOpen,
+                position,
+                currentChannels,
+                currentChannel,
+                switchLayout,
+                titleBarSearchRef,
+                handlePlayChannel,
+                lastPlayedChannel,
+                handleTogglePlay,
+                handleToggleMute,
+                handleToggleStats,
+                handleToggleFullscreen,
+                handleShowSubtitleModal,
+                handleShowAudioModal,
+                handleSeek,
+                handleToggleEpgView,
+                setActiveView,
+                setCategoriesOpen,
+                setSidebarExpanded,
+                setShowControls,
+            } = latestRefs.current;
 
             // Helper to match keys case-insensitively for letters
             const matches = (action: ShortcutAction, eventKey: string): boolean => {
-                const storedKey = currentShortcuts[action] || DEFAULT_SHORTCUTS[action];
+                const storedKey = shortcuts[action] || DEFAULT_SHORTCUTS[action];
                 if (!storedKey) return false;
 
                 // Precise match first
@@ -112,131 +111,118 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
             if (matches('togglePlay', e.key)) {
                 e.preventDefault();
-                handleTogglePlayRef.current();
+                handleTogglePlay();
             } else if (matches('toggleMute', e.key)) {
-                handleToggleMuteRef.current();
+                handleToggleMute();
             } else if (matches('toggleStats', e.key)) {
                 e.preventDefault();
-                handleToggleStatsRef.current();
+                handleToggleStats();
             } else if (matches('toggleFullscreen', e.key)) {
                 e.preventDefault();
-                handleToggleFullscreenRef.current();
+                handleToggleFullscreen();
             } else if (matches('selectSubtitle', e.key)) {
                 e.preventDefault();
-                handleShowSubtitleModalRef.current();
+                handleShowSubtitleModal();
             } else if (matches('selectAudio', e.key)) {
                 e.preventDefault();
-                handleShowAudioModalRef.current();
+                handleShowAudioModal();
             } else if (matches('toggleGuide', e.key)) {
-                setActiveViewRef.current((v) => (v === 'guide' ? 'none' : 'guide'));
+                setActiveView((v) => (v === 'guide' ? 'none' : 'guide'));
             } else if (matches('toggleCategories', e.key)) {
-                setCategoriesOpenRef.current((open) => !open);
+                setCategoriesOpen((open) => !open);
             } else if (matches('toggleLiveTV', e.key)) {
                 e.preventDefault();
-                const currentActiveView = activeViewRef.current;
-                const currentCategoriesOpen = categoriesOpenRef.current;
-
-                setShowControlsRef.current(true);
-
-                const newLiveTVState = !(currentActiveView === 'guide' && currentCategoriesOpen);
+                const newLiveTVState = !(activeView === 'guide' && categoriesOpen);
+                setShowControls(true);
                 if (newLiveTVState) {
-                    setActiveViewRef.current('guide');
-                    setCategoriesOpenRef.current(true);
+                    setActiveView('guide');
+                    setCategoriesOpen(true);
                 } else {
-                    setActiveViewRef.current('none');
-                    setCategoriesOpenRef.current(false);
+                    setActiveView('none');
+                    setCategoriesOpen(false);
                 }
             } else if (matches('toggleSettings', e.key)) {
                 e.preventDefault();
-                const currentActiveView = activeViewRef.current;
-                setActiveViewRef.current(currentActiveView === 'settings' ? 'none' : 'settings');
+                setActiveView((v) => (v === 'settings' ? 'none' : 'settings'));
             } else if (matches('toggleSports', e.key)) {
                 e.preventDefault();
-                const currentActiveView = activeViewRef.current;
-                setCategoriesOpenRef.current(false);
-                setActiveViewRef.current(currentActiveView === 'sports' ? 'none' : 'sports');
+                setCategoriesOpen(false);
+                setActiveView((v) => (v === 'sports' ? 'none' : 'sports'));
             } else if (matches('toggleDvr', e.key)) {
                 e.preventDefault();
-                const currentActiveView = activeViewRef.current;
-                setCategoriesOpenRef.current(false);
-                setActiveViewRef.current(currentActiveView === 'dvr' ? 'none' : 'dvr');
+                setCategoriesOpen(false);
+                setActiveView((v) => (v === 'dvr' ? 'none' : 'dvr'));
             } else if (matches('toggleCalendar', e.key)) {
                 e.preventDefault();
-                const currentActiveView = activeViewRef.current;
-                setCategoriesOpenRef.current(false);
-                setActiveViewRef.current(currentActiveView === 'calendar' ? 'none' : 'calendar');
+                setCategoriesOpen(false);
+                setActiveView((v) => (v === 'calendar' ? 'none' : 'calendar'));
             } else if (matches('toggleEpgView', e.key)) {
                 e.preventDefault();
-                handleToggleEpgViewRef.current();
+                handleToggleEpgView();
             } else if (matches('focusSearch', e.key)) {
                 e.preventDefault();
-                setShowControlsRef.current(true);
-                if (activeViewRef.current !== 'guide') {
-                    setActiveViewRef.current('guide');
+                setShowControls(true);
+                if (activeView !== 'guide') {
+                    setActiveView('guide');
                 }
-                setCategoriesOpenRef.current(true);
+                setCategoriesOpen(true);
                 if (titleBarSearchRef.current) {
                     titleBarSearchRef.current.focus();
                 }
             } else if (matches('close', e.key)) {
-                setActiveViewRef.current('none');
-                setCategoriesOpenRef.current(false);
-                setSidebarExpandedRef.current(false);
-                setShowControlsRef.current(false);
+                setActiveView('none');
+                setCategoriesOpen(false);
+                setSidebarExpanded(false);
+                setShowControls(false);
             } else if (matches('seekForward', e.key)) {
                 e.preventDefault();
-                handleSeekRef.current(positionRef.current + 10);
+                handleSeek(position + 10);
             } else if (matches('seekBackward', e.key)) {
                 e.preventDefault();
-                handleSeekRef.current(positionRef.current - 10);
+                handleSeek(position - 10);
             } else if (matches('layoutMain', e.key)) {
                 e.preventDefault();
-                switchLayoutRef.current?.('main');
+                switchLayout?.('main');
             } else if (matches('layoutPip', e.key)) {
                 e.preventDefault();
-                switchLayoutRef.current?.('pip');
+                switchLayout?.('pip');
             } else if (matches('layoutBigBottom', e.key)) {
                 e.preventDefault();
-                switchLayoutRef.current?.('bigbottom');
+                switchLayout?.('bigbottom');
             } else if (matches('layout2x2', e.key)) {
                 e.preventDefault();
-                switchLayoutRef.current?.('2x2');
+                switchLayout?.('2x2');
             } else if (matches('channelUp', e.key)) {
                 e.preventDefault();
-                const channels = currentChannelsRef.current;
-                const currentCh = currentChannelRef.current;
-                if (channels.length > 0 && currentCh) {
-                    const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
+                if (currentChannels.length > 0 && currentChannel) {
+                    const currentIndex = currentChannels.findIndex((ch) => ch.stream_id === currentChannel.stream_id);
                     if (currentIndex > 0) {
-                        handlePlayChannelRef.current(channels[currentIndex - 1]);
+                        handlePlayChannel(currentChannels[currentIndex - 1]);
                     } else if (currentIndex === 0) {
                         // Wrap to last channel
-                        handlePlayChannelRef.current(channels[channels.length - 1]);
+                        handlePlayChannel(currentChannels[currentChannels.length - 1]);
                     }
                 }
             } else if (matches('channelDown', e.key)) {
                 e.preventDefault();
-                const channels = currentChannelsRef.current;
-                const currentCh = currentChannelRef.current;
-                if (channels.length > 0 && currentCh) {
-                    const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
-                    if (currentIndex >= 0 && currentIndex < channels.length - 1) {
-                        handlePlayChannelRef.current(channels[currentIndex + 1]);
-                    } else if (currentIndex === channels.length - 1) {
+                if (currentChannels.length > 0 && currentChannel) {
+                    const currentIndex = currentChannels.findIndex((ch) => ch.stream_id === currentChannel.stream_id);
+                    if (currentIndex >= 0 && currentIndex < currentChannels.length - 1) {
+                        handlePlayChannel(currentChannels[currentIndex + 1]);
+                    } else if (currentIndex === currentChannels.length - 1) {
                         // Wrap to first channel
-                        handlePlayChannelRef.current(channels[0]);
+                        handlePlayChannel(currentChannels[0]);
                     }
                 }
             } else if (matches('replayLastStream', e.key)) {
                 e.preventDefault();
-                const lastChannel = lastPlayedChannelRef.current;
-                if (lastChannel) {
-                    handlePlayChannelRef.current(lastChannel);
+                if (lastPlayedChannel) {
+                    handlePlayChannel(lastPlayedChannel);
                 }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []); // Empty dep array: all state accessed via refs, callbacks are stable
+    }, []); // Empty dep array: all state accessed via latest ref
 }

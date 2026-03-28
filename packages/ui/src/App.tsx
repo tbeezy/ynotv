@@ -366,42 +366,7 @@ function App() {
   const handleShowSubtitleModal = useCallback(() => setShowSubtitleModal(true), []);
   const handleShowAudioModal = useCallback(() => setShowAudioModal(true), []);
 
-  // ==========================================================================
-  // Refs for Keyboard Shortcuts (to avoid stale closures)
-  // ==========================================================================
-  const playingRef = useRef(playing);
-  const positionRef = useRef(position);
-  const shortcutsRef = useRef(shortcuts);
-  const currentChannelRef = useRef(currentChannel);
-  const handleTogglePlayRef = useRef(handleTogglePlay);
-  const handleToggleMuteRef = useRef(handleToggleMute);
-  const handleToggleStatsRef = useRef(handleToggleStats);
-  const handleToggleFullscreenRef = useRef(handleToggleFullscreen);
-  const handleShowSubtitleModalRef = useRef(handleShowSubtitleModal);
-  const handleShowAudioModalRef = useRef(handleShowAudioModal);
-  const handleSeekRef = useRef(handleSeek);
-  const handleToggleEpgViewRef = useRef(handleToggleEpgView);
-  const setActiveViewRef = useRef(setActiveView);
-  const setCategoriesOpenRef = useRef(setCategoriesOpen);
-  const setSidebarExpandedRef = useRef(setSidebarExpanded);
-  const setShowControlsRef = useRef(setShowControls);
 
-  useEffect(() => { playingRef.current = playing; }, [playing]);
-  useEffect(() => { positionRef.current = position; }, [position]);
-  useEffect(() => { shortcutsRef.current = shortcuts; }, [shortcuts]);
-  useEffect(() => { currentChannelRef.current = currentChannel; }, [currentChannel]);
-  useEffect(() => { handleTogglePlayRef.current = handleTogglePlay; }, [handleTogglePlay]);
-  useEffect(() => { handleToggleMuteRef.current = handleToggleMute; }, [handleToggleMute]);
-  useEffect(() => { handleToggleStatsRef.current = handleToggleStats; }, [handleToggleStats]);
-  useEffect(() => { handleToggleFullscreenRef.current = handleToggleFullscreen; }, [handleToggleFullscreen]);
-  useEffect(() => { handleShowSubtitleModalRef.current = handleShowSubtitleModal; }, [handleShowSubtitleModal]);
-  useEffect(() => { handleShowAudioModalRef.current = handleShowAudioModal; }, [handleShowAudioModal]);
-  useEffect(() => { handleSeekRef.current = handleSeek; }, [handleSeek]);
-  useEffect(() => { handleToggleEpgViewRef.current = handleToggleEpgView; }, [handleToggleEpgView]);
-  useEffect(() => { setActiveViewRef.current = setActiveView; }, [setActiveView]);
-  useEffect(() => { setCategoriesOpenRef.current = setCategoriesOpen; }, [setCategoriesOpen]);
-  useEffect(() => { setSidebarExpandedRef.current = setSidebarExpanded; }, [setSidebarExpanded]);
-  useEffect(() => { setShowControlsRef.current = setShowControls; }, [setShowControls]);
 
   // ==========================================================================
   // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, or Series opens
@@ -431,59 +396,55 @@ function App() {
   // Handle Channel Navigation (Up/Down)
   // ==========================================================================
   const handleChannelUp = useCallback(() => {
-    const channels = currentChannelsRef.current;
-    const currentCh = currentChannelRef.current;
-    if (channels.length > 0 && currentCh) {
-      const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
+    if (currentChannels.length > 0 && currentChannel) {
+      const currentIndex = currentChannels.findIndex((ch) => ch.stream_id === currentChannel.stream_id);
       if (currentIndex > 0) {
-        handlePlayChannel(channels[currentIndex - 1]);
+        handlePlayChannel(currentChannels[currentIndex - 1]);
       } else if (currentIndex === 0) {
         // Wrap to last channel
-        handlePlayChannel(channels[channels.length - 1]);
+        handlePlayChannel(currentChannels[currentChannels.length - 1]);
       }
     }
-  }, [handlePlayChannel]);
+  }, [currentChannels, currentChannel, handlePlayChannel]);
 
   const handleChannelDown = useCallback(() => {
-    const channels = currentChannelsRef.current;
-    const currentCh = currentChannelRef.current;
-    if (channels.length > 0 && currentCh) {
-      const currentIndex = channels.findIndex((ch) => ch.stream_id === currentCh.stream_id);
-      if (currentIndex >= 0 && currentIndex < channels.length - 1) {
-        handlePlayChannel(channels[currentIndex + 1]);
-      } else if (currentIndex === channels.length - 1) {
+    if (currentChannels.length > 0 && currentChannel) {
+      const currentIndex = currentChannels.findIndex((ch) => ch.stream_id === currentChannel.stream_id);
+      if (currentIndex >= 0 && currentIndex < currentChannels.length - 1) {
+        handlePlayChannel(currentChannels[currentIndex + 1]);
+      } else if (currentIndex === currentChannels.length - 1) {
         // Wrap to first channel
-        handlePlayChannel(channels[0]);
+        handlePlayChannel(currentChannels[0]);
       }
     }
-  }, [handlePlayChannel]);
+  }, [currentChannels, currentChannel, handlePlayChannel]);
 
   // ==========================================================================
-  // Keyboard Shortcuts
+  // Keyboard Shortcuts (using latest ref pattern)
   // ==========================================================================
   useKeyboardShortcuts({
-    shortcutsRef,
-    activeViewRef,
-    categoriesOpenRef,
-    positionRef,
-    currentChannelsRef,
-    currentChannelRef,
-    switchLayoutRef,
+    shortcuts,
+    activeView,
+    categoriesOpen,
+    position,
+    currentChannels,
+    currentChannel,
+    switchLayout,
     titleBarSearchRef,
-    handlePlayChannelRef: { current: handlePlayChannel },
-    lastPlayedChannelRef,
-    handleTogglePlayRef,
-    handleToggleMuteRef,
-    handleToggleStatsRef,
-    handleToggleFullscreenRef,
-    handleShowSubtitleModalRef,
-    handleShowAudioModalRef,
-    handleSeekRef,
-    handleToggleEpgViewRef,
-    setActiveViewRef,
-    setCategoriesOpenRef,
-    setSidebarExpandedRef,
-    setShowControlsRef,
+    handlePlayChannel,
+    lastPlayedChannel: lastPlayedChannelRef.current,
+    handleTogglePlay,
+    handleToggleMute,
+    handleToggleStats,
+    handleToggleFullscreen,
+    handleShowSubtitleModal,
+    handleShowAudioModal,
+    handleSeek,
+    handleToggleEpgView,
+    setActiveView,
+    setCategoriesOpen,
+    setSidebarExpanded,
+    setShowControls,
   });
 
   // ==========================================================================
