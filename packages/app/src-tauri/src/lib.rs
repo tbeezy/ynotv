@@ -29,6 +29,7 @@ use dvr::{DvrState, models::*};
 
 // Bulk database operations module
 mod db_bulk_ops;
+mod sync_provider;
 
 // Streaming EPG parser module
 mod epg_streaming;
@@ -1845,6 +1846,8 @@ pub fn run() {
             multiview_kill_slot,
             multiview_kill_all,
             // Optimized bulk sync commands
+            sync_provider::sync_xtream_source,
+            sync_provider::sync_m3u_source,
             bulk_upsert_channels,
             bulk_upsert_categories,
             bulk_replace_programs,

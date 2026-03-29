@@ -876,6 +876,105 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     let categories: Category[] = [];
     let epgUrl: string | undefined;
 
+    let nativeSyncComplete = false;
+    let nativeChannelsCount = 0;
+    let nativeCategoriesCount = 0;
+
+    // ----- NATIVE RUST SYNC (Xtream & M3U only) -----
+    if ((window as any).__TAURI__ && !source.vod_only && !source.url.startsWith('imported:')) {
+      try {
+        if (source.type === 'm3u') {
+          debugLog(`Native Rust Sync for M3U: ${source.url}`, 'sync');
+          onProgress?.('Syncing via Rust Native Engine (0% UI CPU)...');
+          const result = await invoke<any>('sync_m3u_source', {
+            sourceId: source.id,
+            url: source.url,
+            userAgent: source.user_agent || null
+          });
+
+          // Process fast deletions natively
+          onProgress?.('Cleaning up stale channels...');
+          const existingChannels = await db.channels.where('source_id').equals(source.id).toArray();
+          const existingChannelIds = existingChannels.map(c => c.stream_id);
+          const newChannelIdSet = new Set(result.parsed_channel_ids || []);
+          const staleChannelIds = (existingChannelIds as string[]).filter(id => !newChannelIdSet.has(id));
+          if (staleChannelIds.length > 0) {
+            await bulkOps.deleteChannels(staleChannelIds);
+            channels = existingChannels.filter(c => newChannelIdSet.has(c.stream_id)) as Channel[];
+          } else {
+            channels = existingChannels as Channel[];
+          }
+
+          const existingCategories = await db.categories.where('source_id').equals(source.id).toArray();
+          const existingCategoryIds = existingCategories.map(c => c.category_id);
+          const newCategoryIdSet = new Set(result.parsed_category_ids || []);
+          const staleCategoryIds = (existingCategoryIds as string[]).filter(id => !newCategoryIdSet.has(id));
+          if (staleCategoryIds.length > 0) await bulkOps.deleteCategories(staleCategoryIds);
+
+          epgUrl = result.epg_url || undefined;
+          nativeChannelsCount = result.parsed_channel_ids?.length || 0;
+          nativeCategoriesCount = result.parsed_category_ids?.length || 0;
+          nativeSyncComplete = true;
+
+        } else if (source.type === 'xtream' && source.username && source.password) {
+          debugLog('Testing Xtream connection to get server_info...', 'sync');
+          onProgress?.('Connecting to Xtream server...');
+          const client = new XtreamClient({ baseUrl: source.url, username: source.username, password: source.password, userAgent: source.user_agent }, source.id);
+          const connTest = await client.testConnection();
+          if (!connTest.success) throw new Error(connTest.error ?? 'Connection failed');
+
+          const userInfo = await client.getUserInfo();
+          (source as any)._xtream_expiry = userInfo.expiry_date;
+          (source as any)._xtream_active_cons = userInfo.active_cons;
+          (source as any)._xtream_max_connections = userInfo.max_connections;
+
+          if (connTest.info?.server_info) {
+            let { url, port, server_protocol } = connTest.info.server_info;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+              url = `${server_protocol === 'https' ? 'https' : 'http'}://${url}`;
+            }
+            epgUrl = `${url}:${port}/xmltv.php?username=${source.username}&password=${source.password}`;
+          }
+
+          debugLog(`Native Rust Sync for Xtream: ${source.url}`, 'sync');
+          onProgress?.('Syncing via Rust Native Engine (0% UI CPU)...');
+          const result = await invoke<any>('sync_xtream_source', {
+            sourceId: source.id,
+            baseUrl: source.url,
+            username: source.username,
+            password: source.password,
+            userAgent: source.user_agent || null
+          });
+
+          // Process fast deletions
+          onProgress?.('Cleaning up stale channels...');
+          const existingChannels = await db.channels.where('source_id').equals(source.id).toArray();
+          const existingChannelIds = existingChannels.map(c => c.stream_id);
+          const newChannelIdSet = new Set(result.parsed_channel_ids || []);
+          const staleChannelIds = (existingChannelIds as string[]).filter(id => !newChannelIdSet.has(id));
+          if (staleChannelIds.length > 0) {
+            await bulkOps.deleteChannels(staleChannelIds);
+            channels = existingChannels.filter(c => newChannelIdSet.has(c.stream_id)) as Channel[];
+          } else {
+            channels = existingChannels as Channel[];
+          }
+
+          const existingCategories = await db.categories.where('source_id').equals(source.id).toArray();
+          const existingCategoryIds = existingCategories.map(c => c.category_id);
+          const newCategoryIdSet = new Set(result.parsed_category_ids || []);
+          const staleCategoryIds = (existingCategoryIds as string[]).filter(id => !newCategoryIdSet.has(id));
+          if (staleCategoryIds.length > 0) await bulkOps.deleteCategories(staleCategoryIds);
+
+          nativeChannelsCount = result.parsed_channel_ids?.length || 0;
+          nativeCategoriesCount = result.parsed_category_ids?.length || 0;
+          nativeSyncComplete = true;
+        }
+      } catch (err: any) {
+         debugLog(`Native sync failed: ${err.message}, falling back to legacy JS parser...`, 'sync');
+      }
+    }
+
+    if (!nativeSyncComplete) {
     if (source.type === 'm3u') {
       // Check if this is a local imported file (not a remote URL)
       if (source.url.startsWith('imported:')) {
@@ -1068,25 +1167,30 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     const channelsToAdd: any[] = [];
     const channelsToUpdate: any[] = [];
 
-    for (const channel of channels) {
+    const CHUNK_SIZE = 5000;
+    for (let i = 0; i < channels.length; i++) {
+      if (i > 0 && i % CHUNK_SIZE === 0) {
+        await new Promise(r => setTimeout(r, 0)); // Yield to paint UI Frame!
+      }
+      const channel = channels[i];
       const existing = existingChannelMap.get(channel.stream_id);
       if (!existing) {
         // New channel
         channelsToAdd.push(channel);
       } else {
         // Check if channel data changed (compare key fields)
+        const categoriesChanged = channel.category_ids?.length !== existing.category_ids?.length || 
+            (channel.category_ids && existing.category_ids && channel.category_ids[0] !== existing.category_ids[0]);
+            
         const hasChanged =
           existing.name !== channel.name ||
           existing.direct_url !== channel.direct_url ||
-          JSON.stringify(existing.category_ids) !== JSON.stringify(channel.category_ids);
+          categoriesChanged;
 
         if (hasChanged) {
-          // Preserve user settings (favorites, etc.)
-          channelsToUpdate.push({
-            ...channel,
-            is_favorite: existing.is_favorite,
-            // Keep any other user-specific fields
-          });
+          // Preserve user settings using in-place mutation to skip object recreation garbage collection
+          (channel as any).is_favorite = existing.is_favorite;
+          channelsToUpdate.push(channel);
         }
       }
     }
@@ -1196,15 +1300,20 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
     }
 
     await Promise.all(promises);
+    } // END OF !nativeSyncComplete BLOCK
 
     // Store sync metadata (without last_synced — that gets written after EPG sync completes)
     // This ensures that if EPG sync fails, the source is not marked as fresh and will
     // be retried on the next startup autosync cycle.
+    
+    const finalChannelCount = nativeSyncComplete ? nativeChannelsCount : channels.length;
+    const finalCategoryCount = nativeSyncComplete ? nativeCategoriesCount : categories.length;
+
     const meta: SourceMeta = {
       source_id: source.id,
       epg_url: epgUrl,
-      channel_count: channels.length,
-      category_count: categories.length,
+      channel_count: finalChannelCount,
+      category_count: finalCategoryCount,
     };
 
     // Add Stalker-specific metadata
@@ -1466,8 +1575,9 @@ export async function syncAllSources(onProgress?: (msg: string) => void): Promis
   // Sync each enabled source with concurrency limit of 3
   const enabledSources = sourcesResult.data.filter(s => s.enabled);
   debugLog(`${enabledSources.length} sources enabled for sync`, 'sync');
-
-  const CONCURRENCY_LIMIT = 5;
+  // Sync each enabled source sequentially (Concurrency 1) to prevent SQLite 'database is locked' errors
+  // since the new Native Rust implementation writes are instantaneous and EXCLUSIVE for the whole source.
+  const CONCURRENCY_LIMIT = 1;
 
   for (let i = 0; i < enabledSources.length; i += CONCURRENCY_LIMIT) {
     const batch = enabledSources.slice(i, i + CONCURRENCY_LIMIT);
