@@ -673,10 +673,10 @@ export function ChannelPanel({
 
   // Handle favorite toggle - refresh channel data
   const handleFavoriteToggle = useCallback(async () => {
-    // Small delay to allow database to update
-    await new Promise(resolve => setTimeout(resolve, 100));
-    // Force re-render by incrementing version
-    setFavoritesVersion(v => v + 1);
+    // We no longer manually increment favoritesVersion here.
+    // Toggling the favorite directly mutates the SQLite database.
+    // The useChannels liveQuery will automatically detect the mutation
+    // and provide a fresh array to Virtuoso without destroying scroll position!
   }, []);
 
   // Handle volume change for preview mini bar

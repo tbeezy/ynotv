@@ -64,7 +64,7 @@ export function DataRefreshTab({
             <select
               value={vodRefreshHours}
               onChange={(e) => {
-                const val = parseInt(e.target.value);
+                const val = parseFloat(e.target.value);
                 onVodRefreshChange(val);
                 saveRefreshSettings(val, epgRefreshHours);
               }}
@@ -83,12 +83,14 @@ export function DataRefreshTab({
             <select
               value={epgRefreshHours}
               onChange={(e) => {
-                const val = parseInt(e.target.value);
+                const val = parseFloat(e.target.value);
                 onEpgRefreshChange(val);
                 saveRefreshSettings(vodRefreshHours, val);
               }}
             >
               <option value={0}>Manual only</option>
+              <option value={0.0833333333}>Every 5 minutes</option>
+              <option value={0.5}>Every 30 minutes</option>
               <option value={3}>Every 3 hours</option>
               <option value={6}>Every 6 hours</option>
               <option value={12}>Every 12 hours</option>
