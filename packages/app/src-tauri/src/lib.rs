@@ -113,6 +113,66 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
 }
 
 // ============================================================================
+// MPV Security Allowlist
+// ============================================================================
+
+const ALLOWED_MPV_KEYS: &[&str] = &[
+    "hwdec", "hwdec-codecs", "vo", "ao", "profile", "audio-device",
+    "audio-spdif", "audio-channels", "volume-max", "audio-exclusive",
+    "cache", "cache-secs", "cache-pause", "demuxer-max-bytes", "demuxer-max-back-bytes",
+    "demuxer-readahead-secs", "force-seekable",
+    "sub-font", "sub-font-size", "sub-color", "sub-border-color", "sub-border-size",
+    "sub-shadow-color", "sub-shadow-offset", "sub-margin-y", "sub-align-x", "sub-align-y",
+    "slang", "alang", 
+    "vd-lavc-dr", "vd-lavc-threads", "ad-lavc-threads",
+    "video-sync", "interpolation", "tscale",
+    "deinterlace",
+    "scale", "cscale", "dscale", "dither-depth", "correct-downscaling", "linear-downscaling",
+    "sigmoid-upscaling", "deband",
+    "hr-seek-framedrop", "keep-open",
+    "network-timeout", "stream-buffer-size",
+    // TimeShift/Dumping parameters
+    "stream-record", "capture", "dump-stream", "recorder-muxer", "record-file",
+];
+
+const BLOCKED_MPV_KEYS: &[&str] = &[
+    "script", "script-opts", "scripts", 
+    "config", "config-dir", "no-config",
+    "input-ipc-server", "input-conf",
+    "log-file", "dump-stats",
+    "ytdl-raw-options", "lavfi-complex",
+    "sub-file", "audio-file", "external-file",
+];
+
+fn sanitize_mpv_args(args: Vec<String>) -> Vec<String> {
+    let mut safe_args = Vec::new();
+    
+    for arg in args {
+        if !arg.starts_with("--") {
+            log::warn!("SECURITY ALERT: Dropped malformed MPV argument (must start with --): {}", arg);
+            continue;
+        }
+        
+        let without_dashes = &arg[2..];
+        let mut parts = without_dashes.splitn(2, '=');
+        let key = parts.next().unwrap_or("");
+        
+        if BLOCKED_MPV_KEYS.contains(&key) {
+            log::warn!("SECURITY ALERT: Blocked blacklisted MPV argument: {}", key);
+            continue;
+        }
+        
+        if ALLOWED_MPV_KEYS.contains(&key) {
+            safe_args.push(arg);
+        } else {
+            log::warn!("SECURITY ALERT: Dropped unrecognized/untrusted MPV argument: {}", key);
+        }
+    }
+    
+    safe_args
+}
+
+// ============================================================================
 // MPV Commands - Unified API
 // ============================================================================
 
@@ -139,19 +199,22 @@ async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<()
         }
     }
 
+    // Apply the Security Allowlist Firewall
+    let safe_custom_params = sanitize_mpv_args(custom_params);
+
     debug!("[MPV] Final params for MPV:");
-    for (i, param) in custom_params.iter().enumerate() {
+    for (i, param) in safe_custom_params.iter().enumerate() {
         debug!("[MPV]   [{}]: {}", i, param);
     }
 
     #[cfg(target_os = "macos")]
     {
-        mpv_macos::init_mpv_with_params(app, custom_params).await
+        mpv_macos::init_mpv_with_params(app, safe_custom_params).await
     }
     #[cfg(target_os = "windows")]
     {
         let state = app.state::<MpvState>();
-        mpv_windows::init_mpv_with_params(app.clone(), state, custom_params).await
+        mpv_windows::init_mpv_with_params(app.clone(), state, safe_custom_params).await
     }
 }
 
