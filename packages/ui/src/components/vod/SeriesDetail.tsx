@@ -23,11 +23,12 @@ export interface SeriesDetailProps {
   onClose: () => void;
   onPlayEpisode?: (info: VodPlayInfo) => void;
   apiKey?: string | null; // TMDB API key for lazy backdrop loading
+  initialSeason?: number; // Initial season to show (for Recently Watched navigation)
 }
 
-export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesDetailProps) {
+export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSeason }: SeriesDetailProps) {
   // console.log('[SeriesDetail] Rendered for:', series.series_id, series);
-  const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [selectedSeason, setSelectedSeason] = useState<number>(initialSeason ?? 1);
 
   // Fetch episodes
   const { seasons, loading, error, refetch } = useSeriesDetails(series.series_id);

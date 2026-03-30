@@ -113,6 +113,7 @@ interface VodPageProps {
 
 export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<number | undefined>(undefined); // For Recently Watched season navigation
   const [searchQuery, setSearchQuery] = useState('');
   
   // Context Menu & Management State
@@ -289,11 +290,26 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         setSearchQuery(title);
         setSelectedCategoryId('all');
         setSelectedItem(null);
+        setSelectedSeason(undefined);
       }
       return;
     }
+    
+    // Check if this is a series from Recently Watched and get its season
+    if (type === 'series') {
+      const seriesId = (item as StoredSeries).series_id;
+      const episodeData = recentlyWatchedEpisodeData?.get(seriesId);
+      if (episodeData?.seasonNum) {
+        setSelectedSeason(episodeData.seasonNum);
+      } else {
+        setSelectedSeason(undefined);
+      }
+    } else {
+      setSelectedSeason(undefined);
+    }
+    
     setSelectedItem(item);
-  }, []);
+  }, [type, recentlyWatchedEpisodeData]);
 
   const handlePlay = useCallback((info: VodPlayInfo) => {
     if (onPlay) {
@@ -314,6 +330,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
   const handleCloseDetail = useCallback(() => {
     setSelectedItem(null);
+    setSelectedSeason(undefined);
   }, []);
 
   // Handle hero play button - movies play directly, series open detail
@@ -506,6 +523,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
           onClose={handleCloseDetail}
           onPlayEpisode={handlePlay}
           apiKey={tmdbApiKey}
+          initialSeason={selectedSeason}
         />
       )}
 
