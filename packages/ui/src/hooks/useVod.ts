@@ -551,11 +551,8 @@ interface WindowedResult<T> {
   reset: () => void;
 }
 
-const WINDOW_SIZE = 100; // Load 100 items per batch for smoother infinite scrolling
-
 /**
- * Windowed movie query for infinite scroll
- * Loads movies in chunks of 100 for smooth virtual scrolling
+ * Windowed movie query - loads all items at once
  * 
  * @param refreshTrigger - Optional trigger to force re-query (e.g., when lazy loading completes)
  */
@@ -565,20 +562,18 @@ export function useWindowedMovies(
   sortBy: 'name' | 'added' | 'popularity' = 'name',
   refreshTrigger?: boolean
 ): WindowedResult<StoredMovie> {
-  const [offset, setOffset] = useState(0);
   const [allItems, setAllItems] = useState<StoredMovie[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   // Reset when filters change
   useEffect(() => {
-    setOffset(0);
     setAllItems([]);
   }, [categoryId, search, sortBy, refreshTrigger]);
 
-  // Load initial window and total count
+  // Load all items at once
   useEffect(() => {
-    const loadInitial = async () => {
+    const loadAll = async () => {
       setLoading(true);
       try {
         const dbInstance = await (db as any).dbPromise;
@@ -636,17 +631,7 @@ export function useWindowedMovies(
           }
         }
 
-        // Get total count
-        const countResult = await dbInstance.select(
-          `SELECT COUNT(DISTINCT m.rowid) as count 
-           FROM vodMovies m 
-           CROSS JOIN json_each(m.category_ids) AS cat 
-           WHERE ${whereClause}`,
-          params
-        );
-        setTotalCount(countResult[0]?.count || 0);
-
-        // Load first window
+        // Load all items (no LIMIT)
         const orderColumn = sortBy === 'added' ? 'added' : sortBy === 'popularity' ? 'popularity' : 'name';
         const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
 
@@ -655,106 +640,23 @@ export function useWindowedMovies(
            FROM vodMovies m 
            CROSS JOIN json_each(m.category_ids) AS cat 
            WHERE ${whereClause} 
-           ORDER BY ${orderColumn} ${orderDir} 
-           LIMIT ${WINDOW_SIZE}`,
+           ORDER BY ${orderColumn} ${orderDir}`,
           params
         );
 
         setAllItems(items);
-        setOffset(items.length);
+        setTotalCount(items.length);
       } catch (error) {
-        console.error('Error loading windowed movies:', error);
+        console.error('Error loading movies:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadInitial();
+    loadAll();
   }, [categoryId, search, sortBy, refreshTrigger]);
 
-  const loadMore = useCallback(async () => {
-    if (loading || offset >= totalCount) return;
-
-    setLoading(true);
-    try {
-      const dbInstance = await (db as any).dbPromise;
-
-      // Build WHERE clause
-      const enabledCategories = await db.vodCategories.filter(c => c.type === 'movie' && c.enabled !== false).toArray();
-      const enabledBySource: Record<string, string[]> = {};
-      enabledCategories.forEach(c => {
-        if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
-        enabledBySource[c.source_id].push(c.category_id);
-      });
-
-      // Collect all enabled category IDs across all sources for json_each
-      const allEnabledCategoryIds: string[] = [];
-      Object.values(enabledBySource).forEach(catIds => {
-        allEnabledCategoryIds.push(...catIds);
-      });
-
-      const params: any[] = [];
-      let whereClause = '';
-
-      // Build source conditions using json_each for efficient category matching
-      const sourceIds = Object.keys(enabledBySource);
-      if (sourceIds.length > 0 && allEnabledCategoryIds.length > 0) {
-        const sourcePlaceholders = sourceIds.map(() => '?').join(',');
-        const categoryPlaceholders = allEnabledCategoryIds.map(() => '?').join(',');
-        
-        // Use json_each to efficiently match category_ids JSON array
-        whereClause = `source_id IN (${sourcePlaceholders}) AND cat.value IN (${categoryPlaceholders})`;
-        params.push(...sourceIds, ...allEnabledCategoryIds);
-      }
-
-      const orphanCondition = `(category_ids IS NULL OR category_ids = '[]')`;
-      if (whereClause) {
-        whereClause = `(${orphanCondition} OR (${whereClause}))`;
-      } else {
-        whereClause = orphanCondition;
-      }
-
-      if (categoryId) {
-        whereClause += ' AND category_ids LIKE ?';
-        params.push(`%"${categoryId}"%`);
-      }
-
-      if (search) {
-        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
-        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
-        if (searchClauses) {
-          whereClause += ` AND (${searchClauses})`;
-          searchTerms.forEach(term => {
-            params.push(`%${term}%`, `%${term}%`);
-          });
-        }
-      }
-
-      // Load next window
-      const orderColumn = sortBy === 'added' ? 'added' : sortBy === 'popularity' ? 'popularity' : 'name';
-      const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
-
-      const items = await dbInstance.select(
-        `SELECT DISTINCT m.* 
-         FROM vodMovies m 
-         CROSS JOIN json_each(m.category_ids) AS cat 
-         WHERE ${whereClause} 
-         ORDER BY ${orderColumn} ${orderDir} 
-         LIMIT ${WINDOW_SIZE} OFFSET ${offset}`,
-        params
-      );
-
-      setAllItems(prev => [...prev, ...items]);
-      setOffset(prev => prev + items.length);
-    } catch (error) {
-      console.error('Error loading more movies:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [categoryId, search, sortBy, offset, totalCount, loading]);
-
   const reset = useCallback(() => {
-    setOffset(0);
     setAllItems([]);
     setTotalCount(0);
   }, []);
@@ -762,9 +664,9 @@ export function useWindowedMovies(
   return {
     items: allItems,
     totalCount,
-    hasMore: offset < totalCount,
+    hasMore: false,
     loading,
-    loadMore,
+    loadMore: () => {}, // No-op since we load all at once
     reset,
   };
 }
@@ -781,20 +683,18 @@ export function useWindowedSeries(
   sortBy: 'name' | 'added' | 'popularity' = 'name',
   refreshTrigger?: boolean
 ): WindowedResult<StoredSeries> {
-  const [offset, setOffset] = useState(0);
   const [allItems, setAllItems] = useState<StoredSeries[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   // Reset when filters change
   useEffect(() => {
-    setOffset(0);
     setAllItems([]);
   }, [categoryId, search, sortBy]);
 
-  // Load initial window and total count
+  // Load all items at once
   useEffect(() => {
-    const loadInitial = async () => {
+    const loadAll = async () => {
       setLoading(true);
       try {
         const dbInstance = await (db as any).dbPromise;
@@ -854,17 +754,7 @@ export function useWindowedSeries(
           }
         }
 
-        // Get total count
-        const countResult = await dbInstance.select(
-          `SELECT COUNT(DISTINCT s.rowid) as count 
-           FROM vodSeries s 
-           LEFT JOIN json_each(s.category_ids) AS cat ON json_valid(s.category_ids)
-           WHERE ${whereClause}`,
-          params
-        );
-        setTotalCount(countResult[0]?.count || 0);
-
-        // Load first window
+        // Load all items (no LIMIT)
         const orderColumn = sortBy === 'added' ? 'added' : sortBy === 'popularity' ? 'popularity' : 'name';
         const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
 
@@ -873,110 +763,23 @@ export function useWindowedSeries(
            FROM vodSeries s 
            LEFT JOIN json_each(s.category_ids) AS cat ON json_valid(s.category_ids)
            WHERE ${whereClause} 
-           ORDER BY ${orderColumn} ${orderDir} 
-           LIMIT ${WINDOW_SIZE}`,
+           ORDER BY ${orderColumn} ${orderDir}`,
           params
         );
 
         setAllItems(items);
-        setOffset(items.length);
+        setTotalCount(items.length);
       } catch (error) {
-        console.error('Error loading windowed series:', error);
+        console.error('Error loading series:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadInitial();
+    loadAll();
   }, [categoryId, search, sortBy, refreshTrigger]);
 
-  const loadMore = useCallback(async () => {
-    if (loading || offset >= totalCount) return;
-
-    setLoading(true);
-    try {
-      const dbInstance = await (db as any).dbPromise;
-
-      // Build WHERE clause
-      const enabledCategories = await db.vodCategories.filter(c => c.type === 'series' && c.enabled !== false).toArray();
-      const enabledBySource: Record<string, string[]> = {};
-      enabledCategories.forEach(c => {
-        if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
-        enabledBySource[c.source_id].push(c.category_id);
-      });
-
-      // Collect all enabled category IDs across all sources
-      const allEnabledCategoryIds: string[] = [];
-      Object.values(enabledBySource).forEach(catIds => {
-        allEnabledCategoryIds.push(...catIds);
-      });
-
-      const params: any[] = [];
-      let whereClause = '';
-
-      // Build source conditions - series has additional category_id and _stalker_category fields
-      const sourceIds = Object.keys(enabledBySource);
-      if (sourceIds.length > 0 && allEnabledCategoryIds.length > 0) {
-        const sourcePlaceholders = sourceIds.map(() => '?').join(',');
-        const categoryPlaceholders = allEnabledCategoryIds.map(() => '?').join(',');
-        
-        // Match by source_id AND (category_id IN (...) OR _stalker_category IN (...) OR json_each match)
-        whereClause = `source_id IN (${sourcePlaceholders}) AND (
-          category_id IN (${categoryPlaceholders}) OR 
-          _stalker_category IN (${categoryPlaceholders}) OR
-          cat.value IN (${categoryPlaceholders})
-        )`;
-        params.push(...sourceIds, ...allEnabledCategoryIds, ...allEnabledCategoryIds, ...allEnabledCategoryIds);
-      }
-
-      const orphanCondition = `((category_ids IS NULL OR category_ids = '[]') AND category_id IS NULL AND _stalker_category IS NULL)`;
-      if (whereClause) {
-        whereClause = `(${orphanCondition} OR (${whereClause}))`;
-      } else {
-        whereClause = orphanCondition;
-      }
-
-      if (categoryId) {
-        whereClause += ' AND category_ids LIKE ?';
-        params.push(`%"${categoryId}"%`);
-      }
-
-      if (search) {
-        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
-        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
-        if (searchClauses) {
-          whereClause += ` AND (${searchClauses})`;
-          searchTerms.forEach(term => {
-            params.push(`%${term}%`, `%${term}%`);
-          });
-        }
-      }
-
-      // Load next window
-      const orderColumn = sortBy === 'added' ? 'added' : sortBy === 'popularity' ? 'popularity' : 'name';
-      const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
-
-      const items = await dbInstance.select(
-        `SELECT DISTINCT s.* 
-         FROM vodSeries s 
-         LEFT JOIN json_each(s.category_ids) AS cat ON json_valid(s.category_ids)
-         WHERE ${whereClause} 
-         ORDER BY ${orderColumn} ${orderDir} 
-         LIMIT ${WINDOW_SIZE} OFFSET ${offset}`,
-        params
-      );
-
-      setAllItems(prev => [...prev, ...items]);
-      setOffset(prev => prev + items.length);
-    } catch (error) {
-      console.error('Error loading more series:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [categoryId, search, sortBy, offset, totalCount, loading]);
-
   const reset = useCallback(() => {
-    setOffset(0);
     setAllItems([]);
     setTotalCount(0);
   }, []);
@@ -984,9 +787,9 @@ export function useWindowedSeries(
   return {
     items: allItems,
     totalCount,
-    hasMore: offset < totalCount,
+    hasMore: false,
     loading,
-    loadMore,
+    loadMore: () => {}, // No-op since we load all at once
     reset,
   };
 }
