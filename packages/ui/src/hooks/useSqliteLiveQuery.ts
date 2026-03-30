@@ -10,12 +10,13 @@ interface CacheEntry<T> {
 // Global cache for live query results
 const queryCache = new Map<string, CacheEntry<any>>();
 
-// Mimics useLiveQuery from dexie-react-hooks with optional staleTime
+// Mimics useLiveQuery from dexie-react-hooks with optional staleTime and table filtering
 export function useLiveQuery<T>(
     querier: () => Promise<T> | T, 
     deps: any[] = [], 
     defaultResult?: T,
-    staleTime: number = 0 // Time in milliseconds to consider data fresh (0 = no caching)
+    staleTime: number = 0, // Time in milliseconds to consider data fresh (0 = no caching)
+    tableName?: string // Optional: only listen to changes on this table
 ): T | undefined {
     const [result, setResult] = useState<T | undefined>(defaultResult);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,9 +105,14 @@ export function useLiveQuery<T>(
             }, 50); // 50ms debounce - batch rapid DB events
         };
 
-        const unsubscribe = dbEvents.subscribe((event) => {
-            debouncedUpdate();
-        });
+        // Subscribe to DB events - only for our table if specified
+        const unsubscribe = tableName 
+            ? dbEvents.subscribe(tableName, (event) => {
+                debouncedUpdate();
+            })
+            : dbEvents.subscribe((event) => {
+                debouncedUpdate();
+            });
 
         return () => {
             isMounted = false;

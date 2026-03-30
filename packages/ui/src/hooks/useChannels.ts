@@ -136,7 +136,7 @@ export function useCategories() {
           
           // Single query to get all counts
           const countRows = await dbInstance.select(
-            `SELECT group_id, COUNT(*) as cnt FROM customGroupChannels 
+            `SELECT group_id, COUNT(*) as cnt FROM custom_group_channels 
              WHERE group_id IN (${placeholders}) 
              GROUP BY group_id`,
             groupIds
@@ -188,7 +188,8 @@ export function useCategories() {
     },
     [enabledSourceKey, recentVersion],
     undefined, // defaultResult
-    30000 // staleTime: 30 seconds - categories rarely change during session
+    30000, // staleTime: 30 seconds - categories rarely change during session
+    'categories' // tableName: only re-run when categories table changes
   );
   return categories ?? [];
 }
@@ -387,7 +388,8 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
     },
     [categoryId, sortOrder, enabledSourceKey, options?.skip],
     undefined, // defaultResult  
-    15000 // staleTime: 15 seconds - instant switching between recently viewed categories
+    15000, // staleTime: 15 seconds - instant switching between recently viewed categories
+    'channels' // tableName: only re-run when channels table changes
   );
   return channels ?? [];
 }
@@ -641,7 +643,10 @@ export function useProgramSearch(query: string, limit = 50) {
 
       return filteredPrograms;
     },
-    [query, limit, enabledSourceKey]
+    [query, limit, enabledSourceKey],
+    undefined, // defaultResult
+    0, // staleTime: 0 - always refresh on search
+    'programs' // tableName: only re-run when programs table changes
   );
   return programs ?? [];
 }
@@ -964,7 +969,10 @@ export function usePrograms(streamIds: string[]): Map<string, StoredProgram | nu
 
       return result;
     },
-    [streamIds.join(',')]
+    [streamIds.join(',')],
+    undefined, // defaultResult
+    0, // staleTime: 0 - time window changes need fresh data
+    'programs' // tableName: only re-run when programs table changes
   );
   return programs ?? new Map();
 }
@@ -1013,8 +1021,10 @@ export function useAllPrograms(streamIds: string[]): Map<string, StoredProgram[]
 
       return result;
     },
-    [streamIds.join(',')]
+    [streamIds.join(',')],
+    undefined, // defaultResult
+    0, // staleTime: 0 - streamIds changes need fresh data
+    'programs' // tableName: only re-run when programs table changes
   );
-
   return programs ?? new Map();
 }

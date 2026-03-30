@@ -116,7 +116,11 @@ export function useMovies(categoryId?: string | null, search?: string, limit = 2
 
     // No need to filter by categories again - already done in SQL
     return allMovies;
-  }, [categoryId, search, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']);
+  }, [categoryId, search, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'],
+  undefined, // defaultResult
+  0, // staleTime: 0 - category/search changes need fresh data
+  'vodMovies' // tableName: only re-run when vodMovies table changes
+  );
 
   return {
     movies: movies ?? [],

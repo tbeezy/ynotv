@@ -14,21 +14,52 @@ interface DbEvent {
 }
 
 type Listener = (event: DbEvent) => void;
+type TableListener = {
+    listener: Listener;
+    tableName?: string; // Optional: if set, only receives events for this table
+};
 
 // Simple Event Emitter for Live Queries
 class DbEvents {
-    private listeners: Listener[] = [];
+    private listeners: TableListener[] = [];
 
-    subscribe(listener: Listener) {
-        this.listeners.push(listener);
+    // Subscribe to all events (backward compatible)
+    subscribe(listener: Listener): () => void;
+    // Subscribe to specific table events only
+    subscribe(tableName: string, listener: Listener): () => void;
+    subscribe(arg1: string | Listener, arg2?: Listener): () => void {
+        let tableName: string | undefined;
+        let listener: Listener;
+        
+        if (typeof arg1 === 'string') {
+            // New API: subscribe('tableName', listener)
+            tableName = arg1;
+            listener = arg2!;
+        } else {
+            // Old API: subscribe(listener) - receives all events
+            tableName = undefined;
+            listener = arg1;
+        }
+        
+        const entry: TableListener = { listener, tableName };
+        this.listeners.push(entry);
+        
         return () => {
-            this.listeners = this.listeners.filter(l => l !== listener);
+            this.listeners = this.listeners.filter(l => l !== entry);
         };
     }
 
     notify(tableName: string, type: ChangeType, keys?: any[]) {
         const event: DbEvent = { tableName, type, keys };
-        this.listeners.forEach(l => l(event));
+        
+        // Only notify listeners that:
+        // 1. Have no tableName filter (receive all events), OR
+        // 2. Are subscribed to this specific table
+        this.listeners.forEach(l => {
+            if (!l.tableName || l.tableName === tableName) {
+                l.listener(event);
+            }
+        });
     }
 }
 
