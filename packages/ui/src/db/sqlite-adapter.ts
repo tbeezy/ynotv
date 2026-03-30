@@ -544,9 +544,13 @@ export class SqliteTable<T, TKey> {
         if (keys.length === 0) return;
         return writeLock.run(async () => {
             const db = await this.getDb();
-            // Use IN clause
-            const placeholders = keys.map((_, i) => `$${i + 1}`).join(',');
-            await db.execute(`DELETE FROM ${this.tableName} WHERE ${this.primaryKey} IN (${placeholders})`, keys);
+            // Use IN clause, but chunk them to avoid "too many SQL variables" limit (32766 max)
+            const MAX_CHUNK_SIZE = 999; 
+            for (let i = 0; i < keys.length; i += MAX_CHUNK_SIZE) {
+                const chunk = keys.slice(i, i + MAX_CHUNK_SIZE);
+                const placeholders = chunk.map((_, idx) => `$${idx + 1}`).join(',');
+                await db.execute(`DELETE FROM ${this.tableName} WHERE ${this.primaryKey} IN (${placeholders})`, chunk);
+            }
             dbEvents.notify(this.tableName, 'delete');
         });
     }

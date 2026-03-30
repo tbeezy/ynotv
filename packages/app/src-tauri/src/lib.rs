@@ -1910,8 +1910,10 @@ pub fn run() {
             multiview_kill_slot,
             multiview_kill_all,
             // Optimized bulk sync commands
-            sync_provider::sync_xtream_source,
             sync_provider::sync_m3u_source,
+            sync_provider::sync_xtream_source,
+            sync_provider::sync_xtream_vod_movies,
+            sync_provider::sync_xtream_vod_series,
             bulk_upsert_channels,
             bulk_upsert_categories,
             bulk_replace_programs,

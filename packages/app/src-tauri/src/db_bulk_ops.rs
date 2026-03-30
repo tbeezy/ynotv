@@ -65,6 +65,19 @@ pub struct BulkCategory {
     pub filter_words: Option<String>, // JSON array as string
 }
 
+/// A single VOD Category to be inserted/updated
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkVodCategory {
+    pub category_id: String,
+    pub source_id: String,
+    pub name: String,
+    pub type_str: String,
+    #[serde(default, deserialize_with = "deserialize_bool_to_i32")]
+    pub enabled: Option<i32>,
+    #[serde(default)]
+    pub display_order: Option<i32>,
+}
+
 /// Custom deserializer that accepts both booleans and integers
 /// Converts boolean true/false to 1/0 for SQLite storage
 fn deserialize_bool_to_i32<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
@@ -369,6 +382,63 @@ pub fn bulk_upsert_categories(
 
     info!(
         "Bulk upsert categories: {} inserted, {} updated in {}ms",
+        inserted, updated, duration_ms
+    );
+
+    Ok(BulkResult {
+        inserted,
+        updated,
+        deleted: 0,
+        duration_ms,
+    })
+}
+
+/// Bulk insert or replace VOD categories (upsert operation)
+pub fn bulk_upsert_vod_categories(
+    db: &DvrDatabase,
+    categories: Vec<BulkVodCategory>,
+) -> Result<BulkResult> {
+    let start = std::time::Instant::now();
+    let mut conn = db.get_conn()?;
+
+    let tx = conn.transaction()?;
+
+    let mut stmt = tx.prepare(
+        "INSERT INTO vodCategories (
+            category_id, source_id, name, type, enabled, display_order
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+        ON CONFLICT(category_id) DO UPDATE SET
+            source_id = excluded.source_id,
+            name = excluded.name,
+            type = excluded.type,
+            enabled = COALESCE(excluded.enabled, vodCategories.enabled),
+            display_order = COALESCE(excluded.display_order, vodCategories.display_order)",
+    )?;
+
+    let mut inserted = 0;
+    let mut updated = 0;
+
+    for category in categories {
+        match stmt.execute(params![
+            category.category_id,
+            category.source_id,
+            category.name,
+            category.type_str,
+            category.enabled,
+            category.display_order,
+        ])? {
+            1 => inserted += 1,
+            _ => updated += 1,
+        }
+    }
+
+    stmt.finalize()?;
+    tx.commit()?;
+
+    let duration_ms = start.elapsed().as_millis() as u64;
+
+    info!(
+        "Bulk upsert VOD categories: {} inserted, {} updated in {}ms",
         inserted, updated, duration_ms
     );
 

@@ -1662,6 +1662,59 @@ export async function syncVodMovies(
     return { count: 0, categoryCount: 0 };
   }
 
+  // --- NATIVE RUST VOD SYNC (Xtream Only) ---
+  if ((window as any).__TAURI__ && source.type === 'xtream') {
+    try {
+      debugLog(`[Native VOD] Starting Rust sync for ${source.name} movies`, 'vod');
+      // @ts-ignore - invoke is globally available in tauri context or can use window
+      const { invoke } = await import('@tauri-apps/api/core');
+      
+      const result: any = await invoke('sync_xtream_vod_movies', {
+        sourceId: source.id,
+        baseUrl: source.url,
+        username: source.username,
+        password: source.password,
+        userAgent: source.user_agent || null
+      });
+
+      debugLog(`[Native VOD] Successfully parsed ${result.parsed_content_ids.length} movies`, 'vod');
+
+      // 1. Delete stale categories
+      const existingCategories = await db.vodCategories.whereRaw('source_id = ? AND type = ?', [source.id, 'movie']).toArray();
+      const existingCategoryIds = existingCategories.map(c => c.category_id);
+      const newCategoryIds = new Set(result.parsed_category_ids || []);
+      const staleCategoryIds = existingCategoryIds.filter(id => !newCategoryIds.has(id));
+      if (staleCategoryIds.length > 0) {
+        debugLog(`[Native VOD] Removing ${staleCategoryIds.length} stale movie categories`, 'vod');
+        await db.vodCategories.bulkDelete(staleCategoryIds);
+      }
+
+      // 2. Delete stale movies
+      const existingMovies = await db.vodMovies.where('source_id').equals(source.id).select(['stream_id']).toArray();
+      const existingMovieIds = existingMovies.map(m => m.stream_id);
+      const newMovieIds = new Set(result.parsed_content_ids || []);
+      const staleMovieIds = existingMovieIds.filter(id => !newMovieIds.has(id));
+      if (staleMovieIds.length > 0) {
+        debugLog(`[Native VOD] Removing ${staleMovieIds.length} stale movies`, 'vod');
+        await db.vodMovies.bulkDelete(staleMovieIds);
+      }
+
+      // Notify UI
+      dbEvents.notify('vodMovies', 'add');
+      dbEvents.notify('vodCategories', 'add');
+
+      return { 
+        count: result.content.inserted + result.content.updated, 
+        categoryCount: result.categories.inserted + result.categories.updated 
+      };
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Native VOD] Rust movies sync failed, falling back to JS: ${msg}`);
+      // Fall through to JS legacy logic below
+    }
+  }
+
   // Fetch categories and movies FIRST (before any deletes)
   let categories: any[] = [];
   let movies: any[] = [];
@@ -1820,6 +1873,58 @@ export async function syncVodSeries(
 ): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
   if (!['xtream', 'stalker'].includes(source.type)) {
     return { count: 0, categoryCount: 0 };
+  }
+
+  // --- NATIVE RUST VOD SYNC (Xtream Only) ---
+  if ((window as any).__TAURI__ && source.type === 'xtream') {
+    try {
+      debugLog(`[Native VOD] Starting Rust sync for ${source.name} series`, 'vod');
+      const { invoke } = await import('@tauri-apps/api/core');
+      
+      const result: any = await invoke('sync_xtream_vod_series', {
+        sourceId: source.id,
+        baseUrl: source.url,
+        username: source.username,
+        password: source.password,
+        userAgent: source.user_agent || null
+      });
+
+      debugLog(`[Native VOD] Successfully parsed ${result.parsed_content_ids.length} series`, 'vod');
+
+      // 1. Delete stale categories
+      const existingCategories = await db.vodCategories.whereRaw('source_id = ? AND type = ?', [source.id, 'series']).toArray();
+      const existingCategoryIds = existingCategories.map(c => c.category_id);
+      const newCategoryIds = new Set(result.parsed_category_ids || []);
+      const staleCategoryIds = existingCategoryIds.filter(id => !newCategoryIds.has(id));
+      if (staleCategoryIds.length > 0) {
+        debugLog(`[Native VOD] Removing ${staleCategoryIds.length} stale series categories`, 'vod');
+        await db.vodCategories.bulkDelete(staleCategoryIds);
+      }
+
+      // 2. Delete stale series
+      const existingSeries = await db.vodSeries.where('source_id').equals(source.id).select(['series_id']).toArray();
+      const existingSeriesIds = existingSeries.map(s => s.series_id);
+      const newSeriesIds = new Set(result.parsed_content_ids || []);
+      const staleSeriesIds = existingSeriesIds.filter(id => !newSeriesIds.has(id));
+      if (staleSeriesIds.length > 0) {
+        debugLog(`[Native VOD] Removing ${staleSeriesIds.length} stale series`, 'vod');
+        await db.vodSeries.bulkDelete(staleSeriesIds);
+      }
+
+      // Notify UI
+      dbEvents.notify('vodSeries', 'add');
+      dbEvents.notify('vodCategories', 'add');
+
+      return { 
+        count: result.content.inserted + result.content.updated, 
+        categoryCount: result.categories.inserted + result.categories.updated 
+      };
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Native VOD] Rust series sync failed, falling back to JS: ${msg}`);
+      // Fall through to JS legacy logic below
+    }
   }
 
   // Fetch categories and series FIRST (before any deletes)
