@@ -470,8 +470,12 @@ function App() {
       }
 
       try {
-        // Load settings first
-        const settingsResult = await window.storage.getSettings();
+        // Load settings and sources in parallel
+        const [settingsResult, sourcesResult] = await Promise.all([
+          window.storage.getSettings(),
+          window.storage.getSources()
+        ]);
+        
         if (!isPeriodic && settingsResult.data) {
           // Apply font sizes (only on initial sync)
           if (settingsResult.data.channelFontSize) {
@@ -497,16 +501,15 @@ function App() {
           return;
         }
 
-        // Get sources
-        const result = await window.storage.getSources();
-        if (!result.data || result.data.length === 0) return;
+        // Use sources from parallel load
+        if (!sourcesResult.data || sourcesResult.data.length === 0) return;
 
         let didSync = false;
 
         // ── Channel / EPG sync ──────────────────────────────────────────────
         if (epgRefreshHours > 0) {
           // Filter out VOD-only sources from channel sync
-          const enabledSources = result.data.filter((s: any) => s.enabled && !s.vod_only);
+          const enabledSources = sourcesResult.data.filter((s: any) => s.enabled && !s.vod_only);
           const staleSources: any[] = [];
           for (const source of enabledSources) {
             if (await isEpgStale(source.id, epgRefreshHours)) staleSources.push(source);
@@ -537,7 +540,7 @@ function App() {
 
         // ── VOD sync (Xtream only) ──────────────────────────────────────────
         if (vodRefreshHours > 0) {
-          const xtreamSources = result.data.filter((s: any) => s.type === 'xtream' && s.enabled);
+          const xtreamSources = sourcesResult.data.filter((s: any) => s.type === 'xtream' && s.enabled);
           if (xtreamSources.length > 0) {
             const staleVod: any[] = [];
             for (const source of xtreamSources) {

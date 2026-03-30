@@ -86,15 +86,24 @@ export function useCategories() {
       // Don't filter if sources haven't loaded yet
       if (!enabledSourceIds) return db.categories.orderBy('category_name').toArray();
 
-      const allCategories = await db.categories.filter(cat => enabledSourceIds.has(cat.source_id)).sortBy('category_name');
+      // Parallel loading: categories, custom groups, and favorite count all at once
+      const [allCategories, customGroups, favoriteCount, recentChannels] = await Promise.all([
+        // Load categories and filter by enabled sources
+        db.categories.filter(cat => enabledSourceIds.has(cat.source_id)).sortBy('category_name'),
+        // Load custom groups
+        db.customGroups.orderBy('display_order').toArray(),
+        // Count favorites
+        db.channels.countWhere('(is_favorite = 1 OR is_favorite = true)'),
+        // Get recent channels (sync, just reads from array)
+        Promise.resolve(getRecentChannels())
+      ]);
 
       // Filter out disabled categories (enabled defaults to true if not set)
       const enabledCategories = allCategories.filter(cat => cat.enabled !== false);
 
       const virtualCategories: StoredCategory[] = [];
 
-      // Always show Recently Viewed category (similar to Favorites)
-      const recentChannels = getRecentChannels();
+      // Always show Recently Viewed category
       const recentCategory: StoredCategory = {
         category_id: '__recent__',
         category_name: '🕐 Recently Viewed',
@@ -102,27 +111,41 @@ export function useCategories() {
         channel_count: recentChannels.length,
         enabled: true,
       };
+      virtualCategories.push(recentCategory);
 
-      // Fetch Custom Groups
-      const customGroups = await db.customGroups.orderBy('display_order').toArray();
-      const customGroupCategories = await Promise.all(customGroups.map(async (g) => {
-        const count = await db.customGroupChannels.where('group_id').equals(g.group_id).count();
-        return {
+      // Batch count custom group channels with single SQL query
+      if (customGroups.length > 0) {
+        const dbInstance = await (db as any).dbPromise;
+        const groupIds = customGroups.map(g => g.group_id);
+        const placeholders = groupIds.map(() => '?').join(',');
+        
+        // Single query to get all counts
+        const countRows = await dbInstance.select(
+          `SELECT group_id, COUNT(*) as cnt FROM customGroupChannels 
+           WHERE group_id IN (${placeholders}) 
+           GROUP BY group_id`,
+          groupIds
+        );
+        
+        // Build count map
+        const countMap = new Map<string, number>();
+        for (const row of countRows) {
+          countMap.set(row.group_id, row.cnt);
+        }
+        
+        // Build virtual categories with counts
+        const customGroupCategories = customGroups.map(g => ({
           category_id: g.group_id,
           category_name: `📂 ${g.name}`,
           source_id: '__custom_group__',
-          channel_count: count,
+          channel_count: countMap.get(g.group_id) || 0,
           enabled: true
-        } as StoredCategory;
-      }));
+        } as StoredCategory));
+        
+        virtualCategories.push(...customGroupCategories);
+      }
 
-      virtualCategories.push(recentCategory);
-      virtualCategories.push(...customGroupCategories);
-
-      // Check if we have any favorited channels
-      const favoriteCount = await db.channels.countWhere('(is_favorite = 1 OR is_favorite = true)');
-
-      // Add virtual "Favorites" category if there are favorites
+      // Add Favorites category if there are favorites
       if (favoriteCount > 0) {
         const favoritesCategory: StoredCategory = {
           category_id: '__favorites__',
