@@ -21,7 +21,7 @@ use crate::dvr::models::{RecordingEvent, RecordingStatus, Schedule, ScheduleStat
 use crate::dvr::stream_resolver::resolve_stream_url;
 use crate::dvr::thumbnail::generate_thumbnail;
 use rusqlite::OptionalExtension;
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
 
 use tokio::sync::watch;
 

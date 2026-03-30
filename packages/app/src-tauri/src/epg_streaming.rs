@@ -211,13 +211,15 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     db: &DvrDatabase,
     source_id: String,
+    source_name: String,
     epg_url: String,
     channel_mappings: Vec<ChannelMapping>,
     advanced_epg_matching: bool,
 ) -> Result<EpgParseResult> {
     let start_time = std::time::Instant::now();
+    let src_ctx = format!("{} ({})", source_name, source_id);
 
-    info!("Starting TRUE streaming EPG parse for source {} from {} (advanced matching: {})", source_id, epg_url, advanced_epg_matching);
+    info!("Starting TRUE streaming EPG parse for source {} from {} (advanced matching: {})", src_ctx, epg_url, advanced_epg_matching);
 
     // Build channel lookup map (supports multiple stream_ids per epg_channel_id)
     let channel_lookup = build_channel_lookup(channel_mappings);
@@ -275,10 +277,8 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
         );
     }
 
-    // Delete old programs BEFORE starting the pipeline
-    info!("[EPG] Deleting old programs for source {}", source_id);
-    let deleted_count = delete_programs_for_source(db, &source_id)?;
-    info!("[EPG] Deleted {} old programs for source {}", deleted_count, source_id);
+    // SQLite old programs deletion is now deferred to parse_download_stream 
+    // to ensure download succeeds first
 
     // Create channel for parse->insert pipeline
     let (batch_tx, batch_rx) = mpsc::channel::<Vec<EpgProgram>>(CHANNEL_BUFFER);
@@ -287,6 +287,8 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     let channel_lookup_clone = channel_lookup.clone();
     let source_id_clone = source_id.clone();
     let app_handle_clone = app_handle.clone();
+    let db_clone = db.clone();
+    let src_ctx_clone = src_ctx.clone();
 
     // Spawn parser task that downloads and parses concurrently
     let parse_start = std::time::Instant::now();
@@ -300,6 +302,8 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
             total_bytes,
             is_gzipped,
             advanced_epg_matching,
+            db_clone,
+            src_ctx_clone,
         ).await
     });
 
@@ -328,7 +332,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
 
     info!(
         "Streaming EPG parse complete for {}: {} programs, {} matched, {} inserted in {}ms",
-        source_id,
+        src_ctx,
         parser_result.total_programs,
         parser_result.matched_programs,
         inserter_result.inserted,
@@ -365,6 +369,8 @@ async fn parse_download_stream<R: tauri::Runtime>(
     total_bytes: Option<u64>,
     is_gzipped: bool,
     advanced_epg_matching: bool,
+    db: crate::dvr::database::DvrDatabase,
+    src_ctx: String,
 ) -> Result<StreamingParserResult> {
     let start_time = std::time::Instant::now();
 
@@ -390,10 +396,26 @@ async fn parse_download_stream<R: tauri::Runtime>(
             }
             Err(e) => {
                 warn!("Download error: {}", e);
-                break;
+                return Err(anyhow::anyhow!("Download interrupted by network error: {}", e));
             }
         }
     }
+
+    // Verify download completeness
+    if let Some(expected_len) = total_bytes {
+        if total_bytes_downloaded < expected_len {
+            return Err(anyhow::anyhow!(
+                "Incomplete EPG download: expected {} bytes but got {}",
+                expected_len, total_bytes_downloaded
+            ));
+        }
+    }
+
+    // Defer SQLite deletion until we know the EPG was completely downloaded into memory!
+    info!("[EPG] EPG Download verified successful. Safe to delete old programs!");
+    info!("[EPG] Deleting old programs for source {}", src_ctx);
+    let deleted_count = delete_programs_for_source(&db, &source_id)?;
+    info!("[EPG] Deleted {} old programs for source {}", deleted_count, src_ctx);
 
     let download_ms = start_time.elapsed().as_millis() as u64;
 

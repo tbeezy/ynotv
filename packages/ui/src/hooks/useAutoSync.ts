@@ -18,6 +18,8 @@ interface AutoSyncSettings {
 // Check interval: 10 minutes
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
+let hasInitialSyncTriggered = false;
+
 /**
  * Runs the startup sync check once on mount:
  *   - Reads user settings (shortcuts, theme, font sizes)
@@ -96,7 +98,8 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
                         console.log(`[AutoSync] Periodic check: ${staleSources.length} stale EPG sources found`);
                         setSyncingState(true);
                         hasSynced = true;
-                        const CONCURRENCY = 3;
+                        // Concurrency must be 1 because native Rust handlers lock SQLite database for performance
+                        const CONCURRENCY = 1;
                         const total = staleSources.length;
                         for (let i = 0; i < total; i += CONCURRENCY) {
                             const batch = staleSources.slice(i, i + CONCURRENCY);
@@ -152,6 +155,12 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
         };
 
         const doInitialSync = async () => {
+            if (hasInitialSyncTriggered) {
+                console.log('[AutoSync] Initial sync already triggered, skipping duplicate execution');
+                return;
+            }
+            hasInitialSyncTriggered = true;
+
             if (!window.storage) return;
 
             // Health check — ensure backend bulk-ops plugin is ready
@@ -198,7 +207,8 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
 
                 if (staleSources.length > 0) {
                     setSyncingState(true);
-                    const CONCURRENCY = 3;
+                    // Concurrency must be 1 to prevent SQLite locks during native bulk inserts
+                    const CONCURRENCY = 1;
                     const total = staleSources.length;
                     for (let i = 0; i < total; i += CONCURRENCY) {
                         const batch = staleSources.slice(i, i + CONCURRENCY);

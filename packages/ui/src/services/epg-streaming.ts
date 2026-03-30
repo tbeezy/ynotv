@@ -67,6 +67,7 @@ export type EpgProgressCallback = (progress: EpgParseProgress) => void;
  */
 export async function streamParseEpg(
   sourceId: string,
+  sourceName: string,
   epgUrl: string,
   channelMappings: ChannelMapping[],
   onProgress?: EpgProgressCallback,
@@ -89,6 +90,7 @@ export async function streamParseEpg(
 
     const result = await invoke<EpgParseResult>('stream_parse_epg', {
       sourceId,
+      sourceName,
       epgUrl,
       channelMappings,
       advancedEpgMatching: advancedEpgMatching ?? false,

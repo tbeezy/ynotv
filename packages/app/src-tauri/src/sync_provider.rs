@@ -3,7 +3,7 @@ use crate::dvr::DvrState;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 // ============================================================================
 // Xtream Types
@@ -320,7 +320,7 @@ pub async fn sync_m3u_source(
                 };
 
                 let duration_str = extinf[8..].split_whitespace().next().unwrap_or("-1").replace(",", "");
-                let duration = duration_str.parse::<i32>().unwrap_or(-1);
+                let _duration = duration_str.parse::<i32>().unwrap_or(-1);
 
                 let tvg_id = extract_attr("tvg-id");
                 let tvg_name = extract_attr("tvg-name");

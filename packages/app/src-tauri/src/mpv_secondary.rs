@@ -321,7 +321,7 @@ pub async fn reposition_slot<R: Runtime>(
         slots.get(&slot_id).map(|s| (s.hwnd, s.pid))
     };
 
-    if let Some((hwnd, pid)) = slot_entry {
+    if let Some((hwnd, _pid)) = slot_entry {
         let mut effective_hwnd = hwnd;
 
         // If we never discovered the HWND during spawn, try to locate it now by PID

@@ -195,7 +195,7 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         let mut proc_handle = state.process.lock().unwrap();
         let app_handle_for_stderr = app.clone();
         *proc_handle = Some(tauri::async_runtime::spawn(async move {
-            let mut parse_and_emit = |line_str: &str, app_handle: &tauri::AppHandle<R>| {
+            let parse_and_emit = |line_str: &str, app_handle: &tauri::AppHandle<R>| {
                 let lower = line_str.to_lowercase();
                 let http_error_code: Option<u16> = if lower.contains("http error") || lower.contains("http error ") {
                     lower.find("http error")
@@ -576,9 +576,9 @@ pub async fn mpv_set_geometry<R: Runtime>(
     width: u32,
     height: u32,
 ) -> Result<(), String> {
-    use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
+    use windows::Win32::Foundation::{HWND};
     use windows::Win32::UI::WindowsAndMessaging::{
-        EnumChildWindows, GetClassNameW, SetWindowPos, SWP_NOZORDER, SWP_NOACTIVATE,
+        SetWindowPos, SWP_NOZORDER, SWP_NOACTIVATE,
     };
 
     // Get the Tauri window's HWND

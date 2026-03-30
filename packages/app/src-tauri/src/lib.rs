@@ -1077,7 +1077,7 @@ async fn update_source_meta(
 
 /// Health check - verifies backend systems are ready
 #[tauri::command]
-async fn health_check(state: tauri::State<'_, DvrState>) -> Result<bool, String> {
+async fn health_check(_state: tauri::State<'_, DvrState>) -> Result<bool, String> {
     debug!("[health_check] DVR state is active");
     Ok(true)
 }
@@ -1088,11 +1088,12 @@ async fn stream_parse_epg(
     app: AppHandle,
     state: tauri::State<'_, DvrState>,
     source_id: String,
+    source_name: String,
     epg_url: String,
     channel_mappings: Vec<epg_streaming::ChannelMapping>,
     advanced_epg_matching: bool,
 ) -> Result<epg_streaming::EpgParseResult, String> {
-    epg_streaming::stream_parse_epg(app, &state.db, source_id, epg_url, channel_mappings, advanced_epg_matching)
+    epg_streaming::stream_parse_epg(app, &state.db, source_id, source_name, epg_url, channel_mappings, advanced_epg_matching)
         .await
         .map_err(|e| format!("Stream parse EPG failed: {}", e))
 }
@@ -1401,7 +1402,7 @@ async fn add_show_episodes_to_watchlist(
         .ok()
         .flatten()
         .unwrap_or((false, true, 5, false, 30));
-    let (auto_add, reminder_enabled, reminder_minutes, autoswitch_enabled, autoswitch_seconds) =
+    let (_auto_add, reminder_enabled, reminder_minutes, autoswitch_enabled, autoswitch_seconds) =
         settings;
 
     // Get channel info

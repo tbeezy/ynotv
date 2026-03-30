@@ -529,6 +529,7 @@ async function syncEpgFromUrl(
     // Use streaming EPG parser
     const result = await epgStreaming.streamParseEpg(
       source.id,
+      source.name || source.id,
       epgUrl,
       channelMappings,
       onProgress
@@ -650,6 +651,11 @@ async function syncEpgFromUrlLegacy(
       `Legacy M3U EPG sync complete: ${storedPrograms.length} programs stored`,
       'epg'
     );
+
+    if (bulkPrograms.length > 0) {
+      dbEvents.notify('programs', 'add');
+    }
+
     return storedPrograms.length;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -678,9 +684,9 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
 
     // Build channel mappings for Rust parser (overrides take precedence)
     const channelMappings = channels
-      .filter(ch => epgOverrideMap.has(ch.stream_id) || ch.epg_channel_id)
+      .filter(ch => epgOverrideMap.has(ch.stream_id) || ch.epg_channel_id || ch.name)
       .map(ch => ({
-        epg_channel_id: epgOverrideMap.get(ch.stream_id) || ch.epg_channel_id!,
+        epg_channel_id: epgOverrideMap.get(ch.stream_id) || ch.epg_channel_id || ch.name || '',
         stream_id: ch.stream_id,
         channel_name: ch.name || '',
       }));
@@ -692,6 +698,7 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
     // This downloads, parses, matches, and inserts all in Rust
     const result = await invoke<EpgParseResult>('stream_parse_epg', {
       sourceId: source.id,
+      sourceName: source.name || source.id,
       epgUrl: xmltvUrl,
       channelMappings,
       advancedEpgMatching: source.advanced_epg_matching ?? false,
@@ -704,6 +711,12 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
     console.log(`  - Duration: ${result.duration_ms}ms`);
 
     debugLog(`EPG sync complete: ${result.inserted_programs} programs stored (${result.duration_ms}ms)`, 'epg');
+
+    // Trigger reactive query updates in UI since native insertions bypass the JS adapter
+    if (result.inserted_programs > 0) {
+      dbEvents.notify('programs', 'add');
+    }
+
     return result.inserted_programs;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -800,6 +813,11 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
 
     console.log(`[EPG] Stalker EPG sync COMPLETE: ${result.inserted} programs inserted, ${result.deleted} old programs deleted`);
     debugLog(`Stalker EPG sync complete: ${storedPrograms.length} programs stored`, 'epg');
+
+    if (result.inserted > 0) {
+      dbEvents.notify('programs', 'add');
+    }
+
     return storedPrograms.length;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);

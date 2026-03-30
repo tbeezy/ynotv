@@ -19,6 +19,7 @@ pub struct Channel {
 }
 
 /// Database connection pool for DVR operations
+#[derive(Clone)]
 pub struct DvrDatabase {
     pool: Pool<SqliteConnectionManager>,
 }
