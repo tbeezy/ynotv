@@ -87,16 +87,30 @@ export function useCategories() {
       if (!enabledSourceIds) return db.categories.orderBy('category_name').toArray();
 
       // Parallel loading: categories, custom groups, and favorite count all at once
-      const [allCategories, customGroups, favoriteCount, recentChannels] = await Promise.all([
+      const [allCategoriesResult, customGroupsResult, favoriteCountResult, recentChannelsResult] = await Promise.all([
         // Load categories and filter by enabled sources
-        db.categories.filter(cat => enabledSourceIds.has(cat.source_id)).sortBy('category_name'),
+        db.categories.filter(cat => enabledSourceIds.has(cat.source_id)).sortBy('category_name').catch(err => {
+          console.error('[useCategories] Failed to load categories:', err);
+          return [];
+        }),
         // Load custom groups
-        db.customGroups.orderBy('display_order').toArray(),
+        db.customGroups.orderBy('display_order').toArray().catch(err => {
+          console.error('[useCategories] Failed to load custom groups:', err);
+          return [];
+        }),
         // Count favorites
-        db.channels.countWhere('(is_favorite = 1 OR is_favorite = true)'),
+        db.channels.countWhere('(is_favorite = 1 OR is_favorite = true)').catch(err => {
+          console.error('[useCategories] Failed to count favorites:', err);
+          return 0;
+        }),
         // Get recent channels (sync, just reads from array)
         Promise.resolve(getRecentChannels())
       ]);
+
+      const allCategories = allCategoriesResult;
+      const customGroups = customGroupsResult;
+      const favoriteCount = favoriteCountResult;
+      const recentChannels = recentChannelsResult;
 
       // Filter out disabled categories (enabled defaults to true if not set)
       const enabledCategories = allCategories.filter(cat => cat.enabled !== false);
@@ -115,34 +129,47 @@ export function useCategories() {
 
       // Batch count custom group channels with single SQL query
       if (customGroups.length > 0) {
-        const dbInstance = await (db as any).dbPromise;
-        const groupIds = customGroups.map(g => g.group_id);
-        const placeholders = groupIds.map(() => '?').join(',');
-        
-        // Single query to get all counts
-        const countRows = await dbInstance.select(
-          `SELECT group_id, COUNT(*) as cnt FROM customGroupChannels 
-           WHERE group_id IN (${placeholders}) 
-           GROUP BY group_id`,
-          groupIds
-        );
-        
-        // Build count map
-        const countMap = new Map<string, number>();
-        for (const row of countRows) {
-          countMap.set(row.group_id, row.cnt);
+        try {
+          const dbInstance = await (db as any).dbPromise;
+          const groupIds = customGroups.map(g => g.group_id);
+          const placeholders = groupIds.map(() => '?').join(',');
+          
+          // Single query to get all counts
+          const countRows = await dbInstance.select(
+            `SELECT group_id, COUNT(*) as cnt FROM customGroupChannels 
+             WHERE group_id IN (${placeholders}) 
+             GROUP BY group_id`,
+            groupIds
+          );
+          
+          // Build count map
+          const countMap = new Map<string, number>();
+          for (const row of countRows) {
+            countMap.set(row.group_id, row.cnt);
+          }
+          
+          // Build virtual categories with counts
+          const customGroupCategories = customGroups.map(g => ({
+            category_id: g.group_id,
+            category_name: `📂 ${g.name}`,
+            source_id: '__custom_group__',
+            channel_count: countMap.get(g.group_id) || 0,
+            enabled: true
+          } as StoredCategory));
+          
+          virtualCategories.push(...customGroupCategories);
+        } catch (err) {
+          console.error('[useCategories] Failed to count custom group channels:', err);
+          // Still show custom groups but with 0 count
+          const customGroupCategories = customGroups.map(g => ({
+            category_id: g.group_id,
+            category_name: `📂 ${g.name}`,
+            source_id: '__custom_group__',
+            channel_count: 0,
+            enabled: true
+          } as StoredCategory));
+          virtualCategories.push(...customGroupCategories);
         }
-        
-        // Build virtual categories with counts
-        const customGroupCategories = customGroups.map(g => ({
-          category_id: g.group_id,
-          category_name: `📂 ${g.name}`,
-          source_id: '__custom_group__',
-          channel_count: countMap.get(g.group_id) || 0,
-          enabled: true
-        } as StoredCategory));
-        
-        virtualCategories.push(...customGroupCategories);
       }
 
       // Add Favorites category if there are favorites
@@ -159,7 +186,9 @@ export function useCategories() {
 
       return [...virtualCategories, ...enabledCategories];
     },
-    [enabledSourceKey, recentVersion]
+    [enabledSourceKey, recentVersion],
+    undefined, // defaultResult
+    30000 // staleTime: 30 seconds - categories rarely change during session
   );
   return categories ?? [];
 }
@@ -356,7 +385,9 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
 
       return results;
     },
-    [categoryId, sortOrder, enabledSourceKey, options?.skip]
+    [categoryId, sortOrder, enabledSourceKey, options?.skip],
+    undefined, // defaultResult  
+    15000 // staleTime: 15 seconds - instant switching between recently viewed categories
   );
   return channels ?? [];
 }

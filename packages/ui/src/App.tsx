@@ -21,6 +21,7 @@ import { useActiveRecordings } from './hooks/useActiveRecordings';
 import { RecordingIndicator } from './components/RecordingIndicator';
 import { Logo } from './components/Logo';
 import { useSelectedCategory, useChannelSearch, useProgramSearch, useChannels } from './hooks/useChannels';
+import { clearLiveQueryCache } from './hooks/useSqliteLiveQuery';
 import {
   useChannelSyncing,
   useVodSyncing,
@@ -88,6 +89,15 @@ function App() {
     setShortcuts,
     setShowSidebar: setShowSidebarFromSettings,
   } = useAppSettings();
+
+  // ==========================================================================
+  // Clear Live Query Cache on App Start
+  // ==========================================================================
+  useEffect(() => {
+    // Clear any stale cached data from previous sessions
+    clearLiveQueryCache();
+    console.log('[App] Live query cache cleared on startup');
+  }, []);
 
   // ==========================================================================
   // MPV Listeners (must be before useLayoutPersistence for mpvReady)
