@@ -592,25 +592,32 @@ export function useWindowedMovies(
           enabledBySource[c.source_id].push(c.category_id);
         });
 
-        const params: any[] = [];
-        const sourceConditions: string[] = [];
+        // Collect all enabled category IDs across all sources for json_each
+        const allEnabledCategoryIds: string[] = [];
+        Object.values(enabledBySource).forEach(catIds => {
+          allEnabledCategoryIds.push(...catIds);
+        });
 
-        for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
-          if (catIds.length === 0) continue;
-          const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
-          const catInPlaceholders = catIds.map(() => '?').join(',');
+        const params: any[] = [];
+        let whereClause = '';
+
+        // Build source conditions using json_each for efficient category matching
+        const sourceIds = Object.keys(enabledBySource);
+        if (sourceIds.length > 0 && allEnabledCategoryIds.length > 0) {
+          const sourcePlaceholders = sourceIds.map(() => '?').join(',');
+          const categoryPlaceholders = allEnabledCategoryIds.map(() => '?').join(',');
           
-          const condition = `(source_id = ? ${catLikes ? `AND (${catLikes})` : ''})`;
-          
-          sourceConditions.push(condition);
-          params.push(sourceId);
-          catIds.forEach(id => params.push(`%"${id}"%`)); // For category_ids LIKE
+          // Use json_each to efficiently match category_ids JSON array
+          whereClause = `source_id IN (${sourcePlaceholders}) AND cat.value IN (${categoryPlaceholders})`;
+          params.push(...sourceIds, ...allEnabledCategoryIds);
         }
 
         const orphanCondition = `(category_ids IS NULL OR category_ids = '[]')`;
-        let whereClause = sourceConditions.length > 0 
-          ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
-          : orphanCondition;
+        if (whereClause) {
+          whereClause = `(${orphanCondition} OR (${whereClause}))`;
+        } else {
+          whereClause = orphanCondition;
+        }
 
         if (categoryId) {
           // Use JSON-style matching with quotes to avoid substring matches
@@ -631,7 +638,10 @@ export function useWindowedMovies(
 
         // Get total count
         const countResult = await dbInstance.select(
-          `SELECT COUNT(*) as count FROM vodMovies WHERE ${whereClause}`,
+          `SELECT COUNT(DISTINCT m.rowid) as count 
+           FROM vodMovies m 
+           CROSS JOIN json_each(m.category_ids) AS cat 
+           WHERE ${whereClause}`,
           params
         );
         setTotalCount(countResult[0]?.count || 0);
@@ -641,7 +651,12 @@ export function useWindowedMovies(
         const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
 
         const items = await dbInstance.select(
-          `SELECT * FROM vodMovies WHERE ${whereClause} ORDER BY ${orderColumn} ${orderDir} LIMIT ${WINDOW_SIZE}`,
+          `SELECT DISTINCT m.* 
+           FROM vodMovies m 
+           CROSS JOIN json_each(m.category_ids) AS cat 
+           WHERE ${whereClause} 
+           ORDER BY ${orderColumn} ${orderDir} 
+           LIMIT ${WINDOW_SIZE}`,
           params
         );
 
@@ -672,25 +687,32 @@ export function useWindowedMovies(
         enabledBySource[c.source_id].push(c.category_id);
       });
 
-      const params: any[] = [];
-      const sourceConditions: string[] = [];
+      // Collect all enabled category IDs across all sources for json_each
+      const allEnabledCategoryIds: string[] = [];
+      Object.values(enabledBySource).forEach(catIds => {
+        allEnabledCategoryIds.push(...catIds);
+      });
 
-      for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
-        if (catIds.length === 0) continue;
-        const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
-        const catInPlaceholders = catIds.map(() => '?').join(',');
+      const params: any[] = [];
+      let whereClause = '';
+
+      // Build source conditions using json_each for efficient category matching
+      const sourceIds = Object.keys(enabledBySource);
+      if (sourceIds.length > 0 && allEnabledCategoryIds.length > 0) {
+        const sourcePlaceholders = sourceIds.map(() => '?').join(',');
+        const categoryPlaceholders = allEnabledCategoryIds.map(() => '?').join(',');
         
-        const condition = `(source_id = ? ${catLikes ? `AND (${catLikes})` : ''})`;
-        
-        sourceConditions.push(condition);
-        params.push(sourceId);
-        catIds.forEach(id => params.push(`%"${id}"%`));
+        // Use json_each to efficiently match category_ids JSON array
+        whereClause = `source_id IN (${sourcePlaceholders}) AND cat.value IN (${categoryPlaceholders})`;
+        params.push(...sourceIds, ...allEnabledCategoryIds);
       }
 
       const orphanCondition = `(category_ids IS NULL OR category_ids = '[]')`;
-      let whereClause = sourceConditions.length > 0 
-        ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
-        : orphanCondition;
+      if (whereClause) {
+        whereClause = `(${orphanCondition} OR (${whereClause}))`;
+      } else {
+        whereClause = orphanCondition;
+      }
 
       if (categoryId) {
         whereClause += ' AND category_ids LIKE ?';
@@ -713,7 +735,12 @@ export function useWindowedMovies(
       const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
 
       const items = await dbInstance.select(
-        `SELECT * FROM vodMovies WHERE ${whereClause} ORDER BY ${orderColumn} ${orderDir} LIMIT ${WINDOW_SIZE} OFFSET ${offset}`,
+        `SELECT DISTINCT m.* 
+         FROM vodMovies m 
+         CROSS JOIN json_each(m.category_ids) AS cat 
+         WHERE ${whereClause} 
+         ORDER BY ${orderColumn} ${orderDir} 
+         LIMIT ${WINDOW_SIZE} OFFSET ${offset}`,
         params
       );
 
@@ -780,31 +807,36 @@ export function useWindowedSeries(
           enabledBySource[c.source_id].push(c.category_id);
         });
 
-        const params: any[] = [];
-        const sourceConditions: string[] = [];
+        // Collect all enabled category IDs across all sources
+        const allEnabledCategoryIds: string[] = [];
+        Object.values(enabledBySource).forEach(catIds => {
+          allEnabledCategoryIds.push(...catIds);
+        });
 
-        for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
-          if (catIds.length === 0) continue;
-          const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
-          const catInPlaceholders = catIds.map(() => '?').join(',');
+        const params: any[] = [];
+        let whereClause = '';
+
+        // Build source conditions - series has additional category_id and _stalker_category fields
+        const sourceIds = Object.keys(enabledBySource);
+        if (sourceIds.length > 0 && allEnabledCategoryIds.length > 0) {
+          const sourcePlaceholders = sourceIds.map(() => '?').join(',');
+          const categoryPlaceholders = allEnabledCategoryIds.map(() => '?').join(',');
           
-          const condition = `(source_id = ? AND (
-            category_id IN (${catInPlaceholders}) OR
-            _stalker_category IN (${catInPlaceholders}) 
-            ${catLikes ? `OR ${catLikes}` : ''}
-          ))`;
-          
-          sourceConditions.push(condition);
-          params.push(sourceId);
-          params.push(...catIds);
-          params.push(...catIds);
-          catIds.forEach(id => params.push(`%"${id}"%`));
+          // Match by source_id AND (category_id IN (...) OR _stalker_category IN (...) OR json_each match)
+          whereClause = `source_id IN (${sourcePlaceholders}) AND (
+            category_id IN (${categoryPlaceholders}) OR 
+            _stalker_category IN (${categoryPlaceholders}) OR
+            cat.value IN (${categoryPlaceholders})
+          )`;
+          params.push(...sourceIds, ...allEnabledCategoryIds, ...allEnabledCategoryIds, ...allEnabledCategoryIds);
         }
 
         const orphanCondition = `((category_ids IS NULL OR category_ids = '[]') AND category_id IS NULL AND _stalker_category IS NULL)`;
-        let whereClause = sourceConditions.length > 0 
-          ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
-          : orphanCondition;
+        if (whereClause) {
+          whereClause = `(${orphanCondition} OR (${whereClause}))`;
+        } else {
+          whereClause = orphanCondition;
+        }
 
         if (categoryId) {
           whereClause += ' AND category_ids LIKE ?';
@@ -824,7 +856,10 @@ export function useWindowedSeries(
 
         // Get total count
         const countResult = await dbInstance.select(
-          `SELECT COUNT(*) as count FROM vodSeries WHERE ${whereClause}`,
+          `SELECT COUNT(DISTINCT s.rowid) as count 
+           FROM vodSeries s 
+           LEFT JOIN json_each(s.category_ids) AS cat ON json_valid(s.category_ids)
+           WHERE ${whereClause}`,
           params
         );
         setTotalCount(countResult[0]?.count || 0);
@@ -834,7 +869,12 @@ export function useWindowedSeries(
         const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
 
         const items = await dbInstance.select(
-          `SELECT * FROM vodSeries WHERE ${whereClause} ORDER BY ${orderColumn} ${orderDir} LIMIT ${WINDOW_SIZE}`,
+          `SELECT DISTINCT s.* 
+           FROM vodSeries s 
+           LEFT JOIN json_each(s.category_ids) AS cat ON json_valid(s.category_ids)
+           WHERE ${whereClause} 
+           ORDER BY ${orderColumn} ${orderDir} 
+           LIMIT ${WINDOW_SIZE}`,
           params
         );
 
@@ -865,31 +905,36 @@ export function useWindowedSeries(
         enabledBySource[c.source_id].push(c.category_id);
       });
 
-      const params: any[] = [];
-      const sourceConditions: string[] = [];
+      // Collect all enabled category IDs across all sources
+      const allEnabledCategoryIds: string[] = [];
+      Object.values(enabledBySource).forEach(catIds => {
+        allEnabledCategoryIds.push(...catIds);
+      });
 
-      for (const [sourceId, catIds] of Object.entries(enabledBySource)) {
-        if (catIds.length === 0) continue;
-        const catLikes = catIds.map(() => `category_ids LIKE ?`).join(' OR ');
-        const catInPlaceholders = catIds.map(() => '?').join(',');
+      const params: any[] = [];
+      let whereClause = '';
+
+      // Build source conditions - series has additional category_id and _stalker_category fields
+      const sourceIds = Object.keys(enabledBySource);
+      if (sourceIds.length > 0 && allEnabledCategoryIds.length > 0) {
+        const sourcePlaceholders = sourceIds.map(() => '?').join(',');
+        const categoryPlaceholders = allEnabledCategoryIds.map(() => '?').join(',');
         
-        const condition = `(source_id = ? AND (
-          category_id IN (${catInPlaceholders}) OR
-          _stalker_category IN (${catInPlaceholders}) 
-          ${catLikes ? `OR ${catLikes}` : ''}
-        ))`;
-        
-        sourceConditions.push(condition);
-        params.push(sourceId);
-        params.push(...catIds);
-        params.push(...catIds);
-        catIds.forEach(id => params.push(`%"${id}"%`));
+        // Match by source_id AND (category_id IN (...) OR _stalker_category IN (...) OR json_each match)
+        whereClause = `source_id IN (${sourcePlaceholders}) AND (
+          category_id IN (${categoryPlaceholders}) OR 
+          _stalker_category IN (${categoryPlaceholders}) OR
+          cat.value IN (${categoryPlaceholders})
+        )`;
+        params.push(...sourceIds, ...allEnabledCategoryIds, ...allEnabledCategoryIds, ...allEnabledCategoryIds);
       }
 
       const orphanCondition = `((category_ids IS NULL OR category_ids = '[]') AND category_id IS NULL AND _stalker_category IS NULL)`;
-      let whereClause = sourceConditions.length > 0 
-        ? `(${orphanCondition} OR ${sourceConditions.join(' OR ')})` 
-        : orphanCondition;
+      if (whereClause) {
+        whereClause = `(${orphanCondition} OR (${whereClause}))`;
+      } else {
+        whereClause = orphanCondition;
+      }
 
       if (categoryId) {
         whereClause += ' AND category_ids LIKE ?';
@@ -912,7 +957,12 @@ export function useWindowedSeries(
       const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
 
       const items = await dbInstance.select(
-        `SELECT * FROM vodSeries WHERE ${whereClause} ORDER BY ${orderColumn} ${orderDir} LIMIT ${WINDOW_SIZE} OFFSET ${offset}`,
+        `SELECT DISTINCT s.* 
+         FROM vodSeries s 
+         LEFT JOIN json_each(s.category_ids) AS cat ON json_valid(s.category_ids)
+         WHERE ${whereClause} 
+         ORDER BY ${orderColumn} ${orderDir} 
+         LIMIT ${WINDOW_SIZE} OFFSET ${offset}`,
         params
       );
 
