@@ -33,20 +33,37 @@ export function useMovies(categoryId?: string | null, search?: string, limit = 2
     }
 
     // No category filter - use SQL LIMIT to prevent memory issues
-    // Sort by name for consistent results
+    // Filter by enabled categories in SQL to avoid over-fetching
+    const enabledCategories = await db.vodCategories.where('type').equals('movie').toArray();
+    const enabledCatIds = enabledCategories
+      .filter(c => c.enabled !== false)
+      .map(c => c.category_id);
+    
+    // Early return if no enabled categories
+    if (enabledCatIds.length === 0) {
+      return [];
+    }
+    
     let allMovies: StoredMovie[];
 
     if (enabledSourceIds && enabledSourceIds.size > 0) {
-      // Filter by enabled sources with limit
+      // Filter by enabled sources and enabled categories
       const idsList = Array.from(enabledSourceIds);
       if (idsList.length === 0) return [];
 
-      const fetchLimit = limit * 5; 
       const sourcePlaceholders = idsList.map(() => '?').join(',');
+      const categoryPlaceholders = enabledCatIds.map(() => '?').join(',');
       const dbInstance = await (db as any).dbPromise;
       
       let queryStr = `SELECT * FROM vodMovies WHERE source_id IN (${sourcePlaceholders})`;
       const params: any[] = [...idsList];
+
+      // Filter by enabled categories using json_each
+      queryStr += ` AND EXISTS (
+        SELECT 1 FROM json_each(category_ids) 
+        WHERE value IN (${categoryPlaceholders})
+      )`;
+      params.push(...enabledCatIds);
 
       if (search) {
         const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
@@ -59,68 +76,46 @@ export function useMovies(categoryId?: string | null, search?: string, limit = 2
         }
       }
 
-      queryStr += ` ORDER BY name LIMIT ${fetchLimit}`;
+      queryStr += ` ORDER BY name LIMIT ${limit}`;
       allMovies = await dbInstance.select(queryStr, params);
     } else {
-      // No source filter - use db.vodMovies but apply memory limits if no search
+      // No source filter - just filter by enabled categories
+      const categoryPlaceholders = enabledCatIds.map(() => '?').join(',');
+      const dbInstance = await (db as any).dbPromise;
+      
       if (search) {
-        // If searching but no sources enabled filter(?) fallback to memory since dexie is hard to multi-LIKE
-        // actually just use dbInstance
         const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
         const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
         const params: any[] = [];
         searchTerms.forEach(term => {
           params.push(`%${term}%`, `%${term}%`);
         });
-        const dbInstance = await (db as any).dbPromise;
-        allMovies = await dbInstance.select(`SELECT * FROM vodMovies WHERE ${searchClauses} ORDER BY name LIMIT ${limit * 5}`, params);
+        
+        allMovies = await dbInstance.select(
+          `SELECT * FROM vodMovies 
+           WHERE EXISTS (
+             SELECT 1 FROM json_each(category_ids) 
+             WHERE value IN (${categoryPlaceholders})
+           )
+           AND (${searchClauses})
+           ORDER BY name LIMIT ${limit}`,
+          [...enabledCatIds, ...params]
+        );
       } else {
-        allMovies = await db.vodMovies.orderBy('name').limit(limit * 5).toArray();
+        allMovies = await dbInstance.select(
+          `SELECT * FROM vodMovies 
+           WHERE EXISTS (
+             SELECT 1 FROM json_each(category_ids) 
+             WHERE value IN (${categoryPlaceholders})
+           )
+           ORDER BY name LIMIT ${limit}`,
+          enabledCatIds
+        );
       }
     }
 
-    // (Search is already applied in SQL, but we leave the memory filter for the categoryId case)
-    if (search && categoryId) {
-      const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
-      allMovies = allMovies.filter(m => {
-        const title = (m.name || m.title || '').toLowerCase();
-        return searchTerms.every(term => title.includes(term));
-      });
-    }
-
-    // Filter out movies belonging ONLY to disabled categories
-    const enabledCategories = await db.vodCategories.where('type').equals('movie').toArray();
-    const enabledCatIds = new Set(
-      enabledCategories
-        .filter(c => c.enabled !== false)
-        .map(c => `${c.source_id}:${c.category_id}`)
-    );
-
-    allMovies = allMovies.filter(m => {
-      // Parse category IDs
-      let ids: string[] = [];
-      if (m.category_ids) {
-        try {
-          const parsed = typeof m.category_ids === 'string' ? JSON.parse(m.category_ids) : m.category_ids;
-          if (Array.isArray(parsed)) {
-            ids = parsed.map(String);
-          } else {
-            ids = [String(parsed)];
-          }
-        } catch (e) {
-          ids = [String(m.category_ids)];
-        }
-      }
-      if (m.category_id) ids.push(String(m.category_id));
-      if ((m as any)._stalker_category) ids.push(String((m as any)._stalker_category));
-
-      if (ids.length === 0) return true; // Keep orphans
-
-      return ids.some(id => enabledCatIds.has(`${m.source_id}:${id}`));
-    });
-
-    // Apply the original requested limit after filtering
-    return allMovies.slice(0, limit);
+    // No need to filter by categories again - already done in SQL
+    return allMovies;
   }, [categoryId, search, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']);
 
   return {
@@ -193,19 +188,37 @@ export function useSeries(categoryId?: string | null, search?: string, limit = 2
     }
 
     // No category filter - use SQL LIMIT to prevent memory issues
+    // Filter by enabled categories in SQL to avoid over-fetching
+    const enabledCategories = await db.vodCategories.where('type').equals('series').toArray();
+    const enabledCatIds = enabledCategories
+      .filter(c => c.enabled !== false)
+      .map(c => c.category_id);
+    
+    // Early return if no enabled categories
+    if (enabledCatIds.length === 0) {
+      return [];
+    }
+    
     let allSeries: StoredSeries[];
 
     if (enabledSourceIds && enabledSourceIds.size > 0) {
-      // Filter by enabled sources with limit
+      // Filter by enabled sources and enabled categories
       const idsList = Array.from(enabledSourceIds);
       if (idsList.length === 0) return [];
 
-      const fetchLimit = limit * 5;
-      const dbInstance = await (db as any).dbPromise;
       const sourcePlaceholders = idsList.map(() => '?').join(',');
+      const categoryPlaceholders = enabledCatIds.map(() => '?').join(',');
+      const dbInstance = await (db as any).dbPromise;
       
       let queryStr = `SELECT * FROM vodSeries WHERE source_id IN (${sourcePlaceholders})`;
       const params: any[] = [...idsList];
+
+      // Filter by enabled categories using json_each
+      queryStr += ` AND EXISTS (
+        SELECT 1 FROM json_each(category_ids) 
+        WHERE value IN (${categoryPlaceholders})
+      )`;
+      params.push(...enabledCatIds);
 
       if (search) {
         const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
@@ -218,10 +231,13 @@ export function useSeries(categoryId?: string | null, search?: string, limit = 2
         }
       }
 
-      queryStr += ` ORDER BY name LIMIT ${fetchLimit}`;
+      queryStr += ` ORDER BY name LIMIT ${limit}`;
       allSeries = await dbInstance.select(queryStr, params);
     } else {
-      // No source filter - just limit
+      // No source filter - just filter by enabled categories
+      const categoryPlaceholders = enabledCatIds.map(() => '?').join(',');
+      const dbInstance = await (db as any).dbPromise;
+      
       if (search) {
         const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
         const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
@@ -229,71 +245,31 @@ export function useSeries(categoryId?: string | null, search?: string, limit = 2
         searchTerms.forEach(term => {
           params.push(`%${term}%`, `%${term}%`);
         });
-        const dbInstance = await (db as any).dbPromise;
-        allSeries = await dbInstance.select(`SELECT * FROM vodSeries WHERE ${searchClauses} ORDER BY name LIMIT ${limit * 5}`, params);
+        
+        allSeries = await dbInstance.select(
+          `SELECT * FROM vodSeries 
+           WHERE EXISTS (
+             SELECT 1 FROM json_each(category_ids) 
+             WHERE value IN (${categoryPlaceholders})
+           )
+           AND (${searchClauses})
+           ORDER BY name LIMIT ${limit}`,
+          [...enabledCatIds, ...params]
+        );
       } else {
-        allSeries = await db.vodSeries.orderBy('name').limit(limit * 5).toArray();
+        allSeries = await dbInstance.select(
+          `SELECT * FROM vodSeries 
+           WHERE EXISTS (
+             SELECT 1 FROM json_each(category_ids) 
+             WHERE value IN (${categoryPlaceholders})
+           )
+           ORDER BY name LIMIT ${limit}`,
+          enabledCatIds
+        );
       }
     }
 
-    if (search && categoryId) {
-      const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
-      allSeries = allSeries.filter(s => {
-        const title = (s.name || s.title || '').toLowerCase();
-        return searchTerms.every(term => title.includes(term));
-      });
-    }
-
-    // Filter out series belonging ONLY to disabled categories
-    const enabledCategories = await db.vodCategories.where('type').equals('series').toArray();
-    const enabledCatIds = new Set(
-      enabledCategories
-        .filter(c => c.enabled !== false)
-        .map(c => `${c.source_id}:${c.category_id}`)
-    );
-
-    allSeries = allSeries.filter(s => {
-      // Parse category IDs
-      let ids: string[] = [];
-      if (s.category_ids) {
-        try {
-          const parsed = typeof s.category_ids === 'string' ? JSON.parse(s.category_ids) : s.category_ids;
-          if (Array.isArray(parsed)) {
-            ids = parsed.map(String);
-          } else {
-            ids = [String(parsed)];
-          }
-        } catch (e) {
-          ids = [String(s.category_ids)];
-        }
-      }
-      if (s.category_id) ids.push(String(s.category_id));
-      if (s._stalker_category) ids.push(String(s._stalker_category));
-
-      if (ids.length === 0) return true; // Keep orphans
-
-      return ids.some(id => enabledCatIds.has(`${s.source_id}:${id}`));
-    });
-
-    // Apply the original limit
-    allSeries = allSeries.slice(0, limit);
-
-    // Debug: Log first few series to check cover field
-    if (allSeries.length > 0) {
-      console.log('[useSeries] First 3 series from DB:', allSeries.slice(0, 3).map(s => {
-        const raw = s as any;
-        return {
-          id: s.series_id,
-          name: s.name,
-          cover: s.cover,
-          cover_present: 'cover' in raw,
-          cover_type: typeof s.cover,
-          cover_value: s.cover,
-          all_keys: Object.keys(raw).filter(k => k.includes('cover') || k.includes('icon'))
-        };
-      }));
-    }
-
+    // No need to filter by categories again - already done in SQL
     return allSeries;
   }, [categoryId, search, limit, enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading']);
 

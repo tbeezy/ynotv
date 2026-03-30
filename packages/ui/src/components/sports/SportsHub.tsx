@@ -70,9 +70,11 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
     const updateVideoPosition = async () => {
       if (!previewRef.current || !previewEnabled) {
         if (!previewEnabled) {
-          Bridge.setProperty('video-zoom', 0).catch(() => { });
-          Bridge.setProperty('video-align-x', 0).catch(() => { });
-          Bridge.setProperty('video-align-y', 0).catch(() => { });
+          Bridge.setProperties({
+            'video-zoom': 0,
+            'video-align-x': 0,
+            'video-align-y': 0
+          }).catch(() => { });
         }
         return;
       }
@@ -122,9 +124,11 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
       const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * shiftY) / availSpaceY;
 
       try {
-        await Bridge.setProperty('video-zoom', zoom);
-        await Bridge.setProperty('video-align-x', alignX);
-        await Bridge.setProperty('video-align-y', alignY);
+        await Bridge.setProperties({
+          'video-zoom': zoom,
+          'video-align-x': alignX,
+          'video-align-y': alignY
+        });
       } catch (e) {
         console.warn('[SportsPreview] Geometry Sync Failed', e);
       } finally {
@@ -164,9 +168,11 @@ export function SportsHub({ onClose, onSearchChannels, previewEnabled, onToggleP
       cancelAnimationFrame(animationFrameId);
 
       // Cleanup zoom when the entire SportsHub unmounts or preview toggles explicitly
-      Bridge.setProperty('video-zoom', 0).catch(() => { });
-      Bridge.setProperty('video-align-x', 0).catch(() => { });
-      Bridge.setProperty('video-align-y', 0).catch(() => { });
+      Bridge.setProperties({
+        'video-zoom': 0,
+        'video-align-x': 0,
+        'video-align-y': 0
+      }).catch(() => { });
     };
   }, [previewEnabled]);
 

@@ -375,6 +375,24 @@ async fn mpv_set_subtitle<R: Runtime>(app: AppHandle<R>, id: i64) -> Result<(), 
 }
 
 #[tauri::command]
+async fn mpv_set_properties<R: Runtime>(
+    app: AppHandle<R>,
+    properties: Vec<(String, serde_json::Value)>,
+) -> Result<(), String> {
+    for (name, value) in properties {
+        #[cfg(target_os = "macos")]
+        {
+            mpv_macos::set_property(&app, name, value).await?;
+        }
+        #[cfg(target_os = "windows")]
+        {
+            mpv_windows::set_property(&app, name, value).await?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn mpv_set_property<R: Runtime>(
     app: AppHandle<R>,
     name: String,
@@ -1897,6 +1915,7 @@ pub fn run() {
             mpv_set_audio,
             mpv_set_subtitle,
             mpv_set_property,
+            mpv_set_properties,
             mpv_get_property,
             mpv_sync_window,
             mpv_set_geometry,

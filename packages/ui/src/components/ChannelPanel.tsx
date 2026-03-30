@@ -1016,9 +1016,11 @@ export function ChannelPanel({
         const availSpaceY = windowH - actualVideoH;
         const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * shiftY) / availSpaceY;
 
-        Bridge.setProperty('video-zoom', zoom);
-        Bridge.setProperty('video-align-x', alignX);
-        Bridge.setProperty('video-align-y', alignY);
+        Bridge.setProperties({
+          'video-zoom': zoom,
+          'video-align-x': alignX,
+          'video-align-y': alignY
+        });
       } else {
         // Calculate Scale Factor
         const scale = rect.width / windowW;
@@ -1035,9 +1037,11 @@ export function ChannelPanel({
         const availSpaceY = windowH - rect.height;
         const alignY = Math.abs(availSpaceY) < 1 ? 0 : (2 * topOffset) / availSpaceY - 1;
 
-        Bridge.setProperty('video-zoom', zoom);
-        Bridge.setProperty('video-align-x', alignX);
-        Bridge.setProperty('video-align-y', alignY);
+        Bridge.setProperties({
+          'video-zoom': zoom,
+          'video-align-x': alignX,
+          'video-align-y': alignY
+        });
       }
     };
 

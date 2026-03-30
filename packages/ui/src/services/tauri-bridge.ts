@@ -212,6 +212,11 @@ export const Bridge = {
         return invoke('mpv_set_property', { name, value });
     },
 
+    async setProperties(properties: Record<string, any>) {
+        const entries = Object.entries(properties);
+        return invoke('mpv_set_properties', { properties: entries });
+    },
+
     async getProperty(name: string): Promise<any> {
         return invoke('mpv_get_property', { name });
     },
@@ -449,6 +454,7 @@ export async function initPolyfills() {
         setSubtitleTrack: Bridge.setSubtitleTrack,
         destroy: () => { },
         setProperty: Bridge.setProperty,
+        setProperties: Bridge.setProperties,
         getProperty: Bridge.getProperty,
         onError: (cb: any) => console.log('[MPV] onError listener added'),
         removeAllListeners: () => console.log('[MPV] removeAllListeners called'),
