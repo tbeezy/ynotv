@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLiveQuery } from './useSqliteLiveQuery';
-import { db, type StoredMovie, type StoredSeries, type StoredEpisode, type VodCategory } from '../db';
+import { db, type StoredMovie, type StoredSeries, type StoredEpisode, type VodCategory, type VodWatchHistory, getRecentlyWatchedByType } from '../db';
 import { syncSeriesEpisodes, syncAllVod, type VodSyncResult } from '../db/sync';
 import type { Source } from '@ynotv/core';
 import { useEnabledSources } from './useChannels';
+import { getTmdbImageUrl, TMDB_POSTER_SIZES } from '../services/tmdb';
 
 // ===========================================================================
 // Movies Hooks
@@ -944,4 +945,281 @@ export function useLazyStalkerLoader(type: 'movies' | 'series', categoryId: stri
   }, [categoryId, type]);
 
   return { syncing, progress, message, completed, hasCache };
+}
+
+// ============================================================================
+// Recently Watched Hooks
+// ============================================================================
+
+export interface RecentlyWatchedItem<T> {
+  item: T;
+  progress_seconds: number;
+  total_duration: number;
+  progress_percent: number;
+  watched_at: number;
+  // For series only
+  season_num?: number;
+  episode_num?: number;
+  episode_title?: string;
+}
+
+/**
+ * Get recently watched movies with full movie data and progress
+ * Joins watch history with movie data to get complete movie objects
+ */
+export function useRecentlyWatchedMovies(limit = 20) {
+  const [movies, setMovies] = useState<RecentlyWatchedItem<StoredMovie>[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Get watch history
+      const history = await getRecentlyWatchedByType('movie', limit);
+      
+      if (history.length === 0) {
+        setMovies([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch full movie data for each history entry
+      const dbInstance = await (db as any).dbPromise;
+      const mediaIds = history.map(h => h.media_id);
+      
+      if (mediaIds.length === 0) {
+        setMovies([]);
+        setLoading(false);
+        return;
+      }
+
+      // Build placeholders for SQL IN clause
+      const placeholders = mediaIds.map(() => '?').join(',');
+      const moviesData: StoredMovie[] = await dbInstance.select(
+        `SELECT * FROM vodMovies WHERE stream_id IN (${placeholders})`,
+        mediaIds
+      );
+
+      // Create a map for quick lookup
+      const movieMap = new Map(moviesData.map(m => [m.stream_id, m]));
+
+      // Order movies according to watch history order with progress
+      const orderedMovies = history
+        .map(h => {
+          const movie = movieMap.get(h.media_id);
+          if (!movie) return null;
+          const progressSeconds = h.progress_seconds ?? 0;
+          const totalDuration = h.total_duration ?? 0;
+          return {
+            item: movie,
+            progress_seconds: progressSeconds,
+            total_duration: totalDuration,
+            progress_percent: totalDuration > 0 
+              ? Math.round((progressSeconds / totalDuration) * 100) 
+              : 0,
+            watched_at: h.watched_at,
+          };
+        })
+        .filter((m): m is RecentlyWatchedItem<StoredMovie> => m !== null);
+
+      setMovies(orderedMovies);
+    } catch (error) {
+      console.error('[useRecentlyWatchedMovies] Error:', error);
+      setMovies([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [limit]);
+
+  // Initial load and reactive updates
+  const historySignature = useLiveQuery(async () => {
+    // Fetch count and latest timestamp to trigger updates on any change (including deletes)
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      'SELECT COUNT(*) as count, MAX(watched_at) as latest FROM vod_history WHERE media_type = ?',
+      ['movie']
+    );
+    // Combine count and latest into a signature that changes on any modification
+    return `${result?.[0]?.count || 0}-${result?.[0]?.latest || 0}`;
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh, historySignature]);
+
+  return {
+    movies,
+    loading,
+    refresh,
+  };
+}
+
+/**
+ * Get recently watched series with full series data and progress
+ * Joins watch history with series data to get complete series objects
+ */
+export function useRecentlyWatchedSeries(limit = 20) {
+  const [series, setSeries] = useState<RecentlyWatchedItem<StoredSeries>[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Get watch history
+      const history = await getRecentlyWatchedByType('series', limit);
+      
+      if (history.length === 0) {
+        setSeries([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch full series data for each history entry
+      const dbInstance = await (db as any).dbPromise;
+      const mediaIds = history.map(h => h.media_id);
+      
+      if (mediaIds.length === 0) {
+        setSeries([]);
+        setLoading(false);
+        return;
+      }
+
+      // Build placeholders for SQL IN clause
+      const placeholders = mediaIds.map(() => '?').join(',');
+      const seriesData: StoredSeries[] = await dbInstance.select(
+        `SELECT * FROM vodSeries WHERE series_id IN (${placeholders})`,
+        mediaIds
+      );
+
+      // Create a map for quick lookup
+      const seriesMap = new Map(seriesData.map(s => [s.series_id, s]));
+
+      // Order series according to watch history order with progress
+      const orderedSeries: RecentlyWatchedItem<StoredSeries>[] = history
+        .map(h => {
+          const seriesItem = seriesMap.get(h.media_id);
+          if (!seriesItem) return null;
+          const progressSeconds = h.progress_seconds ?? 0;
+          const totalDuration = h.total_duration ?? 0;
+          return {
+            item: seriesItem,
+            progress_seconds: progressSeconds,
+            total_duration: totalDuration,
+            progress_percent: totalDuration > 0 
+              ? Math.round((progressSeconds / totalDuration) * 100) 
+              : 0,
+            watched_at: h.watched_at,
+            season_num: h.season_num,
+            episode_num: h.episode_num,
+            episode_title: h.episode_title,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null) as RecentlyWatchedItem<StoredSeries>[];
+
+      setSeries(orderedSeries);
+    } catch (error) {
+      console.error('[useRecentlyWatchedSeries] Error:', error);
+      setSeries([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [limit]);
+
+  // Initial load and reactive updates
+  const historySignature = useLiveQuery(async () => {
+    // Fetch count and latest timestamp to trigger updates on any change (including deletes)
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      'SELECT COUNT(*) as count, MAX(watched_at) as latest FROM vod_history WHERE media_type = ?',
+      ['series']
+    );
+    // Combine count and latest into a signature that changes on any modification
+    return `${result?.[0]?.count || 0}-${result?.[0]?.latest || 0}`;
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh, historySignature]);
+
+  return {
+    series,
+    loading,
+    refresh,
+  };
+}
+
+// ============================================================================
+// Episode Progress Hooks
+// ============================================================================
+
+import { getSeriesEpisodeProgress, type EpisodeWatchHistory } from '../db';
+
+export interface EpisodeProgress {
+  episodeId: string;
+  progressSeconds: number;
+  totalDuration: number;
+  progressPercent: number;
+  completed: boolean;
+}
+
+/**
+ * Get progress for all episodes in a series
+ */
+export function useSeriesEpisodeProgress(seriesId: string | null) {
+  const [episodeProgress, setEpisodeProgress] = useState<Map<string, EpisodeProgress>>(new Map());
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!seriesId) {
+      setEpisodeProgress(new Map());
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const history = await getSeriesEpisodeProgress(seriesId);
+      const progressMap = new Map<string, EpisodeProgress>();
+      
+      for (const item of history) {
+        const totalDuration = item.total_duration ?? 0;
+        const progressSeconds = item.progress_seconds ?? 0;
+        progressMap.set(item.episode_id, {
+          episodeId: item.episode_id,
+          progressSeconds,
+          totalDuration,
+          progressPercent: totalDuration > 0 ? Math.round((progressSeconds / totalDuration) * 100) : 0,
+          completed: item.completed === 1,
+        });
+      }
+      
+      setEpisodeProgress(progressMap);
+    } catch (error) {
+      console.error('[useSeriesEpisodeProgress] Error:', error);
+      setEpisodeProgress(new Map());
+    } finally {
+      setLoading(false);
+    }
+  }, [seriesId]);
+
+  // Initial load and reactive updates
+  const watched = useLiveQuery(async () => {
+    if (!seriesId) return 0;
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      'SELECT MAX(watched_at) as latest FROM episode_history WHERE series_id = ?',
+      [seriesId]
+    );
+    return result?.[0]?.latest || 0;
+  }, [seriesId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh, watched]);
+
+  return {
+    episodeProgress,
+    loading,
+    refresh,
+  };
 }

@@ -35,6 +35,7 @@ import {
   useEpgView,
   useSetEpgView
 } from './stores/uiStore';
+import { getAdjacentEpisode, recordVodWatch, recordEpisodeWatch, getEpisodeProgress } from './db';
 import type { StoredChannel } from './db';
 import { db } from './db';
 import { VideoErrorOverlay } from './components/VideoErrorOverlay';
@@ -403,9 +404,67 @@ function App() {
   }, [handlePlayChannel]);
 
   // ==========================================================================
-  // Handle Channel Navigation (Up/Down)
+  // Handle Channel Navigation (Up/Down) - with Series Episode Support
   // ==========================================================================
-  const handleChannelUp = useCallback(() => {
+  const handleChannelUp = useCallback(async () => {
+    // Check if we're watching a series with episode info
+    if (vodInfo?.type === 'series' && vodInfo.seriesId && vodInfo.seasonNum && vodInfo.episodeNum) {
+      // Navigate to previous episode
+      const prevEpisode = await getAdjacentEpisode(
+        vodInfo.seriesId,
+        vodInfo.seasonNum,
+        vodInfo.episodeNum,
+        'prev'
+      );
+      
+      if (prevEpisode) {
+        // Get progress for resume
+        const progress = await getEpisodeProgress(prevEpisode.id);
+        const resumePosition = progress?.progress_seconds && progress.progress_seconds > 10 ? progress.progress_seconds : 0;
+        
+        // Record watch history
+        void recordVodWatch(
+          vodInfo.seriesId,
+          'series',
+          vodInfo.source_id || '',
+          vodInfo.title,
+          undefined,
+          prevEpisode.season_num,
+          prevEpisode.episode_num,
+          prevEpisode.title || `Episode ${prevEpisode.episode_num}`
+        );
+        
+        void recordEpisodeWatch(
+          prevEpisode.id,
+          vodInfo.seriesId,
+          vodInfo.source_id || '',
+          prevEpisode.season_num,
+          prevEpisode.episode_num,
+          prevEpisode.title || `Episode ${prevEpisode.episode_num}`,
+          resumePosition,
+          prevEpisode.duration ?? Number(prevEpisode.info?.duration) ?? 0
+        );
+        
+        // Play the previous episode
+        await handlePlayVod({
+          url: prevEpisode.direct_url,
+          title: vodInfo.title,
+          year: vodInfo.year,
+          plot: vodInfo.plot,
+          type: 'series',
+          episodeInfo: `S${prevEpisode.season_num} E${prevEpisode.episode_num}${prevEpisode.title ? ` · ${prevEpisode.title}` : ''}`,
+          source_id: vodInfo.source_id,
+          mediaId: `${vodInfo.seriesId}_ep_${prevEpisode.id}`,
+          seriesId: vodInfo.seriesId,
+          seasonNum: prevEpisode.season_num,
+          episodeNum: prevEpisode.episode_num,
+          episodeId: prevEpisode.id,
+        });
+        return;
+      }
+    }
+    
+    // Default: navigate channels
     if (currentChannels.length > 0 && currentChannel) {
       const currentIndex = currentChannels.findIndex((ch) => ch.stream_id === currentChannel.stream_id);
       if (currentIndex > 0) {
@@ -415,9 +474,67 @@ function App() {
         handlePlayChannel(currentChannels[currentChannels.length - 1]);
       }
     }
-  }, [currentChannels, currentChannel, handlePlayChannel]);
+  }, [currentChannels, currentChannel, handlePlayChannel, vodInfo, handlePlayVod]);
 
-  const handleChannelDown = useCallback(() => {
+  const handleChannelDown = useCallback(async () => {
+    // Check if we're watching a series with episode info
+    if (vodInfo?.type === 'series' && vodInfo.seriesId && vodInfo.seasonNum && vodInfo.episodeNum) {
+      // Navigate to next episode
+      const nextEpisode = await getAdjacentEpisode(
+        vodInfo.seriesId,
+        vodInfo.seasonNum,
+        vodInfo.episodeNum,
+        'next'
+      );
+      
+      if (nextEpisode) {
+        // Get progress for resume
+        const progress = await getEpisodeProgress(nextEpisode.id);
+        const resumePosition = progress?.progress_seconds && progress.progress_seconds > 10 ? progress.progress_seconds : 0;
+        
+        // Record watch history
+        void recordVodWatch(
+          vodInfo.seriesId,
+          'series',
+          vodInfo.source_id || '',
+          vodInfo.title,
+          undefined,
+          nextEpisode.season_num,
+          nextEpisode.episode_num,
+          nextEpisode.title || `Episode ${nextEpisode.episode_num}`
+        );
+        
+        void recordEpisodeWatch(
+          nextEpisode.id,
+          vodInfo.seriesId,
+          vodInfo.source_id || '',
+          nextEpisode.season_num,
+          nextEpisode.episode_num,
+          nextEpisode.title || `Episode ${nextEpisode.episode_num}`,
+          resumePosition,
+          nextEpisode.duration ?? Number(nextEpisode.info?.duration) ?? 0
+        );
+        
+        // Play the next episode
+        await handlePlayVod({
+          url: nextEpisode.direct_url,
+          title: vodInfo.title,
+          year: vodInfo.year,
+          plot: vodInfo.plot,
+          type: 'series',
+          episodeInfo: `S${nextEpisode.season_num} E${nextEpisode.episode_num}${nextEpisode.title ? ` · ${nextEpisode.title}` : ''}`,
+          source_id: vodInfo.source_id,
+          mediaId: `${vodInfo.seriesId}_ep_${nextEpisode.id}`,
+          seriesId: vodInfo.seriesId,
+          seasonNum: nextEpisode.season_num,
+          episodeNum: nextEpisode.episode_num,
+          episodeId: nextEpisode.id,
+        });
+        return;
+      }
+    }
+    
+    // Default: navigate channels
     if (currentChannels.length > 0 && currentChannel) {
       const currentIndex = currentChannels.findIndex((ch) => ch.stream_id === currentChannel.stream_id);
       if (currentIndex >= 0 && currentIndex < currentChannels.length - 1) {
@@ -427,7 +544,7 @@ function App() {
         handlePlayChannel(currentChannels[0]);
       }
     }
-  }, [currentChannels, currentChannel, handlePlayChannel]);
+  }, [currentChannels, currentChannel, handlePlayChannel, vodInfo, handlePlayVod]);
 
   // ==========================================================================
   // Keyboard Shortcuts (using latest ref pattern)

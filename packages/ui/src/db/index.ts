@@ -254,6 +254,37 @@ export interface EpgProgramOverride {
   is_custom?: number;   // 1 = user-created (not from sync)
 }
 
+// VOD Watch History - tracks recently watched movies and series
+export interface VodWatchHistory {
+  id?: number;                    // Auto-increment primary key
+  media_id: string;               // stream_id for movies, series_id for series
+  media_type: 'movie' | 'series'; // Type discriminator
+  source_id: string;              // Source ID for the media
+  title: string;                  // Title for display
+  watched_at: number;             // Unix timestamp (milliseconds)
+  progress_seconds?: number;      // Playback progress in seconds (optional, for resume)
+  total_duration?: number;        // Total duration in seconds (optional)
+  poster_url?: string;            // Cached poster URL for quick display
+  season_num?: number;            // For series: season number (optional)
+  episode_num?: number;           // For series: episode number (optional)
+  episode_title?: string;         // For series: episode title (optional)
+}
+
+// Episode Watch History - tracks progress for individual episodes
+export interface EpisodeWatchHistory {
+  id?: number;                    // Auto-increment primary key
+  episode_id: string;             // episode.stream_id - unique identifier
+  series_id: string;              // series_id for grouping
+  source_id: string;              // Source ID
+  season_num: number;             // Season number
+  episode_num: number;            // Episode number
+  title?: string;                 // Episode title
+  watched_at: number;             // Unix timestamp (milliseconds)
+  progress_seconds?: number;      // Playback progress in seconds
+  total_duration?: number;        // Total duration in seconds
+  completed: number;              // 1 if fully watched (>95%), 0 otherwise
+}
+
 
 class YnotvDatabase extends SqliteDatabase {
   channels: SqliteTable<StoredChannel, string>;
@@ -275,6 +306,8 @@ class YnotvDatabase extends SqliteDatabase {
   customGroupChannels: SqliteTable<CustomGroupChannel, number>;
   epgChannelOverrides: SqliteTable<EpgChannelOverride, string>;
   epgProgramOverrides: SqliteTable<EpgProgramOverride, string>;
+  vodHistory: SqliteTable<VodWatchHistory, number>;
+  episodeHistory: SqliteTable<EpisodeWatchHistory, number>;
 
 
   constructor() {
@@ -301,6 +334,8 @@ class YnotvDatabase extends SqliteDatabase {
     this.customGroupChannels = new SqliteTable('custom_group_channels', 'id', this.dbPromise);
     this.epgChannelOverrides = new SqliteTable('epg_channel_overrides', 'stream_id', this.dbPromise);
     this.epgProgramOverrides = new SqliteTable('epg_program_overrides', 'id', this.dbPromise);
+    this.vodHistory = new SqliteTable('vod_history', 'id', this.dbPromise);
+    this.episodeHistory = new SqliteTable('episode_history', 'id', this.dbPromise);
 
     // Initialize Schema (Async) - Chain to DB promise to ensure tables exist before usage
     const rawPromise = this.dbPromise;
@@ -329,6 +364,8 @@ class YnotvDatabase extends SqliteDatabase {
     this.customGroupChannels.updateDbPromise(this.dbPromise);
     this.epgChannelOverrides.updateDbPromise(this.dbPromise);
     this.epgProgramOverrides.updateDbPromise(this.dbPromise);
+    this.vodHistory.updateDbPromise(this.dbPromise);
+    this.episodeHistory.updateDbPromise(this.dbPromise);
   }
 
   async initSchema(dbInstance?: Database) {
@@ -374,7 +411,7 @@ class YnotvDatabase extends SqliteDatabase {
     // Each version block runs exactly ONCE. To add new columns in the future,
     // increment DB_VERSION and add a new case (do NOT modify existing cases).
     // ─────────────────────────────────────────────────────────────────────────
-    const DB_VERSION = 2;
+    const DB_VERSION = 5;
     const versionResult = await db.select('PRAGMA user_version') as Array<{ user_version: number }>;
     const currentVersion = versionResult[0]?.user_version ?? 0;
 
@@ -429,6 +466,29 @@ class YnotvDatabase extends SqliteDatabase {
         // handles the view recreation (DROP + CREATE to pick up any definition changes).
         try { await db.execute('DROP VIEW IF EXISTS programs_effective'); } catch { /* */ }
         try { await db.execute('DROP VIEW IF EXISTS epg_channels_effective'); } catch { /* */ }
+      }
+
+      if (currentVersion < 3) {
+        // v3: VOD Watch History — new table for tracking recently watched content
+        // Table is created via CREATE TABLE IF NOT EXISTS below, so this block is minimal
+        console.log('[DB] v3 migration: VOD Watch History table added');
+      }
+
+      if (currentVersion < 4) {
+        // v4: Episode Watch History — new table for tracking episode-level progress
+        // Table is created via CREATE TABLE IF NOT EXISTS below, so this block is minimal
+        console.log('[DB] v4 migration: Episode Watch History table added');
+      }
+
+      if (currentVersion < 5) {
+        // v5: Add season/episode columns to vod_history for series tracking
+        const addColumn = async (table: string, col: string, type: string) => {
+          try { await db.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); } catch { /* already exists */ }
+        };
+        await addColumn('vod_history', 'season_num', 'INTEGER');
+        await addColumn('vod_history', 'episode_num', 'INTEGER');
+        await addColumn('vod_history', 'episode_title', 'TEXT');
+        console.log('[DB] v5 migration: Added season/episode columns to vod_history');
       }
 
       // Bump the stored version so these migrations never run again
@@ -772,6 +832,43 @@ class YnotvDatabase extends SqliteDatabase {
     )`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_epg_prog_override_stream ON epg_program_overrides(stream_id)`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_epg_prog_override_custom ON epg_program_overrides(stream_id, is_custom)`);
+
+    // VOD Watch History - tracks recently watched movies and series
+    await db.execute(`CREATE TABLE IF NOT EXISTS vod_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      media_id TEXT NOT NULL,
+      media_type TEXT NOT NULL CHECK(media_type IN ('movie', 'series')),
+      source_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      watched_at INTEGER NOT NULL,
+      progress_seconds INTEGER,
+      total_duration INTEGER,
+      poster_url TEXT,
+      season_num INTEGER,
+      episode_num INTEGER,
+      episode_title TEXT
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_vod_history_watched_at ON vod_history(watched_at DESC)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_vod_history_media ON vod_history(media_id, media_type)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_vod_history_source ON vod_history(source_id)`);
+
+    // Episode Watch History - tracks progress for individual episodes
+    await db.execute(`CREATE TABLE IF NOT EXISTS episode_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      episode_id TEXT NOT NULL UNIQUE,
+      series_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      season_num INTEGER NOT NULL,
+      episode_num INTEGER NOT NULL,
+      title TEXT,
+      watched_at INTEGER NOT NULL,
+      progress_seconds INTEGER,
+      total_duration INTEGER,
+      completed INTEGER DEFAULT 0
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_episode_history_series ON episode_history(series_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_episode_history_episode ON episode_history(episode_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_episode_history_watched ON episode_history(watched_at DESC)`);
 
     // ── programs_effective VIEW ───────────────────────────────────────────────
     // Always DROP + CREATE so the definition is guaranteed to be current,
@@ -1663,6 +1760,440 @@ export async function clearExpiredWatchlist(): Promise<void> {
     }
   } catch (error) {
     console.error('[Watchlist] Failed to clear expired:', error);
+  }
+}
+
+// ============================================================================
+// VOD Watch History Functions
+// ============================================================================
+
+/**
+ * Record that a movie or series was watched (first time or update timestamp)
+ * Does NOT update progress - use updateVodWatchProgress for that
+ */
+export async function recordVodWatch(
+  mediaId: string,
+  mediaType: 'movie' | 'series',
+  sourceId: string,
+  title: string,
+  posterUrl?: string,
+  seasonNum?: number,
+  episodeNum?: number,
+  episodeTitle?: string
+): Promise<void> {
+  try {
+    const watchedAt = Date.now();
+
+    // Check if there's an existing entry for this media
+    const dbInstance = await (db as any).dbPromise;
+    const existing = await dbInstance.select(
+      'SELECT * FROM vod_history WHERE media_id = ? AND media_type = ? LIMIT 1',
+      [mediaId, mediaType]
+    );
+    const existingItem = existing && existing.length > 0 ? existing[0] : null;
+
+    if (existingItem && existingItem.id) {
+      // Update existing entry - update watched_at, title, poster, and episode info if provided
+      const updates: string[] = ['watched_at = ?', 'poster_url = ?', 'title = ?'];
+      const values: (string | number | null)[] = [watchedAt, posterUrl ?? null, title];
+      
+      // Add episode info if provided
+      if (seasonNum !== undefined) {
+        updates.push('season_num = ?');
+        values.push(seasonNum);
+      }
+      if (episodeNum !== undefined) {
+        updates.push('episode_num = ?');
+        values.push(episodeNum);
+      }
+      if (episodeTitle !== undefined) {
+        updates.push('episode_title = ?');
+        values.push(episodeTitle);
+      }
+      
+      values.push(existingItem.id);
+      
+      await dbInstance.execute(
+        `UPDATE vod_history SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      );
+    } else {
+      // Create new entry
+      await dbInstance.execute(
+        `INSERT INTO vod_history (media_id, media_type, source_id, title, watched_at, progress_seconds, total_duration, poster_url, season_num, episode_num, episode_title) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [mediaId, mediaType, sourceId, title, watchedAt, null, null, posterUrl ?? null, seasonNum ?? null, episodeNum ?? null, episodeTitle ?? null]
+      );
+    }
+
+    dbEvents.notify('vod_history', 'add');
+    console.log('[VOD History] Recorded watch:', title, `(${mediaType})`, seasonNum !== undefined ? `S${seasonNum}E${episodeNum}` : '');
+  } catch (error) {
+    console.error('[VOD History] Failed to record watch:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get recently watched movies and series
+ * Returns items sorted by most recent first
+ */
+export async function getRecentlyWatched(limit = 20): Promise<VodWatchHistory[]> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      `SELECT * FROM vod_history ORDER BY watched_at DESC LIMIT ?`,
+      [limit]
+    );
+    return result || [];
+  } catch (error) {
+    console.error('[VOD History] Failed to get recently watched:', error);
+    return [];
+  }
+}
+
+/**
+ * Get recently watched items by type (movies or series)
+ */
+export async function getRecentlyWatchedByType(
+  mediaType: 'movie' | 'series',
+  limit = 20
+): Promise<VodWatchHistory[]> {
+  try {
+    console.log('[VOD History] getRecentlyWatchedByType called:', { mediaType, limit });
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      `SELECT * FROM vod_history WHERE media_type = ? ORDER BY watched_at DESC LIMIT ?`,
+      [mediaType, limit]
+    );
+    return result || [];
+  } catch (error) {
+    console.error('[VOD History] Failed to get recently watched by type:', error);
+    return [];
+  }
+}
+
+/**
+ * Clear watch history for a specific media item
+ */
+export async function clearVodWatchHistory(mediaId: string, mediaType: 'movie' | 'series'): Promise<void> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    await dbInstance.execute(
+      'DELETE FROM vod_history WHERE media_id = ? AND media_type = ?',
+      [mediaId, mediaType]
+    );
+    dbEvents.notify('vod_history', 'delete');
+  } catch (error) {
+    console.error('[VOD History] Failed to clear watch history:', error);
+  }
+}
+
+/**
+ * Update progress for a watched item
+ */
+export async function updateVodWatchProgress(
+  mediaId: string,
+  mediaType: 'movie' | 'series',
+  progressSeconds: number,
+  totalDuration?: number
+): Promise<void> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    
+    // Get existing record to check current duration
+    const existing = await dbInstance.select(
+      'SELECT total_duration FROM vod_history WHERE media_id = ? AND media_type = ? LIMIT 1',
+      [mediaId, mediaType]
+    );
+    
+    // Use existing duration if new value is 0/invalid and we have a valid existing duration
+    let effectiveDuration = totalDuration;
+    if ((totalDuration === 0 || totalDuration === undefined || totalDuration === null) && 
+        existing && existing.length > 0 && existing[0].total_duration > 0) {
+      effectiveDuration = existing[0].total_duration;
+      console.log('[VOD History] Preserving existing duration:', effectiveDuration, '(new value was:', totalDuration + ')');
+    }
+    
+    await dbInstance.execute(
+      `UPDATE vod_history SET progress_seconds = ?, total_duration = ?, watched_at = ? WHERE media_id = ? AND media_type = ?`,
+      [progressSeconds, effectiveDuration, Date.now(), mediaId, mediaType]
+    );
+    // Don't notify here to avoid excessive re-renders during playback
+  } catch (error) {
+    console.error('[VOD History] Failed to update progress:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get watch progress for a specific media item
+ */
+export async function getVodWatchProgress(
+  mediaId: string,
+  mediaType: 'movie' | 'series'
+): Promise<{ progress_seconds: number; total_duration: number } | null> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      'SELECT progress_seconds, total_duration FROM vod_history WHERE media_id = ? AND media_type = ?',
+      [mediaId, mediaType]
+    );
+    if (result && result.length > 0) {
+      return {
+        progress_seconds: result[0].progress_seconds || 0,
+        total_duration: result[0].total_duration || 0,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('[VOD History] Failed to get progress:', error);
+    return null;
+  }
+}
+
+// ============================================================================
+// Episode History Functions
+// ============================================================================
+
+/**
+ * Record episode progress/completion
+ */
+export async function recordEpisodeWatch(
+  episodeId: string,
+  seriesId: string,
+  sourceId: string,
+  seasonNum: number,
+  episodeNum: number,
+  title: string,
+  progressSeconds: number,
+  totalDuration: number
+): Promise<void> {
+  try {
+    const watchedAt = Date.now();
+    // Mark as completed if watched > 95%
+    const completed = totalDuration > 0 && (progressSeconds / totalDuration) > 0.95 ? 1 : 0;
+
+    console.log('[DB] recordEpisodeWatch called:', { episodeId, progressSeconds, totalDuration, completed });
+
+    const dbInstance = await (db as any).dbPromise;
+    
+    // Check if entry exists
+    const existing = await dbInstance.select(
+      'SELECT id FROM episode_history WHERE episode_id = ? LIMIT 1',
+      [episodeId]
+    );
+    
+    if (existing && existing.length > 0) {
+      // Update existing entry - preserve duration if new value is 0 or invalid
+      console.log('[DB] Updating existing episode record:', episodeId);
+      
+      // Get the existing record to check current duration
+      const existingRecord = await dbInstance.select(
+        'SELECT total_duration FROM episode_history WHERE episode_id = ? LIMIT 1',
+        [episodeId]
+      );
+      
+      // Use existing duration if new value is 0/invalid and we have a valid existing duration
+      let effectiveDuration = totalDuration;
+      if ((totalDuration === 0 || totalDuration === undefined || totalDuration === null) && 
+          existingRecord && existingRecord.length > 0 && existingRecord[0].total_duration > 0) {
+        effectiveDuration = existingRecord[0].total_duration;
+        console.log('[DB] Preserving existing duration:', effectiveDuration, '(new value was:', totalDuration + ')');
+      }
+      
+      await dbInstance.execute(
+        `UPDATE episode_history SET 
+          watched_at = ?, 
+          progress_seconds = ?, 
+          total_duration = ?, 
+          completed = ? 
+         WHERE episode_id = ?`,
+        [watchedAt, progressSeconds, effectiveDuration, completed, episodeId]
+      );
+    } else {
+      // Create new entry
+      console.log('[DB] Creating new episode record:', episodeId);
+      await dbInstance.execute(
+        `INSERT INTO episode_history (episode_id, series_id, source_id, season_num, episode_num, title, watched_at, progress_seconds, total_duration, completed) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [episodeId, seriesId, sourceId, seasonNum, episodeNum, title, watchedAt, progressSeconds, totalDuration, completed]
+      );
+    }
+    
+    dbEvents.notify('episode_history', 'update');
+    console.log('[DB] Episode watch recorded successfully');
+  } catch (error) {
+    console.error('[Episode History] Failed to record episode watch:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get episode progress
+ */
+export async function getEpisodeProgress(episodeId: string): Promise<EpisodeWatchHistory | null> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      'SELECT * FROM episode_history WHERE episode_id = ?',
+      [episodeId]
+    );
+    console.log('[DB] getEpisodeProgress raw result:', result);
+    if (result && result.length > 0) {
+      console.log('[DB] getEpisodeProgress found record:', result[0]);
+      return result[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('[Episode History] Failed to get episode progress:', error);
+    return null;
+  }
+}
+
+/**
+ * Get all episode progress for a series
+ */
+export async function getSeriesEpisodeProgress(seriesId: string): Promise<EpisodeWatchHistory[]> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      'SELECT * FROM episode_history WHERE series_id = ? ORDER BY season_num, episode_num',
+      [seriesId]
+    );
+    return result || [];
+  } catch (error) {
+    console.error('[Episode History] Failed to get series episode progress:', error);
+    return [];
+  }
+}
+
+/**
+ * Mark episode as completed
+ */
+export async function markEpisodeCompleted(episodeId: string): Promise<void> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    await dbInstance.execute(
+      'UPDATE episode_history SET completed = 1, watched_at = ? WHERE episode_id = ?',
+      [Date.now(), episodeId]
+    );
+    dbEvents.notify('episode_history', 'update');
+  } catch (error) {
+    console.error('[Episode History] Failed to mark episode completed:', error);
+  }
+}
+
+/**
+ * Delete episode history
+ */
+export async function deleteEpisodeHistory(episodeId: string): Promise<void> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    await dbInstance.execute(
+      'DELETE FROM episode_history WHERE episode_id = ?',
+      [episodeId]
+    );
+    dbEvents.notify('episode_history', 'delete');
+  } catch (error) {
+    console.error('[Episode History] Failed to delete episode history:', error);
+  }
+}
+
+/**
+ * Remove item from Recently Watched and clear all associated progress
+ */
+export async function removeFromRecentlyWatched(
+  mediaId: string,
+  mediaType: 'movie' | 'series'
+): Promise<void> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    
+    // Remove from vod_history
+    await dbInstance.execute(
+      'DELETE FROM vod_history WHERE media_id = ? AND media_type = ?',
+      [mediaId, mediaType]
+    );
+    
+    // If it's a series, also remove all episode history
+    if (mediaType === 'series') {
+      await dbInstance.execute(
+        'DELETE FROM episode_history WHERE series_id = ?',
+        [mediaId]
+      );
+    }
+    
+    dbEvents.notify('vod_history', 'delete');
+    console.log('[VOD History] Removed from Recently Watched:', mediaId, `(${mediaType})`);
+  } catch (error) {
+    console.error('[VOD History] Failed to remove from Recently Watched:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if an episode is completed (watched > 95%)
+ */
+export async function isEpisodeCompleted(episodeId: string): Promise<boolean> {
+  try {
+    const progress = await getEpisodeProgress(episodeId);
+    if (!progress) return false;
+    return progress.completed === 1;
+  } catch (error) {
+    console.error('[Episode History] Failed to check if episode completed:', error);
+    return false;
+  }
+}
+
+/**
+ * Get all episodes for a series, ordered by season and episode number
+ */
+export async function getSeriesEpisodes(seriesId: string): Promise<StoredEpisode[]> {
+  try {
+    const dbInstance = await (db as any).dbPromise;
+    const result = await dbInstance.select(
+      'SELECT * FROM vodEpisodes WHERE series_id = ? ORDER BY season_num, episode_num',
+      [seriesId]
+    );
+    return result || [];
+  } catch (error) {
+    console.error('[DB] Failed to get series episodes:', error);
+    return [];
+  }
+}
+
+/**
+ * Get next or previous episode for navigation
+ * @param direction 'next' or 'prev'
+ * @returns The adjacent episode or null if not found
+ */
+export async function getAdjacentEpisode(
+  seriesId: string,
+  currentSeasonNum: number,
+  currentEpisodeNum: number,
+  direction: 'next' | 'prev'
+): Promise<StoredEpisode | null> {
+  try {
+    const episodes = await getSeriesEpisodes(seriesId);
+    if (episodes.length === 0) return null;
+
+    // Find current episode index
+    const currentIndex = episodes.findIndex(
+      ep => ep.season_num === currentSeasonNum && ep.episode_num === currentEpisodeNum
+    );
+
+    if (currentIndex === -1) return null;
+
+    if (direction === 'next') {
+      // Return next episode if exists, otherwise null (no wrap)
+      return episodes[currentIndex + 1] || null;
+    } else {
+      // Return previous episode if exists, otherwise null (no wrap)
+      return episodes[currentIndex - 1] || null;
+    }
+  } catch (error) {
+    console.error('[DB] Failed to get adjacent episode:', error);
+    return null;
   }
 }
 

@@ -8,10 +8,14 @@ export interface HorizontalCarouselProps {
   items: (StoredMovie | StoredSeries)[];
   type: 'movie' | 'series';
   onItemClick?: (item: StoredMovie | StoredSeries) => void;
+  onItemRemove?: (item: StoredMovie | StoredSeries) => void;
   cardSize?: 'small' | 'medium' | 'large';
   loading?: boolean;
   maxItems?: number; // Limit items for performance
   hidden?: boolean; // Hide but maintain minimal height for Virtuoso
+  progressData?: Map<string, number>; // Optional: media_id -> progress percent
+  isRecentlyWatched?: boolean;
+  episodeData?: Map<string, { seasonNum?: number; episodeNum?: number; episodeTitle?: string }>; // For series only
 }
 
 export function HorizontalCarousel({
@@ -19,10 +23,14 @@ export function HorizontalCarousel({
   items,
   type,
   onItemClick,
+  onItemRemove,
   cardSize = 'medium',
   loading = false,
   maxItems = 20,
   hidden = false,
+  progressData,
+  isRecentlyWatched = false,
+  episodeData,
 }: HorizontalCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -117,15 +125,26 @@ export function HorizontalCarousel({
               <div key={i} className={`media-card-skeleton media-card-skeleton--${cardSize}`} />
             ))
           ) : (
-            displayItems.map((item) => (
-              <MediaCard
-                key={type === 'movie' ? (item as StoredMovie).stream_id : (item as StoredSeries).series_id}
-                item={item}
-                type={type}
-                onClick={onItemClick}
-                size={cardSize}
-              />
-            ))
+            displayItems.map((item) => {
+              const itemId = type === 'movie' ? (item as StoredMovie).stream_id : (item as StoredSeries).series_id;
+              const progress = progressData?.get(itemId);
+              const episodeInfo = episodeData?.get(itemId);
+              return (
+                <MediaCard
+                  key={itemId}
+                  item={item}
+                  type={type}
+                  onClick={onItemClick}
+                  onRemove={onItemRemove}
+                  size={cardSize}
+                  progressPercent={progress}
+                  isRecentlyWatched={isRecentlyWatched}
+                  seasonNum={episodeInfo?.seasonNum}
+                  episodeNum={episodeInfo?.episodeNum}
+                  episodeTitle={episodeInfo?.episodeTitle}
+                />
+              );
+            })
           )}
         </div>
       </div>

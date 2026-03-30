@@ -302,6 +302,48 @@
   width: 100%;
 }
 
+/* Episode with progress - highlight with border */
+.series-detail__episode-row.has-progress .series-detail__episode {
+  border-left: 3px solid #e50914;
+  background: rgba(229, 9, 20, 0.05);
+}
+
+/* Completed episode styling */
+.series-detail__episode-row.completed .series-detail__episode-number {
+  background: #4caf50;
+  color: #fff;
+}
+
+/* Checkmark icon */
+.series-detail__episode-checkmark {
+  width: 20px;
+  height: 20px;
+}
+
+/* Episode progress bar container */
+.series-detail__episode-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* Progress bar */
+.series-detail__episode-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  max-width: 100px;
+}
+
+.series-detail__episode-progress-fill {
+  height: 100%;
+  background: #e50914;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
 .series-detail__episode {
   flex: 1;
   display: flex;

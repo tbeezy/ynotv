@@ -9,10 +9,17 @@ export interface MediaCardProps {
   item: StoredMovie | StoredSeries;
   type: 'movie' | 'series';
   onClick?: (item: StoredMovie | StoredSeries) => void;
+  onRemove?: (item: StoredMovie | StoredSeries) => void;
   size?: 'small' | 'medium' | 'large';
+  progressPercent?: number; // Optional: show progress bar (0-100)
+  isRecentlyWatched?: boolean; // If true, show remove button
+  // For series only - episode info
+  seasonNum?: number;
+  episodeNum?: number;
+  episodeTitle?: string;
 }
 
-export const MediaCard = memo(function MediaCard({ item, type, onClick, size = 'medium' }: MediaCardProps) {
+export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove, size = 'medium', progressPercent, isRecentlyWatched, seasonNum, episodeNum, episodeTitle }: MediaCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [titleOverflows, setTitleOverflows] = useState(false);
@@ -62,6 +69,12 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, size = '
     onClick?.(item);
   }, [item, onClick]);
 
+  const handleRemove = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    e.preventDefault();
+    onRemove?.(item);
+  }, [item, onRemove]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -96,6 +109,13 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, size = '
           </div>
         )}
 
+        {/* Episode info badge for series */}
+        {type === 'series' && seasonNum !== undefined && episodeNum !== undefined && (
+          <div className="media-card__episode-badge">
+            S{seasonNum} E{episodeNum}
+          </div>
+        )}
+
         {/* Hover overlay */}
         <div className="media-card__overlay">
           <div className="media-card__play-icon">
@@ -104,6 +124,30 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, size = '
             </svg>
           </div>
         </div>
+        
+        {/* Remove button for recently watched */}
+        {isRecentlyWatched && onRemove && (
+          <button
+            className="media-card__remove-btn"
+            onClick={handleRemove}
+            aria-label="Remove from Recently Watched"
+            title="Remove from Recently Watched"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+          </button>
+        )}
+        
+        {/* Progress bar */}
+        {progressPercent !== undefined && progressPercent > 0 && progressPercent < 100 && (
+          <div className="media-card__progress-container">
+            <div 
+              className="media-card__progress-bar" 
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="media-card__info">

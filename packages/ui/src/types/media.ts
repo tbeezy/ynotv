@@ -47,4 +47,10 @@ export interface VodPlayInfo {
   type: 'movie' | 'series' | 'recording';
   episodeInfo?: string;   // For series: "S1 E3" or "S1 E3 · Episode Title"
   source_id?: string;
+  mediaId?: string;       // Unique media ID (stream_id for movies, series_id for series) for tracking
+  // Series episode navigation fields
+  seriesId?: string;      // Series ID for episode navigation
+  seasonNum?: number;     // Current season number
+  episodeNum?: number;    // Current episode number
+  episodeId?: string;     // Current episode ID
 }

@@ -108,6 +108,73 @@
   margin-left: 2px; /* Visual centering for play icon */
 }
 
+/* Progress bar */
+.media-card__progress-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  z-index: 5;
+}
+
+.media-card__progress-bar {
+  height: 100%;
+  background: #e50914; /* Netflix red */
+  transition: width 0.3s ease;
+}
+
+/* Episode info badge for series */
+.media-card__episode-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 4px 8px;
+  background: rgba(229, 9, 20, 0.9); /* Netflix red */
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  z-index: 15;
+  letter-spacing: 0.5px;
+}
+
+/* Remove button for recently watched */
+.media-card__remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  z-index: 20;
+  padding: 0;
+}
+
+.media-card:hover .media-card__remove-btn,
+.media-card:focus-visible .media-card__remove-btn {
+  opacity: 1;
+}
+
+.media-card__remove-btn:hover {
+  background: rgba(229, 9, 20, 0.8);
+}
+
+.media-card__remove-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Info section - compact and polished */
 .media-card__info {
   height: 36px;

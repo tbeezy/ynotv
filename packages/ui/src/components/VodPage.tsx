@@ -8,7 +8,7 @@ import { MovieDetail } from './vod/MovieDetail';
 import { SeriesDetail } from './vod/SeriesDetail';
 import { SourceContextMenu } from './SourceContextMenu';
 import { ManageVodCategories } from './vod/ManageVodCategories';
-import { useVodCategories } from '../hooks/useVod';
+import { useVodCategories, useRecentlyWatchedMovies, useRecentlyWatchedSeries } from '../hooks/useVod';
 import {
   useTrendingMovies,
   usePopularMovies,
@@ -28,6 +28,8 @@ import {
   useSetSeriesCategory,
 } from '../stores/uiStore';
 import type { StoredMovie, StoredSeries } from '../db';
+import { removeFromRecentlyWatched } from '../db';
+import { recordVodWatch } from '../db';
 import { type MediaItem, type VodType, type VodPlayInfo } from '../types/media';
 import './VodPage.css';
 
@@ -37,6 +39,10 @@ type CarouselRow = {
   title: string;
   items: MediaItem[];
   loading?: boolean;
+  progressData?: Map<string, number>; // Optional: media_id -> progress percent for progress bars
+  isRecentlyWatched?: boolean;
+  // For series only: episode info (season/episode/title)
+  episodeData?: Map<string, { seasonNum?: number; episodeNum?: number; episodeTitle?: string }>;
 };
 
 // Context passed to Virtuoso components (must be defined outside render)
@@ -47,6 +53,7 @@ interface HomeVirtuosoContext {
   heroLoading: boolean;
   onItemClick: (item: MediaItem) => void;
   onHeroPlay: (item: MediaItem) => void;
+  onRemoveFromRecentlyWatched?: (item: MediaItem) => void;
 }
 
 // Header component for Virtuoso (defined outside render to prevent remounting)
@@ -76,7 +83,7 @@ const CarouselRowContent = (
   context: HomeVirtuosoContext | undefined
 ) => {
   if (!context) return null;
-  const { type, onItemClick } = context;
+  const { type, onItemClick, onRemoveFromRecentlyWatched } = context;
 
   return (
     <HorizontalCarousel
@@ -84,7 +91,11 @@ const CarouselRowContent = (
       items={row.items}
       type={type}
       onItemClick={onItemClick}
+      onItemRemove={row.isRecentlyWatched ? onRemoveFromRecentlyWatched : undefined}
       loading={row.loading}
+      progressData={row.progressData}
+      isRecentlyWatched={row.isRecentlyWatched}
+      episodeData={row.episodeData}
     />
   );
 };
@@ -147,6 +158,30 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const nowOrOnAirItems = type === 'movie' ? nowPlayingMovies : onTheAirSeries;
   const nowOrOnAirLoading = type === 'movie' ? nowPlayingLoading : onTheAirLoading;
 
+  // Recently Watched - user's viewing history
+  const { movies: recentlyWatchedMoviesData, loading: recentlyWatchedMoviesLoading } = useRecentlyWatchedMovies(20);
+  const { series: recentlyWatchedSeriesData, loading: recentlyWatchedSeriesLoading } = useRecentlyWatchedSeries(20);
+  
+  // Extract items from RecentlyWatchedItem wrappers
+  const recentlyWatchedItems = type === 'movie' 
+    ? recentlyWatchedMoviesData.map(m => m.item)
+    : recentlyWatchedSeriesData.map(s => s.item);
+  const recentlyWatchedLoading = type === 'movie' ? recentlyWatchedMoviesLoading : recentlyWatchedSeriesLoading;
+  
+  // Create progress map for Recently Watched items
+  const recentlyWatchedProgressMap = type === 'movie'
+    ? new Map(recentlyWatchedMoviesData.map(m => [m.item.stream_id, m.progress_percent]))
+    : new Map(recentlyWatchedSeriesData.map(s => [s.item.series_id, s.progress_percent]));
+
+  // Create episode data map for Recently Watched series
+  const recentlyWatchedEpisodeData = type === 'series'
+    ? new Map(recentlyWatchedSeriesData.map(s => [s.item.series_id, { 
+        seasonNum: s.season_num, 
+        episodeNum: s.episode_num, 
+        episodeTitle: s.episode_title 
+      }]))
+    : undefined;
+
   // VOD categories
   const { categories } = useVodCategories(type);
 
@@ -157,6 +192,26 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   // Only includes rows that have content (or are still loading)
   const carouselRows = useMemo((): CarouselRow[] => {
     const rows: CarouselRow[] = [];
+
+    // Recently Watched (shown first if available)
+    if (recentlyWatchedItems.length > 0) {
+      rows.push({
+        key: 'recently-watched',
+        title: 'Recently Watched',
+        items: recentlyWatchedItems,
+        loading: false,
+        progressData: recentlyWatchedProgressMap,
+        isRecentlyWatched: true,
+        episodeData: recentlyWatchedEpisodeData,
+      });
+    } else if (recentlyWatchedLoading) {
+      rows.push({
+        key: 'recently-watched',
+        title: 'Recently Watched',
+        items: [],
+        loading: true,
+      });
+    }
 
     // Check if we have any TMDB-matched content (not just fetched)
     const hasMatchedTmdbContent = (trendingItems.length > 0 && !trendingLoading) || 
@@ -219,6 +274,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
     return rows;
   }, [
+    recentlyWatchedItems, recentlyWatchedLoading, recentlyWatchedProgressMap,
     trendingItems, trendingLoading,
     popularItems, popularLoading,
     topRatedItems, topRatedLoading,
@@ -245,6 +301,17 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     }
   }, [onPlay]);
 
+  const handleRemoveFromRecentlyWatched = useCallback(async (item: MediaItem) => {
+    const mediaId = type === 'movie' 
+      ? (item as StoredMovie).stream_id 
+      : (item as StoredSeries).series_id;
+    try {
+      await removeFromRecentlyWatched(mediaId, type);
+    } catch (error) {
+      console.error('[VodPage] Failed to remove from Recently Watched:', error);
+    }
+  }, [type]);
+
   const handleCloseDetail = useCallback(() => {
     setSelectedItem(null);
   }, []);
@@ -263,6 +330,20 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
 
     if (type === 'movie') {
       const movie = item as StoredMovie;
+      // Record watch before playing
+      console.log('[VodPage] Recording watch for movie:', movie.stream_id, movie.title || movie.name);
+      void recordVodWatch(
+        movie.stream_id,
+        'movie',
+        movie.source_id,
+        movie.title || movie.name || 'Unknown',
+        movie.stream_icon
+      ).then(() => {
+        console.log('[VodPage] ✅ Watch recorded successfully');
+      }).catch(err => {
+        console.error('[VodPage] ❌ Failed to record watch:', err);
+      });
+      console.log('[VodPage] Calling handlePlay with mediaId:', movie.stream_id);
       handlePlay({
         url: movie.direct_url,
         title: movie.title || movie.name,
@@ -270,6 +351,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         plot: movie.plot,
         type: 'movie',
         source_id: movie.source_id,
+        mediaId: movie.stream_id,  // Add media ID for progress tracking
       });
     } else {
       setSelectedItem(item);
@@ -288,7 +370,8 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     heroLoading,
     onItemClick: handleItemClick,
     onHeroPlay: handleHeroPlay,
-  }), [type, tmdbApiKey, featuredItems, heroLoading, handleItemClick, handleHeroPlay]);
+    onRemoveFromRecentlyWatched: handleRemoveFromRecentlyWatched,
+  }), [type, tmdbApiKey, featuredItems, heroLoading, handleItemClick, handleHeroPlay, handleRemoveFromRecentlyWatched]);
 
   // Handle category selection - also close detail view
   const handleCategorySelect = useCallback((id: string | null) => {
@@ -395,14 +478,25 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
         <MovieDetail
           movie={selectedItem as StoredMovie}
           onClose={handleCloseDetail}
-          onPlay={(movie, plot) => handlePlay({
-            url: movie.direct_url,
-            title: movie.title || movie.name,
-            year: movie.year || movie.release_date?.slice(0, 4),
-            plot: plot || movie.plot,
-            type: 'movie',
-            source_id: movie.source_id,
-          })}
+          onPlay={(movie, plot) => {
+            // Record watch before playing
+            void recordVodWatch(
+              movie.stream_id,
+              'movie',
+              movie.source_id,
+              movie.title || movie.name || 'Unknown',
+              movie.stream_icon
+            );
+            handlePlay({
+              url: movie.direct_url,
+              title: movie.title || movie.name,
+              year: movie.year || movie.release_date?.slice(0, 4),
+              plot: plot || movie.plot,
+              type: 'movie',
+              source_id: movie.source_id,
+              mediaId: movie.stream_id,  // Add media ID for progress tracking
+            });
+          }}
           apiKey={tmdbApiKey}
         />
       )}

@@ -10,10 +10,11 @@ import { getTmdbImageUrl, TMDB_POSTER_SIZES } from '../../services/tmdb';
 import { useLazyBackdrop } from '../../hooks/useLazyBackdrop';
 import { useLazyPlot } from '../../hooks/useLazyPlot';
 import { useLazyCredits } from '../../hooks/useLazyCredits';
-import { useSeriesDetails } from '../../hooks/useVod';
+import { useSeriesDetails, useSeriesEpisodeProgress } from '../../hooks/useVod';
 import { useRpdbSettings } from '../../hooks/useRpdbSettings';
 import { getRpdbPosterUrl } from '../../services/rpdb';
 import type { StoredSeries, StoredEpisode } from '../../db';
+import { recordVodWatch, recordEpisodeWatch } from '../../db';
 import type { VodPlayInfo } from '../../types/media';
 import './SeriesDetail.css';
 
@@ -30,6 +31,9 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesD
 
   // Fetch episodes
   const { seasons, loading, error, refetch } = useSeriesDetails(series.series_id);
+  
+  // Fetch episode progress
+  const { episodeProgress, loading: progressLoading } = useSeriesEpisodeProgress(series.series_id);
 
   // Get sorted season numbers
   const seasonNumbers = Object.keys(seasons)
@@ -62,6 +66,36 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesD
 
   const handlePlayEpisode = useCallback(
     (episode: StoredEpisode) => {
+      // Get current progress for this episode
+      const progress = episodeProgress.get(episode.id);
+      console.log('[SeriesDetail] Episode progress lookup:', episode.id, progress);
+      const resumePosition = progress && progress.progressSeconds > 10 ? progress.progressSeconds : 0;
+      console.log('[SeriesDetail] Resume position:', resumePosition);
+      
+      // Record series watch for Recently Watched with episode info
+      void recordVodWatch(
+        series.series_id,
+        'series',
+        series.source_id,
+        series.title || series.name || 'Unknown',
+        series.cover || (series as any).stream_icon,
+        episode.season_num,
+        episode.episode_num,
+        episode.title || `Episode ${episode.episode_num}`
+      );
+      
+      // Record episode progress for tracking
+      void recordEpisodeWatch(
+        episode.id,
+        series.series_id,
+        series.source_id,
+        episode.season_num,
+        episode.episode_num,
+        episode.title || `Episode ${episode.episode_num}`,
+        resumePosition, // Will be updated when stopped
+        episode.duration ?? Number(episode.info?.duration) ?? 0
+      );
+      
       onPlayEpisode?.({
         url: episode.direct_url,
         title: series.title || series.name,
@@ -70,9 +104,15 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesD
         type: 'series',
         episodeInfo: `S${episode.season_num} E${episode.episode_num}${episode.title ? ` · ${episode.title}` : ''}`,
         source_id: series.source_id,
+        mediaId: `${series.series_id}_ep_${episode.id}`,  // Episode-specific media ID
+        // Series navigation fields
+        seriesId: series.series_id,
+        seasonNum: episode.season_num,
+        episodeNum: episode.episode_num,
+        episodeId: episode.id,
       });
     },
-    [series, onPlayEpisode, lazyPlot]
+    [series, onPlayEpisode, lazyPlot, episodeProgress]
   );
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -237,52 +277,77 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey }: SeriesD
               </div>
             ) : (
               <div className="series-detail__episode-list">
-                {currentEpisodes.map((episode) => (
-                  <div key={episode.id} className="series-detail__episode-row">
-                    <button
-                      className="series-detail__episode"
-                      onClick={() => handlePlayEpisode(episode)}
+                {currentEpisodes.map((episode) => {
+                  const progress = episodeProgress.get(episode.id);
+                  const hasProgress = progress && progress.progressPercent > 0 && !progress.completed;
+                  const isCompleted = progress?.completed || false;
+                  
+                  return (
+                    <div 
+                      key={episode.id} 
+                      className={`series-detail__episode-row ${hasProgress ? 'has-progress' : ''} ${isCompleted ? 'completed' : ''}`}
                     >
-                      <span className="series-detail__episode-number">
-                        {episode.episode_num}
-                      </span>
-                      <div className="series-detail__episode-info">
-                        <span className="series-detail__episode-title">
-                          {episode.title || `Episode ${episode.episode_num}`}
-                        </span>
-                        {(episode.duration ?? (episode.info?.duration as number | undefined)) ? (
-                          <span className="series-detail__episode-duration">
-                            {Math.round((episode.duration ?? Number(episode.info?.duration) ?? 0) / 60)}m
-                          </span>
-                        ) : null}
-                      </div>
-                      <svg
-                        className="series-detail__episode-play"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </button>
-                    {episode.direct_url && (
                       <button
-                        className={`series-detail__episode-copy ${copiedId === episode.id ? 'copied' : ''}`}
-                        onClick={(e) => handleCopy(episode, e)}
-                        title="Copy Stream URL"
+                        className="series-detail__episode"
+                        onClick={() => handlePlayEpisode(episode)}
                       >
-                        {copiedId === episode.id ? (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
+                        <span className="series-detail__episode-number">
+                          {isCompleted ? (
+                            <svg className="series-detail__episode-checkmark" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                            </svg>
+                          ) : (
+                            episode.episode_num
+                          )}
+                        </span>
+                        <div className="series-detail__episode-info">
+                          <span className="series-detail__episode-title">
+                            {episode.title || `Episode ${episode.episode_num}`}
+                          </span>
+                          <div className="series-detail__episode-meta">
+                            {(episode.duration ?? (episode.info?.duration as number | undefined)) ? (
+                              <span className="series-detail__episode-duration">
+                                {Math.round((episode.duration ?? Number(episode.info?.duration) ?? 0) / 60)}m
+                              </span>
+                            ) : null}
+                            {hasProgress && (
+                              <div className="series-detail__episode-progress-bar">
+                                <div 
+                                  className="series-detail__episode-progress-fill"
+                                  style={{ width: `${progress.progressPercent}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <svg
+                          className="series-detail__episode-play"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
                       </button>
-                    )}
-                  </div>
-                ))}
+                      {episode.direct_url && (
+                        <button
+                          className={`series-detail__episode-copy ${copiedId === episode.id ? 'copied' : ''}`}
+                          onClick={(e) => handleCopy(episode, e)}
+                          title="Copy Stream URL"
+                        >
+                          {copiedId === episode.id ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

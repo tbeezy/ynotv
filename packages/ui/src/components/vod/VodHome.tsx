@@ -4,7 +4,7 @@
  * Shows TMDB-curated content rows matched against local Xtream content.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { HeroSection } from './HeroSection';
 import { HorizontalCarousel } from './HorizontalCarousel';
 import type { StoredMovie, StoredSeries } from '../../db';
@@ -22,7 +22,7 @@ import {
   useMovieGenres,
   useTvGenres,
 } from '../../hooks/useTmdbLists';
-import { useRecentMovies, useRecentSeries } from '../../hooks/useVod';
+import { useRecentMovies, useRecentSeries, useRecentlyWatchedMovies, useRecentlyWatchedSeries } from '../../hooks/useVod';
 import './VodHome.css';
 
 // TMDB genre IDs
@@ -38,6 +38,7 @@ export interface VodHomeProps {
 }
 
 export function VodHome({ type, onItemClick, onPlay }: VodHomeProps) {
+  console.log('[VodHome] Rendering with type:', type);
   const tmdbApiKey = useTmdbApiKey();
 
   // Featured content for hero
@@ -58,6 +59,26 @@ export function VodHome({ type, onItemClick, onPlay }: VodHomeProps) {
   const { series: actionSeries, loading: actionSeriesLoading } = useSeriesByGenre(tmdbApiKey, GENRE_ACTION_TV);
   const { series: comedySeries, loading: comedySeriesLoading } = useSeriesByGenre(tmdbApiKey, GENRE_COMEDY_TV);
   const { series: recentSeries, loading: recentSeriesLoading } = useRecentSeries(20);
+
+  // Recently watched (user viewing history) - shown at top
+  const { movies: recentlyWatchedMoviesData, loading: recentlyWatchedMoviesLoading } = useRecentlyWatchedMovies(20);
+  const { series: recentlyWatchedSeriesData, loading: recentlyWatchedSeriesLoading } = useRecentlyWatchedSeries(20);
+  
+  // Extract items and create progress maps
+  const recentlyWatchedMovies = recentlyWatchedMoviesData.map(m => m.item);
+  const recentlyWatchedSeries = recentlyWatchedSeriesData.map(s => s.item);
+  
+  // Debug logging for Recently Watched
+  useEffect(() => {
+    console.log('[VodHome] Movies data:', recentlyWatchedMoviesData.length, 'items, loading:', recentlyWatchedMoviesLoading);
+    console.log('[VodHome] Series data:', recentlyWatchedSeriesData.length, 'items, loading:', recentlyWatchedSeriesLoading);
+    console.log('[VodHome] Movies extracted:', recentlyWatchedMovies.length);
+    console.log('[VodHome] Series extracted:', recentlyWatchedSeries.length);
+  }, [recentlyWatchedMoviesData, recentlyWatchedSeriesData, recentlyWatchedMoviesLoading, recentlyWatchedSeriesLoading, recentlyWatchedMovies.length, recentlyWatchedSeries.length]);
+  
+  // Create progress maps for Recently Watched carousels
+  const movieProgressMap = new Map(recentlyWatchedMoviesData.map(m => [m.item.stream_id, m.progress_percent]));
+  const seriesProgressMap = new Map(recentlyWatchedSeriesData.map(s => [s.item.series_id, s.progress_percent]));
 
   const handleHeroPlay = useCallback((item: StoredMovie | StoredSeries) => {
     onPlay(item);
@@ -80,6 +101,18 @@ export function VodHome({ type, onItemClick, onPlay }: VodHomeProps) {
         />
 
         <div className="vod-home__carousels">
+          {recentlyWatchedMovies.length > 0 && (
+            <HorizontalCarousel
+              title="Recently Watched"
+              items={recentlyWatchedMovies}
+              type="movie"
+              onItemClick={onItemClick}
+              loading={recentlyWatchedMoviesLoading}
+              maxItems={20}
+              progressData={movieProgressMap}
+            />
+          )}
+
           <HorizontalCarousel
             title="Trending This Week"
             items={trendingMovies}
@@ -151,6 +184,18 @@ export function VodHome({ type, onItemClick, onPlay }: VodHomeProps) {
       />
 
       <div className="vod-home__carousels">
+        {recentlyWatchedSeries.length > 0 && (
+          <HorizontalCarousel
+            title="Recently Watched"
+            items={recentlyWatchedSeries}
+            type="series"
+            onItemClick={onItemClick}
+            loading={recentlyWatchedSeriesLoading}
+            maxItems={20}
+            progressData={seriesProgressMap}
+          />
+        )}
+
         <HorizontalCarousel
           title="Trending This Week"
           items={trendingSeries}
