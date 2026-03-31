@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { StoredChannel } from '../db';
 import type { VodPlayInfo } from '../types/media';
-import { Bridge } from '../services/tauri-bridge';
+import { Bridge, registerOnAppClose, unregisterOnAppClose } from '../services/tauri-bridge';
 import { resolvePlayUrl } from '../services/stream-resolver';
 import { addToRecentChannels } from '../utils/recentChannels';
 import { db, recordVodWatch, updateVodWatchProgress, getVodWatchProgress, recordEpisodeWatch, getEpisodeProgress } from '../db';
@@ -195,6 +195,24 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     duration: number;
   } | null>(null);
 
+  // Refs to track current values for interval callbacks
+  const vodInfoRef = useRef(vodInfo);
+  const positionRef = useRef(position);
+  const durationRef = useRef(duration);
+  
+  // Update refs whenever values change
+  useEffect(() => {
+    vodInfoRef.current = vodInfo;
+  }, [vodInfo]);
+  
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+  
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+
   const isCatchup = catchupInfo !== null;
 
   // Handle pending catchup seek when duration becomes available
@@ -209,16 +227,35 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
 
   // Periodic progress saving for VOD playback + save on app close
   useEffect(() => {
-    if (!vodInfo || !playing || duration <= 0) return;
+    if (!vodInfo || !playing || duration <= 0) {
+      console.log('[Playback] Progress save conditions not met:', { hasVodInfo: !!vodInfo, playing, duration });
+      return;
+    }
+
+    console.log('[Playback] Setting up progress save - initial position:', position);
 
     const saveProgress = () => {
-      const mediaId = vodInfo.mediaId || (vodInfo.source_id && vodInfo.url
-        ? `${vodInfo.source_id}_${vodInfo.url}`
+      // Read current values from refs (always up to date)
+      const currentVodInfo = vodInfoRef.current;
+      const currentPosition = positionRef.current;
+      const currentDuration = durationRef.current;
+      
+      console.log('[Playback] Interval firing - current position:', currentPosition);
+      
+      if (!currentVodInfo) {
+        console.log('[Playback] No vodInfo in ref, skipping save');
+        return;
+      }
+      
+      const mediaId = currentVodInfo.mediaId || (currentVodInfo.source_id && currentVodInfo.url
+        ? `${currentVodInfo.source_id}_${currentVodInfo.url}`
         : null);
       
-      if (mediaId && vodInfo.type !== 'recording' && position > 0) {
+      if (mediaId && currentVodInfo.type !== 'recording' && currentPosition > 0) {
+        console.log('[Playback] Auto-saving progress:', Math.floor(currentPosition), '/', Math.floor(currentDuration));
+        
         // For series episodes, save both levels
-        if (vodInfo.type === 'series' && mediaId.includes('_ep_')) {
+        if (currentVodInfo.type === 'series' && mediaId.includes('_ep_')) {
           const parts = mediaId.split('_ep_');
           if (parts.length === 2) {
             const seriesId = parts[0];
@@ -228,49 +265,69 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
             void updateVodWatchProgress(
               seriesId,
               'series',
-              Math.floor(position),
-              Math.floor(duration)
+              Math.floor(currentPosition),
+              Math.floor(currentDuration)
             );
             
             // Save episode-level progress (for episode resume)
             void recordEpisodeWatch(
               episodeId,
               seriesId,
-              vodInfo.source_id || '',
+              currentVodInfo.source_id || '',
               0,
               0,
               '',
-              Math.floor(position),
-              Math.floor(duration)
+              Math.floor(currentPosition),
+              Math.floor(currentDuration)
             );
+            
+            console.log('[Playback] ✅ Auto-saved series progress at position:', Math.floor(currentPosition));
           }
         } else {
           // For movies or series without episode info
           void updateVodWatchProgress(
             mediaId,
-            vodInfo.type as 'movie' | 'series',
-            Math.floor(position),
-            Math.floor(duration)
+            currentVodInfo.type as 'movie' | 'series',
+            Math.floor(currentPosition),
+            Math.floor(currentDuration)
           );
+          console.log('[Playback] ✅ Auto-saved VOD progress at position:', Math.floor(currentPosition));
         }
-        logInfo('[Playback] Saved progress:', Math.floor(position), '/', Math.floor(duration));
+      } else {
+        console.log('[Playback] Save conditions not met:', { 
+          hasMediaId: !!mediaId, 
+          type: currentVodInfo?.type, 
+          position: currentPosition 
+        });
       }
     };
 
     // Save every 30 seconds while playing
+    console.log('[Playback] Starting 30s progress save interval');
     const saveInterval = setInterval(saveProgress, 30000);
+    
+    // Do an immediate save when starting
+    console.log('[Playback] Doing immediate initial save');
+    saveProgress();
 
-    // Save when user closes/refreshes the page
-    const handleBeforeUnload = () => {
+    // Save when user closes/refreshes the page - use synchronous approach
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      console.log('[Playback] beforeunload triggered - saving progress');
       saveProgress();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
+    // Register app close callback for Tauri
+    console.log('[Playback] Registering app close callback');
+    registerOnAppClose(saveProgress);
+
     return () => {
+      console.log('[Playback] Cleaning up progress save (position was:', position + ')');
       clearInterval(saveInterval);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      unregisterOnAppClose();
     };
-  }, [vodInfo, playing, position, duration]);
+  }, [vodInfo, playing, duration]); // Dependencies control when to start/stop the interval
 
   // Playback handlers
   const handleLoadStream = useCallback(async (channel: StoredChannel) => {

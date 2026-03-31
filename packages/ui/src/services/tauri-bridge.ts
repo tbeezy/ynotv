@@ -19,8 +19,26 @@ async function getStore() {
 
 // Window sync state for macOS hole punch
 type UnlistenFn = () => void;
-let windowSyncListeners: { move?: UnlistenFn; resize?: UnlistenFn; focus?: UnlistenFn } = {};
+let windowSyncListeners: { move?: UnlistenFn; resize?: UnlistenFn; focus?: UnlistenFn; close?: UnlistenFn } = {};
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Callback for app close event
+let onAppCloseCallback: (() => void) | null = null;
+
+/**
+ * Register a callback to be called when the app is about to close
+ * This allows components to save state before the app exits
+ */
+export function registerOnAppClose(callback: () => void) {
+    onAppCloseCallback = callback;
+}
+
+/**
+ * Unregister the app close callback
+ */
+export function unregisterOnAppClose() {
+    onAppCloseCallback = null;
+}
 
 /**
  * Initialize window position syncing for macOS hole punch mode.
@@ -85,6 +103,20 @@ export async function initWindowSync() {
     } catch (e) {
         console.error('[WindowSync] Failed to attach focus listener:', e);
     }
+
+    // Listen for close request to allow saving progress
+    try {
+        windowSyncListeners.close = await appWindow.onCloseRequested((event) => {
+            console.log('[WindowSync] Close requested - calling save callback');
+            if (onAppCloseCallback) {
+                onAppCloseCallback();
+            }
+            // Allow the window to close
+        });
+        console.log('[WindowSync] Close listener attached');
+    } catch (e) {
+        console.error('[WindowSync] Failed to attach close listener:', e);
+    }
 }
 
 /**
@@ -103,6 +135,10 @@ export function stopWindowSync() {
     if (windowSyncListeners.focus) {
         windowSyncListeners.focus();
         windowSyncListeners.focus = undefined;
+    }
+    if (windowSyncListeners.close) {
+        windowSyncListeners.close();
+        windowSyncListeners.close = undefined;
     }
     if (syncDebounceTimer) {
         clearTimeout(syncDebounceTimer);
