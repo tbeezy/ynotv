@@ -1,5 +1,23 @@
   # Changelog
+
+  ## v1.6.2
+  Added:
+  - EPG Editor, right click any channel and you can delete/edit/add programs, change tvgid, match to a different EPG with search. Can also match EPG from different source
+  - Source syncing moved to Rust for M3U/Xtream for speed improvement.
+  - Vod recent watch tab.
+  - Vod Recent watch carousel on home page
+  - Saved progress for VOD, will save progress on pressing Stop, switching to LiveTV ch, or gets autoupdated every 30 seconds.
+  - For Series, the Up and Down button on the bottom media bar will now go to Previous/Next episode
+  - Clicking a recent watched Series will correctly bring it to the current season being watched
   
+  Fixes:
+  - Dark Theme scrollbar now uses accent color to be more visible.
+  - Clicking favorites on a channel doesn't bring channel list back to top
+  - Restricting certain MPV args
+  - VOD categories loading should be faster, removed lazy loading
+  - Disabled Source's VOD won't Show
+  - Backend changes that should make Startup faster
+  - 
 
   ## v1.6.1
   Added:
