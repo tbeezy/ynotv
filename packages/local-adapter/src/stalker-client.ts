@@ -255,8 +255,9 @@ export class StalkerClient {
             ? encodeURIComponent(this.config.mac)
             : this.config.mac;
 
-        // Timezone: stalker_portal uses Europe/Paris, portal.php uses Europe/London
-        const timezone = this.isStalkerPortalEndpoint() ? 'Europe/Paris' : 'Europe/London';
+        // Timezone: Use user's actual local timezone instead of hardcoded European timezones
+        // This ensures the Stalker server returns EPG data in the correct timezone
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const cookies = [
             `mac=${macValue}`,
             'stb_lang=en',
