@@ -4,6 +4,7 @@ import { HeroSection } from './vod/HeroSection';
 import { HorizontalCarousel } from './vod/HorizontalCarousel';
 import { VerticalSidebar } from './vod/VerticalSidebar';
 import { VodBrowse } from './vod/VodBrowse';
+import { RecentView } from './vod/RecentView';
 import { MovieDetail } from './vod/MovieDetail';
 import { SeriesDetail } from './vod/SeriesDetail';
 import { SourceContextMenu } from './SourceContextMenu';
@@ -311,6 +312,29 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     setSelectedItem(item);
   }, [type, recentlyWatchedEpisodeData]);
 
+  // Handle clicks from Recent view (includes season/episode info for series)
+  const handleRecentItemClick = useCallback((item: MediaItem, seasonNum?: number, episodeNum?: number, episodeTitle?: string) => {
+    if (item.source_id === 'tmdb') {
+      const title = item.title || item.name || '';
+      if (title) {
+        setSearchQuery(title);
+        setSelectedCategoryId('all');
+        setSelectedItem(null);
+        setSelectedSeason(undefined);
+      }
+      return;
+    }
+    
+    // For series, use the provided season/episode info from recently watched
+    if (type === 'series' && seasonNum) {
+      setSelectedSeason(seasonNum);
+    } else {
+      setSelectedSeason(undefined);
+    }
+    
+    setSelectedItem(item);
+  }, [type]);
+
   const handlePlay = useCallback((info: VodPlayInfo) => {
     if (onPlay) {
       onPlay(info);
@@ -465,6 +489,15 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
             categoryName={`All ${typeLabel}`}
             search={searchQuery || undefined}
             onItemClick={handleItemClick}
+          />
+        ) : selectedCategoryId === 'recent' ? (
+          // Recent view: Recently watched items with progress
+          <RecentView
+            type={type}
+            items={type === 'movie' ? recentlyWatchedMoviesData : recentlyWatchedSeriesData}
+            loading={recentlyWatchedLoading}
+            onItemClick={handleRecentItemClick}
+            onRemove={handleRemoveFromRecentlyWatched}
           />
         ) : selectedCategoryId && selectedCategory ? (
           // Category view: Virtualized grid filtered by category

@@ -80,39 +80,8 @@ export function useMovies(categoryId?: string | null, search?: string, limit = 2
       queryStr += ` ORDER BY name LIMIT ${limit}`;
       allMovies = await dbInstance.select(queryStr, params);
     } else {
-      // No source filter - just filter by enabled categories
-      const categoryPlaceholders = enabledCatIds.map(() => '?').join(',');
-      const dbInstance = await (db as any).dbPromise;
-      
-      if (search) {
-        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
-        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
-        const params: any[] = [];
-        searchTerms.forEach(term => {
-          params.push(`%${term}%`, `%${term}%`);
-        });
-        
-        allMovies = await dbInstance.select(
-          `SELECT * FROM vodMovies 
-           WHERE EXISTS (
-             SELECT 1 FROM json_each(category_ids) 
-             WHERE value IN (${categoryPlaceholders})
-           )
-           AND (${searchClauses})
-           ORDER BY name LIMIT ${limit}`,
-          [...enabledCatIds, ...params]
-        );
-      } else {
-        allMovies = await dbInstance.select(
-          `SELECT * FROM vodMovies 
-           WHERE EXISTS (
-             SELECT 1 FROM json_each(category_ids) 
-             WHERE value IN (${categoryPlaceholders})
-           )
-           ORDER BY name LIMIT ${limit}`,
-          enabledCatIds
-        );
-      }
+      // No enabled sources - return empty results
+      return [];
     }
 
     // No need to filter by categories again - already done in SQL
@@ -239,39 +208,8 @@ export function useSeries(categoryId?: string | null, search?: string, limit = 2
       queryStr += ` ORDER BY name LIMIT ${limit}`;
       allSeries = await dbInstance.select(queryStr, params);
     } else {
-      // No source filter - just filter by enabled categories
-      const categoryPlaceholders = enabledCatIds.map(() => '?').join(',');
-      const dbInstance = await (db as any).dbPromise;
-      
-      if (search) {
-        const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
-        const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
-        const params: any[] = [];
-        searchTerms.forEach(term => {
-          params.push(`%${term}%`, `%${term}%`);
-        });
-        
-        allSeries = await dbInstance.select(
-          `SELECT * FROM vodSeries 
-           WHERE EXISTS (
-             SELECT 1 FROM json_each(category_ids) 
-             WHERE value IN (${categoryPlaceholders})
-           )
-           AND (${searchClauses})
-           ORDER BY name LIMIT ${limit}`,
-          [...enabledCatIds, ...params]
-        );
-      } else {
-        allSeries = await dbInstance.select(
-          `SELECT * FROM vodSeries 
-           WHERE EXISTS (
-             SELECT 1 FROM json_each(category_ids) 
-             WHERE value IN (${categoryPlaceholders})
-           )
-           ORDER BY name LIMIT ${limit}`,
-          enabledCatIds
-        );
-      }
+      // No enabled sources - return empty results
+      return [];
     }
 
     // No need to filter by categories again - already done in SQL
@@ -423,15 +361,23 @@ export function useSeriesDetails(seriesId: string | null) {
 // ===========================================================================
 
 /**
- * Get VOD categories by type (excludes empty categories)
+ * Get VOD categories by type (excludes empty categories and disabled sources)
  */
 export function useVodCategories(type: 'movie' | 'series') {
+  const enabledSourceIds = useEnabledSources();
+  
+  // Create a stable key for enabled sources to prevent unnecessary re-renders
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
+  
   const categories = useLiveQuery(async () => {
     const allCategories = await db.vodCategories.where('type').equals(type).toArray();
 
-    // Only return enabled categories, ordered by display_order
+    // Only return enabled categories from enabled sources, ordered by display_order
     return allCategories
-      .filter(cat => cat.enabled !== false)
+      .filter(cat => cat.enabled !== false && enabledSourceIds?.has(cat.source_id))
       .sort((a, b) => {
         if (a.display_order !== undefined && b.display_order !== undefined) {
            return a.display_order - b.display_order;
@@ -440,7 +386,7 @@ export function useVodCategories(type: 'movie' | 'series') {
         if (b.display_order !== undefined) return 1;
         return a.name.localeCompare(b.name);
       });
-  }, [type]);
+  }, [type, enabledSourceKey]);
 
   return {
     categories: categories ?? [],
@@ -546,11 +492,18 @@ export function useWindowedMovies(
   const [allItems, setAllItems] = useState<StoredMovie[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const enabledSourceIds = useEnabledSources();
+  
+  // Create a stable key for enabled sources to prevent unnecessary re-renders
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
 
   // Reset when filters change
   useEffect(() => {
     setAllItems([]);
-  }, [categoryId, search, sortBy, refreshTrigger]);
+  }, [categoryId, search, sortBy, refreshTrigger, enabledSourceKey]);
 
   // Load all items at once
   useEffect(() => {
@@ -560,8 +513,11 @@ export function useWindowedMovies(
         const dbInstance = await (db as any).dbPromise;
 
         // Build WHERE clause
-        // 1. Filter out disabled categories
-        const enabledCategories = await db.vodCategories.filter(c => c.type === 'movie' && c.enabled !== false).toArray();
+        // 1. Filter out disabled categories and disabled sources
+        const allCategories = await db.vodCategories.where('type').equals('movie').toArray();
+        const enabledCategories = allCategories.filter(c => 
+          c.enabled !== false && enabledSourceIds?.has(c.source_id)
+        );
         const enabledBySource: Record<string, string[]> = {};
         enabledCategories.forEach(c => {
           if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
@@ -635,7 +591,7 @@ export function useWindowedMovies(
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, refreshTrigger]);
+  }, [categoryId, search, sortBy, refreshTrigger, enabledSourceKey]);
 
   const reset = useCallback(() => {
     setAllItems([]);
@@ -667,11 +623,18 @@ export function useWindowedSeries(
   const [allItems, setAllItems] = useState<StoredSeries[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const enabledSourceIds = useEnabledSources();
+  
+  // Create a stable key for enabled sources to prevent unnecessary re-renders
+  const enabledSourceKey = useMemo(
+    () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
+    [enabledSourceIds]
+  );
 
   // Reset when filters change
   useEffect(() => {
     setAllItems([]);
-  }, [categoryId, search, sortBy]);
+  }, [categoryId, search, sortBy, enabledSourceKey]);
 
   // Load all items at once
   useEffect(() => {
@@ -681,7 +644,11 @@ export function useWindowedSeries(
         const dbInstance = await (db as any).dbPromise;
 
         // Build WHERE clause
-        const enabledCategories = await db.vodCategories.filter(c => c.type === 'series' && c.enabled !== false).toArray();
+        // Filter out disabled categories and disabled sources
+        const allCategories = await db.vodCategories.where('type').equals('series').toArray();
+        const enabledCategories = allCategories.filter(c => 
+          c.enabled !== false && enabledSourceIds?.has(c.source_id)
+        );
         const enabledBySource: Record<string, string[]> = {};
         enabledCategories.forEach(c => {
           if (!enabledBySource[c.source_id]) enabledBySource[c.source_id] = [];
@@ -758,7 +725,7 @@ export function useWindowedSeries(
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, refreshTrigger]);
+  }, [categoryId, search, sortBy, refreshTrigger, enabledSourceKey]);
 
   const reset = useCallback(() => {
     setAllItems([]);

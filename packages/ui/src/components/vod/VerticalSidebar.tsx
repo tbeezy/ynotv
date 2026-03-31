@@ -249,6 +249,14 @@ export function VerticalSidebar({
                     All {type === 'series' ? 'Series' : 'Movies'}
                 </button>
 
+                {/* Recent Link */}
+                <button
+                    className={`vertical-sidebar__item ${selectedId === 'recent' ? 'active' : ''}`}
+                    onClick={() => onSelect('recent')}
+                >
+                    Recent
+                </button>
+
                 <div className="vertical-sidebar__separator" />
 
                 {/* Categories grouped by Source */}

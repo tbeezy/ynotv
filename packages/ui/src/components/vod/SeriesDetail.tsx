@@ -86,6 +86,14 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
       );
       
       // Record episode progress for tracking
+      // Calculate duration carefully to avoid NaN
+      let episodeDuration = episode.duration ?? 0;
+      if (!episodeDuration && episode.info?.duration) {
+        const parsedDuration = Number(episode.info.duration);
+        episodeDuration = isNaN(parsedDuration) ? 0 : parsedDuration;
+      }
+      console.log('[SeriesDetail] Episode duration:', episodeDuration, '(from duration:', episode.duration, ', info.duration:', episode.info?.duration + ')');
+      
       void recordEpisodeWatch(
         episode.id,
         series.series_id,
@@ -94,7 +102,7 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
         episode.episode_num,
         episode.title || `Episode ${episode.episode_num}`,
         resumePosition, // Will be updated when stopped
-        episode.duration ?? Number(episode.info?.duration) ?? 0
+        episodeDuration
       );
       
       onPlayEpisode?.({
