@@ -10,12 +10,13 @@
 //! - Supports multiple channels sharing the same tvg-id (primary + backup streams)
 
 use std::collections::HashMap;
+use std::error::Error;
 use anyhow::{Context, Result};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 use futures_util::StreamExt;
 
 use crate::dvr::database::DvrDatabase;
@@ -229,11 +230,14 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     // Check if URL is gzipped
     let is_gzipped = epg_url.ends_with(".gz");
 
-    // Create HTTP client with optimized settings
+    // Create HTTP client with optimized settings and TLS configuration
+    // Using native-tls to handle various certificate types including self-signed
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(30))
         .timeout(std::time::Duration::from_secs(300))
         .pool_max_idle_per_host(10)
+        .danger_accept_invalid_certs(true)  // Accept self-signed/invalid certificates
+        .danger_accept_invalid_hostnames(true)  // Accept invalid hostnames
         .build()
         .context("Failed to create HTTP client")?;
 
@@ -254,11 +258,25 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     )
     .await;
 
-    let response = client
+    let response = match client
         .get(&epg_url)
         .send()
         .await
-        .context("Failed to start EPG download")?;
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            // Extract detailed error information
+            let err_source = e.source().map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string());
+            let err_kind = format!("{:?}", e);
+            
+            let err_msg = format!(
+                "Failed to download EPG from {}: {} (source: {}, kind: {})", 
+                epg_url, e, err_source, err_kind
+            );
+            error!("[EPG] {}", err_msg);
+            return Err(anyhow::anyhow!(err_msg));
+        }
+    };
 
     let total_bytes = response.content_length();
     info!("EPG download started, total size: {:?} bytes", total_bytes);

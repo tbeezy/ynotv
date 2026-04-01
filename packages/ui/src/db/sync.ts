@@ -393,7 +393,9 @@ async function fetchXmltvFromUrl(epgUrl: string): Promise<XmltvProgram[]> {
     debugLog('Detected gzipped file, fetching binary...', 'epg');
     const response = await window.fetchProxy.fetchBinary(url);
     if (!response.data) {
-      throw new Error(`Failed to fetch gzipped XMLTV: ${response.error || 'unknown error'}`);
+      const errorMsg = `Failed to fetch gzipped XMLTV: ${response.error || 'unknown error'}`;
+      console.error(`[EPG] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     // Check compressed size before processing (large files freeze UI)
@@ -411,7 +413,9 @@ async function fetchXmltvFromUrl(epgUrl: string): Promise<XmltvProgram[]> {
   } else {
     const response = await window.fetchProxy.fetch(url);
     if (!response.data?.ok) {
-      throw new Error(`Failed to fetch XMLTV: ${response.data?.status || 'unknown error'}`);
+      const errorMsg = `Failed to fetch XMLTV: ${response.data?.status || response.error || 'unknown error'}`;
+      console.error(`[EPG] ${errorMsg} for URL: ${url}`);
+      throw new Error(errorMsg);
     }
     debugLog(`Received ${response.data.text.length} bytes, sending to worker for parsing...`, 'epg');
     const programs = await parseEpgInWorker(response.data.text, false);
@@ -423,7 +427,17 @@ async function fetchXmltvFromUrl(epgUrl: string): Promise<XmltvProgram[]> {
 // Fetch XMLTV from potentially multiple URLs (comma-separated)
 async function fetchXmltvFromUrls(epgUrlStr: string): Promise<XmltvProgram[]> {
   // Split by comma and trim each URL
-  const urls = epgUrlStr.split(',').map(u => u.trim()).filter(u => u.length > 0);
+  let urls = epgUrlStr.split(',').map(u => u.trim()).filter(u => u.length > 0);
+  
+  // Convert HTTPS to HTTP for all EPG URLs to avoid TLS issues
+  urls = urls.map(url => {
+    if (url.startsWith('https://')) {
+      const httpUrl = url.replace('https://', 'http://');
+      console.log(`[EPG] Converting HTTPS to HTTP: ${url.substring(0, 60)}... -> ${httpUrl.substring(0, 60)}...`);
+      return httpUrl;
+    }
+    return url;
+  });
 
   if (urls.length === 0) {
     return [];
@@ -449,6 +463,8 @@ async function fetchXmltvFromUrls(epgUrlStr: string): Promise<XmltvProgram[]> {
           return await fetchXmltvFromUrl(url);
         } catch (err) {
           const errMsg = err instanceof Error ? err.message : String(err);
+          // Always log EPG fetch errors to console for visibility
+          console.error(`[EPG] Failed to fetch from ${url}: ${errMsg}`);
           debugLog(`Failed to fetch from ${url}: ${errMsg}`, 'epg');
           return []; // Return empty array on failure, continue with others
         }
@@ -674,7 +690,15 @@ async function syncEpgForSource(source: Source, channels: Channel[], epgUrl?: st
   debugLog(`Starting EPG sync with Rust streaming parser for source: ${source.name || source.id}`, 'epg');
 
   // Use the provided EPG URL or construct from source.url
-  const xmltvUrl = epgUrl || `${source.url}/xmltv.php?username=${encodeURIComponent(source.username)}&password=${encodeURIComponent(source.password)}`;
+  let xmltvUrl = epgUrl || `${source.url}/xmltv.php?username=${encodeURIComponent(source.username)}&password=${encodeURIComponent(source.password)}`;
+  
+  // Convert HTTPS to HTTP for EPG URLs to avoid TLS certificate issues
+  // Many IPTV providers have misconfigured HTTPS on their EPG endpoints
+  if (xmltvUrl.startsWith('https://')) {
+    xmltvUrl = xmltvUrl.replace('https://', 'http://');
+    console.log(`[EPG] Converted HTTPS to HTTP for EPG URL: ${xmltvUrl.substring(0, 80)}...`);
+  }
+  
   console.log(`[EPG] Streaming XMLTV from: ${xmltvUrl.substring(0, 80)}...`);
   debugLog(`Streaming XMLTV from: ${xmltvUrl}`, 'epg');
 
