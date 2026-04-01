@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { useChannels, useCategories, useAllPrograms } from '../hooks/useChannels';
+import { useLiveQuery } from '../hooks/useSqliteLiveQuery';
 import { useTimeGrid } from '../hooks/useTimeGrid';
 import { useActiveRecordings } from '../hooks/useActiveRecordings';
 import { ChannelRow } from './ChannelRow';
@@ -568,26 +569,22 @@ export function ChannelPanel({
   // Check if we can manage channels (not for virtual categories like favorites/recent)
   const canManageChannels = categoryId && !categoryId.startsWith('__') && sourceId;
 
-  // Check if current category is a custom group and get its name
-  const [isCustomGroup, setIsCustomGroup] = useState(false);
-  const [customGroupName, setCustomGroupName] = useState('Custom Group');
-  useEffect(() => {
-    async function checkCustomGroup() {
-      if (!categoryId) {
-        setIsCustomGroup(false);
-        setCustomGroupName('Custom Group');
-        return;
-      }
+  // Check if current category is a custom group and get its name using live query
+  // This ensures the Manage button appears immediately when a custom group is created
+  const customGroup = useLiveQuery(
+    async () => {
+      if (!categoryId) return null;
       const group = await db.customGroups.get(categoryId);
-      setIsCustomGroup(!!group);
-      if (group) {
-        setCustomGroupName(group.name);
-      } else {
-        setCustomGroupName('Custom Group');
-      }
-    }
-    checkCustomGroup();
-  }, [categoryId]);
+      return group;
+    },
+    [categoryId],
+    null,
+    0,
+    'customGroups' // Watch customGroups table for changes
+  );
+  
+  const isCustomGroup = !!customGroup;
+  const customGroupName = customGroup?.name || 'Custom Group';
 
   // Format time
   const formatTime = useCallback((date: Date) => {

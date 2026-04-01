@@ -189,7 +189,7 @@ export function useCategories() {
     [enabledSourceKey, recentVersion],
     undefined, // defaultResult
     30000, // staleTime: 30 seconds - categories rarely change during session
-    'categories' // tableName: only re-run when categories table changes
+    undefined // Watch all tables - custom groups are in customGroups table, not categories table
   );
   return categories ?? [];
 }
@@ -219,6 +219,17 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
     () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
     [enabledSourceIds]
   );
+  
+  // Determine which table to watch based on category type
+  // Custom groups need to watch customGroupChannels table for updates
+  const tableName = useMemo(() => {
+    if (!categoryId) return 'channels';
+    if (categoryId === '__recent__' || categoryId === '__favorites__') return 'channels';
+    // For custom groups (UUID format), watch both channels and customGroupChannels
+    // We'll use a special indicator and handle it in the effect
+    return 'channels'; // Default, we'll add custom subscription
+  }, [categoryId]);
+  
   const channels = useLiveQuery(
     async () => {
       if (options?.skip) return [];
@@ -389,7 +400,10 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
     [categoryId, sortOrder, enabledSourceKey, options?.skip],
     undefined, // defaultResult  
     15000, // staleTime: 15 seconds - instant switching between recently viewed categories
-    'channels' // tableName: only re-run when channels table changes
+    // For custom groups (non-virtual, non-standard categories), watch all tables
+    // because channels come from customGroupChannels table, not channels table
+    // For standard categories, only watch channels table for efficiency
+    categoryId && !categoryId.startsWith('__') && categoryId.match(/^[0-9a-f-]{36}$/i) ? undefined : 'channels'
   );
   return channels ?? [];
 }
