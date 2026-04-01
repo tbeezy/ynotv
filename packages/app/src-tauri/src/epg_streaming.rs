@@ -12,6 +12,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use anyhow::{Context, Result};
+use chrono::{DateTime, FixedOffset, Duration};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use serde::{Deserialize, Serialize};
@@ -216,6 +217,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
     epg_url: String,
     channel_mappings: Vec<ChannelMapping>,
     advanced_epg_matching: bool,
+    timeshift_hours: f64,
 ) -> Result<EpgParseResult> {
     let start_time = std::time::Instant::now();
     let src_ctx = format!("{} ({})", source_name, source_id);
@@ -322,6 +324,7 @@ pub async fn stream_parse_epg<R: tauri::Runtime>(
             advanced_epg_matching,
             db_clone,
             src_ctx_clone,
+            timeshift_hours,
         ).await
     });
 
@@ -389,6 +392,7 @@ async fn parse_download_stream<R: tauri::Runtime>(
     advanced_epg_matching: bool,
     db: crate::dvr::database::DvrDatabase,
     src_ctx: String,
+    timeshift_hours: f64,
 ) -> Result<StreamingParserResult> {
     let start_time = std::time::Instant::now();
 
@@ -494,6 +498,7 @@ async fn parse_download_stream<R: tauri::Runtime>(
         total_bytes_downloaded,
         start_time,
         advanced_epg_matching,
+        timeshift_hours,
     ).await?;
 
     let total_ms = start_time.elapsed().as_millis() as u64;
@@ -589,6 +594,26 @@ fn build_display_name_mapping(xml_data: &[u8]) -> HashMap<String, String> {
     mapping
 }
 
+/// Apply EPG timeshift offset to an ISO 8601 datetime string.
+/// Returns the shifted string, or the original if parsing/shifting fails.
+fn apply_timeshift(date_str: &str, offset_secs: i64) -> String {
+    if offset_secs == 0 {
+        return date_str.to_string();
+    }
+    // Try parsing as a fixed-offset datetime (covers "+00:00", "+05:30", "Z", etc.)
+    if let Ok(dt) = DateTime::parse_from_rfc3339(date_str) {
+        let shifted = dt + Duration::seconds(offset_secs);
+        // Preserve the original timezone offset so DB stores consistent values
+        return shifted.to_rfc3339();
+    }
+    // Fallback: attempt manual parse into FixedOffset
+    if let Ok(dt) = DateTime::<FixedOffset>::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S%z") {
+        let shifted = dt + Duration::seconds(offset_secs);
+        return shifted.to_rfc3339();
+    }
+    date_str.to_string()
+}
+
 /// Parse XML and stream batches to inserter
 async fn parse_and_stream_batches<R: tauri::Runtime>(
     xml_data: &[u8],
@@ -600,7 +625,10 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
     bytes_downloaded: u64,
     start_time: std::time::Instant,
     advanced_epg_matching: bool,
+    timeshift_hours: f64,
 ) -> Result<StreamingParserResult> {
+    // Pre-compute offset in whole seconds so we avoid repeated float math in the hot loop
+    let timeshift_secs = (timeshift_hours * 3600.0).round() as i64;
     // Conditionally build display name mapping for advanced EPG matching
     let channel_lookup = if advanced_epg_matching {
         info!("[EPG] Advanced EPG matching enabled - building display name mappings");
@@ -714,6 +742,11 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
                                 for stream_id in stream_ids {
                                     let mut program_copy = program.clone();
                                     program_copy.channel_id = stream_id.clone();
+                                    // Apply EPG timeshift offset if configured
+                                    if timeshift_secs != 0 {
+                                        program_copy.start = apply_timeshift(&program_copy.start, timeshift_secs);
+                                        program_copy.stop = apply_timeshift(&program_copy.stop, timeshift_secs);
+                                    }
                                     batch.push(program_copy);
 
                                     // Send batch when full
@@ -1000,6 +1033,7 @@ pub async fn parse_epg_file<R: tauri::Runtime>(
     file_path: String,
     channel_mappings: Vec<ChannelMapping>,
     advanced_epg_matching: bool,
+    timeshift_hours: f64,
 ) -> Result<EpgParseResult> {
     use tokio::fs::File;
     use tokio::io::AsyncReadExt;
@@ -1047,6 +1081,7 @@ pub async fn parse_epg_file<R: tauri::Runtime>(
             total_bytes,
             start_time,
             advanced_epg_matching,
+            timeshift_hours,
         ).await
     });
 

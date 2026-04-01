@@ -71,7 +71,8 @@ export async function streamParseEpg(
   epgUrl: string,
   channelMappings: ChannelMapping[],
   onProgress?: EpgProgressCallback,
-  advancedEpgMatching?: boolean
+  advancedEpgMatching?: boolean,
+  timeshiftHours?: number
 ): Promise<EpgParseResult> {
   // Set up progress listener
   let unsubscribe: (() => void) | null = null;
@@ -94,6 +95,7 @@ export async function streamParseEpg(
       epgUrl,
       channelMappings,
       advancedEpgMatching: advancedEpgMatching ?? false,
+      timeshiftHours: timeshiftHours ?? 0,
     });
 
     console.timeEnd(`stream-parse-epg-${sourceId}`);
@@ -124,7 +126,8 @@ export async function parseEpgFile(
   filePath: string,
   channelMappings: ChannelMapping[],
   onProgress?: EpgProgressCallback,
-  advancedEpgMatching?: boolean
+  advancedEpgMatching?: boolean,
+  timeshiftHours?: number
 ): Promise<EpgParseResult> {
   // Set up progress listener
   let unsubscribe: (() => void) | null = null;
@@ -146,6 +149,7 @@ export async function parseEpgFile(
       filePath,
       channelMappings,
       advancedEpgMatching: advancedEpgMatching ?? false,
+      timeshiftHours: timeshiftHours ?? 0,
     });
 
     console.timeEnd(`parse-epg-file-${sourceId}`);
