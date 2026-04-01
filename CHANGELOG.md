@@ -17,7 +17,7 @@
   - VOD categories loading should be faster, removed lazy loading
   - Disabled Source's VOD won't Show
   - Backend changes that should make Startup faster
-  - 
+  - Documentation updated
 
   ## v1.6.1
   Added:
