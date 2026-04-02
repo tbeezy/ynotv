@@ -883,7 +883,16 @@ class YnotvDatabase extends SqliteDatabase {
     // Always DROP + CREATE so the definition is guaranteed to be current,
     // even on DBs that had a previous (possibly stale) version of the view.
     // View DDL is essentially free so this is safe to do every startup.
-    // Timeshift is applied here (not in Rust) so per-channel adjustments work immediately.
+    //
+    // TIMESHIFT DESIGN:
+    // - sm.epg_timeshift_hours (source-level) is NOT applied here. Applying it
+    //   caused a 5-hour double-shift bug on Xtream sources because the Rust EPG
+    //   parser already stores pure UTC. The source-level field is intentionally
+    //   ignored in display queries.
+    // - co.timeshift_hours (per-channel, set via EPG Editor) IS applied. When
+    //   non-zero it adjusts that specific channel's times immediately without a
+    //   re-sync. When 0 / NULL we return p.start raw so the UTC 'Z' suffix is
+    //   preserved and JavaScript parses it correctly as UTC.
     await db.execute(`DROP VIEW IF EXISTS programs_effective`);
     await db.execute(`CREATE VIEW programs_effective AS
       SELECT
@@ -891,12 +900,21 @@ class YnotvDatabase extends SqliteDatabase {
         p.stream_id,
         COALESCE(o.title,       p.title)       AS title,
         COALESCE(o.description, p.description) AS description,
-        COALESCE(o.start,       datetime(p.start, CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')) AS start,
-        COALESCE(o.end,         datetime(p.end,   CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')) AS end,
+        COALESCE(o.start,
+          CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
+            THEN p.start
+            ELSE datetime(p.start, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+          END
+        ) AS start,
+        COALESCE(o.end,
+          CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
+            THEN p.end
+            ELSE datetime(p.end, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+          END
+        ) AS end,
         p.source_id,
         0 AS is_custom
       FROM programs p
-      LEFT JOIN sourcesMeta sm ON sm.source_id = p.source_id
       LEFT JOIN epg_channel_overrides co ON co.stream_id = p.stream_id
       LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
       WHERE COALESCE(o.is_deleted, 0) = 0

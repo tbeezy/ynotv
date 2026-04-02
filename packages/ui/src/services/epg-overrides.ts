@@ -77,21 +77,35 @@ export async function getEditorProgramsForStream(
   const to = new Date(Date.now() + windowMs).toISOString();
 
   // Synced programs (joined with overrides including tombstones)
-  // Timeshift is applied here (source + channel) so per-channel adjustments work immediately
+  // Only per-channel timeshift (co.timeshift_hours) is applied here so EPG Editor
+  // adjustments take effect immediately without a re-sync.
+  // Source-level sm.epg_timeshift_hours is intentionally NOT applied — doing so
+  // caused a 5-hour double-shift bug on Xtream/M3U sources.
+  // When co.timeshift_hours is 0 / NULL we return p.start raw so the UTC 'Z'
+  // suffix is preserved and JavaScript parses it correctly as UTC.
   const synced = await dbInstance.select(`
     SELECT
       p.id,
       p.stream_id,
       COALESCE(o.title,       p.title)       AS title,
       COALESCE(o.description, p.description) AS description,
-      COALESCE(o.start,       datetime(p.start, CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')) AS start,
-      COALESCE(o.end,         datetime(p.end,   CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')) AS end,
+      COALESCE(o.start,
+        CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
+          THEN p.start
+          ELSE datetime(p.start, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+        END
+      ) AS start,
+      COALESCE(o.end,
+        CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
+          THEN p.end
+          ELSE datetime(p.end, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+        END
+      ) AS end,
       p.source_id,
       CASE WHEN o.id IS NOT NULL THEN 1 ELSE 0 END AS has_override,
       COALESCE(o.is_deleted, 0)              AS is_deleted,
       0 AS is_custom
     FROM programs p
-    LEFT JOIN sourcesMeta sm ON sm.source_id = p.source_id
     LEFT JOIN epg_channel_overrides co ON co.stream_id = p.stream_id
     LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
     WHERE p.stream_id = $1

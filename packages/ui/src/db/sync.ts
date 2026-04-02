@@ -762,7 +762,7 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
 
   console.log(`[EPG] Starting Stalker EPG sync for source: ${source.name || source.id}`);
   console.log(`[EPG] Total channels: ${channels.length}`);
-  console.log(`[EPG] EPG timeshift: ${source.epg_timeshift_hours || 0} hours`);
+  console.log(`[EPG] EPG timeshift: ${source.epg_timeshift_hours || 0} hours (applied at display time via SQL view)`);
 
   debugLog(`Starting EPG sync for Stalker source: ${source.name || source.id}`, 'epg');
 
@@ -789,15 +789,16 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
     // Convert Stalker EPG format to StoredProgram format
     const storedPrograms: StoredProgram[] = [];
 
-    // Apply user-configured EPG timeshift (default to 0 if not set)
-    const timeshiftHours = source.epg_timeshift_hours || 0;
-    const timeshiftMs = timeshiftHours * 60 * 60 * 1000;
+    // NOTE: Do NOT apply epg_timeshift_hours here.
+    // Timestamps are stored as pure UTC. The programs_effective SQL view applies
+    // (sm.epg_timeshift_hours + co.timeshift_hours) at read time, consistent with
+    // M3U and Xtream sources. Baking the shift here would cause a double-application.
 
     for (const [channelId, programList] of epgMap.entries()) {
       for (const prog of programList) {
-        // Apply timeshift offset to timestamps
-        const startDate = new Date((prog.start_timestamp * 1000) + timeshiftMs);
-        const stopDate = new Date((prog.stop_timestamp * 1000) + timeshiftMs);
+        // Store raw UTC timestamps — timeshift is applied at display time via SQL view
+        const startDate = new Date(prog.start_timestamp * 1000);
+        const stopDate = new Date(prog.stop_timestamp * 1000);
 
         storedPrograms.push({
           id: `${channelId}_${prog.start_timestamp}`,
