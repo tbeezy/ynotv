@@ -1,5 +1,13 @@
   # Changelog
 
+  ## v1.6.3
+  Fixes:
+  - EPG saving in diff timezone
+  - EPG Time Shift not working properly, should be reflected instantly now upon saving
+  - EPG Editor changes should be reflected immediately now
+  - https epg's not working properly
+  - Movies not loading when container_extension is null
+
   ## v1.6.2
   Added:
   - EPG Editor, right click any channel and you can delete/edit/add programs, change tvgid, match to a different EPG with search. Can also match EPG from different source

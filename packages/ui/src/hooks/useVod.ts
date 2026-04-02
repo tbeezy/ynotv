@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { dbEvents } from '../db/sqlite-adapter';
 import { useLiveQuery } from './useSqliteLiveQuery';
 import { db, type StoredMovie, type StoredSeries, type StoredEpisode, type VodCategory, type VodWatchHistory, getRecentlyWatchedByType } from '../db';
 import { syncSeriesEpisodes, syncAllVod, type VodSyncResult } from '../db/sync';
@@ -500,10 +501,21 @@ export function useWindowedMovies(
     [enabledSourceIds]
   );
 
+  // Increment to force a data reload (used by dbEvents subscription)
+  const [reloadToken, setReloadToken] = useState(0);
+
   // Reset when filters change
   useEffect(() => {
     setAllItems([]);
   }, [categoryId, search, sortBy, refreshTrigger, enabledSourceKey]);
+
+  // Subscribe to vodMovies / vodCategories DB events so native-Rust sync
+  // (which bypasses useLiveQuery) still triggers a UI refresh.
+  useEffect(() => {
+    const unsub1 = dbEvents.subscribe('vodMovies', () => setReloadToken(t => t + 1));
+    const unsub2 = dbEvents.subscribe('vodCategories', () => setReloadToken(t => t + 1));
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   // Load all items at once
   useEffect(() => {
@@ -539,46 +551,58 @@ export function useWindowedMovies(
           const sourcePlaceholders = sourceIds.map(() => '?').join(',');
           const categoryPlaceholders = allEnabledCategoryIds.map(() => '?').join(',');
           
-          // Use json_each to efficiently match category_ids JSON array
-          whereClause = `source_id IN (${sourcePlaceholders}) AND cat.value IN (${categoryPlaceholders})`;
+          // Use json_each to efficiently match category_ids JSON array.
+          // Movies with empty/null category_ids are also included via the orphan condition below.
+          whereClause = `source_id IN (${sourcePlaceholders}) AND (cat.value IN (${categoryPlaceholders}) OR cat.value IS NULL)`;
           params.push(...sourceIds, ...allEnabledCategoryIds);
         }
 
-        const orphanCondition = `(category_ids IS NULL OR category_ids = '[]')`;
+        // Always include orphaned movies (no category) from enabled sources
+        const sourceList = Object.keys(enabledBySource);
+        const orphanCondition = sourceList.length > 0
+          ? `(source_id IN (${sourceList.map(() => '?').join(',')}) AND (category_ids IS NULL OR category_ids = '[]' OR NOT json_valid(category_ids)))`
+          : `(category_ids IS NULL OR category_ids = '[]' OR NOT json_valid(category_ids))`;
+        const orphanParams = sourceList.length > 0 ? [...sourceList] : [];
+
+        let finalWhere: string;
+        let finalParams: any[];
         if (whereClause) {
-          whereClause = `(${orphanCondition} OR (${whereClause}))`;
+          finalWhere = `(${orphanCondition} OR (${whereClause}))`;
+          finalParams = [...orphanParams, ...params];
         } else {
-          whereClause = orphanCondition;
+          finalWhere = orphanCondition;
+          finalParams = orphanParams;
         }
 
         if (categoryId) {
           // Use JSON-style matching with quotes to avoid substring matches
-          whereClause += ' AND category_ids LIKE ?';
-          params.push(`%"${categoryId}"%`);
+          finalWhere += ' AND category_ids LIKE ?';
+          finalParams.push(`%"${categoryId}"%`);
         }
 
         if (search) {
           const searchTerms = search.toLowerCase().split(/\s+/).filter(Boolean);
           const searchClauses = searchTerms.map(() => `(name LIKE ? OR title LIKE ?)`).join(' AND ');
           if (searchClauses) {
-            whereClause += ` AND (${searchClauses})`;
+            finalWhere += ` AND (${searchClauses})`;
             searchTerms.forEach(term => {
-              params.push(`%${term}%`, `%${term}%`);
+              finalParams.push(`%${term}%`, `%${term}%`);
             });
           }
         }
 
         // Load all items (no LIMIT)
+        // Use LEFT JOIN json_each so movies with empty/null category_ids are not excluded
         const orderColumn = sortBy === 'added' ? 'added' : sortBy === 'popularity' ? 'popularity' : 'name';
         const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
 
         const items = await dbInstance.select(
           `SELECT DISTINCT m.* 
            FROM vodMovies m 
-           CROSS JOIN json_each(m.category_ids) AS cat 
-           WHERE ${whereClause} 
+           LEFT JOIN json_each(m.category_ids) AS cat ON json_valid(m.category_ids) AND m.category_ids != '[]'
+           WHERE ${finalWhere} 
            ORDER BY ${orderColumn} ${orderDir}`,
-          params
+          finalParams
         );
 
         setAllItems(items);
@@ -591,7 +615,7 @@ export function useWindowedMovies(
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, refreshTrigger, enabledSourceKey]);
+  }, [categoryId, search, sortBy, refreshTrigger, reloadToken, enabledSourceKey]);
 
   const reset = useCallback(() => {
     setAllItems([]);

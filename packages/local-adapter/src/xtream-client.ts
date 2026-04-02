@@ -423,9 +423,10 @@ export class XtreamClient {
   // URL Building
   // ===========================================================================
 
-  buildStreamUrl(type: 'live' | 'movie' | 'series', streamId: string | number, extension?: string): string {
+  buildStreamUrl(type: 'live' | 'movie' | 'series', streamId: string | number, extension?: string | null): string {
     const { baseUrl, username, password } = this.config;
-    const ext = extension || 'ts';
+    // Default extension: 'mp4' for VOD content, 'ts' for live
+    const ext = extension || (type === 'live' ? 'ts' : 'mp4');
     return `${baseUrl}/${type}/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.${ext}`;
   }
 
@@ -463,7 +464,7 @@ interface XtreamVodStream {
   year?: string;        // Release year (e.g., "1962")
   stream_icon: string;
   category_id: string;
-  container_extension: string;
+  container_extension: string | null;  // null is valid per Xtream Codes spec
   plot?: string;
   cast?: string;
   director?: string;
@@ -495,7 +496,7 @@ interface XtreamEpisode {
   id: string;
   title: string;
   episode_num: number;
-  container_extension: string;
+  container_extension: string | null;  // null is valid per Xtream Codes spec
   info?: {
     plot?: string;
     duration?: string;
