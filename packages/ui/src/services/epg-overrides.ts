@@ -25,6 +25,13 @@ export async function getChannelOverride(streamId: string): Promise<EpgChannelOv
 
 export async function upsertChannelOverride(override: EpgChannelOverride): Promise<void> {
   await db.epgChannelOverrides.put(override);
+  // Notify live queries immediately:
+  // - 'programs': re-runs useCurrentProgram / usePrograms / useProgramsInRange / useAllPrograms
+  //   (timeshift change affects all program time display)
+  // - 'channels': re-runs useChannels so logo overrides appear instantly in the channel list
+  const { dbEvents } = await import('../db/sqlite-adapter');
+  dbEvents.notify('programs', 'update');
+  dbEvents.notify('channels', 'update');
 }
 
 export async function deleteChannelOverride(streamId: string): Promise<void> {
@@ -301,6 +308,9 @@ export async function upsertProgramOverride(override: EpgProgramOverride): Promi
   // Notify live queries so the EPG guide / now-playing bar updates immediately
   const { dbEvents } = await import('../db/sqlite-adapter');
   dbEvents.notify('epg_program_overrides', 'update');
+  // Also notify 'programs' so hooks subscribed to that table (useCurrentProgram,
+  // usePrograms, useProgramsInRange, useAllPrograms) re-run immediately
+  dbEvents.notify('programs', 'update');
 }
 
 /** Hard-remove a single override row (use tombstone set to is_deleted=1 to soft-delete) */
@@ -309,6 +319,7 @@ export async function removeProgramOverride(id: string): Promise<void> {
   await dbInstance.execute(`DELETE FROM epg_program_overrides WHERE id = $1`, [id]);
   const { dbEvents } = await import('../db/sqlite-adapter');
   dbEvents.notify('epg_program_overrides', 'delete');
+  dbEvents.notify('programs', 'update');
 }
 
 /** Restore a tombstoned program by removing the is_deleted flag */
@@ -320,6 +331,7 @@ export async function restoreProgramOverride(id: string): Promise<void> {
   );
   const { dbEvents } = await import('../db/sqlite-adapter');
   dbEvents.notify('epg_program_overrides', 'update');
+  dbEvents.notify('programs', 'update');
 }
 
 // ─── EPG Channel Search & Scoring ────────────────────────────────────────────
