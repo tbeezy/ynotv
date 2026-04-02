@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use anyhow::{Context, Result};
-use chrono::{DateTime, FixedOffset, Duration, Datelike, Timelike};
+use chrono::{DateTime, Duration};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use serde::{Deserialize, Serialize};
@@ -610,39 +610,30 @@ fn build_display_name_mapping(xml_data: &[u8]) -> HashMap<String, String> {
     mapping
 }
 
-/// Apply EPG timeshift offset to an ISO 8601 datetime string.
-/// CRITICAL: This preserves the LOCAL time from the XMLTV, NOT converting to UTC!
-/// The old TypeScript code had a "bug" where it parsed the timezone incorrectly,
-/// causing JavaScript to treat the time as local instead of converting to UTC.
-/// This "bug" was actually the correct behavior - it preserved the local time
-/// from the XMLTV source. The frontend compares times using local time (via
-/// new Date().toISOString() on the user's computer), so we must preserve the
-/// local time, not convert to UTC.
-/// Only when offset_secs is non-zero (user-configured timeshift) do we shift.
-fn normalize_and_apply_timeshift(date_str: &str, offset_secs: i64) -> String {
+/// Apply EPG timeshift offset to an ISO 8601 datetime string,
+/// and normalize to UTC for consistent comparison with frontend queries.
+/// 
+/// CRITICAL: The frontend queries using `new Date().toISOString()` which returns UTC time.
+/// All EPG times must be stored in UTC format (ending in .000Z) for string comparison to work.
+/// 
+/// This matches the v1.6.1 behavior where JavaScript Date.toISOString() was used,
+/// which always converts to UTC.
+fn normalize_and_apply_timeshift(date_str: &str, timeshift_secs: i64) -> String {
     // Try parsing as a fixed-offset datetime (covers "+00:00", "+05:30", "Z", etc.)
     if let Ok(dt) = DateTime::parse_from_rfc3339(date_str) {
-        // Parse the datetime and extract the LOCAL components (year, month, day, hour, minute, second)
-        // We do NOT convert to UTC - we preserve the local time just like the old code did
-        let shifted = dt + Duration::seconds(offset_secs);
-        
-        // Format as UTC-style string but with the LOCAL time components
-        // This matches the old behavior where local time was preserved
-        return format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.000Z",
-            shifted.year(), shifted.month(), shifted.day(),
-            shifted.hour(), shifted.minute(), shifted.second()
-        );
+        // Apply the user-configured timeshift offset (in seconds)
+        let shifted = dt + Duration::seconds(timeshift_secs);
+        // Convert to UTC and format with Z suffix (this is REQUIRED)
+        // The frontend compares with `new Date().toISOString()` which returns UTC
+        return shifted.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     }
-    // Fallback: attempt manual parse into FixedOffset
-    if let Ok(dt) = DateTime::<FixedOffset>::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S%z") {
-        let shifted = dt + Duration::seconds(offset_secs);
-        return format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.000Z",
-            shifted.year(), shifted.month(), shifted.day(),
-            shifted.hour(), shifted.minute(), shifted.second()
-        );
+    
+    // Fallback: attempt manual parse
+    if let Ok(dt) = DateTime::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S%z") {
+        let shifted = dt + Duration::seconds(timeshift_secs);
+        return shifted.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     }
+    
     // Couldn't parse, return as-is
     date_str.to_string()
 }

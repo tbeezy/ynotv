@@ -874,6 +874,8 @@ class YnotvDatabase extends SqliteDatabase {
     // Always DROP + CREATE so the definition is guaranteed to be current,
     // even on DBs that had a previous (possibly stale) version of the view.
     // View DDL is essentially free so this is safe to do every startup.
+    // NOTE: Timeshift is now applied in the Rust EPG parser, not here.
+    // The programs table already contains UTC times with timeshift applied.
     await db.execute(`DROP VIEW IF EXISTS programs_effective`);
     await db.execute(`CREATE VIEW programs_effective AS
       SELECT
@@ -881,12 +883,11 @@ class YnotvDatabase extends SqliteDatabase {
         p.stream_id,
         COALESCE(o.title,       p.title)       AS title,
         COALESCE(o.description, p.description) AS description,
-        COALESCE(o.start,       datetime(p.start, CAST(IFNULL(co.timeshift_hours, 0) * 60 AS INTEGER) || ' minutes')) AS start,
-        COALESCE(o.end,         datetime(p.end,   CAST(IFNULL(co.timeshift_hours, 0) * 60 AS INTEGER) || ' minutes')) AS end,
+        COALESCE(o.start,       p.start)       AS start,
+        COALESCE(o.end,         p.end)         AS end,
         p.source_id,
         0 AS is_custom
       FROM programs p
-      LEFT JOIN epg_channel_overrides co ON co.stream_id = p.stream_id
       LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
       WHERE COALESCE(o.is_deleted, 0) = 0
       UNION ALL

@@ -77,20 +77,20 @@ export async function getEditorProgramsForStream(
   const to = new Date(Date.now() + windowMs).toISOString();
 
   // Synced programs (joined with overrides including tombstones)
+  // NOTE: Timeshift is now applied in the Rust EPG parser, not here.
   const synced = await dbInstance.select(`
     SELECT
       p.id,
       p.stream_id,
       COALESCE(o.title,       p.title)       AS title,
       COALESCE(o.description, p.description) AS description,
-      COALESCE(o.start,       datetime(p.start, CAST(IFNULL(co.timeshift_hours, 0) * 60 AS INTEGER) || ' minutes')) AS start,
-      COALESCE(o.end,         datetime(p.end,   CAST(IFNULL(co.timeshift_hours, 0) * 60 AS INTEGER) || ' minutes')) AS end,
+      COALESCE(o.start,       p.start)       AS start,
+      COALESCE(o.end,         p.end)         AS end,
       p.source_id,
       CASE WHEN o.id IS NOT NULL THEN 1 ELSE 0 END AS has_override,
       COALESCE(o.is_deleted, 0)              AS is_deleted,
       0 AS is_custom
     FROM programs p
-    LEFT JOIN epg_channel_overrides co ON co.stream_id = p.stream_id
     LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
     WHERE p.stream_id = $1
       AND p.start >= $2
