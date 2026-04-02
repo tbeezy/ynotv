@@ -411,7 +411,7 @@ class YnotvDatabase extends SqliteDatabase {
     // Each version block runs exactly ONCE. To add new columns in the future,
     // increment DB_VERSION and add a new case (do NOT modify existing cases).
     // ─────────────────────────────────────────────────────────────────────────
-    const DB_VERSION = 5;
+    const DB_VERSION = 6;
     const versionResult = await db.select('PRAGMA user_version') as Array<{ user_version: number }>;
     const currentVersion = versionResult[0]?.user_version ?? 0;
 
@@ -458,6 +458,14 @@ class YnotvDatabase extends SqliteDatabase {
           await db.execute('UPDATE vodMovies SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
           await db.execute('UPDATE vodEpisodes SET direct_url = direct_source WHERE direct_url IS NULL AND direct_source IS NOT NULL');
         } catch { /* columns may not exist on fresh installs */ }
+      }
+
+      // v6: Add epg_timeshift_hours to sourcesMeta for per-source EPG timeshift
+      if (currentVersion < 6) {
+        const addColumn = async (table: string, col: string, type: string) => {
+          try { await db.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); } catch { /* already exists */ }
+        };
+        await addColumn('sourcesMeta', 'epg_timeshift_hours', 'REAL DEFAULT 0');
       }
 
       if (currentVersion < 2) {
@@ -529,7 +537,8 @@ class YnotvDatabase extends SqliteDatabase {
         active_cons TEXT,
         max_connections TEXT,
         error TEXT,
-        display_order INTEGER
+        display_order INTEGER,
+        epg_timeshift_hours REAL DEFAULT 0
       )`);
 
     // Prefs
@@ -874,8 +883,7 @@ class YnotvDatabase extends SqliteDatabase {
     // Always DROP + CREATE so the definition is guaranteed to be current,
     // even on DBs that had a previous (possibly stale) version of the view.
     // View DDL is essentially free so this is safe to do every startup.
-    // NOTE: Timeshift is now applied in the Rust EPG parser, not here.
-    // The programs table already contains UTC times with timeshift applied.
+    // Timeshift is applied here (not in Rust) so per-channel adjustments work immediately.
     await db.execute(`DROP VIEW IF EXISTS programs_effective`);
     await db.execute(`CREATE VIEW programs_effective AS
       SELECT
@@ -883,11 +891,13 @@ class YnotvDatabase extends SqliteDatabase {
         p.stream_id,
         COALESCE(o.title,       p.title)       AS title,
         COALESCE(o.description, p.description) AS description,
-        COALESCE(o.start,       p.start)       AS start,
-        COALESCE(o.end,         p.end)         AS end,
+        COALESCE(o.start,       datetime(p.start, CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')) AS start,
+        COALESCE(o.end,         datetime(p.end,   CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')) AS end,
         p.source_id,
         0 AS is_custom
       FROM programs p
+      LEFT JOIN sourcesMeta sm ON sm.source_id = p.source_id
+      LEFT JOIN epg_channel_overrides co ON co.stream_id = p.stream_id
       LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
       WHERE COALESCE(o.is_deleted, 0) = 0
       UNION ALL

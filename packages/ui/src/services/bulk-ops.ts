@@ -149,6 +149,7 @@ export interface SourceMetaUpdate {
   active_cons?: string;
   max_connections?: string;
   error?: string;
+  epg_timeshift_hours?: number;
 }
 
 // ============================================================================

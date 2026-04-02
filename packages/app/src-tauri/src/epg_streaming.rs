@@ -610,28 +610,19 @@ fn build_display_name_mapping(xml_data: &[u8]) -> HashMap<String, String> {
     mapping
 }
 
-/// Apply EPG timeshift offset to an ISO 8601 datetime string,
-/// and normalize to UTC for consistent comparison with frontend queries.
-/// 
-/// CRITICAL: The frontend queries using `new Date().toISOString()` which returns UTC time.
-/// All EPG times must be stored in UTC format (ending in .000Z) for string comparison to work.
-/// 
-/// This matches the v1.6.1 behavior where JavaScript Date.toISOString() was used,
-/// which always converts to UTC.
-fn normalize_and_apply_timeshift(date_str: &str, timeshift_secs: i64) -> String {
+/// Convert ISO 8601 datetime string to UTC format for storage.
+/// Note: Timeshift is applied in SQL (programs_effective view), not here.
+/// This ensures per-channel timeshift adjustments work immediately.
+fn normalize_to_utc(date_str: &str) -> String {
     // Try parsing as a fixed-offset datetime (covers "+00:00", "+05:30", "Z", etc.)
     if let Ok(dt) = DateTime::parse_from_rfc3339(date_str) {
-        // Apply the user-configured timeshift offset (in seconds)
-        let shifted = dt + Duration::seconds(timeshift_secs);
-        // Convert to UTC and format with Z suffix (this is REQUIRED)
-        // The frontend compares with `new Date().toISOString()` which returns UTC
-        return shifted.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+        // Convert to UTC and format with Z suffix
+        return dt.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     }
     
     // Fallback: attempt manual parse
     if let Ok(dt) = DateTime::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S%z") {
-        let shifted = dt + Duration::seconds(timeshift_secs);
-        return shifted.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+        return dt.to_utc().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     }
     
     // Couldn't parse, return as-is
@@ -766,10 +757,10 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
                                 for stream_id in stream_ids {
                                     let mut program_copy = program.clone();
                                     program_copy.channel_id = stream_id.clone();
-                                    // ALWAYS normalize timestamps to UTC so string comparison works in SQLite
-                                    // Also conditionally applies timeshift offset
-                                    program_copy.start = normalize_and_apply_timeshift(&program_copy.start, timeshift_secs);
-                                    program_copy.stop = normalize_and_apply_timeshift(&program_copy.stop, timeshift_secs);
+                                    // Normalize timestamps to UTC for storage
+                                    // Timeshift is applied in SQL (programs_effective view) for immediate per-channel updates
+                                    program_copy.start = normalize_to_utc(&program_copy.start);
+                                    program_copy.stop = normalize_to_utc(&program_copy.stop);
                                     batch.push(program_copy);
 
                                     // Send batch when full

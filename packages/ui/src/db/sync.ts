@@ -1388,6 +1388,7 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
       active_cons: meta.active_cons,
       max_connections: meta.max_connections,
       error: meta.error,
+      epg_timeshift_hours: source.epg_timeshift_hours ?? 0,
     });
     debugLog('Channels and categories stored successfully', 'sync');
 

@@ -789,6 +789,8 @@ pub struct SourceMetaUpdate {
     pub max_connections: Option<String>,
     #[serde(default)]
     pub error: Option<String>,
+    #[serde(default)]
+    pub epg_timeshift_hours: Option<f64>,
 }
 
 pub fn update_source_meta(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<()> {
@@ -809,8 +811,9 @@ pub fn update_source_meta(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<()
             expiry_date = COALESCE(?8, expiry_date),
             active_cons = COALESCE(?9, active_cons),
             max_connections = COALESCE(?10, max_connections),
-            error = COALESCE(?11, error)
-        WHERE source_id = ?12",
+            error = COALESCE(?11, error),
+            epg_timeshift_hours = COALESCE(?12, epg_timeshift_hours)
+        WHERE source_id = ?13",
         params![
             meta.epg_url,
             meta.last_synced,
@@ -823,6 +826,7 @@ pub fn update_source_meta(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<()
             meta.active_cons,
             meta.max_connections,
             meta.error,
+            meta.epg_timeshift_hours,
             meta.source_id,
         ],
     )?;
@@ -833,8 +837,8 @@ pub fn update_source_meta(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<()
             "INSERT INTO sourcesMeta (
                 source_id, epg_url, last_synced, vod_last_synced, channel_count,
                 category_count, vod_movie_count, vod_series_count, expiry_date,
-                active_cons, max_connections, error
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                active_cons, max_connections, error, epg_timeshift_hours
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             params![
                 meta.source_id,
                 meta.epg_url,
@@ -848,6 +852,7 @@ pub fn update_source_meta(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<()
                 meta.active_cons,
                 meta.max_connections,
                 meta.error,
+                meta.epg_timeshift_hours,
             ],
         )?;
     }
