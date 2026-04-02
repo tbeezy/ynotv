@@ -885,14 +885,14 @@ class YnotvDatabase extends SqliteDatabase {
     // View DDL is essentially free so this is safe to do every startup.
     //
     // TIMESHIFT DESIGN:
-    // - sm.epg_timeshift_hours (source-level) is NOT applied here. Applying it
-    //   caused a 5-hour double-shift bug on Xtream sources because the Rust EPG
-    //   parser already stores pure UTC. The source-level field is intentionally
-    //   ignored in display queries.
-    // - co.timeshift_hours (per-channel, set via EPG Editor) IS applied. When
-    //   non-zero it adjusts that specific channel's times immediately without a
-    //   re-sync. When 0 / NULL we return p.start raw so the UTC 'Z' suffix is
-    //   preserved and JavaScript parses it correctly as UTC.
+    // - sm.epg_timeshift_hours (source-level, set in Source settings) shifts all
+    //   channels for that source uniformly. Updated immediately on save.
+    // - co.timeshift_hours (per-channel, set via EPG Editor) shifts a single
+    //   channel. Updated immediately on save.
+    // - Both are applied combined in one strftime() call to avoid chained shifts.
+    // - When the combined shift is 0 we return p.start RAW so the UTC 'Z' suffix
+    //   is preserved and JavaScript parses it correctly as UTC.
+    //   (strftime/datetime strip the Z, causing JS to misread the time as local.)
     await db.execute(`DROP VIEW IF EXISTS programs_effective`);
     await db.execute(`CREATE VIEW programs_effective AS
       SELECT
@@ -901,20 +901,23 @@ class YnotvDatabase extends SqliteDatabase {
         COALESCE(o.title,       p.title)       AS title,
         COALESCE(o.description, p.description) AS description,
         COALESCE(o.start,
-          CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
+          CASE WHEN IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0) = 0
             THEN p.start
-            ELSE strftime('%Y-%m-%dT%H:%M:%SZ', p.start, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+            ELSE strftime('%Y-%m-%dT%H:%M:%SZ', p.start,
+                   CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')
           END
         ) AS start,
         COALESCE(o.end,
-          CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
+          CASE WHEN IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0) = 0
             THEN p.end
-            ELSE strftime('%Y-%m-%dT%H:%M:%SZ', p.end, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+            ELSE strftime('%Y-%m-%dT%H:%M:%SZ', p.end,
+                   CAST((IFNULL(sm.epg_timeshift_hours, 0) + IFNULL(co.timeshift_hours, 0)) * 60 AS INTEGER) || ' minutes')
           END
         ) AS end,
         p.source_id,
         0 AS is_custom
       FROM programs p
+      LEFT JOIN sourcesMeta sm ON sm.source_id = p.source_id
       LEFT JOIN epg_channel_overrides co ON co.stream_id = p.stream_id
       LEFT JOIN epg_program_overrides o ON o.id = p.id AND o.is_custom = 0
       WHERE COALESCE(o.is_deleted, 0) = 0

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Source } from '@ynotv/core';
 import { syncAllSources, syncAllVod, syncSource, syncVodForSource, markSourceDeleted, type SyncResult, type VodSyncResult } from '../../db/sync';
 import { clearSourceData, clearVodData, db } from '../../db';
+import { dbEvents } from '../../db/sqlite-adapter';
 import { useSyncStatus } from '../../hooks/useChannels';
 import {
   useChannelSyncing,
@@ -420,6 +421,25 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
     setImportedM3U(null);
     onSourcesChange();
     incrementVersion(); // Notify listeners of new source
+
+    // Immediately apply the source-level EPG timeshift to sourcesMeta so the
+    // programs_effective view picks it up without requiring a full resync.
+    // The view JOINs sourcesMeta live on every query, so this is instant.
+    if (editingId) {
+      try {
+        const dbInstance = await (db as any).dbPromise;
+        await dbInstance.execute(
+          `UPDATE sourcesMeta SET epg_timeshift_hours = $1 WHERE source_id = $2`,
+          [source.epg_timeshift_hours ?? 0, sourceId]
+        );
+        // Notify all program hooks (useCurrentProgram, usePrograms, useProgramsInRange,
+        // useAllPrograms) to re-run so the shifted times appear immediately.
+        dbEvents.notify('programs', 'update');
+      } catch (e) {
+        // sourcesMeta row may not exist yet for new sources — harmless, sync will create it
+        console.warn('[SourcesTab] Could not update sourcesMeta epg_timeshift_hours:', e);
+      }
+    }
 
     // Trigger auto-resync if swap occurred
     if (needsResync) {
