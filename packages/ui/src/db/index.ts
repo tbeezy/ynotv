@@ -903,13 +903,13 @@ class YnotvDatabase extends SqliteDatabase {
         COALESCE(o.start,
           CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
             THEN p.start
-            ELSE datetime(p.start, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+            ELSE strftime('%Y-%m-%dT%H:%M:%SZ', p.start, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
           END
         ) AS start,
         COALESCE(o.end,
           CASE WHEN IFNULL(co.timeshift_hours, 0) = 0
             THEN p.end
-            ELSE datetime(p.end, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
+            ELSE strftime('%Y-%m-%dT%H:%M:%SZ', p.end, CAST(co.timeshift_hours * 60 AS INTEGER) || ' minutes')
           END
         ) AS end,
         p.source_id,
