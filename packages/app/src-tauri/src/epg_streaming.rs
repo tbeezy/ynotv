@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use anyhow::{Context, Result};
-use chrono::{DateTime, FixedOffset, Duration};
+use chrono::{DateTime, FixedOffset, Duration, Datelike, Timelike};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,7 @@ const PROGRESS_INTERVAL: usize = 5;
 /// Returns the original string if parsing fails
 fn parse_xmltv_date(date_str: &str) -> String {
     // XMLTV format: YYYYMMDDHHmmss +0000 (timezone is optional)
-    // Examples: "20240223020000 +0000" or "20240223020000"
+    // Examples: "20240223020000 +0000" or "20240223020000" or "20240223020000+0000"
     let trimmed = date_str.trim();
 
     // Try to parse with regex-like approach
@@ -46,12 +46,28 @@ fn parse_xmltv_date(date_str: &str) -> String {
         let min = &trimmed[10..12];
         let sec = &trimmed[12..14];
 
-        // Extract timezone if present (format: +0000 or -0500)
-        let tz = if trimmed.len() > 15 {
-            let tz_part = trimmed[15..].trim();
-            if tz_part.len() >= 5 && (tz_part.starts_with('+') || tz_part.starts_with('-')) {
-                // Convert +0000 to +00:00
-                format!("{}{}:{}", &tz_part[0..1], &tz_part[1..3], &tz_part[3..5])
+        // Extract timezone if present (format: +0000 or -0500, with or without space)
+        let tz = if trimmed.len() > 14 {
+            // Look for + or - followed by 4 digits anywhere after the date part
+            let remainder = &trimmed[14..];
+            // Find the first + or - character
+            if let Some(sign_pos) = remainder.find(|c| c == '+' || c == '-') {
+                let tz_start = &remainder[sign_pos..];
+                // Check if we have at least 5 chars (+/- plus 4 digits)
+                if tz_start.len() >= 5 {
+                    let tz_part = &tz_start[..5];
+                    // Verify the format is +HHMM or -HHMM
+                    if tz_part.chars().next().map(|c| c == '+' || c == '-').unwrap_or(false)
+                        && tz_part[1..].chars().all(|c| c.is_ascii_digit())
+                    {
+                        // Convert +0000 to +00:00
+                        format!("{}{}:{}", &tz_part[0..1], &tz_part[1..3], &tz_part[3..5])
+                    } else {
+                        "Z".to_string()
+                    }
+                } else {
+                    "Z".to_string()
+                }
             } else {
                 "Z".to_string()
             }
@@ -595,22 +611,39 @@ fn build_display_name_mapping(xml_data: &[u8]) -> HashMap<String, String> {
 }
 
 /// Apply EPG timeshift offset to an ISO 8601 datetime string.
-/// Returns the shifted string, or the original if parsing/shifting fails.
-fn apply_timeshift(date_str: &str, offset_secs: i64) -> String {
-    if offset_secs == 0 {
-        return date_str.to_string();
-    }
+/// CRITICAL: This preserves the LOCAL time from the XMLTV, NOT converting to UTC!
+/// The old TypeScript code had a "bug" where it parsed the timezone incorrectly,
+/// causing JavaScript to treat the time as local instead of converting to UTC.
+/// This "bug" was actually the correct behavior - it preserved the local time
+/// from the XMLTV source. The frontend compares times using local time (via
+/// new Date().toISOString() on the user's computer), so we must preserve the
+/// local time, not convert to UTC.
+/// Only when offset_secs is non-zero (user-configured timeshift) do we shift.
+fn normalize_and_apply_timeshift(date_str: &str, offset_secs: i64) -> String {
     // Try parsing as a fixed-offset datetime (covers "+00:00", "+05:30", "Z", etc.)
     if let Ok(dt) = DateTime::parse_from_rfc3339(date_str) {
+        // Parse the datetime and extract the LOCAL components (year, month, day, hour, minute, second)
+        // We do NOT convert to UTC - we preserve the local time just like the old code did
         let shifted = dt + Duration::seconds(offset_secs);
-        // Preserve the original timezone offset so DB stores consistent values
-        return shifted.to_rfc3339();
+        
+        // Format as UTC-style string but with the LOCAL time components
+        // This matches the old behavior where local time was preserved
+        return format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.000Z",
+            shifted.year(), shifted.month(), shifted.day(),
+            shifted.hour(), shifted.minute(), shifted.second()
+        );
     }
     // Fallback: attempt manual parse into FixedOffset
     if let Ok(dt) = DateTime::<FixedOffset>::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S%z") {
         let shifted = dt + Duration::seconds(offset_secs);
-        return shifted.to_rfc3339();
+        return format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.000Z",
+            shifted.year(), shifted.month(), shifted.day(),
+            shifted.hour(), shifted.minute(), shifted.second()
+        );
     }
+    // Couldn't parse, return as-is
     date_str.to_string()
 }
 
@@ -742,11 +775,10 @@ async fn parse_and_stream_batches<R: tauri::Runtime>(
                                 for stream_id in stream_ids {
                                     let mut program_copy = program.clone();
                                     program_copy.channel_id = stream_id.clone();
-                                    // Apply EPG timeshift offset if configured
-                                    if timeshift_secs != 0 {
-                                        program_copy.start = apply_timeshift(&program_copy.start, timeshift_secs);
-                                        program_copy.stop = apply_timeshift(&program_copy.stop, timeshift_secs);
-                                    }
+                                    // ALWAYS normalize timestamps to UTC so string comparison works in SQLite
+                                    // Also conditionally applies timeshift offset
+                                    program_copy.start = normalize_and_apply_timeshift(&program_copy.start, timeshift_secs);
+                                    program_copy.stop = normalize_and_apply_timeshift(&program_copy.stop, timeshift_secs);
                                     batch.push(program_copy);
 
                                     // Send batch when full
