@@ -9,6 +9,8 @@ interface LiveTVTabProps {
   onEpgViewChange: (view: 'traditional' | 'alternate') => void;
   collapseSourceCategoriesOnStartup: boolean;
   onCollapseSourceCategoriesOnStartupChange: (enabled: boolean) => void;
+  modernUiEnabled: boolean;
+  onModernUiEnabledChange: (enabled: boolean) => void;
 }
 
 export function LiveTVTab({
@@ -20,6 +22,8 @@ export function LiveTVTab({
   onEpgViewChange,
   collapseSourceCategoriesOnStartup,
   onCollapseSourceCategoriesOnStartupChange,
+  modernUiEnabled,
+  onModernUiEnabledChange,
 }: LiveTVTabProps) {
   return (
     <div className="settings-tab-content playback-tab-content">
@@ -144,6 +148,34 @@ export function LiveTVTab({
                 type="checkbox"
                 checked={collapseSourceCategoriesOnStartup}
                 onChange={(e) => onCollapseSourceCategoriesOnStartupChange(e.target.checked)}
+              />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Modern UI Settings */}
+      <div className="settings-section" style={{ marginTop: '24px' }}>
+        <div className="section-header">
+          <h3>Modern UI (Experimental)</h3>
+        </div>
+        <p className="section-description">
+          Enable a modern, sleek glass-morphism design for the LiveTV/EPG interface.
+        </p>
+
+        <div className="timeshift-settings">
+          {/* Enable Modern UI */}
+          <div className="timeshift-toggle-row">
+            <div className="timeshift-toggle-info">
+              <span className="timeshift-toggle-label">Enable Modern UI Design</span>
+              <span className="timeshift-toggle-sub">When enabled, applies a modern glass-morphism aesthetic with enhanced animations, gradients, and visual effects to the Categories and EPG views. Works best with glass themes.</span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={modernUiEnabled}
+                onChange={(e) => onModernUiEnabledChange(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>

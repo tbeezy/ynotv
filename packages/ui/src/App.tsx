@@ -48,6 +48,7 @@ import { WatchlistNotificationContainer } from './components/WatchlistNotificati
 import { MultiviewLayout } from './components/MultiviewLayout/MultiviewLayout';
 import { LayoutPicker } from './components/LayoutPicker/LayoutPicker';
 import './themes.css';
+import './components/ModernTheme.css'; // Modern UI enhancements
 import { useTimeshift } from './hooks/useTimeshift';
 import { useDvrEvents } from './hooks/useDvrEvents';
 import { useDvrUrlResolver } from './hooks/useDvrUrlResolver';
@@ -617,6 +618,10 @@ function App() {
           }
           if (settingsResult.data.epgView) {
             setEpgView(settingsResult.data.epgView as 'traditional' | 'alternate');
+          }
+          // Apply modern UI setting
+          if (settingsResult.data.modernUiEnabled) {
+            document.documentElement.classList.add('modern-ui');
           }
         }
 

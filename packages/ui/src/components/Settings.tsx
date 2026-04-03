@@ -91,6 +91,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
   const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
   const [collapseSourceCategoriesOnStartup, setCollapseSourceCategoriesOnStartup] = useState(false);
+  const [modernUiEnabled, setModernUiEnabled] = useState(false);
   const epgView = useEpgView();
   const setEpgView = useSetEpgView();
 
@@ -168,6 +169,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         miniMediaBarForEpgPreview?: boolean;
         epgView?: 'traditional' | 'alternate';
         collapseSourceCategoriesOnStartup?: boolean;
+        modernUiEnabled?: boolean;
       };
 
       // Load TMDB API key
@@ -250,6 +252,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       
       // Load collapse source categories setting
       setCollapseSourceCategoriesOnStartup(settings.collapseSourceCategoriesOnStartup ?? false);
+      
+      // Load modern UI setting
+      setModernUiEnabled(settings.modernUiEnabled ?? false);
     }
     setSettingsLoaded(true);
   }
@@ -313,6 +318,19 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     setCollapseSourceCategoriesOnStartup(enabled);
     if (window.storage) {
       await window.storage.updateSettings({ collapseSourceCategoriesOnStartup: enabled });
+    }
+  };
+
+  const handleModernUiEnabledChange = async (enabled: boolean) => {
+    setModernUiEnabled(enabled);
+    // Apply/remove the modern-ui class to the document
+    if (enabled) {
+      document.documentElement.classList.add('modern-ui');
+    } else {
+      document.documentElement.classList.remove('modern-ui');
+    }
+    if (window.storage) {
+      await window.storage.updateSettings({ modernUiEnabled: enabled });
     }
   };
 
@@ -515,6 +533,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onEpgViewChange={handleEpgViewChange}
             collapseSourceCategoriesOnStartup={collapseSourceCategoriesOnStartup}
             onCollapseSourceCategoriesOnStartupChange={handleCollapseSourceCategoriesOnStartupChange}
+            modernUiEnabled={modernUiEnabled}
+            onModernUiEnabledChange={handleModernUiEnabledChange}
           />
         );
       case 'about':
