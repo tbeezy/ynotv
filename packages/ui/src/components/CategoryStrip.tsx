@@ -251,14 +251,6 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           className="add-group-btn"
           onClick={handleCreateGroup}
           title="Create Custom Group"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '1.2rem',
-            padding: '0 4px'
-          }}
         >
           +
         </button>

@@ -195,53 +195,6 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
-.modern-ui .category-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 0;
-  background: var(--accent-primary, #00d4ff);
-  border-radius: 0 2px 2px 0;
-  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 8px var(--accent-primary, #00d4ff);
-}
-
-.modern-ui .category-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateX(4px);
-}
-
-.modern-ui .category-item:hover::before {
-  height: 20px;
-}
-
-.modern-ui .category-item.selected {
-  background: 
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--accent-primary, #00d4ff) 15%, transparent) 0%,
-      color-mix(in srgb, var(--accent-primary, #00d4ff) 8%, transparent) 100%
-    );
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    0 0 0 1px color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent) inset;
-}
-
-.modern-ui .category-item.selected::before {
-  height: 60%;
-}
-
-.modern-ui .category-item.selected .category-count {
-  background: 
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 0%,
-      color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent) 100%
-    );
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent);
-}
-
 /* Modern Category Count */
 .modern-ui .category-count {
   font-weight: 700;
@@ -251,12 +204,6 @@
   transition: all 0.25s ease;
 }
 
-/* Modern Source Groups - Ultra Compact - Force override with !important */
-.modern-ui .category-strip .category-source-group {
-  margin: 3px 0;
-  border-radius: 8px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
 /* Modern Source Groups - Clean styling */
 .modern-ui .category-strip .category-source-group {
   margin: 4px 0;
@@ -264,8 +211,6 @@
   overflow: hidden;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  /* Important: position context for sticky */
-  position: relative;
 }
 
 /* Let base CSS handle sticky, only add visual enhancements */
