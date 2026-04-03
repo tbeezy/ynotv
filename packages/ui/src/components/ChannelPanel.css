@@ -375,6 +375,13 @@
   padding-bottom: 24px;
 }
 
+/* Reduce seek bar width in alternate view to fit fullscreen button */
+.guide-top-section.alternate-view .now-playing-bar .npb-progress-section {
+  flex: 1 1 auto;
+  min-width: 100px;
+  max-width: 1085px;
+}
+
 /* Header */
 .guide-header {
   display: flex;
