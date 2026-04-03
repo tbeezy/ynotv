@@ -32,7 +32,7 @@
 
 /* Modern Category Strip Header */
 .modern-ui .category-strip-header {
-  padding: 24px 20px 16px;
+  padding: 12px 16px 8px; /* Reduced padding for more compact header */
   position: relative;
   display: flex;
   align-items: center;
@@ -43,8 +43,8 @@
   content: '';
   position: absolute;
   bottom: 0;
-  left: 20px;
-  right: 20px;
+  left: 16px; /* Match new horizontal padding */
+  right: 16px; /* Match new horizontal padding */
   height: 1px;
   background: linear-gradient(90deg, 
     transparent 0%,
