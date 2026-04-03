@@ -264,7 +264,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
         </button>
       </div>
 
-      <div className="category-strip-list">
+      <div className="category-strip-top">
         {/* "All Channels" option */}
         <button
           className={`category-item ${selectedCategoryId === null ? 'selected' : ''}`}
@@ -310,10 +310,12 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
         )}
 
         <div className="section-divider" style={{ height: 1, background: 'var(--surface-border)', margin: '8px 0' }}></div>
+      </div>
 
+      <div className="category-strip-scrollable">
         {/* Grouped Category list */}
         {groupedCategories.map((group) => (
-          <div key={group.sourceId} className="category-source-group">
+          <div key={group.sourceId} className={`category-source-group ${expandedSources[group.sourceId] ? 'is-expanded' : ''}`}>
             <button
               className="category-source-header"
               onClick={() => toggleSource(group.sourceId)}

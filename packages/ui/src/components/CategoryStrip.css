@@ -25,6 +25,48 @@
   transition: opacity 0.15s ease;
 }
 
+/* Two-section layout: fixed top + scrollable bottom */
+.category-strip-top {
+  flex-shrink: 0;
+  padding: 8px 0;
+  /* No scrolling - stays fixed at top */
+}
+
+.category-strip-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 0 8px 0;
+  
+  /* iOS-style smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* Hide scrollbar but keep functionality */
+.category-strip-scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.category-strip-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.category-strip-scrollable::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 80%, transparent);
+  border-radius: 2px;
+}
+
+.category-strip-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary, #00d4ff);
+}
+
+/* Hide old list class */
+.category-strip-list {
+  display: none;
+}
+
 /* When sidebar is visible - add padding and adjust width */
 .category-strip.with-sidebar {
   width: 300px;
@@ -199,6 +241,8 @@
 
 .category-source-group {
   margin-top: 4px;
+  /* Create positioning context for sticky header */
+  position: relative;
 }
 
 .category-source-header {
@@ -214,11 +258,27 @@
   text-align: left;
   transition: background 0.15s ease, color 0.15s ease;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  /* Ensure sticky works properly */
+  position: relative;
 }
 
 .category-source-header:hover {
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.9);
+}
+
+/* When source is expanded, make header sticky within scrollable area */
+.category-source-group.is-expanded .category-source-header {
+  position: sticky !important;
+  top: 0;
+  z-index: 100;
+  background: rgba(20, 20, 25, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.category-source-group.is-expanded .category-source-header:hover {
+  background: rgba(35, 35, 45, 0.98);
 }
 
 .source-header-left {

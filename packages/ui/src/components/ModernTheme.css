@@ -257,213 +257,80 @@
   border-radius: 8px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.modern-ui .category-strip button.category-source-header {
-  padding: 9px 14px !important;
-  min-height: unset !important;
-  height: auto !important;
-  background: 
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.05) 0%,
-      rgba(255, 255, 255, 0.02) 100%
-    ) !important;
-  border-top: none !important;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
+/* Modern Source Groups - Clean styling */
+.modern-ui .category-strip .category-source-group {
+  margin: 4px 0;
+  border-radius: 8px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  /* Important: position context for sticky */
+  position: relative;
 }
 
-.modern-ui .category-strip button.category-source-header::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 10%, transparent) 0%,
-    transparent 50%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
+/* Let base CSS handle sticky, only add visual enhancements */
+.modern-ui .category-strip button.category-source-header {
+  padding: 10px 12px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .modern-ui .category-strip button.category-source-header:hover {
-  background: 
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      rgba(255, 255, 255, 0.05) 100%
-    ) !important;
-  transform: translateX(2px);
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: white !important;
 }
 
-.modern-ui .category-strip button.category-source-header:hover::before {
-  opacity: 1;
+/* Explicit sticky positioning for expanded headers in modern theme */
+.modern-ui .category-strip .category-source-group.is-expanded button.category-source-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  background: rgba(20, 20, 25, 0.98) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.modern-ui .category-strip .category-source-group.is-expanded button.category-source-header:hover {
+  background: rgba(35, 35, 45, 0.98) !important;
 }
 
 .modern-ui .category-strip .source-header-left {
-  gap: 10px;
+  gap: 8px;
   position: relative;
   z-index: 1;
 }
 
 .modern-ui .category-strip .source-name {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.82rem;
   letter-spacing: 0.01em;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .modern-ui .category-strip button.category-source-header .source-count {
-  font-size: 0.72rem !important;
+  font-size: 0.7rem !important;
   font-weight: 600 !important;
-  padding: 3px 10px !important;
+  padding: 2px 8px !important;
   background: rgba(255, 255, 255, 0.1) !important;
-  color: rgba(255, 255, 255, 0.85) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  border-radius: 12px !important;
-  line-height: 1.25 !important;
-  min-width: 28px !important;
-  text-align: center !important;
-  transition: all 0.2s ease !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  border-radius: 10px !important;
+  line-height: 1.2 !important;
+  transition: all 0.15s ease !important;
 }
 
 .modern-ui .category-strip button.category-source-header:hover .source-count {
   background: rgba(255, 255, 255, 0.15) !important;
-  color: white !important;
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
-/* Modern Source Groups - Bigger size */
-.modern-ui .category-strip .category-source-group {
-  margin: 6px 0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.modern-ui .category-strip button.category-source-header::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 10%, transparent) 0%,
-    transparent 50%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.modern-ui .category-strip button.category-source-header:hover {
-  background: 
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      rgba(255, 255, 255, 0.05) 100%
-    ) !important;
-  transform: translateX(2px);
-}
-
-.modern-ui .category-strip button.category-source-header:hover::before {
-  opacity: 1;
-}
-
-.modern-ui .category-strip .source-header-left {
-  gap: 6px;
-  position: relative;
-  z-index: 1;
-}
-
-.modern-ui .category-strip .source-name {
-  font-weight: 600;
-  font-size: 0.7rem;
-  letter-spacing: 0.01em;
-  line-height: 1.1;
-}
-
-.modern-ui .category-strip .source-count {
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 0px 5px;
-  background: 
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, rgba(255,255,255,0.1)) 0%,
-      rgba(255, 255, 255, 0.1) 100%
-    );
-  color: var(--accent-primary, #00d4ff);
-  border-radius: 20px;
-  line-height: 1.1;
-}
-
-.modern-ui .category-source-header {
-  padding: 16px;
-  background: 
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.05) 0%,
-      rgba(255, 255, 255, 0.02) 100%
-    );
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.modern-ui .category-source-header::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 10%, transparent) 0%,
-    transparent 50%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.modern-ui .category-source-header:hover {
-  transform: translateX(2px);
-}
-
-.modern-ui .category-source-header:hover::before {
-  opacity: 1;
-}
-
-.modern-ui .source-header-left {
-  gap: 12px;
-  position: relative;
-  z-index: 1;
-}
-
-.modern-ui .source-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.modern-ui .source-count {
-  font-weight: 700;
-  padding: 4px 12px;
-  background: 
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, rgba(255,255,255,0.1)) 0%,
-      rgba(255, 255, 255, 0.1) 100%
-    );
-  color: var(--accent-primary, #00d4ff);
-  border-radius: 20px;
-}
-
-.modern-ui .category-source-content {
+.modern-ui .category-strip .category-source-content {
   padding: 8px;
   background: rgba(0, 0, 0, 0.2);
 }
 
 /* Modern Add Group Button */
-.modern-ui .add-group-btn {
+.modern-ui .category-strip-header .add-group-btn {
   background: 
     linear-gradient(135deg,
       color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, rgba(255,255,255,0.1)) 0%,
@@ -556,17 +423,22 @@
 }
 
 /* Modern Scrollbar */
-.modern-ui .category-strip-list::-webkit-scrollbar {
+.modern-ui .category-strip-scrollable::-webkit-scrollbar {
   width: 6px;
 }
 
-.modern-ui .category-strip-list::-webkit-scrollbar-thumb {
+.modern-ui .category-strip-scrollable::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg,
     transparent 0%,
     color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent) 20%,
     color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent) 80%,
     transparent 100%
   );
+}
+
+/* Hide the old list scrollbar when modern UI is enabled */
+.modern-ui .category-strip-list {
+  display: none;
 }
 
 /* ============================================
