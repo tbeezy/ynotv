@@ -393,9 +393,8 @@
 
 /* Modern Guide Panel */
 .modern-ui .guide-panel {
-  transition: 
-    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.3s ease;
+  /* Only transition opacity like the non-ModernUI version - no transform animation */
+  transition: opacity 0.15s ease;
 }
 
 /* Modern Current Time Indicator */
