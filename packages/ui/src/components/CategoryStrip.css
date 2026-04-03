@@ -96,6 +96,9 @@
 .category-strip-header {
   padding: 16px 12px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .category-strip-title {
@@ -104,6 +107,23 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.5);
+}
+
+/* Add Group Button - Base styles */
+.add-group-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 4px;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.add-group-btn:hover {
+  color: var(--accent-primary, #00d4ff);
+  transform: scale(1.1) rotate(90deg);
 }
 
 /* Search Input Styles */

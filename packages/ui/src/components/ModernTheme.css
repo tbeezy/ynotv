@@ -34,6 +34,9 @@
 .modern-ui .category-strip-header {
   padding: 24px 20px 16px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .modern-ui .category-strip-header::after {
