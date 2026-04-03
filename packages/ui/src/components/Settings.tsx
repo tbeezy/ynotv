@@ -90,6 +90,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   // LiveTV settings state
   const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
   const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
+  const [collapseSourceCategoriesOnStartup, setCollapseSourceCategoriesOnStartup] = useState(false);
   const epgView = useEpgView();
   const setEpgView = useSetEpgView();
 
@@ -166,6 +167,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         epgDarkenCurrent?: boolean;
         miniMediaBarForEpgPreview?: boolean;
         epgView?: 'traditional' | 'alternate';
+        collapseSourceCategoriesOnStartup?: boolean;
       };
 
       // Load TMDB API key
@@ -245,6 +247,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       
       // Load EPG view layout setting
       setEpgView(settings.epgView ?? 'traditional');
+      
+      // Load collapse source categories setting
+      setCollapseSourceCategoriesOnStartup(settings.collapseSourceCategoriesOnStartup ?? false);
     }
     setSettingsLoaded(true);
   }
@@ -301,6 +306,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     setEpgView(view);
     if (window.storage) {
       await window.storage.updateSettings({ epgView: view });
+    }
+  };
+
+  const handleCollapseSourceCategoriesOnStartupChange = async (enabled: boolean) => {
+    setCollapseSourceCategoriesOnStartup(enabled);
+    if (window.storage) {
+      await window.storage.updateSettings({ collapseSourceCategoriesOnStartup: enabled });
     }
   };
 
@@ -501,6 +513,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onMiniMediaBarForEpgPreviewChange={handleMiniMediaBarForEpgPreviewChange}
             epgView={epgView}
             onEpgViewChange={handleEpgViewChange}
+            collapseSourceCategoriesOnStartup={collapseSourceCategoriesOnStartup}
+            onCollapseSourceCategoriesOnStartupChange={handleCollapseSourceCategoriesOnStartupChange}
           />
         );
       case 'about':

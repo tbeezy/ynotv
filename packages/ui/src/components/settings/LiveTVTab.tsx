@@ -7,6 +7,8 @@ interface LiveTVTabProps {
   onMiniMediaBarForEpgPreviewChange: (enabled: boolean) => void;
   epgView: 'traditional' | 'alternate';
   onEpgViewChange: (view: 'traditional' | 'alternate') => void;
+  collapseSourceCategoriesOnStartup: boolean;
+  onCollapseSourceCategoriesOnStartupChange: (enabled: boolean) => void;
 }
 
 export function LiveTVTab({
@@ -16,6 +18,8 @@ export function LiveTVTab({
   onMiniMediaBarForEpgPreviewChange,
   epgView,
   onEpgViewChange,
+  collapseSourceCategoriesOnStartup,
+  onCollapseSourceCategoriesOnStartupChange,
 }: LiveTVTabProps) {
   return (
     <div className="settings-tab-content playback-tab-content">
@@ -113,6 +117,33 @@ export function LiveTVTab({
                 type="checkbox"
                 checked={miniMediaBarForEpgPreview}
                 onChange={(e) => onMiniMediaBarForEpgPreviewChange(e.target.checked)}
+              />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+        </div>
+      </div>
+      {/* Categories Settings */}
+      <div className="settings-section" style={{ marginTop: '24px' }}>
+        <div className="section-header">
+          <h3>Categories</h3>
+        </div>
+        <p className="section-description">
+          Customize how source categories are displayed in the LiveTV view.
+        </p>
+
+        <div className="timeshift-settings">
+          {/* Collapse Source Categories on Startup */}
+          <div className="timeshift-toggle-row">
+            <div className="timeshift-toggle-info">
+              <span className="timeshift-toggle-label">Collapse Source Categories on Startup</span>
+              <span className="timeshift-toggle-sub">When enabled, source categories will be collapsed by default when the LiveTV Categories view loads.</span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={collapseSourceCategoriesOnStartup}
+                onChange={(e) => onCollapseSourceCategoriesOnStartupChange(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>

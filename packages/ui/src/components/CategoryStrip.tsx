@@ -200,6 +200,10 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   useEffect(() => {
     async function fetchSources() {
       if (window.storage) {
+        // Get settings to check if sources should be collapsed on startup
+        const settingsResult = await window.storage.getSettings();
+        const collapseOnStartup = settingsResult.data?.collapseSourceCategoriesOnStartup ?? false;
+        
         const result = await window.storage.getSources();
         if (result.data) {
           const sourceMap = result.data.reduce((acc: Record<string, string>, s: Source) => {
@@ -210,12 +214,12 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
 
           const sourcesData = result.data;
 
-          // Initialize new sources as expanded (only if not already set)
+          // Initialize new sources as expanded or collapsed based on setting
           setExpandedSources(prev => {
             const next = { ...prev };
             sourcesData.forEach((s: Source) => {
               if (next[s.id] === undefined) {
-                next[s.id] = true;
+                next[s.id] = !collapseOnStartup; // false if collapseOnStartup is true
               }
             });
             return next;
