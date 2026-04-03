@@ -493,8 +493,7 @@
       color-mix(in srgb, var(--bg-overlay, rgba(0,0,0,0.95)), white 1%) 0%,
       var(--bg-overlay, rgba(0,0,0,0.95)) 100%
     );
-  backdrop-filter: blur(var(--glass-blur, 20px)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(160%);
+  /* Removed backdrop-filter to prevent text blurriness */
 }
 
 /* Modern Header */
