@@ -130,32 +130,50 @@
     color: #fff;
 }
 
-/* Navigation List */
-.vertical-sidebar__nav {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 8px;
+/* Navigation - Split into fixed top and scrollable bottom */
+.vertical-sidebar__top {
+    flex-shrink: 0;
+    padding: 8px 8px 8px 8px;
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
+.vertical-sidebar__scrollable {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0px 8px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    
+    /* iOS-style smooth scrolling */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+}
+
 /* Scrollbar styling */
-.vertical-sidebar__nav::-webkit-scrollbar {
+.vertical-sidebar__scrollable::-webkit-scrollbar {
     width: 6px;
 }
 
-.vertical-sidebar__nav::-webkit-scrollbar-track {
+.vertical-sidebar__scrollable::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.vertical-sidebar__nav::-webkit-scrollbar-thumb {
+.vertical-sidebar__scrollable::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
 }
 
-.vertical-sidebar__nav:hover::-webkit-scrollbar-thumb {
+.vertical-sidebar__scrollable:hover::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Old nav class - hide it if still referenced */
+.vertical-sidebar__nav {
+    display: none;
 }
 
 .vertical-sidebar__item {
@@ -201,6 +219,8 @@
     flex-direction: column;
     width: 100%;
     margin-bottom: 4px;
+    /* Create positioning context for sticky header */
+    position: relative;
 }
 
 .vertical-sidebar__source-header {
@@ -218,6 +238,25 @@
     text-align: left;
     transition: background 0.2s ease;
     border-radius: 6px;
+    /* Ensure sticky works properly */
+    position: relative;
+}
+
+.vertical-sidebar__source-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Sticky expanded source headers */
+.vertical-sidebar__source-group.is-expanded .vertical-sidebar__source-header {
+    position: sticky !important;
+    top: 0;
+    z-index: 100;
+    background: rgba(30, 30, 35, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border-radius: 0;
+    /* Increased padding to cover scrolling content */
+    padding: 12px 12px 14px;
 }
 
 .vertical-sidebar__source-header:hover {
@@ -252,6 +291,9 @@
     padding-left: 12px; /* Indent nested categories */
     gap: 2px;
     margin-top: 2px;
+    /* Create new stacking context so content scrolls under sticky header */
+
+
 }
 
 .vertical-sidebar__item.nested {

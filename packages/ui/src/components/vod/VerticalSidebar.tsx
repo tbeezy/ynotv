@@ -231,8 +231,8 @@ export function VerticalSidebar({
                 </div>
             )}
 
-            {/* Navigation Links */}
-            <nav className="vertical-sidebar__nav">
+            {/* Fixed Top Section: Home, All, Recent */}
+            <div className="vertical-sidebar__top">
                 {/* Home Link */}
                 <button
                     className={`vertical-sidebar__item ${selectedId === null ? 'active' : ''}`}
@@ -256,12 +256,13 @@ export function VerticalSidebar({
                 >
                     Recent
                 </button>
+            </div>
 
-                <div className="vertical-sidebar__separator" />
-
+            {/* Scrollable Bottom Section: Source Groups */}
+            <div className="vertical-sidebar__scrollable">
                 {/* Categories grouped by Source */}
                 {groupedCategories.entries.map(([sourceId, sourceCats]) => (
-                    <div key={sourceId} className="vertical-sidebar__source-group">
+                    <div key={sourceId} className={`vertical-sidebar__source-group ${expandedSources[sourceId] ? 'is-expanded' : ''}`}>
                         <button
                             className="vertical-sidebar__source-header"
                             onClick={() => toggleSource(sourceId)}
@@ -303,7 +304,7 @@ export function VerticalSidebar({
                         {cat.displayName}
                     </button>
                 ))}
-            </nav>
+            </div>
         </div>
     );
 }
