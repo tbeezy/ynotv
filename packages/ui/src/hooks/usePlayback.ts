@@ -228,7 +228,6 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
   // Periodic progress saving for VOD playback + save on app close
   useEffect(() => {
     if (!vodInfo || !playing || duration <= 0) {
-      console.log('[Playback] Progress save conditions not met:', { hasVodInfo: !!vodInfo, playing, duration });
       return;
     }
 
