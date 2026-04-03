@@ -208,9 +208,9 @@
 .modern-ui .category-strip .category-source-group {
   margin: 4px 0;
   border-radius: 8px;
-  overflow: hidden;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  /* Note: removed overflow: hidden as it breaks sticky positioning */
 }
 
 /* Let base CSS handle sticky, only add visual enhancements */
