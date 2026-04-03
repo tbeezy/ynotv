@@ -334,26 +334,26 @@
 }
 
 .modern-ui .custom-groups-section .category-item::before {
-  background: rgba(200, 170, 255, 0.8);
-  box-shadow: 0 0 6px rgba(200, 170, 255, 0.5);
+  background: var(--accent-primary, #00d4ff);
+  box-shadow: 0 0 6px var(--accent-primary, #00d4ff);
 }
 
 .modern-ui .custom-groups-section .category-item.selected {
   background: 
     linear-gradient(135deg,
-      rgba(200, 170, 255, 0.12) 0%,
-      rgba(200, 170, 255, 0.06) 100%
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 12%, transparent) 0%,
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 6%, transparent) 100%
     );
-  border-color: rgba(200, 170, 255, 0.25);
+  border-color: color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, transparent);
 }
 
 .modern-ui .custom-groups-section .category-item.selected .category-count {
   background: 
     linear-gradient(135deg,
-      rgba(200, 170, 255, 0.35) 0%,
-      rgba(200, 170, 255, 0.2) 100%
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 40%, transparent) 0%,
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent) 100%
     );
-  color: rgba(220, 200, 255, 1);
+  color: white;
 }
 
 /* Modern Section Divider - matches header border style */
@@ -366,8 +366,6 @@
   );
   margin: 4px auto 8px;
   width: calc(100% - 40px);
-}
-  border-radius: 50%;
 }
 
 /* Modern Scrollbar */
