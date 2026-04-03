@@ -301,7 +301,6 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           </div>
         )}
 
-        <div className="section-divider" style={{ height: 1, background: 'var(--surface-border)', margin: '8px 0' }}></div>
       </div>
 
       <div className="category-strip-scrollable">

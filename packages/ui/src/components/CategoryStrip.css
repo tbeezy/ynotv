@@ -28,7 +28,7 @@
 /* Two-section layout: fixed top + scrollable bottom */
 .category-strip-top {
   flex-shrink: 0;
-  padding: 8px 0;
+  padding: 8px 0 0 0;
   /* No scrolling - stays fixed at top */
 }
 
@@ -395,8 +395,20 @@
   opacity: 0.7;
 }
 
+/* Section divider between top section and scrollable sources */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  margin: 4px auto 8px;
+  width: calc(100% - 24px);
+}
+
 /* ==========================================================================
-   NON-GLASS THEME GRADIENT FIX
+    NON-GLASS THEME GRADIENT FIX
    Since LiveTV forces the .app container to be transparent (to show video),
    solid themes with global gradients (like solid-berry) lose their background.
    We explicitly attach the viewport-fixed gradient under these panels, while
