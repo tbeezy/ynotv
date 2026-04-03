@@ -26,8 +26,9 @@
 }
 
 .guide-panel.visible {
-  transform: translate3d(0, 0, 0);
+  transform: none;
   opacity: 1;
+  will-change: auto;
 }
 
 /* When sidebar is visible - add padding */

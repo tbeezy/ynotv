@@ -104,7 +104,7 @@
 
 /* Modern Category Items - Enhanced to match source headers */
 .modern-ui .category-item {
-  padding: 8px 12px;
+  padding: 8px 12px 8px 8px; /* Reduced left padding from 12px to 8px to prevent text cut-off */
   margin: 3px 0;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
@@ -179,6 +179,29 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Scroll text animation on hover - like channels in LiveTV */
+.modern-ui .category-item:hover .category-name {
+  overflow: visible;
+  display: inline-block;
+  animation: scroll-text 8s linear infinite;
+  padding-right: 20px;
+}
+
+@keyframes scroll-text {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
 .modern-ui .category-count {
