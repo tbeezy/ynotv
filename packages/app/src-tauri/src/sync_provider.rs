@@ -575,7 +575,7 @@ pub async fn sync_xtream_vod_movies(
             backdrop_path: None,
             popularity: None,
             match_attempted: None,
-            container_extension: stream.container_extension,
+            container_extension: Some(ext), // Use the fallback extension here too
             rating: rating_str,
             director: stream.director,
             year: year_str,

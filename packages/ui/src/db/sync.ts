@@ -1841,36 +1841,37 @@ export async function syncVodMovies(
     await db.vodCategories.bulkPut(vodCategories);
   }
 
-  // Upsert all movies using optimized bulk operation
-  const bulkMovies = storedMovies.map(movie => ({
-    stream_id: movie.stream_id,
-    source_id: movie.source_id,
-    category_ids: movie.category_ids,
-    name: movie.name,
-    tmdb_id: movie.tmdb_id,
-    imdb_id: movie.imdb_id,
-    added: typeof movie.added === 'string' ? movie.added : movie.added?.toISOString(),
-    backdrop_path: movie.backdrop_path,
-    popularity: movie.popularity,
-    match_attempted: typeof movie.match_attempted === 'string'
-      ? movie.match_attempted
-      : movie.match_attempted?.toISOString(),
-    container_extension: (movie as any).container_extension,
-    rating: (movie as any).rating,
-    director: (movie as any).director,
-    year: typeof (movie as any).year === 'string'
-      ? parseInt((movie as any).year, 10) || undefined
-      : (movie as any).year,
-    cast: (movie as any).cast,
-    plot: (movie as any).plot,
-    genre: (movie as any).genre,
-    duration_secs: (movie as any).duration_secs,
-    duration: (movie as any).duration,
-    stream_icon: (movie as any).stream_icon,
-    direct_url: (movie as any).direct_url,
-    release_date: (movie as any).release_date,
-    title: (movie as any).title,
-  }));
+    // Upsert all movies using optimized bulk operation
+    const bulkMovies = storedMovies.map(movie => ({
+      stream_id: movie.stream_id,
+      source_id: movie.source_id,
+      category_ids: movie.category_ids,
+      name: movie.name,
+      tmdb_id: movie.tmdb_id,
+      imdb_id: movie.imdb_id,
+      added: typeof movie.added === 'string' ? movie.added : movie.added?.toISOString(),
+      backdrop_path: movie.backdrop_path,
+      popularity: movie.popularity,
+      match_attempted: typeof movie.match_attempted === 'string'
+        ? movie.match_attempted
+        : movie.match_attempted?.toISOString(),
+      // Ensure container_extension has a fallback value (mp4) for providers that return null
+      container_extension: (movie as any).container_extension || 'mp4',
+      rating: (movie as any).rating,
+      director: (movie as any).director,
+      year: typeof (movie as any).year === 'string'
+        ? parseInt((movie as any).year, 10) || undefined
+        : (movie as any).year,
+      cast: (movie as any).cast,
+      plot: (movie as any).plot,
+      genre: (movie as any).genre,
+      duration_secs: (movie as any).duration_secs,
+      duration: (movie as any).duration,
+      stream_icon: (movie as any).stream_icon,
+      direct_url: (movie as any).direct_url,
+      release_date: (movie as any).release_date,
+      title: (movie as any).title,
+    }));
   await bulkOps.upsertMovies(bulkMovies);
 
   // Remove movies that no longer exist in source using database query (much faster than loading all IDs)
