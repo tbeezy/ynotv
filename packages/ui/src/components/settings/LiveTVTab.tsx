@@ -86,7 +86,7 @@ export function LiveTVTab({
       </div>
 
       {/* Preview Panel Settings */}
-      <div className="settings-section" style={{ marginTop: '24px' }}>
+      <div className="settings-section">
         <div className="section-header">
           <h3>Preview Panel</h3>
         </div>
@@ -128,7 +128,7 @@ export function LiveTVTab({
         </div>
       </div>
       {/* Categories Settings */}
-      <div className="settings-section" style={{ marginTop: '24px' }}>
+      <div className="settings-section">
         <div className="section-header">
           <h3>Categories</h3>
         </div>
@@ -156,7 +156,7 @@ export function LiveTVTab({
       </div>
 
       {/* Modern UI Settings */}
-      <div className="settings-section" style={{ marginTop: '24px' }}>
+      <div className="settings-section">
         <div className="section-header">
           <h3>Modern UI (Experimental)</h3>
         </div>
