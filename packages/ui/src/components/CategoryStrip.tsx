@@ -296,7 +296,6 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
         {/* Custom Groups Section */}
         {customGroups && customGroups.length > 0 && (
           <div className="custom-groups-section">
-            <div className="section-divider"></div>
             {customGroups.map(group => (
               <CustomGroupButton
                 key={group.group_id}
@@ -322,7 +321,9 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
             >
               <div className="source-header-left">
                 <ChevronIcon expanded={expandedSources[group.sourceId]} />
-                <span className="source-name">{sources[group.sourceId] || 'Loading...'}</span>
+                <div className="source-name-container">
+                  <span className="source-name">{sources[group.sourceId] || 'Loading...'}</span>
+                </div>
               </div>
               <span className="source-count">
                 {group.categories.reduce((s, cat) => s + cat.channelCount, 0)}

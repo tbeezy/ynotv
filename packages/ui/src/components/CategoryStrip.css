@@ -228,6 +228,13 @@
   overflow: hidden;
 }
 
+.source-name-container {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, black 85%, transparent 100%);
+}
+
 .source-name {
   font-size: 0.75rem;
   font-weight: 700;
@@ -236,6 +243,26 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: block;
+}
+
+.category-source-header:hover .source-name {
+  overflow: visible;
+  display: inline-block;
+  animation: scroll-text 8s linear infinite;
+  padding-right: 20px;
+}
+
+@keyframes scroll-text {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
 .source-count {
