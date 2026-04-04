@@ -1599,7 +1599,11 @@ export async function syncStalkerCategory(
 }
 
 // Sync all enabled sources
-export async function syncAllSources(onProgress?: (msg: string) => void): Promise<Map<string, SyncResult>> {
+// concurrency: number of sources to sync in parallel (0 = all at once, default = all)
+export async function syncAllSources(
+  onProgress?: (msg: string) => void,
+  concurrency = 0
+): Promise<Map<string, SyncResult>> {
   debugLog('Starting syncAllSources...', 'sync');
   onProgress?.('Initializing sync...');
   const results = new Map<string, SyncResult>();
@@ -1618,12 +1622,12 @@ export async function syncAllSources(onProgress?: (msg: string) => void): Promis
   }
   debugLog(`Found ${sourcesResult.data.length} sources`, 'sync');
 
-  // Sync each enabled source with concurrency limit of 3
   const enabledSources = sourcesResult.data.filter(s => s.enabled);
   debugLog(`${enabledSources.length} sources enabled for sync`, 'sync');
-  // Sync each enabled source sequentially (Concurrency 1) to prevent SQLite 'database is locked' errors
-  // since the new Native Rust implementation writes are instantaneous and EXCLUSIVE for the whole source.
-  const CONCURRENCY_LIMIT = 1;
+
+  // concurrency=0 means run all sources in parallel (each source is a different provider)
+  // SQLite WAL mode handles concurrent writes by serializing them internally — no lock errors.
+  const CONCURRENCY_LIMIT = concurrency > 0 ? concurrency : enabledSources.length || 1;
 
   for (let i = 0; i < enabledSources.length; i += CONCURRENCY_LIMIT) {
     const batch = enabledSources.slice(i, i + CONCURRENCY_LIMIT);

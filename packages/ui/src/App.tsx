@@ -628,6 +628,8 @@ function App() {
 
         const epgRefreshHours = settingsResult.data?.epgRefreshHours ?? 6;
         const vodRefreshHours = settingsResult.data?.vodRefreshHours ?? 24;
+        // 0 = all at once (default), positive int = max parallel syncs
+        const epgSyncConcurrency: number = settingsResult.data?.epgSyncConcurrency ?? 0;
 
         // Skip periodic check if both are manual-only (0 = manual only)
         if (isPeriodic && epgRefreshHours === 0 && vodRefreshHours === 0) {
@@ -652,7 +654,8 @@ function App() {
             didSync = true;
             isAutoSyncingRef.current = true;
             setChannelSyncing(true);
-            const CONCURRENCY = 10;
+            // 0 = run all at once; positive = batch size
+            const CONCURRENCY = epgSyncConcurrency > 0 ? epgSyncConcurrency : staleSources.length || 1;
             const total = staleSources.length;
             const statusPrefix = isPeriodic ? 'Auto-syncing' : 'Syncing';
             for (let i = 0; i < total; i += CONCURRENCY) {
@@ -683,7 +686,8 @@ function App() {
               didSync = true;
               isAutoSyncingRef.current = true;
               setVodSyncing(true);
-              const CONCURRENCY = 10;
+              // VOD sync also uses epgSyncConcurrency (0 = all at once)
+              const CONCURRENCY = epgSyncConcurrency > 0 ? epgSyncConcurrency : staleVod.length || 1;
               const total = staleVod.length;
               const statusPrefix = isPeriodic ? 'Auto-syncing' : 'Syncing';
               for (let i = 0; i < total; i += CONCURRENCY) {

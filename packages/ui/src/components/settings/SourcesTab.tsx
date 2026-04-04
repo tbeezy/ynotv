@@ -23,6 +23,7 @@ interface SourcesTabProps {
   isEncryptionAvailable: boolean;
   onSourcesChange: () => void;
   editSourceId?: string | null;
+  epgSyncConcurrency?: number;
 }
 
 type SourceType = 'm3u' | 'xtream' | 'stalker';
@@ -107,7 +108,7 @@ function formatTimeAgo(date: Date | null | undefined): string {
   return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
 }
 
-export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, editSourceId }: SourcesTabProps) {
+export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, editSourceId, epgSyncConcurrency = 0 }: SourcesTabProps) {
   const { incrementVersion } = useSourceVersion(); // Get version incrementer
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -561,7 +562,7 @@ export function SourcesTab({ sources, isEncryptionAvailable, onSourcesChange, ed
     setSyncError(null);
     setSyncStatusMsg('Initializing...');
     try {
-      const results = await syncAllSources(setSyncStatusMsg);
+      const results = await syncAllSources(setSyncStatusMsg, epgSyncConcurrency);
       setSyncResults(results);
       // Trigger category refresh after sync completes
       incrementVersion();

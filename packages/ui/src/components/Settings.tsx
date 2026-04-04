@@ -43,6 +43,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   // Refresh settings state
   const [vodRefreshHours, setVodRefreshHours] = useState(24);
   const [epgRefreshHours, setEpgRefreshHours] = useState(6);
+  const [epgSyncConcurrency, setEpgSyncConcurrency] = useState(0);
 
   // PosterDB state
   const [posterDbApiKey, setPosterDbApiKey] = useState('');
@@ -146,6 +147,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         tmdbApiKey?: string;
         vodRefreshHours?: number;
         epgRefreshHours?: number;
+        epgSyncConcurrency?: number;
         posterDbApiKey?: string;
         rpdbBackdropsEnabled?: boolean;
         allowLanSources?: boolean;
@@ -187,6 +189,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       }
       if (settings.epgRefreshHours !== undefined) {
         setEpgRefreshHours(settings.epgRefreshHours);
+      }
+      if (settings.epgSyncConcurrency !== undefined) {
+        setEpgSyncConcurrency(settings.epgSyncConcurrency);
       }
 
       // Load PosterDB key
@@ -423,6 +428,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             isEncryptionAvailable={isEncryptionAvailable}
             onSourcesChange={loadSources}
             editSourceId={editSourceId}
+            epgSyncConcurrency={epgSyncConcurrency}
           />
         );
       case 'tmdb':
@@ -439,8 +445,10 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
           <DataRefreshTab
             vodRefreshHours={vodRefreshHours}
             epgRefreshHours={epgRefreshHours}
+            epgSyncConcurrency={epgSyncConcurrency}
             onVodRefreshChange={setVodRefreshHours}
             onEpgRefreshChange={setEpgRefreshHours}
+            onEpgSyncConcurrencyChange={setEpgSyncConcurrency}
           />
         );
       case 'channels':

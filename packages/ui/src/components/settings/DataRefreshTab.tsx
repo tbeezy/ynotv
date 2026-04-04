@@ -6,15 +6,19 @@ import { useCacheClearing, useSetCacheClearing, useSetChannelSyncing, useSetSync
 interface DataRefreshTabProps {
   vodRefreshHours: number;
   epgRefreshHours: number;
+  epgSyncConcurrency: number;
   onVodRefreshChange: (hours: number) => void;
   onEpgRefreshChange: (hours: number) => void;
+  onEpgSyncConcurrencyChange: (value: number) => void;
 }
 
 export function DataRefreshTab({
   vodRefreshHours,
   epgRefreshHours,
+  epgSyncConcurrency,
   onVodRefreshChange,
   onEpgRefreshChange,
+  onEpgSyncConcurrencyChange,
 }: DataRefreshTabProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const isClearing = useCacheClearing();
@@ -36,7 +40,7 @@ export function DataRefreshTab({
       setCacheClearing(false);
       setChannelSyncing(true);
       setSyncStatusMessage('Re-syncing sources...');
-      await syncAllSources(setSyncStatusMessage);
+      await syncAllSources(setSyncStatusMessage, epgSyncConcurrency);
       setSyncStatusMessage(null);
       setChannelSyncing(false);
     } catch (error) {
@@ -60,7 +64,7 @@ export function DataRefreshTab({
 
         <div className="refresh-settings">
           <div className="form-group inline">
-            <label>VOD (Movies & Series)</label>
+            <label>VOD (Movies &amp; Series)</label>
             <select
               value={vodRefreshHours}
               onChange={(e) => {
@@ -96,6 +100,35 @@ export function DataRefreshTab({
               <option value={12}>Every 12 hours</option>
               <option value={24}>Every 24 hours</option>
             </select>
+          </div>
+
+          <div className="form-group inline" style={{ alignItems: 'flex-start', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
+              <label style={{ marginBottom: 0 }}>Simultaneous EPG Syncs</label>
+              <span style={{ fontSize: '0.75rem', opacity: 0.6, lineHeight: 1.3 }}>
+                How many sources to sync in parallel. <strong>0&nbsp;=&nbsp;all at once</strong> (fastest — recommended when each source is a different provider).
+              </span>
+            </div>
+            <input
+              id="epg-sync-concurrency"
+              type="number"
+              min={0}
+              max={50}
+              step={1}
+              value={epgSyncConcurrency}
+              onChange={(e) => {
+                const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                onEpgSyncConcurrencyChange(val);
+                if (window.storage) {
+                  window.storage.updateSettings({ epgSyncConcurrency: val });
+                }
+              }}
+              style={{
+                width: '70px',
+                textAlign: 'center',
+                flexShrink: 0,
+              }}
+            />
           </div>
         </div>
       </div>
