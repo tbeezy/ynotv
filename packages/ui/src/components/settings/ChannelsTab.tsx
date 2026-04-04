@@ -8,6 +8,8 @@ interface ChannelsTabProps {
   onIncludeSourceInSearchChange: (enabled: boolean) => void;
   maxSearchResults: number;
   onMaxSearchResultsChange: (limit: number) => void;
+  searchResultsOrder: 'default' | 'alphabetical';
+  onSearchResultsOrderChange: (order: 'default' | 'alphabetical') => void;
 }
 
 async function saveIncludeSourceInSearch(enabled: boolean) {
@@ -20,6 +22,11 @@ async function saveMaxSearchResults(limit: number) {
   await window.storage.updateSettings({ maxSearchResults: limit });
 }
 
+async function saveSearchResultsOrder(order: 'default' | 'alphabetical') {
+  if (!window.storage) return;
+  await window.storage.updateSettings({ searchResultsOrder: order });
+}
+
 export function ChannelsTab({
   channelSortOrder,
   onChannelSortOrderChange,
@@ -27,6 +34,8 @@ export function ChannelsTab({
   onIncludeSourceInSearchChange,
   maxSearchResults,
   onMaxSearchResultsChange,
+  searchResultsOrder,
+  onSearchResultsOrderChange,
 }: ChannelsTabProps) {
   const setChannelSortOrder = useSetChannelSortOrder();
 
@@ -120,6 +129,27 @@ export function ChannelsTab({
           <p className="form-hint" style={{ marginTop: '0.5rem' }}>
             Maximum number of results to show in channel search, custom group search, and calendar channel selector.
             Higher values may impact performance.
+          </p>
+        </div>
+
+        <div className="refresh-settings" style={{ marginTop: '20px' }}>
+          <div className="form-group inline">
+            <label>Search results order</label>
+            <select
+              value={searchResultsOrder}
+              onChange={(e) => {
+                const value = e.target.value as 'default' | 'alphabetical';
+                onSearchResultsOrderChange(value);
+                saveSearchResultsOrder(value);
+              }}
+            >
+              <option value="default">Default</option>
+              <option value="alphabetical">Alphabetical</option>
+            </select>
+          </div>
+          <p className="form-hint" style={{ marginTop: '0.5rem' }}>
+            Choose how search results are sorted. "Default" shows results in database order.
+            "Alphabetical" sorts channels and programs by name (A-Z).
           </p>
         </div>
       </div>

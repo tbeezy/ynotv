@@ -83,6 +83,7 @@ function App() {
     liveBufferOffset,
     includeSourceInSearch,
     maxSearchResults,
+    searchResultsOrder,
     miniMediaBarForEpgPreview,
     theme,
     shortcuts,
@@ -366,8 +367,8 @@ function App() {
   // ==========================================================================
   // Search Results
   // ==========================================================================
-  const searchChannels = useChannelSearch(debouncedSearchQuery, maxSearchResults, includeSourceInSearch);
-  const searchPrograms = useProgramSearch(debouncedSearchQuery, maxSearchResults);
+  const searchChannels = useChannelSearch(debouncedSearchQuery, maxSearchResults, includeSourceInSearch, searchResultsOrder);
+  const searchPrograms = useProgramSearch(debouncedSearchQuery, maxSearchResults, searchResultsOrder);
 
   // ==========================================================================
   // Track Selection Modal State
@@ -1150,6 +1151,7 @@ function App() {
         currentLayout={multiviewLayout}
         onSendToSlot={sendToSlot}
         includeSourceInSearch={includeSourceInSearch}
+        searchResultsOrder={searchResultsOrder}
         currentChannel={currentChannel}
         miniMediaBarForEpgPreview={miniMediaBarForEpgPreview}
         onTogglePlay={handleTogglePlay}

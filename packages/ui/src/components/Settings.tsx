@@ -59,6 +59,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const [channelSortOrder, setChannelSortOrder] = useState<'alphabetical' | 'number'>('alphabetical');
   const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
   const [maxSearchResults, setMaxSearchResults] = useState(200);
+  const [searchResultsOrder, setSearchResultsOrder] = useState<'default' | 'alphabetical'>('default');
 
   // Shortcuts state
   const [shortcuts, setShortcuts] = useState<ShortcutsMap>({});
@@ -152,6 +153,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         channelSortOrder?: 'alphabetical' | 'number';
         includeSourceInSearch?: boolean;
         maxSearchResults?: number;
+        searchResultsOrder?: 'default' | 'alphabetical';
         shortcuts?: ShortcutsMap;
         channelFontSize?: number;
         categoryFontSize?: number;
@@ -205,6 +207,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       setChannelSortOrder(settings.channelSortOrder ?? 'alphabetical');
       setIncludeSourceInSearch(settings.includeSourceInSearch ?? false);
       setMaxSearchResults(settings.maxSearchResults ?? 200);
+      setSearchResultsOrder(settings.searchResultsOrder ?? 'default');
 
       // Load shortcuts
       if (settings.shortcuts) {
@@ -404,6 +407,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     }
   };
 
+  const handleSearchResultsOrderChange = async (order: 'default' | 'alphabetical') => {
+    setSearchResultsOrder(order);
+    if (window.storage) {
+      await window.storage.updateSettings({ searchResultsOrder: order });
+    }
+  };
+
   function renderTabContent() {
     switch (activeTab) {
       case 'sources':
@@ -442,6 +452,8 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onIncludeSourceInSearchChange={handleIncludeSourceInSearchChange}
             maxSearchResults={maxSearchResults}
             onMaxSearchResultsChange={handleMaxSearchResultsChange}
+            searchResultsOrder={searchResultsOrder}
+            onSearchResultsOrderChange={handleSearchResultsOrderChange}
           />
         );
       case 'posterdb':

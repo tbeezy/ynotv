@@ -99,6 +99,7 @@ interface ChannelPanelProps {
   onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
   // Search display props
   includeSourceInSearch?: boolean;
+  searchResultsOrder?: 'default' | 'alphabetical';
   // Current playing channel for syncing preview
   currentChannel?: StoredChannel | null;
   // Mini media bar for EPG preview
@@ -165,6 +166,7 @@ export function ChannelPanel({
   currentLayout,
   onSendToSlot,
   includeSourceInSearch,
+  searchResultsOrder,
   currentChannel,
   miniMediaBarForEpgPreview,
   onTogglePlay,
@@ -1513,6 +1515,15 @@ export function ChannelPanel({
                         } else {
                           upcomingChannels.push(entry);
                         }
+                      }
+
+                      // Sort both arrays alphabetically by channel name (only when alphabetical order is selected)
+                      if (searchResultsOrder === 'alphabetical') {
+                        const sortByChannelName = (a: typeof liveChannels[0], b: typeof liveChannels[0]) => {
+                          return a.channel.name.localeCompare(b.channel.name, undefined, { sensitivity: 'base' });
+                        };
+                        liveChannels.sort(sortByChannelName);
+                        upcomingChannels.sort(sortByChannelName);
                       }
 
                       return (

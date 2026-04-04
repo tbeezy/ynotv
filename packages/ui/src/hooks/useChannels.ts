@@ -469,7 +469,7 @@ function parseCategoryIds(categoryIdsJson: string | string[] | number[] | undefi
 }
 
 // Hook to search channels by name - only searches enabled categories
-export function useChannelSearch(query: string, limit = 50, includeSourceInSearch = false) {
+export function useChannelSearch(query: string, limit = 50, includeSourceInSearch = false, order: 'default' | 'alphabetical' = 'default') {
   const enabledSourceIds = useEnabledSources();
   const sourceNameMap = useSourceNameMap();
 
@@ -483,6 +483,9 @@ export function useChannelSearch(query: string, limit = 50, includeSourceInSearc
       if (!query || query.length < 2) {
         return [];
       }
+
+      // Debug logging
+      console.log('[useChannelSearch] order parameter:', order);
 
       // If no enabled sources, return empty results
       if (!enabledSourceIds || enabledSourceIds.size === 0) {
@@ -526,28 +529,38 @@ export function useChannelSearch(query: string, limit = 50, includeSourceInSearc
       if (includeSourceInSearch && sourceNameMatches.length > 0) {
         // Include channels where name matches all words OR source_id matches the source name search
         const sourceMatchPlaceholders = sourceNameMatches.map(() => '?').join(',');
-        filteredChannels = await dbInstance.select(
-          `SELECT DISTINCT c.*
+        const orderByClause = order === 'alphabetical' ? 'ORDER BY c.name COLLATE NOCASE ASC' : '';
+        console.log('[useChannelSearch] Building query with orderByClause:', orderByClause);
+        const queryStr = `SELECT DISTINCT c.*
            FROM channels c
            CROSS JOIN json_each(c.category_ids) AS cat
            WHERE ((${wordLikeClauses}) OR c.source_id IN (${sourceMatchPlaceholders}))
            AND c.source_id IN (${sourcePlaceholders})
            AND (c.enabled IS NULL OR c.enabled != 0)
            AND cat.value IN (${categoryPlaceholders})
-           LIMIT ?`,
+           ${orderByClause}
+           LIMIT ?`;
+        console.log('[useChannelSearch] Full query:', queryStr);
+        filteredChannels = await dbInstance.select(
+          queryStr,
           [...wordLikeParams, ...sourceNameMatches, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
         );
       } else {
         // Multi-word AND search — each word must appear somewhere in the channel name
-        filteredChannels = await dbInstance.select(
-          `SELECT DISTINCT c.*
+        const orderByClause = order === 'alphabetical' ? 'ORDER BY c.name COLLATE NOCASE ASC' : '';
+        console.log('[useChannelSearch] Building query with orderByClause:', orderByClause);
+        const queryStr = `SELECT DISTINCT c.*
            FROM channels c
            CROSS JOIN json_each(c.category_ids) AS cat
            WHERE (${wordLikeClauses})
            AND c.source_id IN (${sourcePlaceholders})
            AND (c.enabled IS NULL OR c.enabled != 0)
            AND cat.value IN (${categoryPlaceholders})
-           LIMIT ?`,
+           ${orderByClause}
+           LIMIT ?`;
+        console.log('[useChannelSearch] Full query:', queryStr);
+        filteredChannels = await dbInstance.select(
+          queryStr,
           [...wordLikeParams, ...sourceIdsList, ...Array.from(enabledCategoryIds), limit]
         );
       }
@@ -560,16 +573,18 @@ export function useChannelSearch(query: string, limit = 50, includeSourceInSearc
         }));
       }
 
+      console.log('[useChannelSearch] Returning', filteredChannels.length, 'channels, first few:', filteredChannels.slice(0, 3).map((c: any) => c.name));
+
       return filteredChannels as StoredChannel[];
     },
-    [query, limit, includeSourceInSearch, sourceNameMap, enabledSourceKey]
+    [query, limit, includeSourceInSearch, order, sourceNameMap, enabledSourceKey]
   );
   return channels ?? [];
 }
 
 
 // Hook to search programs (EPG) by title - only searches enabled categories
-export function useProgramSearch(query: string, limit = 50) {
+export function useProgramSearch(query: string, limit = 50, order: 'default' | 'alphabetical' = 'default') {
   const enabledSourceIds = useEnabledSources();
 
   const enabledSourceKey = useMemo(
@@ -582,6 +597,8 @@ export function useProgramSearch(query: string, limit = 50) {
       if (!query || query.length < 2) {
         return [];
       }
+
+      console.log('[useProgramSearch] order parameter:', order);
 
       if (!enabledSourceIds || enabledSourceIds.size === 0) {
         return [];
@@ -630,20 +647,44 @@ export function useProgramSearch(query: string, limit = 50) {
       const wordLikeParams = queryWords.map(w => `%${w}%`);
 
       const nowIso = new Date().toISOString();
-      const programResults = await dbInstance.select(
-        `SELECT p.* 
-         FROM programs_effective p
-         INNER JOIN (
-           SELECT DISTINCT c.stream_id 
-           FROM channels c, json_each(c.category_ids) AS cat
-           WHERE c.source_id IN (${sourcePlaceholders})
-           AND (c.enabled IS NULL OR c.enabled != 0)
-           AND cat.value IN (${categoryPlaceholders})
-         ) ec ON p.stream_id = ec.stream_id
-         WHERE (${wordLikeClauses}) AND p.end > ?
-         LIMIT ?`,
-        [...sourceIdsList, ...enabledCategoryIds, ...wordLikeParams, nowIso, limit * 2]
-      );
+      // For alphabetical order, join with channels to sort by channel name
+      const orderByClause = order === 'alphabetical' 
+        ? 'ORDER BY c.name COLLATE NOCASE ASC, p.start ASC' 
+        : '';
+      console.log('[useProgramSearch] Building query with orderByClause:', orderByClause);
+      
+      // When ordering alphabetically, we need to join with channels table to get channel names
+      const programResults = order === 'alphabetical'
+        ? await dbInstance.select(
+            `SELECT p.*, c.name as channel_name
+             FROM programs_effective p
+             INNER JOIN (
+               SELECT DISTINCT c.stream_id, c.name
+               FROM channels c, json_each(c.category_ids) AS cat
+               WHERE c.source_id IN (${sourcePlaceholders})
+               AND (c.enabled IS NULL OR c.enabled != 0)
+               AND cat.value IN (${categoryPlaceholders})
+             ) c ON p.stream_id = c.stream_id
+             WHERE (${wordLikeClauses}) AND p.end > ?
+             ${orderByClause}
+             LIMIT ?`,
+            [...sourceIdsList, ...enabledCategoryIds, ...wordLikeParams, nowIso, limit * 2]
+          )
+        : await dbInstance.select(
+            `SELECT p.* 
+             FROM programs_effective p
+             INNER JOIN (
+               SELECT DISTINCT c.stream_id 
+               FROM channels c, json_each(c.category_ids) AS cat
+               WHERE c.source_id IN (${sourcePlaceholders})
+               AND (c.enabled IS NULL OR c.enabled != 0)
+               AND cat.value IN (${categoryPlaceholders})
+             ) ec ON p.stream_id = ec.stream_id
+             WHERE (${wordLikeClauses}) AND p.end > ?
+             LIMIT ?`,
+            [...sourceIdsList, ...enabledCategoryIds, ...wordLikeParams, nowIso, limit * 2]
+          );
+      console.log('[useProgramSearch] Query returned', programResults.length, 'results');
 
       // Step 4: Decompress descriptions for exactly the valid programs
       const filteredPrograms: StoredProgram[] = [];
@@ -655,9 +696,11 @@ export function useProgramSearch(query: string, limit = 50) {
         if (filteredPrograms.length >= limit) break;
       }
 
+      console.log('[useProgramSearch] Returning', filteredPrograms.length, 'programs, first few channel names:', filteredPrograms.slice(0, 3).map((p: any) => p.channel_name || 'N/A'));
+
       return filteredPrograms;
     },
-    [query, limit, enabledSourceKey],
+    [query, limit, order, enabledSourceKey],
     undefined, // defaultResult
     0, // staleTime: 0 - always refresh on search
     'programs' // tableName: only re-run when programs table changes

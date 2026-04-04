@@ -68,6 +68,7 @@ export interface AppSettings {
     startupHeight?: number;
     rememberLastChannels?: boolean;
     savedLayoutState?: SavedLayoutState;
+    searchResultsOrder?: 'default' | 'alphabetical';
     [key: string]: any;
 }
 
