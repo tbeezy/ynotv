@@ -717,6 +717,12 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* Reduce seek bar width in alternate view to fit fullscreen button (modern UI specific) */
+.modern-ui .guide-top-section.alternate-view .now-playing-bar .npb-progress-section {
+  flex: 1 1 auto;
+  max-width: 1000px;
+}
+
 /* Modern Progress Bar */
 .modern-ui .npb-progress-bar {
   height: 4px;
