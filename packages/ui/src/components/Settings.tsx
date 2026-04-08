@@ -55,6 +55,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
   // Debug state
   const [debugLoggingEnabled, setDebugLoggingEnabled] = useState(false);
+  const [logRetentionDays, setLogRetentionDays] = useState(7);
 
   // Channel display state
   const [channelSortOrder, setChannelSortOrder] = useState<'alphabetical' | 'number'>('alphabetical');
@@ -152,6 +153,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         rpdbBackdropsEnabled?: boolean;
         allowLanSources?: boolean;
         debugLoggingEnabled?: boolean;
+        logRetentionDays?: number;
         channelSortOrder?: 'alphabetical' | 'number';
         includeSourceInSearch?: boolean;
         maxSearchResults?: number;
@@ -207,6 +209,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
       // Load debug settings
       setDebugLoggingEnabled(settings.debugLoggingEnabled ?? false);
+      setLogRetentionDays(settings.logRetentionDays ?? 7);
 
       // Load channel display settings
       setChannelSortOrder(settings.channelSortOrder ?? 'alphabetical');
@@ -487,6 +490,11 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
           <DebugTab
             debugLoggingEnabled={debugLoggingEnabled}
             onDebugLoggingChange={setDebugLoggingEnabled}
+            logRetentionDays={logRetentionDays}
+            onLogRetentionChange={(val) => {
+              setLogRetentionDays(val);
+              if (window.storage) window.storage.updateSettings({ logRetentionDays: val });
+            }}
           />
         );
       case 'shortcuts':

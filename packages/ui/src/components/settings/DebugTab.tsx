@@ -3,11 +3,15 @@ import { useState, useEffect } from 'react';
 interface DebugTabProps {
   debugLoggingEnabled: boolean;
   onDebugLoggingChange: (enabled: boolean) => void;
+  logRetentionDays: number;
+  onLogRetentionChange: (days: number) => void;
 }
 
 export function DebugTab({
   debugLoggingEnabled,
   onDebugLoggingChange,
+  logRetentionDays,
+  onLogRetentionChange,
 }: DebugTabProps) {
   const [logPath, setLogPath] = useState<string>('');
 
@@ -66,6 +70,34 @@ export function DebugTab({
           <p className="form-hint" style={{ marginTop: '0.5rem' }}>
             When enabled, detailed logs from mpv, the renderer, and main process
             are written to a file. This may slightly impact performance.
+          </p>
+        </div>
+
+        <div className="tmdb-form" style={{ marginTop: '1.5rem', maxWidth: '320px' }}>
+          <label className="settings-label" style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+            Log Retention Settings
+          </label>
+          <select
+            value={logRetentionDays}
+            onChange={(e) => onLogRetentionChange(parseInt(e.target.value, 10))}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              backgroundColor: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              fontSize: '0.85rem'
+            }}
+          >
+            <option value={1}>1 Day</option>
+            <option value={3}>3 Days</option>
+            <option value={5}>5 Days</option>
+            <option value={7}>7 Days (Default)</option>
+            <option value={0}>Keep indefinitely</option>
+          </select>
+          <p className="form-hint" style={{ marginTop: '0.5rem' }}>
+            Older logs are automatically removed when the app starts.
           </p>
         </div>
 

@@ -1813,6 +1813,7 @@ pub fn run() {
             } else {
                 log::LevelFilter::Info
             })
+            .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
             .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
             .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
                 file_name: Some("ynotv".into())
@@ -1838,6 +1839,46 @@ pub fn run() {
 
             // Initialize DVR system FIRST before anything else
             let app_handle = app.handle().clone();
+
+            // Run log cleanup based on user settings
+            let log_cleanup_handle = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                use tauri::Manager;
+                if let Ok(log_dir) = log_cleanup_handle.path().app_log_dir() {
+                    let mut retention_days = 7; // Default to 7 days
+                    
+                    // Read custom setting if available
+                    use tauri_plugin_store::StoreExt;
+                    if let Ok(store) = log_cleanup_handle.store(".settings.dat") {
+                        if let Some(days) = store.get("logRetentionDays").and_then(|v| v.as_u64()) {
+                            retention_days = days;
+                        }
+                    }
+
+                    // Proceed with cleanup if not keeping indefinitely (0)
+                    if retention_days > 0 {
+                        let cutoff = std::time::SystemTime::now()
+                            - std::time::Duration::from_secs(retention_days * 24 * 3600);
+                        
+                        if let Ok(mut entries) = tokio::fs::read_dir(&log_dir).await {
+                            while let Ok(Some(entry)) = entries.next_entry().await {
+                                let path = entry.path();
+                                if let Some(ext) = path.extension() {
+                                    if ext == "log" || ext == "bak" || path.to_string_lossy().contains(".log") {
+                                        if let Ok(metadata) = entry.metadata().await {
+                                            if let Ok(modified) = metadata.modified() {
+                                                if modified < cutoff {
+                                                    let _ = tokio::fs::remove_file(&path).await;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
 
             // For now, disable verbose logging by default (sqlx logs are too noisy)
             dvr::init_logging(false);
