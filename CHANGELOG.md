@@ -1,4 +1,18 @@
   # Changelog
+  
+    ## v1.6.4
+  Added:
+  - Collapse source categories on startup option in Settings -> LiveTV
+  - Modern UI Design if you want a different look for LiveTV, enable in Settings -> LiveTV
+  - Log Retention settings in Settings -> Debug. Choose number of days of logs you want saved, rest will be deleted.
+  - Option to show search results in Alphabetical order, in Settings -> Channels -> Search Results order
+  - Option to choose how many sources sync during autosync/Sync button in Settings -> Data Refresh
+  
+  Fixes:
+  - Fixed error overlay popping up on local streams
+  - Fixed sync button in Settings doing sequential syncing instead of parallel
+  - Padding fixes for UI
+  - Backend fixes
 
   ## v1.6.3
   Fixes:
