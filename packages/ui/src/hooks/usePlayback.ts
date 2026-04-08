@@ -10,6 +10,36 @@ import type { useMpvListeners } from './useMpvListeners';
 import { logInfo, logWarn, logError } from '../utils/logger';
 
 /**
+ * Checks if a URL points to localhost or a private local network IP.
+ */
+function isLocalUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    const hostname = url.hostname;
+    
+    if (hostname === 'localhost' || hostname === '[::1]' || hostname === '::1') return true;
+    
+    // IPv4 local network patterns
+    if (hostname.startsWith('127.')) return true;
+    if (hostname.startsWith('10.')) return true;
+    if (hostname.startsWith('192.168.')) return true;
+    
+    // 172.16.x.x to 172.31.x.x
+    const parts = hostname.split('.');
+    if (parts.length === 4 && parts[0] === '172') {
+      const secondPart = parseInt(parts[1], 10);
+      if (secondPart >= 16 && secondPart <= 31) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Generate fallback stream URLs when primary fails.
  * Live TV: .ts → .m3u8 → .m3u
  * VOD: provider extension → .m3u8 → .ts
@@ -349,6 +379,20 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     logInfo('[Playback] User-Agent:', resolved.userAgent || '(default)');
     logInfo('[Playback] Source:', resolved.sourceName || channel.source_id);
 
+    let sourceData: { type?: string } | undefined;
+    if (window.storage && channel.source_id) {
+      try {
+        const srcResult = await window.storage.getSource(channel.source_id);
+        sourceData = srcResult?.data;
+      } catch (e) {
+        logWarn('Failed to look up source type for error suppression:', e);
+      }
+    }
+
+    const isStalker = sourceData?.type === 'stalker';
+    const isLocal = isLocalUrl(resolved.url);
+    setIgnoreHttpErrors(isStalker || isLocal);
+
     const result = await tryLoadWithFallbacks(
       resolved.url,
       true,
@@ -357,6 +401,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     );
 
     if (!result.success) {
+      setIgnoreHttpErrors(false);
       const errMsg = result.error ?? 'Failed to load stream';
       setError(errMsg);
     } else {
@@ -493,8 +538,14 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       return;
     }
 
+    const isLocal = isLocalUrl(resolved.url);
+    if (isLocal) {
+      setIgnoreHttpErrors(true);
+    }
+
     const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
+      if (isLocal) setIgnoreHttpErrors(false);
       setError(result.error ?? 'Failed to load catchup stream');
     } else {
       setCurrentChannel(channel);
@@ -531,9 +582,10 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
 
     // Stalker/MAC sources require session headers that MPV doesn't send,
     // so they always trigger a 401/403 HTTP error — but the stream plays fine.
-    // Suppress these false positives.
+    // Suppress these false positives. We also suppress local URLs.
     const isStalker = sourceData?.type === 'stalker';
-    setIgnoreHttpErrors(isStalker);
+    const isLocal = isLocalUrl(resolved.url);
+    setIgnoreHttpErrors(isStalker || isLocal);
 
     const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
     if (!result.success) {
