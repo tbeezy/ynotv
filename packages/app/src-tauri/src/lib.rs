@@ -1850,8 +1850,10 @@ pub fn run() {
                     // Read custom setting if available
                     use tauri_plugin_store::StoreExt;
                     if let Ok(store) = log_cleanup_handle.store(".settings.dat") {
-                        if let Some(days) = store.get("logRetentionDays").and_then(|v| v.as_u64()) {
-                            retention_days = days;
+                        if let Some(settings) = store.get("settings") {
+                            if let Some(days) = settings.get("logRetentionDays").and_then(|v| v.as_u64()) {
+                                retention_days = days;
+                            }
                         }
                     }
 
