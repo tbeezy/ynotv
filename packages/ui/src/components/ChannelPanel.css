@@ -362,10 +362,6 @@
   max-width: 100%;
 }
 
-.guide-top-section.alternate-view .guide-preview-minibar {
-  display: none !important;
-}
-
 .guide-top-section.alternate-view .now-playing-bar {
   position: absolute;
   bottom: 0;

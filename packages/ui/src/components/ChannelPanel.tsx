@@ -230,6 +230,10 @@ export function ChannelPanel({
   const [alternateControlsVisible, setAlternateControlsVisible] = useState(false);
   const mouseMoveTimeoutRef = useRef<number | null>(null);
 
+  // Mini media bar hover tracking
+  const [miniBarHovered, setMiniBarHovered] = useState(false);
+  const [previewHovered, setPreviewHovered] = useState(false);
+
   const handlePreviewMouseMove = useCallback(() => {
     if (epgView !== 'alternate') return;
     setAlternateControlsVisible(true);
@@ -248,6 +252,15 @@ export function ChannelPanel({
     }
     setAlternateControlsVisible(false);
   }, [epgView]);
+
+  // Handle preview pane hover for mini media bar visibility
+  const handlePreviewPaneMouseEnter = useCallback(() => {
+    setPreviewHovered(true);
+  }, []);
+
+  const handlePreviewPaneMouseLeave = useCallback(() => {
+    setPreviewHovered(false);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -654,6 +667,9 @@ export function ChannelPanel({
 
   // Track if we have a channel to show
   const hasSelectedChannel = selectedChannel !== null;
+
+  // Compute mini bar visibility based on hover state (only when miniMediaBarForEpgPreview is enabled)
+  const isMiniBarVisible = miniMediaBarForEpgPreview && selectedChannel && (previewHovered || miniBarHovered);
 
   // Handle Channel Click: Preview vs Fullscreen
   const handleChannelClick = useCallback((channel: StoredChannel) => {
@@ -1086,12 +1102,16 @@ export function ChannelPanel({
     >
       {/* Top Section: Preview & Info */}
       <div className={`guide-top-section ${epgView === 'alternate' ? 'alternate-view' : ''}`}>
-        <div 
-          className="guide-preview-pane" 
+        <div
+          className="guide-preview-pane"
           ref={previewPaneRef}
           style={epgView === 'alternate' ? { height: `${previewHeightPx}px` } : { flex: `0 0 ${previewWidthPct}%` }}
           onMouseMove={handlePreviewMouseMove}
-          onMouseLeave={handlePreviewMouseLeave}
+          onMouseLeave={(e) => {
+            handlePreviewMouseLeave();
+            handlePreviewPaneMouseLeave();
+          }}
+          onMouseEnter={handlePreviewPaneMouseEnter}
         >
           {/* Resizer Handle */}
           <div 
@@ -1123,8 +1143,13 @@ export function ChannelPanel({
             )}
           </div>
           {/* Mini Media Bar for EPG Preview - transparent overlay in bottom right */}
-          {miniMediaBarForEpgPreview && selectedChannel && (
-            <div className="guide-preview-minibar" onDoubleClick={(e) => e.stopPropagation()}>
+          {isMiniBarVisible && (
+            <div
+              className="guide-preview-minibar"
+              onDoubleClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => setMiniBarHovered(true)}
+              onMouseLeave={() => setMiniBarHovered(false)}
+            >
               {/* Play/Pause button */}
               <button
                 className="guide-minibar-btn"
