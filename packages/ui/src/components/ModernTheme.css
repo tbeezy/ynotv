@@ -416,7 +416,7 @@
 /* Modern Preview Pane */
 .modern-ui .guide-preview-pane {
   border-radius: 0 0 16px 0;
-  overflow: hidden;
+  /* overflow: hidden removed to allow resizer to be visible outside */
 }
 
 .modern-ui .guide-preview-placeholder {
@@ -909,4 +909,70 @@
   box-shadow: 
     0 4px 16px rgba(255, 64, 64, 0.3),
     0 0 0 1px rgba(255, 100, 100, 0.2) inset;
+}
+
+/* Modern Video Preview Resizer */
+.modern-ui .guide-preview-resizer {
+  position: absolute;
+  bottom: -12px;
+  right: -12px;
+  width: 28px;
+  height: 28px;
+  cursor: nwse-resize;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.modern-ui .guide-preview-resizer.vertical {
+  width: 44px;
+  height: 18px;
+  bottom: -9px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.modern-ui .resizer-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent);
+  box-shadow: 
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    0 0 8px color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modern-ui .guide-preview-resizer.vertical .resizer-dot {
+  width: 36px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.modern-ui .guide-preview-resizer:hover .resizer-dot {
+  background: var(--accent-primary, #00d4ff);
+  transform: scale(1.4);
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 16px color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent);
+}
+
+.modern-ui .guide-preview-resizer.vertical:hover .resizer-dot {
+  transform: scaleY(1.4);
+}
+
+.modern-ui .guide-preview-resizer:active .resizer-dot {
+  transform: scale(1.1);
+  background: white;
+  box-shadow: 
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.modern-ui .guide-preview-resizer.vertical:active .resizer-dot {
+  transform: scaleY(1.1);
 }
