@@ -558,6 +558,50 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Modern Refresh Source Button - matches Manage Channels */
+.modern-ui .guide-refresh-source-btn {
+  background: 
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 6px 14px;
+  font-size: 0.8rem;
+}
+
+.modern-ui .guide-refresh-source-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-color: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  color: var(--accent-primary, #00d4ff);
+}
+
+.modern-ui .guide-refresh-source-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: 
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+}
+
+.modern-ui .guide-refresh-source-btn .sync-spinner {
+  display: inline-block;
+  animation: modern-spin 1s linear infinite;
+  font-size: 0.9em;
+}
+
+@keyframes modern-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Modern Navigation Controls */
 .modern-ui .guide-nav-btn {
   background: 

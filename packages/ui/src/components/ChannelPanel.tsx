@@ -16,6 +16,7 @@ import { useChannelSortOrder, useEpgView } from '../stores/uiStore';
 import { NowPlayingBar } from './NowPlayingBar';
 import type { StoredChannel, StoredProgram, WatchlistItem } from '../db';
 import { db } from '../db';
+import { syncSource, type SyncResult } from '../db/sync';
 import { VideoErrorOverlay } from './VideoErrorOverlay';
 import { Bridge } from '../services/tauri-bridge';
 import { MetadataBadge } from './MetadataBadge';
@@ -324,6 +325,10 @@ export function ChannelPanel({
   // State for custom group manager
   const [managingCustomGroup, setManagingCustomGroup] = useState<{ id: string; name: string } | null>(null);
 
+  // State for source sync/refresh
+  const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+
   // Volume/mute state for mini media bar
   const [previewVolume, setPreviewVolume] = useState(100);
   const [previewMuted, setPreviewMuted] = useState(false);
@@ -573,6 +578,35 @@ export function ChannelPanel({
       setManagingCategory({ id: categoryId, name: categoryName, sourceId });
     }
   }, [categoryId, categoryName, sourceId]);
+
+  // Handle source sync/refresh
+  const handleRefreshSource = useCallback(async () => {
+    if (!sourceId || !window.storage) return;
+
+    // Get full source data
+    const result = await window.storage.getSources();
+    const source = result.data?.find(s => s.id === sourceId);
+    if (!source) return;
+
+    setSyncingSourceId(sourceId);
+    setSyncStatusMsg('Starting...');
+
+    try {
+      const syncResult = await syncSource(source, setSyncStatusMsg);
+      if (syncResult.success) {
+        console.log(`[ChannelPanel] Source ${source.name} synced: ${syncResult.channelCount} channels`);
+        // Force refresh by incrementing favorites version
+        setFavoritesVersion(v => v + 1);
+      } else {
+        console.error(`[ChannelPanel] Source ${source.name} sync failed:`, syncResult.error);
+      }
+    } catch (err) {
+      console.error('[ChannelPanel] Sync error:', err);
+    } finally {
+      setSyncingSourceId(null);
+      setSyncStatusMsg(null);
+    }
+  }, [sourceId]);
 
   // Handle channel manager close with refresh
   const handleChannelManagerClose = useCallback(() => {
@@ -1343,13 +1377,37 @@ export function ChannelPanel({
                   </button>
                 )}
                 {canManageChannels && (
-                  <button
-                    className="guide-manage-channels-btn"
-                    onClick={isCustomGroup ? () => setManagingCustomGroup({ id: categoryId!, name: customGroupName }) : handleManageChannels}
-                    title={isCustomGroup ? "Manage custom group" : "Manage channels in this category"}
-                  >
-                    {isCustomGroup ? '📂 Manage Custom Group' : '📺 Manage Channels'}
-                  </button>
+                  <>
+                    <button
+                      className="guide-manage-channels-btn"
+                      onClick={isCustomGroup ? () => setManagingCustomGroup({ id: categoryId!, name: customGroupName }) : handleManageChannels}
+                      title={isCustomGroup ? "Manage custom group" : "Manage channels in this category"}
+                    >
+                      {isCustomGroup ? '📂 Manage Custom Group' : '📺 Manage Channels'}
+                    </button>
+                    {!isCustomGroup && (
+                      <button
+                        className="guide-refresh-source-btn"
+                        onClick={handleRefreshSource}
+                        disabled={syncingSourceId === sourceId}
+                        title="Refresh source data"
+                      >
+                        {syncingSourceId === sourceId ? (
+                          <>
+                            <span className="sync-spinner">⟳</span>
+                            {syncStatusMsg || 'Refreshing...'}
+                          </>
+                        ) : (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                            </svg>
+                            Refresh Source
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             )}

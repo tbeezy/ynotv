@@ -438,6 +438,44 @@
   color: var(--text-primary, white);
 }
 
+/* Refresh Source Button */
+.guide-refresh-source-btn {
+  padding: 4px 12px;
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.2));
+  background: var(--surface-color, rgba(255, 255, 255, 0.08));
+  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.guide-refresh-source-btn:hover:not(:disabled) {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.15));
+  border-color: var(--accent-primary, rgba(255, 255, 255, 0.35));
+  color: var(--text-primary, white);
+}
+
+.guide-refresh-source-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.guide-refresh-source-btn .sync-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .guide-header-right {
   display: flex;
   align-items: center;
