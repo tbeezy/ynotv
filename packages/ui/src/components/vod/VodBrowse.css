@@ -181,31 +181,25 @@
 }
 
 /* Dark scrollbar styling - matches EPG */
-.vod-browse ::-webkit-scrollbar {
+.vod-browse::-webkit-scrollbar,
+.vod-browse *::-webkit-scrollbar {
   width: 6px;
 }
 
-.vod-browse ::-webkit-scrollbar-track {
+.vod-browse::-webkit-scrollbar-track,
+.vod-browse *::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.vod-browse ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg,
-    transparent 0%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 20%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 80%,
-    transparent 100%
-  );
+.vod-browse::-webkit-scrollbar-thumb,
+.vod-browse *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
-.vod-browse ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg,
-    transparent 0%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent) 20%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent) 80%,
-    transparent 100%
-  );
+.vod-browse::-webkit-scrollbar-thumb:hover,
+.vod-browse *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Firefox */

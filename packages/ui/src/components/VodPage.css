@@ -84,31 +84,25 @@
   overflow-y: auto;
 }
 
-.vod-page__content::-webkit-scrollbar {
+.vod-page__content::-webkit-scrollbar,
+.vod-page__content *::-webkit-scrollbar {
   width: 6px;
 }
 
-.vod-page__content::-webkit-scrollbar-track {
+.vod-page__content::-webkit-scrollbar-track,
+.vod-page__content *::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.vod-page__content::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg,
-    transparent 0%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 20%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 80%,
-    transparent 100%
-  );
+.vod-page__content::-webkit-scrollbar-thumb,
+.vod-page__content *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
-.vod-page__content::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg,
-    transparent 0%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent) 20%,
-    color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent) 80%,
-    transparent 100%
-  );
+.vod-page__content::-webkit-scrollbar-thumb:hover,
+.vod-page__content *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .vod-page__carousels {
