@@ -58,28 +58,35 @@
   min-height: 0;
   /* Allow flex shrink */
   /* Margin shrinks what Virtuoso measures - ensures column count matches */
-  margin-left: 75px;
-  margin-right: 48px;
+  margin-left: 24px;
+  margin-right: 36px;
 }
 
 .vod-browse__grid-list {
   /* Virtuoso uses absolute positioning - flexbox is for fallback only */
   display: flex;
   flex-wrap: wrap;
-  padding: 12px 0 24px;
+  padding: 8px 0 16px;
 }
 
 .vod-browse__grid-item {
   /* Fixed dimensions - Virtuoso MUST know exact size */
-  width: 176px;
-  height: 280px;
-  padding: 4px 8px;
+  /* padding: 2px all around = 4px horizontal gap, 4px vertical gap */
+  width: 164px;
+  height: 276px;
+  padding: 2px;
   box-sizing: border-box;
   margin: 0 !important;
 }
 
 .vod-browse__grid-item * {
   margin: 0;
+}
+
+/* Ensure the card fills the tightly fitted slot regardless of its default size variant */
+.vod-browse__grid-item .media-card {
+  width: 100%;
+  height: 100%;
 }
 
 /* Loading indicator */
@@ -142,35 +149,35 @@
 /* Responsive item sizes - width AND height must be fixed for Virtuoso */
 @media (min-width: 1200px) {
   .vod-browse__grid-item {
-    width: 196px;
-    /* 180px card + 16px spacing */
-    height: 310px;
-    /* 270px poster + 32px info + 8px padding */
+    width: 184px;
+    /* 180px card + 4px spacing */
+    height: 306px;
+    /* 270px poster + 32px info + 4px padding */
   }
 }
 
 @media (min-width: 1600px) {
   .vod-browse__grid-item {
-    width: 216px;
-    /* 200px card + 16px spacing */
-    height: 340px;
-    /* 300px poster + 32px info + 8px padding */
+    width: 204px;
+    /* 200px card + 4px spacing */
+    height: 336px;
+    /* 300px poster + 32px info + 4px padding */
   }
 }
 
 @media (max-width: 768px) {
   .vod-browse__grid-list {
     /* NO gap - use padding on items */
-    padding-top: 8px;
-    padding-bottom: 16px;
+    padding-top: 4px;
+    padding-bottom: 8px;
   }
 
   .vod-browse__grid-item {
-    width: 142px;
-    /* 130px card + 12px spacing */
-    height: 233px;
-    /* 195px poster + 32px info + 6px padding */
-    padding: 3px 6px;
+    width: 134px;
+    /* 130px card + 4px spacing */
+    height: 231px;
+    /* 195px poster + 32px info + 4px padding */
+    padding: 2px;
   }
 
   .vod-browse__header {
