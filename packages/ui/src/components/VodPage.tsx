@@ -190,6 +190,14 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   // Get selected category name for VodBrowse
   const selectedCategory = categories.find(c => c.category_id === selectedCategoryId);
 
+  // DEBUG: Log when selectedCategoryId or selectedCategory changes
+  useEffect(() => {
+    console.log(`[VodPage type=${type}] selectedCategoryId=${selectedCategoryId}, selectedCategory=${selectedCategory?.name ?? 'UNDEFINED'}, categoriesCount=${categories.length}`);
+    if (selectedCategoryId && selectedCategoryId !== 'all' && selectedCategoryId !== 'recent' && !selectedCategory) {
+      console.warn(`[VodPage type=${type}] ⚠️ selectedCategory is UNDEFINED for id="${selectedCategoryId}" — will render Home view instead of VodBrowse! categories loaded: ${categories.length}`);
+    }
+  }, [type, selectedCategoryId, selectedCategory, categories.length]);
+
   // Build carousel rows for virtualization
   // Only includes rows that have content (or are still loading)
   const carouselRows = useMemo((): CarouselRow[] => {
@@ -287,6 +295,7 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const handleItemClick = useCallback((item: MediaItem) => {
     if (item.source_id === 'tmdb') {
       const title = item.title || item.name || '';
+      console.log(`[VodPage type=${type}] TMDB item clicked: "${title}", will set search+category=all`);
       if (title) {
         setSearchQuery(title);
         setSelectedCategoryId('all');

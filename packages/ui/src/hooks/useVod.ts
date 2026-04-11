@@ -492,7 +492,9 @@ export function useWindowedMovies(
 ): WindowedResult<StoredMovie> {
   const [allItems, setAllItems] = useState<StoredMovie[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  // Start as true so the initial render (before the first useEffect fires)
+  // never shows the empty state — it shows a spinner instead.
+  const [loading, setLoading] = useState(true);
   const enabledSourceIds = useEnabledSources();
   
   // Create a stable key for enabled sources to prevent unnecessary re-renders
@@ -514,18 +516,6 @@ export function useWindowedMovies(
     return should;
   }, [refreshTrigger]);
 
-  // Reset when filters change (excluding refreshTrigger - handled separately)
-  useEffect(() => {
-    setAllItems([]);
-  }, [categoryId, search, sortBy, enabledSourceKey]);
-
-  // Handle refreshTrigger transitions separately
-  useEffect(() => {
-    if (shouldRefresh) {
-      setAllItems([]);
-    }
-  }, [shouldRefresh]);
-
   // Subscribe to vodMovies / vodCategories DB events so native-Rust sync
   // (which bypasses useLiveQuery) still triggers a UI refresh.
   useEffect(() => {
@@ -534,17 +524,35 @@ export function useWindowedMovies(
     return () => { unsub1(); unsub2(); };
   }, []);
 
-  // Load all items at once
+  // Load all items at once.
+  // IMPORTANT: setAllItems([]) and setLoading(true) are called together inside loadAll
+  // so React 18 batches them into a single render—preventing the "No results found"
+  // flash that occurred when a separate reset effect ran with loading still false.
   useEffect(() => {
     const loadAll = async () => {
+      const debugTag = `[useWindowedMovies cat=${categoryId ?? 'ALL'} search=${search ?? ''} srcKey=${enabledSourceKey}]`;
+      console.log(`${debugTag} loadAll START — enabledSourceIds=${enabledSourceIds ? `Set(${enabledSourceIds.size})` : 'null'}, reloadToken=${reloadToken}, shouldRefresh=${shouldRefresh}`);
+
+      // Reset items AND set loading in the same async call so React batches the
+      // state updates together, avoiding the empty-state flash.
+      setAllItems([]);
       setLoading(true);
+
+      // GUARD: If sources are still loading (enabledSourceIds === null), bail out BEFORE
+      // the try/finally block so setLoading(false) does NOT fire from finally{}.
+      // loading stays true — the effect re-runs once enabledSourceKey changes from 'loading'.
+      if (enabledSourceIds === null) {
+        console.log(`${debugTag} Bailing out — sources not yet loaded, will retry when enabledSourceKey changes`);
+        return;
+      }
+
       try {
         const dbInstance = await (db as any).dbPromise;
 
         // Build WHERE clause
         // 1. Filter out disabled categories and disabled sources
         const allCategories = await db.vodCategories.where('type').equals('movie').toArray();
-        const enabledCategories = allCategories.filter(c => 
+        const enabledCategories = allCategories.filter(c =>
           c.enabled !== false && enabledSourceIds?.has(c.source_id)
         );
         const enabledBySource: Record<string, string[]> = {};
@@ -622,17 +630,18 @@ export function useWindowedMovies(
           finalParams
         );
 
+        console.log(`[useWindowedMovies cat=${categoryId ?? 'ALL'} search=${search ?? ''}] loadAll DONE — ${items.length} items returned`);
         setAllItems(items);
         setTotalCount(items.length);
       } catch (error) {
-        console.error('Error loading movies:', error);
+        console.error('[useWindowedMovies] Error loading movies:', error);
       } finally {
         setLoading(false);
       }
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, reloadToken, enabledSourceKey]);
+  }, [categoryId, search, sortBy, reloadToken, shouldRefresh, enabledSourceKey]);
 
   const reset = useCallback(() => {
     setAllItems([]);
@@ -663,7 +672,9 @@ export function useWindowedSeries(
 ): WindowedResult<StoredSeries> {
   const [allItems, setAllItems] = useState<StoredSeries[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  // Start as true so the initial render (before the first useEffect fires)
+  // never shows the empty state — it shows a spinner instead.
+  const [loading, setLoading] = useState(true);
   const enabledSourceIds = useEnabledSources();
   
   // Create a stable key for enabled sources to prevent unnecessary re-renders
@@ -681,29 +692,35 @@ export function useWindowedSeries(
     return should;
   }, [refreshTrigger]);
 
-  // Reset when filters change (excluding refreshTrigger - handled separately)
-  useEffect(() => {
-    setAllItems([]);
-  }, [categoryId, search, sortBy, enabledSourceKey]);
-
-  // Handle refreshTrigger transitions separately
-  useEffect(() => {
-    if (shouldRefreshSeries) {
-      setAllItems([]);
-    }
-  }, [shouldRefreshSeries]);
-
-  // Load all items at once
+  // Load all items at once.
+  // IMPORTANT: setAllItems([]) and setLoading(true) are called together inside loadAll
+  // so React 18 batches them into a single render—preventing the "No results found"
+  // flash that occurred when a separate reset effect ran with loading still false.
   useEffect(() => {
     const loadAll = async () => {
+      const debugTag = `[useWindowedSeries cat=${categoryId ?? 'ALL'} search=${search ?? ''} srcKey=${enabledSourceKey}]`;
+      console.log(`${debugTag} loadAll START — enabledSourceIds=${enabledSourceIds ? `Set(${enabledSourceIds.size})` : 'null'}, shouldRefreshSeries=${shouldRefreshSeries}`);
+
+      // Reset items AND set loading in the same async call so React batches the
+      // state updates together, avoiding the empty-state flash.
+      setAllItems([]);
       setLoading(true);
+
+      // GUARD: If sources are still loading (enabledSourceIds === null), bail out BEFORE
+      // the try/finally block so setLoading(false) does NOT fire from finally{}.
+      // loading stays true — the effect re-runs once enabledSourceKey changes from 'loading'.
+      if (enabledSourceIds === null) {
+        console.log(`${debugTag} Bailing out — sources not yet loaded, will retry when enabledSourceKey changes`);
+        return;
+      }
+
       try {
         const dbInstance = await (db as any).dbPromise;
 
         // Build WHERE clause
         // Filter out disabled categories and disabled sources
         const allCategories = await db.vodCategories.where('type').equals('series').toArray();
-        const enabledCategories = allCategories.filter(c => 
+        const enabledCategories = allCategories.filter(c =>
           c.enabled !== false && enabledSourceIds?.has(c.source_id)
         );
         const enabledBySource: Record<string, string[]> = {};
@@ -772,17 +789,18 @@ export function useWindowedSeries(
           params
         );
 
+        console.log(`${debugTag} loadAll DONE — ${items.length} items returned`);
         setAllItems(items);
         setTotalCount(items.length);
       } catch (error) {
-        console.error('Error loading series:', error);
+        console.error('[useWindowedSeries] Error loading series:', error);
       } finally {
         setLoading(false);
       }
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, enabledSourceKey]);
+  }, [categoryId, search, sortBy, shouldRefreshSeries, enabledSourceKey]);
 
   const reset = useCallback(() => {
     setAllItems([]);
@@ -798,10 +816,6 @@ export function useWindowedSeries(
     reset,
   };
 }
-
-// ===========================================================================
-// Browse Hooks (for gallery view with Virtuoso)
-// ===========================================================================
 
 /**
  * All movies for browse view (optionally filtered by category)
