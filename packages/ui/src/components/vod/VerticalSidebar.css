@@ -163,12 +163,22 @@
 }
 
 .vertical-sidebar__scrollable::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(180deg,
+      transparent 0%,
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 20%,
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 80%,
+      transparent 100%
+    );
     border-radius: 3px;
 }
 
 .vertical-sidebar__scrollable:hover::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(180deg,
+      transparent 0%,
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent) 20%,
+      color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent) 80%,
+      transparent 100%
+    );
 }
 
 /* Old nav class - hide it if still referenced */

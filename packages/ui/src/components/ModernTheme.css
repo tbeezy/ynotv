@@ -1030,3 +1030,27 @@
 .modern-ui .guide-preview-resizer.vertical:active .resizer-dot {
   transform: scaleY(1.1);
 }
+
+
+/* Modern Scrollbars for VOD */
+.modern-ui .vertical-sidebar__scrollable::-webkit-scrollbar,
+.modern-ui .vod-browse::-webkit-scrollbar,
+.modern-ui .vod-browse *::-webkit-scrollbar,
+.modern-ui .vod-page__content::-webkit-scrollbar,
+.modern-ui .vod-page__content *::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.modern-ui .vertical-sidebar__scrollable::-webkit-scrollbar-thumb,
+.modern-ui .vod-browse::-webkit-scrollbar-thumb,
+.modern-ui .vod-browse *::-webkit-scrollbar-thumb,
+.modern-ui .vod-page__content::-webkit-scrollbar-thumb,
+.modern-ui .vod-page__content *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 20%,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 80%,
+    transparent 100%
+  ) !important;
+  border-radius: 3px !important;
+}
