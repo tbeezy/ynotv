@@ -20,6 +20,7 @@ export interface UseKeyboardShortcutsOptions {
     // --- Current state values (accessed via latest ref pattern) ---
     shortcuts: ShortcutsMap;
     activeView: View;
+    showSettingsPopup: boolean;
     categoriesOpen: boolean;
     position: number;
     currentChannels: StoredChannel[];
@@ -39,6 +40,7 @@ export interface UseKeyboardShortcutsOptions {
     handleSeek: (position: number) => void;
     handleToggleEpgView: () => void;
     setActiveView: React.Dispatch<React.SetStateAction<View>>;
+    setShowSettingsPopup: React.Dispatch<React.SetStateAction<boolean>>;
     setCategoriesOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setSidebarExpanded: React.Dispatch<React.SetStateAction<boolean>>;
     setShowControls: React.Dispatch<React.SetStateAction<boolean>>;
@@ -71,6 +73,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             const {
                 shortcuts,
                 activeView,
+                showSettingsPopup,
                 categoriesOpen,
                 position,
                 currentChannels,
@@ -88,6 +91,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 handleSeek,
                 handleToggleEpgView,
                 setActiveView,
+                setShowSettingsPopup,
                 setCategoriesOpen,
                 setSidebarExpanded,
                 setShowControls,
@@ -143,7 +147,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 }
             } else if (matches('toggleSettings', e.key)) {
                 e.preventDefault();
-                setActiveView((v) => (v === 'settings' ? 'none' : 'settings'));
+                // Toggle settings popup if in main layout, otherwise toggle full view
+                setShowSettingsPopup((show) => !show);
             } else if (matches('toggleSports', e.key)) {
                 e.preventDefault();
                 setCategoriesOpen(false);
@@ -170,7 +175,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                     titleBarSearchRef.current.focus();
                 }
             } else if (matches('close', e.key)) {
-                setActiveView('none');
+                // Close settings popup first if open
+                if (showSettingsPopup) {
+                    setShowSettingsPopup(false);
+                } else {
+                    setActiveView('none');
+                }
                 setCategoriesOpen(false);
                 setSidebarExpanded(false);
                 setShowControls(false);

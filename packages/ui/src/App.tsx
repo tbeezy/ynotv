@@ -257,6 +257,7 @@ function App() {
     activeView,
     settingsTab,
     editSourceId,
+    showSettingsPopup,
     categoriesOpen,
     sidebarExpanded,
     showSidebar,
@@ -272,6 +273,7 @@ function App() {
     setActiveView,
     setSettingsTab,
     setEditSourceId,
+    setShowSettingsPopup,
     setCategoriesOpen,
     setSidebarExpanded,
     setShowSidebar,
@@ -554,6 +556,7 @@ function App() {
   useKeyboardShortcuts({
     shortcuts,
     activeView,
+    showSettingsPopup,
     categoriesOpen,
     position,
     currentChannels,
@@ -571,6 +574,7 @@ function App() {
     handleSeek,
     handleToggleEpgView,
     setActiveView,
+    setShowSettingsPopup,
     setCategoriesOpen,
     setSidebarExpanded,
     setShowControls,
@@ -959,10 +963,15 @@ function App() {
 
         {/* Settings Button */}
         <button
-          className={`title-bar-settings-btn ${activeView === 'settings' ? 'active' : ''}`}
+          className={`title-bar-settings-btn ${(showSettingsPopup || activeView === 'settings') ? 'active' : ''}`}
           onClick={() => {
             setCategoriesOpen(false);
-            setActiveView(activeView === 'settings' ? 'none' : 'settings');
+            // In multiview (not main), use full view mode; otherwise use popup
+            if (multiviewLayout !== 'main') {
+              setActiveView(activeView === 'settings' ? 'none' : 'settings');
+            } else {
+              setShowSettingsPopup(!showSettingsPopup);
+            }
             setSettingsTab('sources');
             setEditSourceId(null);
           }}
@@ -1189,12 +1198,19 @@ function App() {
         onTimeshiftCatchUp={timeshiftState ? () => handleSeek(timeshiftState.cacheEnd - 1) : undefined}
       />
 
-      {/* Settings Panel */}
-      {activeView === 'settings' && (
+      {/* Settings Panel - as popup overlay in main layout, or full view in multiview */}
+      {(showSettingsPopup || activeView === 'settings') && (
         <Settings
           initialTab={settingsTab}
           editSourceId={editSourceId}
-          onClose={() => { setActiveView('none'); setEditSourceId(null); }}
+          onClose={() => {
+            if (showSettingsPopup) {
+              setShowSettingsPopup(false);
+            } else {
+              setActiveView('none');
+            }
+            setEditSourceId(null);
+          }}
           onShortcutsChange={setShortcuts}
           theme={theme}
           onThemeChange={setTheme}

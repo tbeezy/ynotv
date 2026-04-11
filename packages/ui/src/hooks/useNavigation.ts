@@ -11,6 +11,7 @@ export interface NavigationState {
   activeView: View;
   settingsTab: SettingsTabId;
   editSourceId: string | null;
+  showSettingsPopup: boolean;
 
   // Sidebar/Categories state
   categoriesOpen: boolean;
@@ -38,6 +39,7 @@ export interface NavigationState {
   setActiveView: (view: View | ((prev: View) => View)) => void;
   setSettingsTab: (tab: SettingsTabId | ((prev: SettingsTabId) => SettingsTabId)) => void;
   setEditSourceId: (id: string | null | ((prev: string | null) => string | null)) => void;
+  setShowSettingsPopup: (show: boolean | ((prev: boolean) => boolean)) => void;
   setCategoriesOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   setSidebarExpanded: (expanded: boolean | ((prev: boolean) => boolean)) => void;
   setShowSidebar: (show: boolean | ((prev: boolean) => boolean)) => void;
@@ -63,6 +65,7 @@ export function useNavigation(options: UseNavigationOptions): NavigationState {
   const [activeView, setActiveView] = useState<View>('none');
   const [settingsTab, setSettingsTab] = useState<SettingsTabId>('sources');
   const [editSourceId, setEditSourceId] = useState<string | null>(null);
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
 
   // Sidebar/Categories state
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -109,25 +112,30 @@ export function useNavigation(options: UseNavigationOptions): NavigationState {
       if (customEvent.detail?.tab) {
         setSettingsTab(customEvent.detail.tab);
       }
-      setActiveView('settings');
+      // Open as popup if in main layout, otherwise as full view
+      if (multiviewLayoutRef.current === 'main') {
+        setShowSettingsPopup(true);
+      } else {
+        setActiveView('settings');
+      }
     };
     window.addEventListener('open-settings', handleOpenSettings);
     return () => window.removeEventListener('open-settings', handleOpenSettings);
   }, []);
 
-  // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, or Series opens; exit when they close
+  // Tab Mode: enter when EPG, Sports, DVR, Settings, Movies, Series, or Settings popup opens; exit when they close
   const multiviewLayoutRef = useRef(multiviewLayout);
   useEffect(() => { multiviewLayoutRef.current = multiviewLayout; }, [multiviewLayout]);
 
   useEffect(() => {
     if (activeView === 'guide' || activeView === 'sports' || activeView === 'dvr' ||
         activeView === 'settings' || activeView === 'movies' || activeView === 'series' ||
-        activeView === 'calendar') {
+        activeView === 'calendar' || showSettingsPopup) {
       // Note: enterTabMode is called via the multiview hook in App.tsx
     } else {
       multiviewExitTabMode();
     }
-  }, [activeView, multiviewExitTabMode]);
+  }, [activeView, showSettingsPopup, multiviewExitTabMode]);
 
   // Ensure video software scaling is reset when completely exiting tab views
   useEffect(() => {
@@ -178,6 +186,7 @@ export function useNavigation(options: UseNavigationOptions): NavigationState {
     activeView,
     settingsTab,
     editSourceId,
+    showSettingsPopup,
     categoriesOpen,
     sidebarExpanded,
     showSidebar,
@@ -193,6 +202,7 @@ export function useNavigation(options: UseNavigationOptions): NavigationState {
     setActiveView,
     setSettingsTab,
     setEditSourceId,
+    setShowSettingsPopup,
     setCategoriesOpen,
     setSidebarExpanded,
     setShowSidebar,
