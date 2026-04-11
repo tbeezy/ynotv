@@ -965,11 +965,12 @@ function App() {
         <button
           className={`title-bar-settings-btn ${(showSettingsPopup || activeView === 'settings') ? 'active' : ''}`}
           onClick={() => {
-            setCategoriesOpen(false);
             // In multiview (not main), use full view mode; otherwise use popup
             if (multiviewLayout !== 'main') {
+              setCategoriesOpen(false);
               setActiveView(activeView === 'settings' ? 'none' : 'settings');
             } else {
+              // In main layout, settings is a popup - don't close categories
               setShowSettingsPopup(!showSettingsPopup);
             }
             setSettingsTab('sources');
