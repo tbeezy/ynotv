@@ -1,6 +1,30 @@
   # Changelog
   
-    ## v1.6.4
+  ## v1.6.5
+  Added:
+  - Mediabar button on EPG Preview autohides unless mouse is over video
+  - Added stop button in EPG Preview
+  - Mediabar buttons added for Sports page Preview
+  - Double clicking preview on Sports page will full screen video in app
+  - When leaving Movies/series page and clicking back into Movies/Series again, it will go back to the movies/series page you were on
+  - Added option to not save resolution on exit in Settings -> UI
+  - When no TMDB key is provided, uses TVMaze as backup metadata for Series
+  - Added sizing slider for posters for Movies/Series, removed dead space between posters
+  - Added a hide category button in LiveTV, to expand category again there will be a button in the middle left to expand. Alternatively you can use the category shortcut instead.
+  - Added a Refresh Source button in the EPG, so you can refresh the Channels/EPG without having to go back in Settings. Does the same as the sync button.
+  
+  Fixes:
+  - Channel number will properly update upon resyncs
+  - Fixed an error in VOD page display that would incorrectly show zero results for search/category
+  - Fixed some UI elements
+  - Parallel api calls for Live Now page for sports instead of sequential for faster loading
+  - Fixed a bug when in Maximize view from Titlebar, going full screen would not cover Taskbar
+  - Fixed a bug when using settings and closing, it would reset to the video view
+  - When clicking a category in Movies/Series and there is text in the Search, it will clear the search before loading into the category
+  - Fixed text scrolling in Modern UI
+  - Fixed scrollbar styling to match theme.
+  
+  ## v1.6.4
   Added:
   - Collapse source categories on startup option in Settings -> LiveTV
   - Modern UI Design if you want a different look for LiveTV, enable in Settings -> LiveTV

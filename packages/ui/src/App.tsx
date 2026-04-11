@@ -317,6 +317,11 @@ function App() {
   }, []);
 
   // ==========================================================================
+  // Sports Preview State
+  // ==========================================================================
+  const [sportsPreviewEnabled, setSportsPreviewEnabled] = useState(true);
+
+  // ==========================================================================
   // Sync State from Store
   // ==========================================================================
   const channelSyncing = useChannelSyncing();
@@ -1259,8 +1264,8 @@ function App() {
               }
             }, 50);
           }}
-          previewEnabled={true}
-          onTogglePreview={() => {}}
+          previewEnabled={sportsPreviewEnabled}
+          onTogglePreview={() => setSportsPreviewEnabled(v => !v)}
           onPlayChannel={handlePlayChannel}
           miniMediaBarForPreview={miniMediaBarForEpgPreview}
           onTogglePlay={handleTogglePlay}
