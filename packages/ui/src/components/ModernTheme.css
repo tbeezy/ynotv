@@ -551,11 +551,15 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 6px 14px;
+  font-size: 0.8rem;
 }
 
 .modern-ui .guide-manage-channels-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-color: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  color: var(--accent-primary, #00d4ff);
 }
 
 /* Modern Refresh Source Button - matches Manage Channels */
@@ -616,6 +620,9 @@
 
 .modern-ui .guide-nav-btn:hover {
   transform: scale(1.1);
+  border-color: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  color: var(--accent-primary, #00d4ff);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, transparent);
 }
 
 .modern-ui .guide-now-btn {
@@ -649,6 +656,9 @@
 
 .modern-ui .guide-close:hover {
   transform: scale(1.1);
+  border-color: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  color: var(--accent-primary, #00d4ff);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, transparent);
 }
 
 /* Modern Time Header */
