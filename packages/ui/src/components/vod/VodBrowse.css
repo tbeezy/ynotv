@@ -62,7 +62,29 @@
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.35);
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, transform 0.15s ease;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.poster-size-slider__icon:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.1);
+}
+
+.poster-size-slider__icon:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.poster-size-slider__icon:disabled,
+.poster-size-slider__icon.disabled {
+  color: rgba(255, 255, 255, 0.15);
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .poster-size-slider__icon svg {
@@ -75,7 +97,7 @@
   height: 18px;
 }
 
-.poster-size-slider:hover .poster-size-slider__icon {
+.poster-size-slider:hover .poster-size-slider__icon:not(:disabled) {
   color: rgba(255, 255, 255, 0.5);
 }
 

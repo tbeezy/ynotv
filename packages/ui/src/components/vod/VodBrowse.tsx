@@ -77,19 +77,42 @@ interface PosterSizeSliderProps {
 
 const PosterSizeSlider = memo(function PosterSizeSlider({ value, onChange }: PosterSizeSliderProps) {
   const currentIndex = POSTER_SIZE_PRESETS.findIndex(p => p.value === value);
-  
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const index = parseInt(e.target.value, 10);
     onChange(POSTER_SIZE_PRESETS[index].value);
   }, [onChange]);
 
+  // Click handlers for the icons - move slider left/right
+  const handleDecrease = useCallback(() => {
+    if (currentIndex > 0) {
+      onChange(POSTER_SIZE_PRESETS[currentIndex - 1].value);
+    }
+  }, [currentIndex, onChange]);
+
+  const handleIncrease = useCallback(() => {
+    if (currentIndex < POSTER_SIZE_PRESETS.length - 1) {
+      onChange(POSTER_SIZE_PRESETS[currentIndex + 1].value);
+    }
+  }, [currentIndex, onChange]);
+
+  const canDecrease = currentIndex > 0;
+  const canIncrease = currentIndex < POSTER_SIZE_PRESETS.length - 1;
+
   return (
     <div className="poster-size-slider">
-      <div className="poster-size-slider__icon poster-size-slider__icon--small">
+      <button
+        className={`poster-size-slider__icon poster-size-slider__icon--small ${!canDecrease ? 'disabled' : ''}`}
+        onClick={handleDecrease}
+        disabled={!canDecrease}
+        aria-label="Decrease poster size"
+        title="Smaller posters"
+        type="button"
+      >
         <svg viewBox="0 0 24 24" fill="currentColor">
           <rect x="2" y="2" width="20" height="20" rx="2" />
         </svg>
-      </div>
+      </button>
       <div className="poster-size-slider__track">
         <input
           type="range"
@@ -104,18 +127,25 @@ const PosterSizeSlider = memo(function PosterSizeSlider({ value, onChange }: Pos
         />
         <div className="poster-size-slider__marks">
           {POSTER_SIZE_PRESETS.map((_, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className={`poster-size-slider__mark ${index === currentIndex ? 'active' : ''}`}
             />
           ))}
         </div>
       </div>
-      <div className="poster-size-slider__icon poster-size-slider__icon--large">
+      <button
+        className={`poster-size-slider__icon poster-size-slider__icon--large ${!canIncrease ? 'disabled' : ''}`}
+        onClick={handleIncrease}
+        disabled={!canIncrease}
+        aria-label="Increase poster size"
+        title="Larger posters"
+        type="button"
+      >
         <svg viewBox="0 0 24 24" fill="currentColor">
           <rect x="2" y="2" width="20" height="20" rx="2" />
         </svg>
-      </div>
+      </button>
     </div>
   );
 });
