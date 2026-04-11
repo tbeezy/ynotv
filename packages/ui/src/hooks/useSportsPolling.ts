@@ -112,33 +112,56 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     setError(null);
 
     try {
-      // Use normalized leagues (undefined becomes DEFAULT_LIVE_LEAGUES)
-      const data = await getLiveScores(normalizedLeagues);
-
       // Read the LATEST cache state directly from window (not the closure variable)
       // This ensures we see any updates from other instances
       const latestCache = (window as unknown as { __sportsCache?: SportsCache }).__sportsCache;
       const currentCacheEvents = latestCache?.events ?? [];
 
-      // Don't update if we got empty data and cache already has data
-      // (unless it's a manual refresh)
-      if (data.length === 0 && currentCacheEvents.length > 0 && !isManualRefresh) {
+      // Track if we've received any data during batch fetching
+      let hasReceivedData = false;
+
+      // Progressive callback - update UI immediately as batches complete
+      const onProgress = (batchEvents: SportsEvent[], batchIndex: number, totalBatches: number) => {
+        hasReceivedData = batchEvents.length > 0 || hasReceivedData;
+
+        // Update React state immediately with batch results
+        setEvents(batchEvents);
+        setLastUpdated(new Date());
+
+        // Update global cache progressively if we have data
+        // This allows other components/tabs to see results immediately
+        if (batchEvents.length > 0 || currentCacheEvents.length === 0) {
+          const cache = getSportsCache();
+          cache.events = batchEvents;
+          cache.lastUpdated = new Date();
+          cache.leagues = normalizedLeagues;
+          console.log(`[SportsPolling] Batch ${batchIndex + 1}/${totalBatches}: Updated cache with`,
+            batchEvents.length, 'events,', batchEvents.filter(e => e.status === 'live').length, 'live');
+        }
+      };
+
+      // Use normalized leagues (undefined becomes DEFAULT_LIVE_LEAGUES)
+      // This will call onProgress after each batch completes
+      const data = await getLiveScores(normalizedLeagues, onProgress);
+
+      // Final update after all batches complete
+      // Don't update if we got empty data and cache already has data (unless manual refresh)
+      if (data.length === 0 && currentCacheEvents.length > 0 && !isManualRefresh && !hasReceivedData) {
         console.log('[SportsPolling] Skipping empty response, keeping', currentCacheEvents.length, 'cached events');
         return;
       }
 
-      // Update React state
+      // Final state update (already updated by onProgress, but ensure consistency)
       setEvents(data);
       setLastUpdated(new Date());
 
-      // Update global cache - but ONLY if we have data or this is a manual refresh
-      // This prevents emptying the cache when API returns no data temporarily
+      // Final cache update
       if (data.length > 0 || isManualRefresh || currentCacheEvents.length === 0) {
         const cache = getSportsCache();
         cache.events = data;
         cache.lastUpdated = new Date();
         cache.leagues = normalizedLeagues;
-        console.log('[SportsPolling] Updated cache with', data.length, 'events,', data.filter(e => e.status === 'live').length, 'live');
+        console.log('[SportsPolling] Final: Updated cache with', data.length, 'events,', data.filter(e => e.status === 'live').length, 'live');
       } else {
         console.log('[SportsPolling] NOT updating cache - empty data and existing cache has', currentCacheEvents.length, 'events');
       }
