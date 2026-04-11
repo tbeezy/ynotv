@@ -5,7 +5,7 @@
  * and alphabet quick-nav rail.
  */
 
-import { useState, useCallback, useMemo, useRef, forwardRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, forwardRef, useEffect, memo } from 'react';
 import { VirtuosoGrid, VirtuosoGridHandle } from 'react-virtuoso';
 import { MediaCard } from './MediaCard';
 import { AlphabetRail } from './AlphabetRail';
@@ -19,6 +19,44 @@ import {
 } from '../../hooks/useVod';
 import './VodBrowse.css';
 
+// Poster size presets (card width in pixels)
+const POSTER_SIZE_PRESETS = [
+  { value: 100, label: 'XS', columns: 'Many' },
+  { value: 120, label: 'S', columns: 'More' },
+  { value: 140, label: 'M', columns: 'Medium' },
+  { value: 160, label: 'L', columns: 'Default' },
+  { value: 180, label: 'XL', columns: 'Bigger' },
+  { value: 200, label: '2XL', columns: 'Big' },
+  { value: 240, label: '3XL', columns: 'Huge' },
+] as const;
+
+type PosterSizeValue = typeof POSTER_SIZE_PRESETS[number]['value'];
+
+// Hook to persist poster size preference
+function usePosterSizePreference(): [PosterSizeValue, (value: PosterSizeValue) => void] {
+  const [size, setSize] = useState<PosterSizeValue>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('vodPosterSize');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (POSTER_SIZE_PRESETS.some(p => p.value === parsed)) {
+          return parsed as PosterSizeValue;
+        }
+      }
+    }
+    return 160; // Default size
+  });
+
+  const setSizeAndSave = useCallback((newSize: PosterSizeValue) => {
+    setSize(newSize);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vodPosterSize', String(newSize));
+    }
+  }, []);
+
+  return [size, setSizeAndSave];
+}
+
 // Debounce hook - delays value updates to avoid expensive operations on every keystroke
 function useDebouncedValue<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -30,6 +68,57 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 
   return debouncedValue;
 }
+
+// Poster Size Slider Component
+interface PosterSizeSliderProps {
+  value: PosterSizeValue;
+  onChange: (value: PosterSizeValue) => void;
+}
+
+const PosterSizeSlider = memo(function PosterSizeSlider({ value, onChange }: PosterSizeSliderProps) {
+  const currentIndex = POSTER_SIZE_PRESETS.findIndex(p => p.value === value);
+  
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const index = parseInt(e.target.value, 10);
+    onChange(POSTER_SIZE_PRESETS[index].value);
+  }, [onChange]);
+
+  return (
+    <div className="poster-size-slider">
+      <div className="poster-size-slider__icon poster-size-slider__icon--small">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <rect x="2" y="2" width="20" height="20" rx="2" />
+        </svg>
+      </div>
+      <div className="poster-size-slider__track">
+        <input
+          type="range"
+          min={0}
+          max={POSTER_SIZE_PRESETS.length - 1}
+          step={1}
+          value={currentIndex}
+          onChange={handleChange}
+          className="poster-size-slider__input"
+          aria-label="Poster size"
+          title={`Poster size: ${POSTER_SIZE_PRESETS[currentIndex]?.label || 'Default'}`}
+        />
+        <div className="poster-size-slider__marks">
+          {POSTER_SIZE_PRESETS.map((_, index) => (
+            <div 
+              key={index} 
+              className={`poster-size-slider__mark ${index === currentIndex ? 'active' : ''}`}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="poster-size-slider__icon poster-size-slider__icon--large">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <rect x="2" y="2" width="20" height="20" rx="2" />
+        </svg>
+      </div>
+    </div>
+  );
+});
 
 // Footer component - defined OUTSIDE to prevent remounting on scroll
 // Must be stable reference for Virtuoso
@@ -72,6 +161,9 @@ export function VodBrowse({
 }: VodBrowseProps) {
   const virtuosoRef = useRef<VirtuosoGridHandle>(null);
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 0 });
+  
+  // Poster size preference
+  const [posterSize, setPosterSize] = usePosterSizePreference();
 
   // Debounce search to avoid expensive filtering on every keystroke
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -146,21 +238,45 @@ export function VodBrowse({
     [type]
   );
 
+  // Calculate dynamic card dimensions based on poster size
+  const cardDimensions = useMemo(() => {
+    const cardWidth = posterSize;
+    const posterHeight = Math.round(cardWidth * 1.5); // 2:3 aspect ratio
+    const infoHeight = posterSize >= 180 ? 36 : posterSize >= 140 ? 32 : 30;
+    const cardHeight = posterHeight + infoHeight + 4; // +4 for padding
+    const itemWidth = cardWidth + 4; // +4 for padding
+    const itemHeight = cardHeight + 4;
+    
+    return {
+      cardWidth,
+      cardHeight,
+      posterHeight,
+      infoHeight,
+      itemWidth,
+      itemHeight,
+    };
+  }, [posterSize]);
+
   // Grid item renderer - receives item from data prop, no items dependency
   const ItemContent = useCallback(
     (_index: number, item: StoredMovie | StoredSeries) => {
       if (!item) return null;
+
+      // Determine size label based on poster size
+      let sizeLabel: 'small' | 'medium' | 'large' = 'medium';
+      if (posterSize <= 120) sizeLabel = 'small';
+      else if (posterSize >= 180) sizeLabel = 'large';
 
       return (
         <MediaCard
           item={item}
           type={type === 'movies' ? 'movie' : 'series'}
           onClick={onItemClick}
-          size="medium"
+          size={sizeLabel}
         />
       );
     },
-    [type, onItemClick]
+    [type, onItemClick, posterSize]
   );
 
   // Custom Loading Status Indicator for Stalker Sync
@@ -199,8 +315,26 @@ export function VodBrowse({
     );
   }
 
+  // CSS custom properties for dynamic sizing
+  const gridStyle = useMemo(() => ({
+    '--vod-card-width': `${cardDimensions.cardWidth}px`,
+    '--vod-card-height': `${cardDimensions.cardHeight}px`,
+    '--vod-item-width': `${cardDimensions.itemWidth}px`,
+    '--vod-item-height': `${cardDimensions.itemHeight}px`,
+    '--vod-poster-height': `${cardDimensions.posterHeight}px`,
+  } as React.CSSProperties), [cardDimensions]);
+
   return (
-    <div className="vod-browse">
+    <div className="vod-browse" style={gridStyle}>
+      {/* Header with poster size slider */}
+      <div className="vod-browse__toolbar">
+        <div className="vod-browse__toolbar-left">
+          <span className="vod-browse__category-name">{categoryName}</span>
+          <span className="vod-browse__item-count">{items.length.toLocaleString()} items</span>
+        </div>
+        <PosterSizeSlider value={posterSize} onChange={setPosterSize} />
+      </div>
+
       <VirtuosoGrid
         ref={virtuosoRef}
         className="vod-browse__grid"

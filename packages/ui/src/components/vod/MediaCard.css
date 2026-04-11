@@ -22,7 +22,7 @@
   outline-offset: 2px;
 }
 
-/* Size variants */
+/* Size variants - default widths */
 .media-card--small {
   width: 120px;
 }
@@ -33,6 +33,14 @@
 
 .media-card--large {
   width: 200px;
+}
+
+/* Dynamic sizing support - when card is inside a sized container */
+/* This allows VodBrowse grid to control card dimensions via CSS variables */
+.vod-browse__grid-item .media-card,
+.recent-view__grid-item .media-card {
+  width: 100% !important;
+  height: 100%;
 }
 
 /* Poster container */

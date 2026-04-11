@@ -6,6 +6,156 @@
   min-height: 0;
   /* Critical for nested flex */
   background: var(--bg-primary, #0d0d0d);
+  
+  /* Default CSS variables for grid item sizing (overridden by inline styles) */
+  --vod-card-width: 160px;
+  --vod-card-height: 276px;
+  --vod-item-width: 164px;
+  --vod-item-height: 276px;
+  --vod-poster-height: 240px;
+}
+
+/* Toolbar with poster size slider */
+.vod-browse__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.02), transparent);
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+.vod-browse__toolbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+.vod-browse__category-name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vod-browse__item-count {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+}
+
+/* Poster Size Slider */
+.poster-size-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.poster-size-slider__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.35);
+  transition: color 0.2s ease;
+}
+
+.poster-size-slider__icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.poster-size-slider__icon--large svg {
+  width: 18px;
+  height: 18px;
+}
+
+.poster-size-slider:hover .poster-size-slider__icon {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.poster-size-slider__track {
+  position: relative;
+  width: 140px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.poster-size-slider__input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  cursor: pointer;
+  margin: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.poster-size-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.poster-size-slider__input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+.poster-size-slider__input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.poster-size-slider__input::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+.poster-size-slider__marks {
+  position: absolute;
+  top: 50%;
+  left: 7px;
+  right: 7px;
+  height: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.poster-size-slider__mark {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.2s ease;
+}
+
+.poster-size-slider__mark.active {
+  background: rgba(255, 255, 255, 0.6);
 }
 
 /* Dark scrollbar styling - matches EPG */
@@ -32,26 +182,6 @@
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
-.vod-browse__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.vod-browse__title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: #fff;
-  margin: 0;
-}
-
-.vod-browse__count {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
 /* Virtuoso Grid */
 .vod-browse__grid {
   flex: 1;
@@ -70,10 +200,10 @@
 }
 
 .vod-browse__grid-item {
-  /* Fixed dimensions - Virtuoso MUST know exact size */
+  /* Dynamic dimensions based on CSS variables */
   /* padding: 2px all around = 4px horizontal gap, 4px vertical gap */
-  width: 164px;
-  height: 276px;
+  width: var(--vod-item-width, 164px);
+  height: var(--vod-item-height, 276px);
   padding: 2px;
   box-sizing: border-box;
   margin: 0 !important;
@@ -85,8 +215,8 @@
 
 /* Ensure the card fills the tightly fitted slot regardless of its default size variant */
 .vod-browse__grid-item .media-card {
-  width: 100%;
-  height: 100%;
+  width: var(--vod-card-width, 160px);
+  height: var(--vod-card-height, 276px);
 }
 
 /* Loading indicator */
@@ -146,25 +276,7 @@
   font-size: 0.9rem;
 }
 
-/* Responsive item sizes - width AND height must be fixed for Virtuoso */
-@media (min-width: 1200px) {
-  .vod-browse__grid-item {
-    width: 184px;
-    /* 180px card + 4px spacing */
-    height: 306px;
-    /* 270px poster + 32px info + 4px padding */
-  }
-}
-
-@media (min-width: 1600px) {
-  .vod-browse__grid-item {
-    width: 204px;
-    /* 200px card + 4px spacing */
-    height: 336px;
-    /* 300px poster + 32px info + 4px padding */
-  }
-}
-
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .vod-browse__grid-list {
     /* NO gap - use padding on items */
@@ -173,19 +285,44 @@
   }
 
   .vod-browse__grid-item {
-    width: 134px;
-    /* 130px card + 4px spacing */
-    height: 231px;
-    /* 195px poster + 32px info + 4px padding */
     padding: 2px;
   }
-
-  .vod-browse__header {
-    padding: 12px 16px;
+  
+  .vod-browse__toolbar {
+    padding: 10px 14px;
   }
+  
+  .vod-browse__category-name {
+    font-size: 0.9rem;
+  }
+  
+  .poster-size-slider__track {
+    width: 100px;
+  }
+  
+  .poster-size-slider__icon svg {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .poster-size-slider__icon--large svg {
+    width: 14px;
+    height: 14px;
+  }
+}
 
-  .vod-browse__title {
-    font-size: 1.1rem;
+@media (max-width: 480px) {
+  .vod-browse__toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .vod-browse__toolbar-left {
+    width: 100%;
+  }
+  
+  .poster-size-slider {
+    margin-left: auto;
   }
 }
 
