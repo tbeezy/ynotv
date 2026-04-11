@@ -61,7 +61,7 @@ export function useAppSettings(): AppSettings {
   const [searchResultsOrder, setSearchResultsOrder] = useState<'default' | 'alphabetical'>('default');
 
   // LiveTV settings
-  const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
+  const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(true);
   const [epgView, setEpgView] = useState<'traditional' | 'alternate'>('traditional');
 
   // Theme state
@@ -114,7 +114,7 @@ export function useAppSettings(): AppSettings {
           setIncludeSourceInSearch(result.data.includeSourceInSearch ?? false);
           setMaxSearchResults(result.data.maxSearchResults ?? 200);
           setSearchResultsOrder(result.data.searchResultsOrder ?? 'default');
-          setMiniMediaBarForEpgPreview(result.data.miniMediaBarForEpgPreview ?? false);
+          setMiniMediaBarForEpgPreview(result.data.miniMediaBarForEpgPreview ?? true);
           setEpgView(result.data.epgView ?? 'traditional');
 
           // Apply EPG darken current setting on load
