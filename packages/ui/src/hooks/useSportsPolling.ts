@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { SportsEvent } from '@ynotv/core';
-import { getLiveScores } from '../services/sports';
+import { getLiveScores, getLiveScoresForLeagues } from '../services/sports';
 import { DEFAULT_LIVE_LEAGUES } from '../services/sports/config';
 
 interface UseSportsPollingOptions {
@@ -52,6 +52,102 @@ const setGlobalFetching = (value: boolean): void => {
 const CACHE_FRESH_NO_LIVE = 5 * 60 * 1000;
 const CACHE_FRESH_LIVE = 30 * 1000;
 
+// How long to cache non-live leagues (5 minutes)
+const CACHE_FRESH_NON_LIVE_LEAGUE = 5 * 60 * 1000;
+
+// Per-league cache to track when each league was last fetched
+interface LeagueCacheEntry {
+  lastFetched: number;
+  hasLive: boolean;
+}
+
+const getLeaguesCache = (): Map<string, LeagueCacheEntry> => {
+  const w = window as unknown as { __sportsLeaguesCache?: Map<string, LeagueCacheEntry> };
+  if (!w.__sportsLeaguesCache) {
+    w.__sportsLeaguesCache = new Map();
+  }
+  return w.__sportsLeaguesCache;
+};
+
+/**
+ * Get the set of league IDs that have live games from the given events
+ */
+function getLeaguesWithLiveGames(events: SportsEvent[]): Set<string> {
+  const liveLeagues = new Set<string>();
+  for (const event of events) {
+    if (event.status === 'live') {
+      liveLeagues.add(event.league.id);
+    }
+  }
+  return liveLeagues;
+}
+
+/**
+ * Determine which leagues need to be fetched based on:
+ * 1. Leagues with live games (always fetch these)
+ * 2. Leagues not in cache or with stale cache
+ */
+function getLeaguesToFetch(
+  allLeagues: string[],
+  events: SportsEvent[],
+  isPolling: boolean
+): string[] {
+  // If not polling (initial load or manual refresh), fetch all
+  if (!isPolling) {
+    return allLeagues;
+  }
+
+  const now = Date.now();
+  const leaguesCache = getLeaguesCache();
+  const liveLeagues = getLeaguesWithLiveGames(events);
+
+  // Find leagues that need fetching
+  const toFetch: string[] = [];
+
+  for (const leagueId of allLeagues) {
+    const cacheEntry = leaguesCache.get(leagueId);
+    const hasLive = liveLeagues.has(leagueId);
+
+    if (hasLive) {
+      // Always fetch leagues with live games during polling
+      toFetch.push(leagueId);
+    } else if (!cacheEntry || (now - cacheEntry.lastFetched > CACHE_FRESH_NON_LIVE_LEAGUE)) {
+      // Fetch non-live leagues only if cache is stale (>5 min)
+      toFetch.push(leagueId);
+    }
+  }
+
+  console.log('[SportsPolling] Selective fetch:', {
+    total: allLeagues.length,
+    toFetch: toFetch.length,
+    liveLeagues: Array.from(liveLeagues),
+    cached: allLeagues.filter(id => {
+      const entry = leaguesCache.get(id);
+      return entry && !liveLeagues.has(id) && (now - entry.lastFetched <= CACHE_FRESH_NON_LIVE_LEAGUE);
+    }),
+  });
+
+  return toFetch;
+}
+
+/**
+ * Update league cache after fetching
+ */
+function updateLeaguesCache(events: SportsEvent[], allLeagues: string[]): void {
+  const now = Date.now();
+  const leaguesCache = getLeaguesCache();
+  const liveLeagues = getLeaguesWithLiveGames(events);
+
+  // Update cache for all leagues that were fetched
+  for (const leagueId of allLeagues) {
+    const hasLive = liveLeagues.has(leagueId);
+    leaguesCache.set(leagueId, {
+      lastFetched: now,
+      hasLive,
+    });
+  }
+}
+
 export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSportsPollingResult {
   const { pollingInterval = 30000, enabled = true, leagues } = options;
 
@@ -95,7 +191,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
     }
   }, []);
 
-  const fetchData = useCallback(async (isManualRefresh = false) => {
+  const fetchData = useCallback(async (isManualRefresh = false, isPolling = false) => {
     if (isRefreshingRef.current && !isManualRefresh) return;
     if (!isManualRefresh && isGlobalFetching()) {
       console.log('[SportsPolling] Another instance is already fetching, skipping');
@@ -116,6 +212,12 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
       // This ensures we see any updates from other instances
       const latestCache = (window as unknown as { __sportsCache?: SportsCache }).__sportsCache;
       const currentCacheEvents = latestCache?.events ?? [];
+
+      // Get current events (either from state or cache) to determine which leagues have live games
+      const currentEvents = events.length > 0 ? events : currentCacheEvents;
+
+      // Determine which leagues to fetch
+      const leaguesToFetch = getLeaguesToFetch(normalizedLeagues, currentEvents, isPolling);
 
       // Track if we've received any data during batch fetching
       let hasReceivedData = false;
@@ -140,9 +242,20 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
         }
       };
 
-      // Use normalized leagues (undefined becomes DEFAULT_LIVE_LEAGUES)
-      // This will call onProgress after each batch completes
-      const data = await getLiveScores(normalizedLeagues, onProgress);
+      let data: SportsEvent[];
+
+      if (isPolling && leaguesToFetch.length < normalizedLeagues.length) {
+        // Selective polling - only fetch leagues that need updates
+        console.log(`[SportsPolling] Selective poll: fetching ${leaguesToFetch.length}/${normalizedLeagues.length} leagues`);
+        data = await getLiveScoresForLeagues(leaguesToFetch, currentEvents, onProgress);
+      } else {
+        // Full fetch - all leagues (initial load, manual refresh, or all leagues need updates)
+        console.log(`[SportsPolling] Full fetch: all ${normalizedLeagues.length} leagues`);
+        data = await getLiveScores(normalizedLeagues, onProgress);
+      }
+
+      // Update per-league cache
+      updateLeaguesCache(data, normalizedLeagues);
 
       // Final update after all batches complete
       // Don't update if we got empty data and cache already has data (unless manual refresh)
@@ -173,7 +286,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
       isRefreshingRef.current = false;
       setGlobalFetching(false);
     }
-  }, [normalizedLeagues]);
+  }, [normalizedLeagues, events]);
 
   const refresh = useCallback(async () => {
     await fetchData(true);
@@ -274,7 +387,8 @@ function leaguesEqual(a: string[], b: string[]): boolean {
           console.log('[SportsPolling] Tab hidden, skipping poll');
           return;
         }
-        fetchData();
+        // Pass isPolling=true for selective fetching (only leagues with live games)
+        fetchData(false, true);
       }, pollingInterval);
     } else if (!shouldPoll && intervalRef.current) {
       console.log('[SportsPolling] No live games, stopping poll');

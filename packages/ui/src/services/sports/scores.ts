@@ -109,19 +109,15 @@ function sortEvents(events: SportsEvent[]): SportsEvent[] {
 export type OnBatchProgress = (events: SportsEvent[], batchIndex: number, totalBatches: number) => void;
 
 /**
- * Get live scores with batch fetching and optional progress callback
- *
- * - Fetches in parallel batches of BATCH_SIZE (5)
- * - Waits BATCH_DELAY_MS (5s) between batches
- * - Calls onProgress immediately when each batch completes
- * - Returns all events at the end
+ * Internal function to fetch scores for specific leagues with optional progress callback
  */
-export async function getLiveScores(
-  leagues?: string[],
-  onProgress?: OnBatchProgress
+async function getScoresForLeaguesInternal(
+  targetLeagues: string[],
+  onProgress?: OnBatchProgress,
+  existingEvents?: SportsEvent[]
 ): Promise<SportsEvent[]> {
-  const targetLeagues = leagues || DEFAULT_LIVE_LEAGUES;
-  const allEvents: SportsEvent[] = [];
+  const allEvents: SportsEvent[] = existingEvents ? [...existingEvents] : [];
+  const existingIds = new Set(allEvents.map(e => e.id));
 
   // Split leagues into batches
   const batches: string[][] = [];
@@ -146,8 +142,9 @@ export async function getLiveScores(
     const batchPromises = batch.map(sportKey => fetchSportScores(sportKey));
     const batchResults = await Promise.all(batchPromises);
 
-    // Flatten batch results
-    const batchEvents = batchResults.flat();
+    // Flatten batch results, avoiding duplicates
+    const batchEvents = batchResults.flat().filter(e => !existingIds.has(e.id));
+    batchEvents.forEach(e => existingIds.add(e.id));
 
     // Add to accumulated results
     allEvents.push(...batchEvents);
@@ -168,6 +165,51 @@ export async function getLiveScores(
 
   console.log(`[ESPN API] Total: ${sortedEvents.length} events (${sortedEvents.filter(e => e.status === 'live').length} live)`);
   return sortedEvents;
+}
+
+/**
+ * Get live scores with batch fetching and optional progress callback
+ *
+ * - Fetches in parallel batches of BATCH_SIZE (5)
+ * - Waits BATCH_DELAY_MS (5s) between batches
+ * - Calls onProgress immediately when each batch completes
+ * - Returns all events at the end
+ */
+export async function getLiveScores(
+  leagues?: string[],
+  onProgress?: OnBatchProgress
+): Promise<SportsEvent[]> {
+  const targetLeagues = leagues || DEFAULT_LIVE_LEAGUES;
+  return getScoresForLeaguesInternal(targetLeagues, onProgress);
+}
+
+/**
+ * Get live scores for specific leagues only, merging with existing events
+ * Used for selective polling - only fetches leagues that need updates
+ *
+ * @param leaguesToFetch - Specific league IDs to fetch
+ * @param existingEvents - Current events to merge with (for leagues not being fetched)
+ * @param onProgress - Optional callback for progress updates
+ */
+export async function getLiveScoresForLeagues(
+  leaguesToFetch: string[],
+  existingEvents: SportsEvent[],
+  onProgress?: OnBatchProgress
+): Promise<SportsEvent[]> {
+  if (leaguesToFetch.length === 0) {
+    // No leagues to fetch, return existing events (filtered/sorted)
+    const filtered = filterLiveEvents(existingEvents);
+    return sortEvents(filtered);
+  }
+
+  // Filter existing events to keep only leagues we're NOT fetching
+  const existingIds = new Set(leaguesToFetch);
+  const keptEvents = existingEvents.filter(e => !existingIds.has(e.league.id));
+
+  console.log(`[ESPN API Selective] Keeping ${keptEvents.length} events from cache, fetching ${leaguesToFetch.length} leagues`);
+
+  // Fetch only the specified leagues, merging with kept events
+  return getScoresForLeaguesInternal(leaguesToFetch, onProgress, keptEvents);
 }
 
 /**

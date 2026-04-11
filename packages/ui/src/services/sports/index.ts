@@ -106,6 +106,7 @@ export {
 export {
   getScoreboard,
   getLiveScores,
+  getLiveScoresForLeagues,
   getUpcomingEvents,
   getLeagueEvents,
   getEventsForDate,
