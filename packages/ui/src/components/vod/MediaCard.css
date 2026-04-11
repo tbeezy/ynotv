@@ -177,12 +177,12 @@
 
 /* Info section - compact and polished */
 .media-card__info {
-  height: 36px;
-  padding: 6px 10px 4px;
+  height: 32px;
+  padding: 4px 8px 2px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 4px;
+  justify-content: flex-start;
+  gap: 2px;
   overflow: hidden;
 }
 
@@ -256,8 +256,8 @@
 
 /* Small size adjustments */
 .media-card--small .media-card__info {
-  height: 36px;
-  padding: 6px 8px;
+  height: 30px;
+  padding: 4px 6px 2px;
 }
 
 .media-card--small .media-card__title {
@@ -274,8 +274,8 @@
 
 /* Large size adjustments */
 .media-card--large .media-card__info {
-  height: 44px;
-  padding: 8px 12px;
+  height: 36px;
+  padding: 6px 12px 4px;
 }
 
 .media-card--large .media-card__title {

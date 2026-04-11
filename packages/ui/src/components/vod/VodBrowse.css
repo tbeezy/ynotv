@@ -66,14 +66,14 @@
   /* Virtuoso uses absolute positioning - flexbox is for fallback only */
   display: flex;
   flex-wrap: wrap;
-  padding: 24px 0;
+  padding: 12px 0 24px;
 }
 
 .vod-browse__grid-item {
   /* Fixed dimensions - Virtuoso MUST know exact size */
   width: 176px;
-  height: 312px;
-  padding: 8px;
+  height: 280px;
+  padding: 4px 8px;
   box-sizing: border-box;
   margin: 0 !important;
 }
@@ -144,8 +144,8 @@
   .vod-browse__grid-item {
     width: 196px;
     /* 180px card + 16px spacing */
-    height: 342px;
-    /* 270px poster + 56px info + 16px padding */
+    height: 310px;
+    /* 270px poster + 32px info + 8px padding */
   }
 }
 
@@ -153,24 +153,24 @@
   .vod-browse__grid-item {
     width: 216px;
     /* 200px card + 16px spacing */
-    height: 372px;
-    /* 300px poster + 56px info + 16px padding */
+    height: 340px;
+    /* 300px poster + 32px info + 8px padding */
   }
 }
 
 @media (max-width: 768px) {
   .vod-browse__grid-list {
     /* NO gap - use padding on items */
-    padding-top: 16px;
+    padding-top: 8px;
     padding-bottom: 16px;
   }
 
   .vod-browse__grid-item {
     width: 142px;
     /* 130px card + 12px spacing */
-    height: 263px;
-    /* 195px poster + 56px info + 12px padding */
-    padding: 6px;
+    height: 233px;
+    /* 195px poster + 32px info + 6px padding */
+    padding: 3px 6px;
   }
 
   .vod-browse__header {
