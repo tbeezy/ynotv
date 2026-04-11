@@ -97,7 +97,7 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
       aria-label={`${item.name}${year ? ` (${year})` : ''}`}
       style={style}
     >
-      <div className="media-card__poster">
+      <div className="media-card__poster" title={displayTitle || undefined}>
         {displayUrl && !imageError ? (
           <img
             src={displayUrl}
@@ -157,6 +157,7 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
         <h3
           ref={titleRef}
           className={`media-card__title${titleOverflows ? ' media-card__title--overflow' : ''}`}
+          title={displayTitle || undefined}
         >
           <span className="media-card__title-inner">{displayTitle}</span>
         </h3>
