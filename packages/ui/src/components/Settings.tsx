@@ -95,7 +95,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
   const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
   const [miniMediaBarForEpgPreview, setMiniMediaBarForEpgPreview] = useState(false);
   const [collapseSourceCategoriesOnStartup, setCollapseSourceCategoriesOnStartup] = useState(false);
-  const [modernUiEnabled, setModernUiEnabled] = useState(false);
+  const [modernUiEnabled, setModernUiEnabled] = useState(true);
   const epgView = useEpgView();
   const setEpgView = useSetEpgView();
 
@@ -268,7 +268,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
       setCollapseSourceCategoriesOnStartup(settings.collapseSourceCategoriesOnStartup ?? false);
       
       // Load modern UI setting
-      setModernUiEnabled(settings.modernUiEnabled ?? false);
+      setModernUiEnabled(settings.modernUiEnabled ?? true);
     }
     setSettingsLoaded(true);
   }
