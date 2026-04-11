@@ -1230,6 +1230,7 @@ export async function syncSource(source: Source, onProgress?: (msg: string) => v
         const hasChanged =
           existing.name !== channel.name ||
           existing.direct_url !== channel.direct_url ||
+          existing.channel_num !== channel.channel_num ||
           categoriesChanged;
 
         if (hasChanged) {
