@@ -513,6 +513,11 @@ export function SportsHub({
                 style={{ height: `${previewHeightPx}px` }}
                 onMouseEnter={handlePreviewPaneMouseEnter}
                 onMouseLeave={handlePreviewPaneMouseLeave}
+                onDoubleClick={() => {
+                  // Double-click to close Sports Hub (fullscreen video)
+                  onClose();
+                }}
+                title="Double-click for fullscreen"
               >
                 {/* Resizer Handle */}
                 <div
