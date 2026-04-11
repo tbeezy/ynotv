@@ -297,17 +297,32 @@ export function VodBrowse({
       if (posterSize <= 120) sizeLabel = 'small';
       else if (posterSize >= 180) sizeLabel = 'large';
 
+      // Pass card width as CSS variable for marquee animation
+      const cardStyle = {
+        '--marquee-visible-width': `${cardDimensions.cardWidth}px`,
+      } as React.CSSProperties;
+
       return (
         <MediaCard
           item={item}
           type={type === 'movies' ? 'movie' : 'series'}
           onClick={onItemClick}
           size={sizeLabel}
+          style={cardStyle}
         />
       );
     },
-    [type, onItemClick, posterSize]
+    [type, onItemClick, posterSize, cardDimensions]
   );
+
+  // CSS custom properties for dynamic sizing - MUST be before any early returns
+  const gridStyle = useMemo(() => ({
+    '--vod-card-width': `${cardDimensions.cardWidth}px`,
+    '--vod-card-height': `${cardDimensions.cardHeight}px`,
+    '--vod-item-width': `${cardDimensions.itemWidth}px`,
+    '--vod-item-height': `${cardDimensions.itemHeight}px`,
+    '--vod-poster-height': `${cardDimensions.posterHeight}px`,
+  } as React.CSSProperties), [cardDimensions]);
 
   // Custom Loading Status Indicator for Stalker Sync
   // If we have cached data, show it immediately even while syncing
@@ -344,15 +359,6 @@ export function VodBrowse({
       </div>
     );
   }
-
-  // CSS custom properties for dynamic sizing
-  const gridStyle = useMemo(() => ({
-    '--vod-card-width': `${cardDimensions.cardWidth}px`,
-    '--vod-card-height': `${cardDimensions.cardHeight}px`,
-    '--vod-item-width': `${cardDimensions.itemWidth}px`,
-    '--vod-item-height': `${cardDimensions.itemHeight}px`,
-    '--vod-poster-height': `${cardDimensions.posterHeight}px`,
-  } as React.CSSProperties), [cardDimensions]);
 
   return (
     <div className="vod-browse" style={gridStyle}>

@@ -479,7 +479,28 @@ async fn mpv_get_cache_debug<R: Runtime>(app: AppHandle<R>) -> Result<serde_json
 async fn mpv_toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         let is_fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
+        
+        // On Windows, if window is maximized and we're going fullscreen,
+        // we need to unmaximize first to ensure proper fullscreen transition
+        #[cfg(target_os = "windows")]
+        if !is_fullscreen {
+            let is_maximized = window.is_maximized().map_err(|e| e.to_string())?;
+            if is_maximized {
+                window.unmaximize().map_err(|e| e.to_string())?;
+                // Small delay to let the window state settle before going fullscreen
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+        }
+        
         window.set_fullscreen(!is_fullscreen).map_err(|e| e.to_string())?;
+        
+        // On Windows, trigger a geometry refresh after entering fullscreen
+        // to ensure MPV fills the entire screen
+        #[cfg(target_os = "windows")]
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            let _ = mpv_windows::mpv_set_geometry(&app, 0, 0, 0, 0).await;
+        }
         
         // On macOS, we need to sync the window after fullscreen change
         #[cfg(target_os = "macos")]

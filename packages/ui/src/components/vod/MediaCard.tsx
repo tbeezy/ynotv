@@ -17,9 +17,11 @@ export interface MediaCardProps {
   seasonNum?: number;
   episodeNum?: number;
   episodeTitle?: string;
+  // Optional style for dynamic sizing (e.g., marquee animation)
+  style?: React.CSSProperties;
 }
 
-export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove, size = 'medium', progressPercent, isRecentlyWatched, seasonNum, episodeNum, episodeTitle }: MediaCardProps) {
+export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove, size = 'medium', progressPercent, isRecentlyWatched, seasonNum, episodeNum, episodeTitle, style }: MediaCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [titleOverflows, setTitleOverflows] = useState(false);
@@ -93,6 +95,7 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
       tabIndex={0}
       role="button"
       aria-label={`${item.name}${year ? ` (${year})` : ''}`}
+      style={style}
     >
       <div className="media-card__poster">
         {displayUrl && !imageError ? (

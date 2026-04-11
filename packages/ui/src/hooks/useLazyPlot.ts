@@ -17,6 +17,7 @@ import { type MediaItem, isMovie } from '../types/media';
 interface LazyDetails {
   plot: string | null;
   genre: string | null;
+  rating: number | null;
 }
 
 /**
@@ -37,6 +38,7 @@ export function useLazyPlot(
   const [fetchedDetails, setFetchedDetails] = useState<LazyDetails>({
     plot: null,
     genre: null,
+    rating: null,
   });
   const lastItemIdRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
@@ -47,8 +49,8 @@ export function useLazyPlot(
   // Reset fetched details when item changes
   if (itemId !== lastItemIdRef.current) {
     lastItemIdRef.current = itemId;
-    if (fetchedDetails.plot !== null || fetchedDetails.genre !== null) {
-      setFetchedDetails({ plot: null, genre: null });
+    if (fetchedDetails.plot !== null || fetchedDetails.genre !== null || fetchedDetails.rating !== null) {
+      setFetchedDetails({ plot: null, genre: null, rating: null });
     }
   }
 
@@ -83,6 +85,7 @@ export function useLazyPlot(
       try {
         let overview: string | null = null;
         let genreStr: string | null = null;
+        let ratingValue: number | null = null;
         let foundTmdbId: number | null = item.tmdb_id || null;
 
         // Get search query
@@ -105,14 +108,30 @@ export function useLazyPlot(
             if (metadata.found) {
               overview = metadata.overview;
               genreStr = metadata.genres;
-              console.log('[useLazyPlot] TVMaze found metadata:', { hasPlot: !!overview, hasGenre: !!genreStr });
+              ratingValue = metadata.rating;
+              console.log('[useLazyPlot] TVMaze found metadata:', { title: metadata.title, rating: ratingValue, hasPlot: !!overview, hasGenre: !!genreStr, imdbId: metadata.imdbId });
 
-              // Cache to DB (note: TVMaze doesn't provide tmdb_id)
+              // Check if we have a valid existing rating (handle JSON-encoded strings like '"7"')
+              const rawExistingRating = item.rating;
+              let existingRatingStr = rawExistingRating && typeof rawExistingRating === 'string' ? rawExistingRating.trim() : null;
+              if (existingRatingStr && existingRatingStr.startsWith('"') && existingRatingStr.endsWith('"')) {
+                existingRatingStr = existingRatingStr.slice(1, -1);
+              }
+              const existingRating = existingRatingStr ? parseFloat(existingRatingStr) : NaN;
+              const hasValidExistingRating = !isNaN(existingRating) && existingRating > 0;
+
+              // Cache to DB (note: TVMaze doesn't provide tmdb_id but may have imdb_id)
               const updates: Partial<StoredSeries> = {};
               if (overview && !existingPlot) updates.plot = overview;
               if (genreStr && !existingGenre) updates.genre = genreStr;
+              if (ratingValue && !hasValidExistingRating) {
+                updates.rating = ratingValue.toString();
+                console.log('[useLazyPlot] Saving TVMaze rating:', ratingValue);
+              }
+              if (metadata.imdbId && !item.imdb_id) updates.imdb_id = metadata.imdbId;
 
               if (Object.keys(updates).length > 0) {
+                console.log('[useLazyPlot] Updating series DB with:', Object.keys(updates));
                 await db.vodSeries.update(item.series_id, updates);
               }
             } else {
@@ -126,6 +145,7 @@ export function useLazyPlot(
             setFetchedDetails({
               plot: overview,
               genre: genreStr,
+              rating: ratingValue,
             });
           }
           fetchingRef.current = false;
@@ -176,12 +196,24 @@ export function useLazyPlot(
             if (metadata.found) {
               overview = metadata.overview;
               genreStr = metadata.genres;
-              console.log('[useLazyPlot] TVMaze fallback found metadata:', { hasPlot: !!overview, hasGenre: !!genreStr });
+              ratingValue = metadata.rating;
+              console.log('[useLazyPlot] TVMaze fallback found metadata:', { hasPlot: !!overview, hasGenre: !!genreStr, hasRating: !!ratingValue, imdbId: metadata.imdbId });
+
+              // Check if we have a valid existing rating (handle JSON-encoded strings like '"7"')
+              const rawExistingRating = item.rating;
+              let existingRatingStr = rawExistingRating && typeof rawExistingRating === 'string' ? rawExistingRating.trim() : null;
+              if (existingRatingStr && existingRatingStr.startsWith('"') && existingRatingStr.endsWith('"')) {
+                existingRatingStr = existingRatingStr.slice(1, -1);
+              }
+              const existingRating = existingRatingStr ? parseFloat(existingRatingStr) : NaN;
+              const hasValidExistingRating = !isNaN(existingRating) && existingRating > 0;
 
               // Cache to DB
               const updates: Partial<StoredSeries> = {};
               if (overview && !existingPlot) updates.plot = overview;
               if (genreStr && !existingGenre) updates.genre = genreStr;
+              if (ratingValue && !hasValidExistingRating) updates.rating = ratingValue.toString();
+              if (metadata.imdbId && !item.imdb_id) updates.imdb_id = metadata.imdbId;
 
               if (Object.keys(updates).length > 0) {
                 await db.vodSeries.update(item.series_id, updates);
@@ -195,6 +227,7 @@ export function useLazyPlot(
             setFetchedDetails({
               plot: overview,
               genre: genreStr,
+              rating: ratingValue,
             });
           }
           fetchingRef.current = false;
@@ -214,15 +247,26 @@ export function useLazyPlot(
           if (cancelled) return;
 
           overview = details.overview || null;
+          ratingValue = details.vote_average || null;
           if (details.genres && details.genres.length > 0) {
             genreStr = details.genres.map((g) => g.name).join(', ');
           }
+
+          // Check if we have a valid existing rating (handle JSON-encoded strings like '"7"')
+          const rawExistingRating = item.rating;
+          let existingRatingStr = rawExistingRating && typeof rawExistingRating === 'string' ? rawExistingRating.trim() : null;
+          if (existingRatingStr && existingRatingStr.startsWith('"') && existingRatingStr.endsWith('"')) {
+            existingRatingStr = existingRatingStr.slice(1, -1);
+          }
+          const existingRating = existingRatingStr ? parseFloat(existingRatingStr) : NaN;
+          const hasValidExistingRating = !isNaN(existingRating) && existingRating > 0;
 
           // Cache to DB
           const updates: Partial<StoredMovie> = {};
           if (!item.tmdb_id) updates.tmdb_id = foundTmdbId;
           if (overview && !existingPlot) updates.plot = overview;
           if (genreStr && !existingGenre) updates.genre = genreStr;
+          if (ratingValue && !hasValidExistingRating) updates.rating = ratingValue.toString();
 
           if (Object.keys(updates).length > 0) {
             await db.vodMovies.update(item.stream_id, updates);
@@ -232,15 +276,26 @@ export function useLazyPlot(
           if (cancelled) return;
 
           overview = details.overview || null;
+          ratingValue = details.vote_average || null;
           if (details.genres && details.genres.length > 0) {
             genreStr = details.genres.map((g) => g.name).join(', ');
           }
+
+          // Check if we have a valid existing rating (handle JSON-encoded strings like '"7"')
+          const rawExistingRating = item.rating;
+          let existingRatingStr = rawExistingRating && typeof rawExistingRating === 'string' ? rawExistingRating.trim() : null;
+          if (existingRatingStr && existingRatingStr.startsWith('"') && existingRatingStr.endsWith('"')) {
+            existingRatingStr = existingRatingStr.slice(1, -1);
+          }
+          const existingRating = existingRatingStr ? parseFloat(existingRatingStr) : NaN;
+          const hasValidExistingRating = !isNaN(existingRating) && existingRating > 0;
 
           // Cache to DB
           const updates: Partial<StoredSeries> = {};
           if (!item.tmdb_id) updates.tmdb_id = foundTmdbId;
           if (overview && !existingPlot) updates.plot = overview;
           if (genreStr && !existingGenre) updates.genre = genreStr;
+          if (ratingValue && !hasValidExistingRating) updates.rating = ratingValue.toString();
 
           if (Object.keys(updates).length > 0) {
             await db.vodSeries.update(item.series_id, updates);
@@ -248,10 +303,11 @@ export function useLazyPlot(
         }
 
         if (!cancelled) {
-          console.log('[useLazyPlot] Fetched TMDB details:', { hasPlot: !!overview, hasGenre: !!genreStr });
+          console.log('[useLazyPlot] Fetched TMDB details:', { hasPlot: !!overview, hasGenre: !!genreStr, hasRating: !!ratingValue });
           setFetchedDetails({
             plot: overview,
             genre: genreStr,
+            rating: ratingValue,
           });
         }
       } catch (err) {
@@ -272,10 +328,27 @@ export function useLazyPlot(
   }, [item?.tmdb_id, item?.title, item?.name, existingPlot, existingGenre, apiKey]);
 
   // Return existing data or fetched data
-  return {
+  // Handle empty strings by treating them as null
+  // Rating is stored as string but could be empty or undefined
+  // Also handle JSON-encoded strings like '"7"' (with quotes)
+  const rawRating = item?.rating;
+  let ratingString = rawRating && typeof rawRating === 'string' ? rawRating.trim() : null;
+  // Remove surrounding quotes if present (e.g., "7" -> 7)
+  if (ratingString && ratingString.startsWith('"') && ratingString.endsWith('"')) {
+    ratingString = ratingString.slice(1, -1);
+  }
+  const storedRatingValue = ratingString ? parseFloat(ratingString) : NaN;
+  const hasValidStoredRating = !isNaN(storedRatingValue) && storedRatingValue > 0;
+
+  const result = {
     plot: existingPlot || fetchedDetails.plot,
     genre: existingGenre || fetchedDetails.genre,
+    rating: hasValidStoredRating ? storedRatingValue : fetchedDetails.rating,
   };
+  
+  console.log('[useLazyPlot] Returning:', { itemId: item ? (isMovie(item) ? item.stream_id : item.series_id) : null, rating: result.rating, hasValidStoredRating, storedRatingValue, ratingString, rawRating });
+  
+  return result;
 }
 
 export default useLazyPlot;

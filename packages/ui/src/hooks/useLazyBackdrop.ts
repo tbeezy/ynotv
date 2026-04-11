@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { db } from '../db';
+import { db, type StoredSeries } from '../db';
 import {
   getMovieDetails,
   getTvShowDetails,
@@ -113,11 +113,15 @@ export function useLazyBackdrop(
 
             if (metadata.found && metadata.backdropUrl) {
               backdropUrl = metadata.backdropUrl;
-              console.log('[useLazyBackdrop] TVMaze found backdrop:', backdropUrl);
+              console.log('[useLazyBackdrop] TVMaze found backdrop:', backdropUrl, 'imdbId:', metadata.imdbId);
 
-              // Cache to DB - store TVMaze image URL as backdrop_path
-              if (backdropUrl) {
-                await db.vodSeries.update(item.series_id, { backdrop_path: backdropUrl });
+              // Cache to DB - store TVMaze image URL as backdrop_path and imdb_id if available
+              const updates: Partial<StoredSeries> = {};
+              if (backdropUrl) updates.backdrop_path = backdropUrl;
+              if (metadata.imdbId && !item.imdb_id) updates.imdb_id = metadata.imdbId;
+
+              if (Object.keys(updates).length > 0) {
+                await db.vodSeries.update(item.series_id, updates);
               }
             }
           } catch (tvmazeErr) {
@@ -169,11 +173,15 @@ export function useLazyBackdrop(
 
             if (metadata.found && metadata.backdropUrl) {
               backdropUrl = metadata.backdropUrl;
-              console.log('[useLazyBackdrop] TVMaze fallback found backdrop:', backdropUrl);
+              console.log('[useLazyBackdrop] TVMaze fallback found backdrop:', backdropUrl, 'imdbId:', metadata.imdbId);
 
               // Cache to DB
-              if (backdropUrl) {
-                await db.vodSeries.update(item.series_id, { backdrop_path: backdropUrl });
+              const updates: Partial<StoredSeries> = {};
+              if (backdropUrl) updates.backdrop_path = backdropUrl;
+              if (metadata.imdbId && !item.imdb_id) updates.imdb_id = metadata.imdbId;
+
+              if (Object.keys(updates).length > 0) {
+                await db.vodSeries.update(item.series_id, updates);
               }
             }
           } catch (tvmazeErr) {

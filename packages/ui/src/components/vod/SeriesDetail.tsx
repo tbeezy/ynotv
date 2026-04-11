@@ -60,9 +60,9 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Lazy-load backdrop, plot, genre, and credits from TMDB if available
+  // Lazy-load backdrop, plot, genre, rating, and credits from TMDB/TVMaze if available
   const tmdbBackdropUrl = useLazyBackdrop(series, apiKey);
-  const { plot: lazyPlot, genre: lazyGenre } = useLazyPlot(series, apiKey);
+  const { plot: lazyPlot, genre: lazyGenre, rating: lazyRating } = useLazyPlot(series, apiKey);
   const lazyCredits = useLazyCredits(series, apiKey);
 
   const handlePlayEpisode = useCallback(
@@ -158,8 +158,17 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
   // Use year field if available, otherwise extract from release_date
   const year = series.year || series.release_date?.slice(0, 4);
 
-  // Rating - only show if it's a meaningful value (not 0, not NaN)
-  const parsedRating = series.rating ? parseFloat(series.rating) : NaN;
+  // Rating - use lazy rating from hook if available, otherwise use stored rating
+  // Only show if it's a meaningful value (not 0, not NaN, not empty string)
+  // Handle JSON-encoded strings like '"7"' (with quotes)
+  const rawRating = series.rating;
+  let storedRating = rawRating && typeof rawRating === 'string' ? rawRating.trim() : null;
+  // Remove surrounding quotes if present (e.g., "7" -> 7)
+  if (storedRating && storedRating.startsWith('"') && storedRating.endsWith('"')) {
+    storedRating = storedRating.slice(1, -1);
+  }
+  const ratingSource = storedRating || (lazyRating ? lazyRating.toString() : null);
+  const parsedRating = ratingSource ? parseFloat(ratingSource) : NaN;
   const rating = !isNaN(parsedRating) && parsedRating > 0 ? parsedRating : null;
   const genreSource = series.genre || lazyGenre;
   const genres = genreSource?.split(',').map((g) => g.trim()).filter(Boolean) ?? [];
@@ -209,7 +218,7 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
 
             <div className="series-detail__meta">
               {year && <span className="series-detail__year">{year}</span>}
-              {rating && (
+              {rating !== null && (
                 <span className="series-detail__rating">
                   <svg viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />

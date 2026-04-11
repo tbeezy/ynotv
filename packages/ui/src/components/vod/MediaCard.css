@@ -210,6 +210,7 @@
 }
 
 /* Marquee scroll animation - only for titles that overflow */
+/* Uses CSS custom property --marquee-visible-width which should match card width */
 .media-card:hover .media-card__title--overflow,
 .media-card:focus-visible .media-card__title--overflow {
   overflow: visible;
@@ -226,12 +227,15 @@
     transform: translateX(0);
   }
   40% {
-    transform: translateX(calc(-100% + 140px));
+    /* Scroll left to show the rest of the title, keeping last part visible */
+    transform: translateX(calc(-100% + var(--marquee-visible-width, 160px)));
   }
   60% {
-    transform: translateX(calc(-100% + 140px));
+    /* Pause on the scrolled position */
+    transform: translateX(calc(-100% + var(--marquee-visible-width, 160px)));
   }
   100% {
+    /* Return to original position */
     transform: translateX(0);
   }
 }

@@ -95,11 +95,15 @@ export function useLazyCredits(
 
             if (metadata.found && metadata.cast) {
               castString = metadata.cast;
-              console.log('[useLazyCredits] TVMaze found cast:', castString);
+              console.log('[useLazyCredits] TVMaze found cast:', castString, 'imdbId:', metadata.imdbId);
 
               // Cache to DB
-              if (!hasCast) {
-                await db.vodSeries.update(item.series_id, { cast: castString });
+              const updates: Partial<StoredSeries> = {};
+              if (!hasCast) updates.cast = castString;
+              if (metadata.imdbId && !item.imdb_id) updates.imdb_id = metadata.imdbId;
+
+              if (Object.keys(updates).length > 0) {
+                await db.vodSeries.update(item.series_id, updates);
               }
             }
           } catch (tvmazeErr) {
@@ -151,11 +155,15 @@ export function useLazyCredits(
 
             if (metadata.found && metadata.cast) {
               castString = metadata.cast;
-              console.log('[useLazyCredits] TVMaze fallback found cast:', castString);
+              console.log('[useLazyCredits] TVMaze fallback found cast:', castString, 'imdbId:', metadata.imdbId);
 
               // Cache to DB
-              if (!hasCast) {
-                await db.vodSeries.update(item.series_id, { cast: castString });
+              const updates: Partial<StoredSeries> = {};
+              if (!hasCast) updates.cast = castString;
+              if (metadata.imdbId && !item.imdb_id) updates.imdb_id = metadata.imdbId;
+
+              if (Object.keys(updates).length > 0) {
+                await db.vodSeries.update(item.series_id, updates);
               }
             }
           } catch (tvmazeErr) {
