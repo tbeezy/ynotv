@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLiveQuery } from '../hooks/useSqliteLiveQuery';
 import { useCategoriesBySource, type CategoryWithCount, type SourceWithCategories } from '../hooks/useChannels';
 import { db, getWatchlistCount, type CustomGroup } from '../db';
@@ -185,6 +185,45 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   const [sources, setSources] = useState<Record<string, string>>({});
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
   const { version } = useSourceVersion(); // Listen for source changes
+
+  // Track mouse position for hover-to-show sidebar button
+  const [mouseX, setMouseX] = useState(0);
+  const [mouseY, setMouseY] = useState(0);
+
+  // Calculate if mouse is in the "middle left" area (center 40% of screen height, within 40px of left edge)
+  const isInMiddleLeftZone = useMemo(() => {
+    const windowHeight = window.innerHeight;
+    const middleStart = windowHeight * 0.3; // 30% from top
+    const middleEnd = windowHeight * 0.7;   // 70% from top (30% from bottom)
+    const isInVerticalZone = mouseY >= middleStart && mouseY <= middleEnd;
+    const isNearLeftEdge = mouseX <= 50; // Within 50px of left edge
+    return isNearLeftEdge && isInVerticalZone && !visible && isLiveTV;
+  }, [mouseX, mouseY, visible, isLiveTV]);
+
+  // Calculate if mouse is near left edge but NOT in the middle zone (for hint)
+  const isNearLeftEdgeOutsideMiddle = useMemo(() => {
+    const windowHeight = window.innerHeight;
+    const middleStart = windowHeight * 0.3;
+    const middleEnd = windowHeight * 0.7;
+    const isOutsideVerticalZone = mouseY < middleStart || mouseY > middleEnd;
+    const isNearLeftEdge = mouseX <= 50;
+    return isNearLeftEdge && isOutsideVerticalZone && !visible && isLiveTV;
+  }, [mouseX, mouseY, visible, isLiveTV]);
+
+  // Handle mouse movement globally when sidebar is hidden
+  useEffect(() => {
+    if (!visible && isLiveTV) {
+      const handleMouseMove = (e: MouseEvent) => {
+        setMouseX(e.clientX);
+        setMouseY(e.clientY);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+      };
+    }
+  }, [visible, isLiveTV]);
 
   // Custom Groups additions
   const { showModal, showConfirm, showPrompt, ModalComponent } = useModal();
@@ -548,11 +587,34 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
       )}
       </div>
 
-      {/* Show Sidebar Button - visible when sidebar is hidden and in LiveTV */}
+      {/* Sidebar hint - subtle indicator when hovering left edge outside middle zone */}
+      {isNearLeftEdgeOutsideMiddle && (
+        <div
+          className="sidebar-hint-indicator"
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: mouseY - 15,
+            width: '3px',
+            height: '30px',
+            background: 'var(--accent-primary, rgba(0, 212, 255, 0.4))',
+            borderRadius: '0 3px 3px 0',
+            zIndex: 109,
+            pointerEvents: 'none',
+            transition: 'opacity 0.2s ease',
+          }}
+        />
+      )}
+
+      {/* Show Sidebar Button - visible when sidebar is hidden, in LiveTV, and hovering middle-left */}
       {!visible && onShow && isLiveTV && (
         <button
-          className="show-sidebar-btn"
+          className={`show-sidebar-btn ${isInMiddleLeftZone ? 'visible' : ''}`}
           onClick={onShow}
+          onMouseEnter={() => {
+            // Ensure button stays visible when hovering over it
+            setMouseX(25);
+          }}
           title="Show Sidebar"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
