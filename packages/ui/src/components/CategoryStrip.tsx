@@ -21,6 +21,9 @@ interface CategoryStripProps {
   sidebarExpanded: boolean;
   showSidebar?: boolean;
   onEditSource?: (sourceId: string) => void;
+  onClose?: () => void;
+  onShow?: () => void;
+  isLiveTV?: boolean;
 }
 
 // Chevron Icon for expand/collapse
@@ -130,7 +133,7 @@ function CustomGroupButton({ group, selectedCategoryId, onSelectCategory, onCont
 
 
 
-export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, sidebarExpanded, showSidebar = true, onEditSource }: CategoryStripProps) {
+export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, sidebarExpanded, showSidebar = true, onEditSource, onClose, onShow, isLiveTV }: CategoryStripProps) {
   const groupedCategories = useCategoriesBySource();
   const [sources, setSources] = useState<Record<string, string>>({});
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
@@ -244,17 +247,31 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
   );
 
   return (
-    <div className={`category-strip ${visible ? 'visible' : 'hidden'} ${sidebarExpanded ? 'sidebar-expanded' : ''} ${showSidebar ? 'with-sidebar' : 'no-sidebar'}`}>
-      <div className="category-strip-header">
-        <span className="category-strip-title">Categories</span>
-        <button
-          className="add-group-btn"
-          onClick={handleCreateGroup}
-          title="Create Custom Group"
-        >
-          +
-        </button>
-      </div>
+    <>
+      <div className={`category-strip ${visible ? 'visible' : 'hidden'} ${sidebarExpanded ? 'sidebar-expanded' : ''} ${showSidebar ? 'with-sidebar' : 'no-sidebar'}`}>
+        <div className="category-strip-header">
+          <span className="category-strip-title">Categories</span>
+          <div className="category-strip-actions">
+            <button
+              className="add-group-btn"
+              onClick={handleCreateGroup}
+              title="Create Custom Group"
+            >
+              +
+            </button>
+            {onClose && (
+              <button
+                className="hide-sidebar-btn"
+                onClick={onClose}
+                title="Hide Sidebar"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
 
       <div className="category-strip-top">
         {/* "All Channels" option */}
@@ -482,6 +499,20 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           onClose={() => setEpgEditorSource(null)}
         />
       )}
-    </div>
+      </div>
+
+      {/* Show Sidebar Button - visible when sidebar is hidden and in LiveTV */}
+      {!visible && onShow && isLiveTV && (
+        <button
+          className="show-sidebar-btn"
+          onClick={onShow}
+          title="Show Sidebar"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      )}
+    </>
   );
 }

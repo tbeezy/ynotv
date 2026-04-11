@@ -1137,6 +1137,9 @@ function App() {
           setCategoriesOpen(false);
           setSidebarExpanded(false);
         }}
+        onClose={() => setCategoriesOpen(false)}
+        onShow={() => setCategoriesOpen(true)}
+        isLiveTV={activeView === 'guide'}
       />
 
       {/* Channel Panel */}

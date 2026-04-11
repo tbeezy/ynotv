@@ -126,6 +126,63 @@
   transform: scale(1.1) rotate(90deg);
 }
 
+/* Category Strip Actions Container */
+.category-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Hide Sidebar Button */
+.hide-sidebar-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.hide-sidebar-btn:hover {
+  color: var(--text-primary, #fff);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+}
+
+/* Show Sidebar Button - Floating button when sidebar is hidden */
+.show-sidebar-btn {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-color, rgba(26, 26, 26, 0.8));
+  border: 1px solid var(--border-color, rgba(42, 42, 42, 0.8));
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  padding: 16px 4px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  z-index: 110;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.show-sidebar-btn:hover {
+  background: var(--surface-hover, rgba(42, 42, 42, 0.95));
+  color: var(--text-primary, #fff);
+  padding-left: 8px;
+  border-color: var(--accent-primary, rgba(0, 212, 255, 0.5));
+}
+
 /* Search Input Styles */
 .category-search-container {
   padding: 12px;
