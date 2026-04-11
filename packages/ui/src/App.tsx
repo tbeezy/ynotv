@@ -1242,6 +1242,12 @@ function App() {
           previewEnabled={true}
           onTogglePreview={() => {}}
           onPlayChannel={handlePlayChannel}
+          miniMediaBarForPreview={miniMediaBarForEpgPreview}
+          onTogglePlay={handleTogglePlay}
+          isPlaying={playing}
+          onStop={handleStop}
+          onChannelUp={handleChannelUp}
+          onChannelDown={handleChannelDown}
         />
       )}
 

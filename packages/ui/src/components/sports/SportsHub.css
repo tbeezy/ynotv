@@ -294,6 +294,82 @@
   background: white;
 }
 
+/* ==========================================================================
+   SPORTS MINI MEDIA BAR FOR PREVIEW
+   ========================================================================== */
+.sports-preview-minibar {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  z-index: 20;
+  padding: 4px;
+}
+
+.sports-minibar-volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sports-minibar-volume-slider {
+  width: 0;
+  opacity: 0;
+  transition: all 0.2s ease;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  transform-origin: right center;
+}
+
+.sports-minibar-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+}
+
+.sports-minibar-volume:hover .sports-minibar-volume-slider {
+  width: 60px;
+  opacity: 1;
+}
+
+.sports-minibar-btn {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.sports-minibar-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: rgba(255, 255, 255, 1);
+  transform: scale(1.05);
+}
+
+.sports-minibar-btn:active {
+  transform: scale(0.95);
+}
+
 .sports-info-pane {
   flex: 1;
   background: var(--bg-overlay, rgba(0, 0, 0, 0.95));
