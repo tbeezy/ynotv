@@ -184,8 +184,8 @@
   text-overflow: ellipsis;
 }
 
-/* Scroll text animation on hover - like channels in LiveTV */
-.modern-ui .category-item:hover .category-name {
+/* Scroll text animation on hover - only when text overflows */
+.modern-ui .category-item:hover .category-name.overflowing {
   overflow: visible;
   display: inline-block;
   animation: scroll-text 8s linear infinite;

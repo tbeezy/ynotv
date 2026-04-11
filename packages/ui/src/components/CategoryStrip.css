@@ -383,7 +383,7 @@
   display: block;
 }
 
-.category-source-header:hover .source-name {
+.category-source-header:hover .source-name.overflowing {
   overflow: visible;
   display: inline-block;
   animation: scroll-text 8s linear infinite;
@@ -423,6 +423,14 @@
   text-overflow: ellipsis;
   flex: 1;
   margin-right: 8px;
+}
+
+/* Category name scrolling animation - only when overflowing */
+.category-item:hover .category-name.overflowing {
+  overflow: visible;
+  display: inline-block;
+  animation: scroll-text 8s linear infinite;
+  padding-right: 20px;
 }
 
 .category-count {

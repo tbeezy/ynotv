@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLiveQuery } from '../hooks/useSqliteLiveQuery';
 import { useCategoriesBySource, type CategoryWithCount, type SourceWithCategories } from '../hooks/useChannels';
 import { db, getWatchlistCount, type CustomGroup } from '../db';
@@ -13,6 +13,53 @@ import { FavoriteManager } from './settings/FavoriteManager';
 import { SourceContextMenu } from './SourceContextMenu';
 import { EpgEditorModal } from './EpgEditorModal';
 import './CategoryStrip.css';
+
+// Component that detects text overflow and only scrolls when necessary
+function ScrollingText({ children, className }: { children: React.ReactNode; className?: string }) {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const element = textRef.current;
+    if (!element) return;
+
+    const checkOverflow = () => {
+      // Check if text overflows its container
+      // scrollWidth = full text width including overflow
+      // clientWidth = visible width of the element
+      const textWidth = element.scrollWidth;
+      const visibleWidth = element.clientWidth;
+      const hasOverflow = textWidth > visibleWidth + 2; // +2px safety margin
+      setIsOverflowing(hasOverflow);
+    };
+
+    // Check multiple times to catch layout changes
+    checkOverflow();
+    const timeouts = [
+      setTimeout(checkOverflow, 50),
+      setTimeout(checkOverflow, 200),
+      setTimeout(checkOverflow, 500)
+    ];
+
+    // Also check on window resize
+    const handleResize = () => checkOverflow();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [children]);
+
+  return (
+    <span 
+      ref={textRef} 
+      className={`${className || ''} ${isOverflowing ? 'overflowing' : ''}`}
+    >
+      {children}
+    </span>
+  );
+}
 
 interface CategoryStripProps {
   selectedCategoryId: string | null;
@@ -61,7 +108,7 @@ function FavoritesButton({ selectedCategoryId, onSelectCategory, onContextMenu }
       onClick={() => onSelectCategory('__favorites__')}
       onContextMenu={onContextMenu}
     >
-      <span className="category-name">⭐ Favorites</span>
+      <ScrollingText className="category-name">⭐ Favorites</ScrollingText>
       <span className="category-count">{favoriteCount ?? 0}</span>
     </button>
   );
@@ -80,7 +127,7 @@ function WatchlistButton({ selectedCategoryId, onSelectCategory }: { selectedCat
       className={`category-item ${selectedCategoryId === '__watchlist__' ? 'selected' : ''}`}
       onClick={() => onSelectCategory('__watchlist__')}
     >
-      <span className="category-name">📋 Watchlist</span>
+      <ScrollingText className="category-name">📋 Watchlist</ScrollingText>
       <span className="category-count">{watchlistCount ?? 0}</span>
     </button>
   );
@@ -100,7 +147,7 @@ function RecentlyViewedButton({ selectedCategoryId, onSelectCategory }: { select
       className={`category-item ${selectedCategoryId === '__recent__' ? 'selected' : ''}`}
       onClick={() => onSelectCategory('__recent__')}
     >
-      <span className="category-name">🕐 Recently Viewed</span>
+      <ScrollingText className="category-name">🕐 Recently Viewed</ScrollingText>
       <span className="category-count">{recentCount ?? 0}</span>
     </button>
   );
@@ -125,7 +172,7 @@ function CustomGroupButton({ group, selectedCategoryId, onSelectCategory, onCont
       onClick={() => onSelectCategory(group.group_id)}
       onContextMenu={(e) => onContextMenu(e, group.group_id)}
     >
-      <span className="category-name">📂 {group.name}</span>
+      <ScrollingText className="category-name">📂 {group.name}</ScrollingText>
       <span className="category-count">{channelCount ?? 0}</span>
     </button>
   );
@@ -279,7 +326,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
           className={`category-item ${selectedCategoryId === null ? 'selected' : ''}`}
           onClick={() => onSelectCategory(null)}
         >
-          <span className="category-name">All Channels</span>
+          <ScrollingText className="category-name">All Channels</ScrollingText>
           <span className="category-count">{totalChannels}</span>
         </button>
 
@@ -332,7 +379,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
               <div className="source-header-left">
                 <ChevronIcon expanded={expandedSources[group.sourceId]} />
                 <div className="source-name-container">
-                  <span className="source-name">{sources[group.sourceId] || 'Loading...'}</span>
+                  <ScrollingText className="source-name">{sources[group.sourceId] || 'Loading...'}</ScrollingText>
                 </div>
               </div>
               <span className="source-count">
@@ -348,7 +395,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, s
                     className={`category-item nested ${selectedCategoryId === category.category_id ? 'selected' : ''}`}
                     onClick={() => onSelectCategory(category.category_id)}
                   >
-                    <span className="category-name">{category.category_name}</span>
+                    <ScrollingText className="category-name">{category.category_name}</ScrollingText>
                     <span className="category-count">{category.channelCount}</span>
                   </button>
                 ))}
