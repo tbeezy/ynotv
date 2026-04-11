@@ -443,11 +443,12 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
     onRemoveFromRecentlyWatched: handleRemoveFromRecentlyWatched,
   }), [type, tmdbApiKey, featuredItems, heroLoading, handleItemClick, handleHeroPlay, handleRemoveFromRecentlyWatched]);
 
-  // Handle category selection - also close detail view
+  // Handle category selection - also close detail view and clear search
   const handleCategorySelect = useCallback((id: string | null) => {
     setSelectedCategoryId(id);
     setSelectedItem(null);
-  }, [setSelectedCategoryId]);
+    setSearchQuery('');
+  }, [setSelectedCategoryId, setSearchQuery]);
 
   // Handle mouse back button and browser back - close detail view
   useEffect(() => {

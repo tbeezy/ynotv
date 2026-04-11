@@ -340,15 +340,11 @@ export function useLazyPlot(
   const storedRatingValue = ratingString ? parseFloat(ratingString) : NaN;
   const hasValidStoredRating = !isNaN(storedRatingValue) && storedRatingValue > 0;
 
-  const result = {
+  return {
     plot: existingPlot || fetchedDetails.plot,
     genre: existingGenre || fetchedDetails.genre,
     rating: hasValidStoredRating ? storedRatingValue : fetchedDetails.rating,
   };
-  
-  console.log('[useLazyPlot] Returning:', { itemId: item ? (isMovie(item) ? item.stream_id : item.series_id) : null, rating: result.rating, hasValidStoredRating, storedRatingValue, ratingString, rawRating });
-  
-  return result;
 }
 
 export default useLazyPlot;
