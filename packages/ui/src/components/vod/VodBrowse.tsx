@@ -165,11 +165,7 @@ export function VodBrowse({
 
   // Custom Loading Status Indicator for Stalker Sync
   // If we have cached data, show it immediately even while syncing
-  const debugPrefix = `[VodBrowse type=${type} cat=${categoryId ?? 'ALL'} search=${search ?? ''}]`;
-  console.log(`${debugPrefix} render — items=${items.length}, dataLoading=${dataLoading}, lazyLoading=${lazyLoading}, loading=${loading}, hasCache=${hasCache}`);
-
   if (lazyLoading && !hasCache) {
-    console.log(`${debugPrefix} Showing STALKER LOADING overlay`);
     return (
       <div className="vod-browse vod-browse--loading-state">
         <div className="vod-browse__spinner"></div>
@@ -186,7 +182,6 @@ export function VodBrowse({
 
   // Empty state (only show if no data AND not loading from cache)
   if (!loading && !lazyLoading && items.length === 0) {
-    console.log(`${debugPrefix} Showing EMPTY STATE — search="${search}", categoryId=${categoryId}`);
     return (
       <div className="vod-browse vod-browse--empty">
         <div className="vod-browse__empty-state">

@@ -530,9 +530,6 @@ export function useWindowedMovies(
   // flash that occurred when a separate reset effect ran with loading still false.
   useEffect(() => {
     const loadAll = async () => {
-      const debugTag = `[useWindowedMovies cat=${categoryId ?? 'ALL'} search=${search ?? ''} srcKey=${enabledSourceKey}]`;
-      console.log(`${debugTag} loadAll START — enabledSourceIds=${enabledSourceIds ? `Set(${enabledSourceIds.size})` : 'null'}, reloadToken=${reloadToken}, shouldRefresh=${shouldRefresh}`);
-
       // Reset items AND set loading in the same async call so React batches the
       // state updates together, avoiding the empty-state flash.
       setAllItems([]);
@@ -542,7 +539,6 @@ export function useWindowedMovies(
       // the try/finally block so setLoading(false) does NOT fire from finally{}.
       // loading stays true — the effect re-runs once enabledSourceKey changes from 'loading'.
       if (enabledSourceIds === null) {
-        console.log(`${debugTag} Bailing out — sources not yet loaded, will retry when enabledSourceKey changes`);
         return;
       }
 
@@ -630,7 +626,6 @@ export function useWindowedMovies(
           finalParams
         );
 
-        console.log(`[useWindowedMovies cat=${categoryId ?? 'ALL'} search=${search ?? ''}] loadAll DONE — ${items.length} items returned`);
         setAllItems(items);
         setTotalCount(items.length);
       } catch (error) {
@@ -698,9 +693,6 @@ export function useWindowedSeries(
   // flash that occurred when a separate reset effect ran with loading still false.
   useEffect(() => {
     const loadAll = async () => {
-      const debugTag = `[useWindowedSeries cat=${categoryId ?? 'ALL'} search=${search ?? ''} srcKey=${enabledSourceKey}]`;
-      console.log(`${debugTag} loadAll START — enabledSourceIds=${enabledSourceIds ? `Set(${enabledSourceIds.size})` : 'null'}, shouldRefreshSeries=${shouldRefreshSeries}`);
-
       // Reset items AND set loading in the same async call so React batches the
       // state updates together, avoiding the empty-state flash.
       setAllItems([]);
@@ -710,7 +702,6 @@ export function useWindowedSeries(
       // the try/finally block so setLoading(false) does NOT fire from finally{}.
       // loading stays true — the effect re-runs once enabledSourceKey changes from 'loading'.
       if (enabledSourceIds === null) {
-        console.log(`${debugTag} Bailing out — sources not yet loaded, will retry when enabledSourceKey changes`);
         return;
       }
 
@@ -789,7 +780,6 @@ export function useWindowedSeries(
           params
         );
 
-        console.log(`${debugTag} loadAll DONE — ${items.length} items returned`);
         setAllItems(items);
         setTotalCount(items.length);
       } catch (error) {
