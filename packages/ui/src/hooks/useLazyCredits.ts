@@ -1,17 +1,17 @@
 /**
- * useLazyCredits - Lazy-load cast and director from TMDB
+ * useLazyCredits - Lazy-load cast and director from TMDB or TVMaze
  *
- * Fetches credits from TMDB API when:
- * - Item has tmdb_id (from export matching)
- * - Item is missing cast or director
- * - User has TMDB API key configured
+ * Fetches credits from:
+ * - TMDB API (if API key configured) - primary source
+ * - TVMaze API (free, no key required) - fallback for TV series cast
  *
  * Caches result to DB so we don't refetch.
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { db, type StoredMovie } from '../db';
+import { db, type StoredMovie, type StoredSeries } from '../db';
 import { getMovieCredits, getTvShowCredits, searchMovies, searchTvShows } from '../services/tmdb';
+import { getTvShowMetadataWithCast } from '../services/tvmaze';
 import { type MediaItem, isMovie } from '../types/media';
 
 interface Credits {
@@ -20,10 +20,10 @@ interface Credits {
 }
 
 /**
- * Lazy-load credits (cast and director) for a movie or series
+ * Lazy-load credits (cast and director) for a movie or series from TMDB or TVMaze
  *
  * @param item - Movie or series to get credits for
- * @param apiKey - TMDB API key (if not provided, returns null)
+ * @param apiKey - TMDB API key (if not provided, uses TVMaze for series)
  * @returns Credits object with cast and director strings
  */
 export function useLazyCredits(
@@ -60,8 +60,9 @@ export function useLazyCredits(
       return;
     }
 
-    // No API key - can't fetch
-    if (!apiKey) {
+    // For movies, we need TMDB API key (no free fallback with cast data)
+    // For series, we can use TVMaze as fallback (no API key needed)
+    if (!apiKey && isMovie(item)) {
       return;
     }
 
@@ -77,38 +78,104 @@ export function useLazyCredits(
         let directorString: string | null = null;
         let foundTmdbId: number | null = item.tmdb_id || null;
 
+        // Get search query
+        const searchQuery = (item.title || item.name || '').trim();
+
+        if (!searchQuery) {
+          fetchingRef.current = false;
+          return;
+        }
+
+        // For series without TMDB key, use TVMaze directly for cast
+        if (!apiKey && !isMovie(item)) {
+          console.log('[useLazyCredits] No TMDB key, using TVMaze for series cast:', searchQuery);
+          try {
+            const metadata = await getTvShowMetadataWithCast(searchQuery);
+            if (cancelled) return;
+
+            if (metadata.found && metadata.cast) {
+              castString = metadata.cast;
+              console.log('[useLazyCredits] TVMaze found cast:', castString);
+
+              // Cache to DB
+              if (!hasCast) {
+                await db.vodSeries.update(item.series_id, { cast: castString });
+              }
+            }
+          } catch (tvmazeErr) {
+            console.warn('[useLazyCredits] TVMaze cast fetch failed:', tvmazeErr);
+          }
+
+          if (!cancelled) {
+            setFetchedCredits({ cast: castString, director: null });
+          }
+          fetchingRef.current = false;
+          return;
+        }
+
+        // TMDB path (requires API key)
+        if (!apiKey) {
+          fetchingRef.current = false;
+          return;
+        }
+
         // If no tmdb_id but we have a title, search TMDB
-        if (!foundTmdbId && (item.title || item.name)) {
-          const searchQuery = (item.title || item.name || '').trim();
+        if (!foundTmdbId) {
           const year = item.year || item.release_date?.slice(0, 4);
 
-          if (searchQuery) {
-            try {
-              if (isMovie(item)) {
-                const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
-                if (cancelled) return;
-                if (results.length > 0) {
-                  foundTmdbId = results[0].id;
-                }
-              } else {
-                const results = await searchTvShows(apiKey, searchQuery, year ? parseInt(year) : undefined);
-                if (cancelled) return;
-                if (results.length > 0) {
-                  foundTmdbId = results[0].id;
-                }
+          try {
+            if (isMovie(item)) {
+              const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
+              if (cancelled) return;
+              if (results.length > 0) {
+                foundTmdbId = results[0].id;
               }
-            } catch (searchErr) {
-              console.warn('TMDB search failed:', searchErr);
+            } else {
+              const results = await searchTvShows(apiKey, searchQuery, year ? parseInt(year) : undefined);
+              if (cancelled) return;
+              if (results.length > 0) {
+                foundTmdbId = results[0].id;
+              }
             }
+          } catch (searchErr) {
+            console.warn('TMDB search failed:', searchErr);
           }
         }
 
-        // If still no tmdb_id, can't fetch credits
+        // If still no tmdb_id, try TVMaze fallback for series cast
+        if (!foundTmdbId && !isMovie(item)) {
+          console.log('[useLazyCredits] No TMDB ID found, trying TVMaze fallback for series cast:', searchQuery);
+          try {
+            const metadata = await getTvShowMetadataWithCast(searchQuery);
+            if (cancelled) return;
+
+            if (metadata.found && metadata.cast) {
+              castString = metadata.cast;
+              console.log('[useLazyCredits] TVMaze fallback found cast:', castString);
+
+              // Cache to DB
+              if (!hasCast) {
+                await db.vodSeries.update(item.series_id, { cast: castString });
+              }
+            }
+          } catch (tvmazeErr) {
+            console.warn('[useLazyCredits] TVMaze fallback failed:', tvmazeErr);
+          }
+
+          if (!cancelled) {
+            setFetchedCredits({ cast: castString, director: null });
+          }
+          fetchingRef.current = false;
+          return;
+        }
+
+        // If still no tmdb_id, can't fetch credits from TMDB
         if (!foundTmdbId) {
           fetchingRef.current = false;
           return;
         }
 
+        // Fetch credits from TMDB
         if (isMovie(item)) {
           const credits = await getMovieCredits(apiKey, foundTmdbId);
           if (cancelled) return;

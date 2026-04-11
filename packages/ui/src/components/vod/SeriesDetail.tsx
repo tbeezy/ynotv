@@ -143,10 +143,13 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
   // Get images - use TMDB backdrop if available, fallback to cover
   const backdropUrl = tmdbBackdropUrl || series.cover;
 
-  // Priority: RPDB poster > local cover > TMDB fallback
+  // Priority: RPDB poster > local cover > TMDB/TVMaze fallback
+  // Note: backdrop_path could be TMDB path (e.g., "/abc.jpg") or TVMaze full URL
   const posterUrl = rpdbPosterUrl || series.cover ||
     (series.backdrop_path
-      ? getTmdbImageUrl(series.backdrop_path, TMDB_POSTER_SIZES.medium)
+      ? series.backdrop_path.startsWith('http')
+        ? series.backdrop_path  // TVMaze full URL
+        : getTmdbImageUrl(series.backdrop_path, TMDB_POSTER_SIZES.medium)  // TMDB path
       : null);
 
   // Use clean title if available, otherwise fall back to name

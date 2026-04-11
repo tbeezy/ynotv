@@ -1,10 +1,9 @@
 /**
- * useLazyBackdrop - Lazy-load TMDB backdrop images on demand
+ * useLazyBackdrop - Lazy-load backdrop images from TMDB or TVMaze on demand
  *
- * Fetches backdrop from TMDB API when:
- * - Item has tmdb_id (from export matching)
- * - Item is missing backdrop_path
- * - User has TMDB API key configured
+ * Fetches backdrop from:
+ * - TMDB API (if API key configured) - primary source
+ * - TVMaze API (free, no key required) - fallback for TV series images
  *
  * Caches result to DB so we don't refetch.
  */
@@ -19,15 +18,16 @@ import {
   searchMovies,
   searchTvShows,
 } from '../services/tmdb';
+import { getTvShowMetadata, getShowBackdropUrl } from '../services/tvmaze';
 import { getRpdbBackdropUrl } from '../services/rpdb';
 import { useRpdbSettings } from './useRpdbSettings';
 import { type MediaItem, isMovie } from '../types/media';
 
 /**
- * Lazy-load backdrop for a movie or series
+ * Lazy-load backdrop for a movie or series from TMDB or TVMaze
  *
  * @param item - Movie or series to get backdrop for
- * @param apiKey - TMDB API key (if not provided, returns null)
+ * @param apiKey - TMDB API key (if not provided, uses TVMaze for series)
  * @param size - Backdrop size (default: large)
  * @returns Backdrop URL or null
  */
@@ -77,8 +77,9 @@ export function useLazyBackdrop(
       return;
     }
 
-    // No API key - can't fetch
-    if (!apiKey) {
+    // For movies, we need TMDB API key (TVMaze only has TV shows)
+    // For series, we can use TVMaze as fallback (no API key needed)
+    if (!apiKey && isMovie(item)) {
       return;
     }
 
@@ -88,51 +89,119 @@ export function useLazyBackdrop(
     // Track if this effect instance is still active (for cleanup)
     let cancelled = false;
 
-    // Fetch backdrop from TMDB
+    // Fetch backdrop from TMDB or TVMaze
     const fetchBackdrop = async () => {
       fetchingRef.current = true;
       try {
-        let backdropPath: string | null = null;
+        let backdropUrl: string | null = null;
         let foundTmdbId: number | null = item.tmdb_id || null;
 
+        // Get search query
+        const searchQuery = (item.title || item.name || '').trim();
+
+        if (!searchQuery) {
+          fetchingRef.current = false;
+          return;
+        }
+
+        // For series without TMDB key, use TVMaze directly
+        if (!apiKey && !isMovie(item)) {
+          console.log('[useLazyBackdrop] No TMDB key, using TVMaze for series backdrop:', searchQuery);
+          try {
+            const metadata = await getTvShowMetadata(searchQuery);
+            if (cancelled) return;
+
+            if (metadata.found && metadata.backdropUrl) {
+              backdropUrl = metadata.backdropUrl;
+              console.log('[useLazyBackdrop] TVMaze found backdrop:', backdropUrl);
+
+              // Cache to DB - store TVMaze image URL as backdrop_path
+              if (backdropUrl) {
+                await db.vodSeries.update(item.series_id, { backdrop_path: backdropUrl });
+              }
+            }
+          } catch (tvmazeErr) {
+            console.warn('[useLazyBackdrop] TVMaze backdrop fetch failed:', tvmazeErr);
+          }
+
+          if (!cancelled && backdropUrl) {
+            setFetchedUrl(backdropUrl);
+          }
+          fetchingRef.current = false;
+          return;
+        }
+
+        // TMDB path (requires API key)
+        if (!apiKey) {
+          fetchingRef.current = false;
+          return;
+        }
+
         // If no tmdb_id but we have a title, search TMDB
-        if (!foundTmdbId && (item.title || item.name)) {
-          const searchQuery = (item.title || item.name || '').trim();
+        if (!foundTmdbId) {
           const year = item.year || item.release_date?.slice(0, 4);
 
-          if (searchQuery) {
-            try {
-              if (isMovie(item)) {
-                const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
-                if (cancelled) return;
-                if (results.length > 0) {
-                  foundTmdbId = results[0].id;
-                }
-              } else {
-                const results = await searchTvShows(apiKey, searchQuery, year ? parseInt(year) : undefined);
-                if (cancelled) return;
-                if (results.length > 0) {
-                  foundTmdbId = results[0].id;
-                }
+          try {
+            if (isMovie(item)) {
+              const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
+              if (cancelled) return;
+              if (results.length > 0) {
+                foundTmdbId = results[0].id;
               }
-            } catch (searchErr) {
-              console.warn('TMDB search failed:', searchErr);
+            } else {
+              const results = await searchTvShows(apiKey, searchQuery, year ? parseInt(year) : undefined);
+              if (cancelled) return;
+              if (results.length > 0) {
+                foundTmdbId = results[0].id;
+              }
             }
+          } catch (searchErr) {
+            console.warn('TMDB search failed:', searchErr);
           }
         }
 
-        // If still no tmdb_id, can't fetch backdrop
+        // If still no tmdb_id, try TVMaze fallback for series
+        if (!foundTmdbId && !isMovie(item)) {
+          console.log('[useLazyBackdrop] No TMDB ID found, trying TVMaze fallback for series:', searchQuery);
+          try {
+            const metadata = await getTvShowMetadata(searchQuery);
+            if (cancelled) return;
+
+            if (metadata.found && metadata.backdropUrl) {
+              backdropUrl = metadata.backdropUrl;
+              console.log('[useLazyBackdrop] TVMaze fallback found backdrop:', backdropUrl);
+
+              // Cache to DB
+              if (backdropUrl) {
+                await db.vodSeries.update(item.series_id, { backdrop_path: backdropUrl });
+              }
+            }
+          } catch (tvmazeErr) {
+            console.warn('[useLazyBackdrop] TVMaze fallback failed:', tvmazeErr);
+          }
+
+          if (!cancelled && backdropUrl) {
+            setFetchedUrl(backdropUrl);
+          }
+          fetchingRef.current = false;
+          return;
+        }
+
+        // If still no tmdb_id, can't fetch backdrop from TMDB
         if (!foundTmdbId) {
           fetchingRef.current = false;
           return;
         }
+
+        // Fetch from TMDB
+        let backdropPath: string | null = null;
 
         if (isMovie(item)) {
           const details = await getMovieDetails(apiKey, foundTmdbId);
           if (cancelled) return;
           backdropPath = details.backdrop_path;
 
-          // Cache to DB - also save tmdb_id if found via search
+          // Cache to DB
           const updates: Partial<{ backdrop_path: string; tmdb_id: number }> = {};
           if (!item.tmdb_id) updates.tmdb_id = foundTmdbId;
           if (backdropPath) updates.backdrop_path = backdropPath;
