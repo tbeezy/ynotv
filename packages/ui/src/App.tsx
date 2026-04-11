@@ -88,9 +88,11 @@ function App() {
     theme,
     shortcuts,
     showSidebar: showSidebarFromSettings,
+    categoriesHidden,
     setTheme,
     setShortcuts,
     setShowSidebar: setShowSidebarFromSettings,
+    setCategoriesHidden,
   } = useAppSettings();
 
   // ==========================================================================
@@ -563,6 +565,7 @@ function App() {
     activeView,
     showSettingsPopup,
     categoriesOpen,
+    categoriesHidden,
     position,
     currentChannels,
     currentChannel,
@@ -810,13 +813,14 @@ function App() {
               <button
                 className={`segmented-btn ${activeView === 'guide' || (activeView === 'none' && categoriesOpen) ? 'active' : ''}`}
                 onClick={() => {
-                  const newLiveTVState = !(activeView === 'guide' && categoriesOpen);
-                  if (newLiveTVState) {
-                    setActiveView('guide');
-                    setCategoriesOpen(true);
-                  } else {
+                  if (activeView === 'guide') {
+                    // LiveTV is open, close it entirely
                     setActiveView('none');
                     setCategoriesOpen(false);
+                  } else {
+                    // Open LiveTV, respect user's category hidden preference
+                    setActiveView('guide');
+                    setCategoriesOpen(!categoriesHidden);
                   }
                 }}
                 title="Live TV"
@@ -1142,8 +1146,14 @@ function App() {
           setCategoriesOpen(false);
           setSidebarExpanded(false);
         }}
-        onClose={() => setCategoriesOpen(false)}
-        onShow={() => setCategoriesOpen(true)}
+        onClose={() => {
+          setCategoriesOpen(false);
+          setCategoriesHidden(true);
+        }}
+        onShow={() => {
+          setCategoriesOpen(true);
+          setCategoriesHidden(false);
+        }}
         isLiveTV={activeView === 'guide'}
       />
 

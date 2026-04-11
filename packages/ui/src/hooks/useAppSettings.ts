@@ -32,11 +32,13 @@ export interface AppSettings {
 
   // UI visibility
   showSidebar: boolean;
+  categoriesHidden: boolean;
 
   // Actions
   setTheme: (theme: ThemeId) => void;
   setShortcuts: (shortcuts: ShortcutsMap) => void;
   setShowSidebar: (show: boolean) => void;
+  setCategoriesHidden: (hidden: boolean) => void;
 }
 
 /**
@@ -72,6 +74,7 @@ export function useAppSettings(): AppSettings {
 
   // UI visibility
   const [showSidebar, setShowSidebar] = useState(false);
+  const [categoriesHidden, setCategoriesHiddenState] = useState(false);
 
   // Apply theme effect
   useEffect(() => {
@@ -116,6 +119,7 @@ export function useAppSettings(): AppSettings {
           setSearchResultsOrder(result.data.searchResultsOrder ?? 'default');
           setMiniMediaBarForEpgPreview(result.data.miniMediaBarForEpgPreview ?? true);
           setEpgView(result.data.epgView ?? 'traditional');
+          setCategoriesHiddenState(result.data.categoriesHidden ?? false);
 
           // Apply EPG darken current setting on load
           if (result.data.epgDarkenCurrent) {
@@ -172,6 +176,18 @@ export function useAppSettings(): AppSettings {
     setShortcutsState(newShortcuts);
   }, []);
 
+  const setCategoriesHidden = useCallback(async (hidden: boolean) => {
+    setCategoriesHiddenState(hidden);
+    // Persist to storage
+    if (window.storage) {
+      try {
+        await window.storage.updateSettings({ categoriesHidden: hidden });
+      } catch (e) {
+        console.error('[useAppSettings] Failed to save categoriesHidden:', e);
+      }
+    }
+  }, []);
+
   return {
     rememberLastChannels,
     reopenLastOnStartup,
@@ -188,8 +204,10 @@ export function useAppSettings(): AppSettings {
     theme,
     shortcuts,
     showSidebar,
+    categoriesHidden,
     setTheme,
     setShortcuts,
     setShowSidebar,
+    setCategoriesHidden,
   };
 }

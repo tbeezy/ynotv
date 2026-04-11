@@ -22,6 +22,7 @@ export interface UseKeyboardShortcutsOptions {
     activeView: View;
     showSettingsPopup: boolean;
     categoriesOpen: boolean;
+    categoriesHidden: boolean;
     position: number;
     currentChannels: StoredChannel[];
     currentChannel: StoredChannel | null;
@@ -75,6 +76,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 activeView,
                 showSettingsPopup,
                 categoriesOpen,
+                categoriesHidden,
                 position,
                 currentChannels,
                 currentChannel,
@@ -136,14 +138,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 setCategoriesOpen((open) => !open);
             } else if (matches('toggleLiveTV', e.key)) {
                 e.preventDefault();
-                const newLiveTVState = !(activeView === 'guide' && categoriesOpen);
                 setShowControls(true);
-                if (newLiveTVState) {
-                    setActiveView('guide');
-                    setCategoriesOpen(true);
-                } else {
+                if (activeView === 'guide') {
+                    // LiveTV is open, close it entirely
                     setActiveView('none');
                     setCategoriesOpen(false);
+                } else {
+                    // Open LiveTV, respect user's category hidden preference
+                    setActiveView('guide');
+                    setCategoriesOpen(!categoriesHidden);
                 }
             } else if (matches('toggleSettings', e.key)) {
                 e.preventDefault();
