@@ -218,8 +218,9 @@
   min-height: 0;
   /* Allow flex shrink */
   /* Margin shrinks what Virtuoso measures - ensures column count matches */
+  /* Increased right margin to push scrollbar left, making room for alphabet rail */
   margin-left: 24px;
-  margin-right: 36px;
+  margin-right: 60px;
 }
 
 .vod-browse__grid-list {

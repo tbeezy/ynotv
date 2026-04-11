@@ -1,14 +1,15 @@
 .alphabet-rail {
   position: fixed;
-  right: 10px; /* Breathing room from edge */
+  right: 2px; /* Hugs the right border of the app */
   top: calc(50% + 50px); /* Offset down to account for header area */
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 8px 4px;
-  background: transparent;
-  border-radius: 0;
+  background: rgba(13, 13, 13, 0.85); /* Slightly more opaque background to cover scrollbar */
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
   z-index: 100;
   user-select: none;
   touch-action: none;
@@ -111,7 +112,7 @@
 @media (max-width: 768px) {
   .alphabet-rail {
     padding: 4px 2px;
-    right: 6px;
+    right: 2px; /* Hugs the right border on mobile */
   }
 
   .alphabet-rail__letter {
@@ -135,7 +136,7 @@
 @media (max-height: 710px) {
   .alphabet-rail {
     padding: 4px 2px;
-    right: 6px;
+    right: 2px; /* Hugs the right border */
   }
 
   .alphabet-rail__letter {
