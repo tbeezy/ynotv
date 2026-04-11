@@ -504,10 +504,27 @@ export function useWindowedMovies(
   // Increment to force a data reload (used by dbEvents subscription)
   const [reloadToken, setReloadToken] = useState(0);
 
-  // Reset when filters change
+  // Track previous refreshTrigger to only reload when it transitions false->true
+  const prevRefreshTrigger = useRef(refreshTrigger);
+  const shouldRefresh = useMemo(() => {
+    // Only refresh when refreshTrigger changes from falsy to truthy
+    // (indicating lazy loading actually completed, not just initial false state)
+    const should = !prevRefreshTrigger.current && !!refreshTrigger;
+    prevRefreshTrigger.current = refreshTrigger;
+    return should;
+  }, [refreshTrigger]);
+
+  // Reset when filters change (excluding refreshTrigger - handled separately)
   useEffect(() => {
     setAllItems([]);
-  }, [categoryId, search, sortBy, refreshTrigger, enabledSourceKey]);
+  }, [categoryId, search, sortBy, enabledSourceKey]);
+
+  // Handle refreshTrigger transitions separately
+  useEffect(() => {
+    if (shouldRefresh) {
+      setAllItems([]);
+    }
+  }, [shouldRefresh]);
 
   // Subscribe to vodMovies / vodCategories DB events so native-Rust sync
   // (which bypasses useLiveQuery) still triggers a UI refresh.
@@ -615,7 +632,7 @@ export function useWindowedMovies(
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, refreshTrigger, reloadToken, enabledSourceKey]);
+  }, [categoryId, search, sortBy, reloadToken, enabledSourceKey]);
 
   const reset = useCallback(() => {
     setAllItems([]);
@@ -655,10 +672,26 @@ export function useWindowedSeries(
     [enabledSourceIds]
   );
 
-  // Reset when filters change
+  // Track previous refreshTrigger to only reload when it transitions false->true
+  const prevRefreshTriggerRef = useRef(refreshTrigger);
+  const shouldRefreshSeries = useMemo(() => {
+    // Only refresh when refreshTrigger changes from falsy to truthy
+    const should = !prevRefreshTriggerRef.current && !!refreshTrigger;
+    prevRefreshTriggerRef.current = refreshTrigger;
+    return should;
+  }, [refreshTrigger]);
+
+  // Reset when filters change (excluding refreshTrigger - handled separately)
   useEffect(() => {
     setAllItems([]);
   }, [categoryId, search, sortBy, enabledSourceKey]);
+
+  // Handle refreshTrigger transitions separately
+  useEffect(() => {
+    if (shouldRefreshSeries) {
+      setAllItems([]);
+    }
+  }, [shouldRefreshSeries]);
 
   // Load all items at once
   useEffect(() => {
@@ -749,7 +782,7 @@ export function useWindowedSeries(
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, refreshTrigger, enabledSourceKey]);
+  }, [categoryId, search, sortBy, enabledSourceKey]);
 
   const reset = useCallback(() => {
     setAllItems([]);
