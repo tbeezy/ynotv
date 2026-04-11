@@ -66,6 +66,7 @@ export interface AppSettings {
     showSidebar?: boolean;
     startupWidth?: number;
     startupHeight?: number;
+    dontSaveWindowSizeOnClose?: boolean;
     rememberLastChannels?: boolean;
     savedLayoutState?: SavedLayoutState;
     searchResultsOrder?: 'default' | 'alphabetical';

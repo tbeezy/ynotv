@@ -73,6 +73,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     showSidebar: boolean;
     startupWidth?: number;
     startupHeight?: number;
+    dontSaveWindowSizeOnClose?: boolean;
   }>({
     channelFontSize: 14,
     categoryFontSize: 14,
@@ -164,6 +165,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         showSidebar?: boolean;
         startupWidth?: number;
         startupHeight?: number;
+        dontSaveWindowSizeOnClose?: boolean;
         rememberLastChannels?: boolean;
         reopenLastOnStartup?: boolean;
         savedLayoutState?: SavedLayoutState;
@@ -229,6 +231,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         showSidebar: settings.showSidebar ?? false,
         startupWidth: settings.startupWidth,
         startupHeight: settings.startupHeight,
+        dontSaveWindowSizeOnClose: settings.dontSaveWindowSizeOnClose ?? false,
       };
       setUiSettings(loadedUiSettings);
 
@@ -361,6 +364,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     showSidebar?: boolean;
     startupWidth?: number;
     startupHeight?: number;
+    dontSaveWindowSizeOnClose?: boolean;
   }) => {
     const updated = { ...uiSettings, ...newSettings };
     setUiSettings(updated);

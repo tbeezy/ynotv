@@ -1660,6 +1660,10 @@ fn save_window_state(app: &tauri::AppHandle) {
         if physical_size.width < 400 || physical_size.height < 300 {
             return;
         }
+
+        // Check if user has disabled saving window size on close
+        let dont_save_size = should_skip_saving_window_size(app);
+
         // Save logical size (DPI-independent) to prevent double-scaling issues
         let state = WindowState {
             width: logical_size.width.round() as u32,
@@ -1668,18 +1672,58 @@ fn save_window_state(app: &tauri::AppHandle) {
             y: pos.y,
         };
         // Save to window_state.json for position restoration
+        // Only save size if user hasn't disabled it
         if let Some(path) = window_state_path(app) {
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
-            if let Ok(json) = serde_json::to_string(&state) {
-                let _ = std::fs::write(&path, json);
+            if dont_save_size {
+                // Only save position, not size
+                let state_pos_only = WindowState {
+                    width: 0, // 0 means "use settings value"
+                    height: 0,
+                    x: pos.x,
+                    y: pos.y,
+                };
+                if let Ok(json) = serde_json::to_string(&state_pos_only) {
+                    let _ = std::fs::write(&path, json);
+                }
+            } else {
+                if let Ok(json) = serde_json::to_string(&state) {
+                    let _ = std::fs::write(&path, json);
+                }
             }
         }
         // Also update the startupWidth/startupHeight in tauri-plugin-store
         // so Settings -> UI shows the last closed size as the default
         // Use logical size to prevent DPI scaling issues
-        update_startup_size_in_store(app, logical_size.width.round() as u32, logical_size.height.round() as u32);
+        // Skip this if user has disabled saving window size
+        if !dont_save_size {
+            update_startup_size_in_store(app, logical_size.width.round() as u32, logical_size.height.round() as u32);
+        }
+    }
+}
+
+/// Check if the user has disabled saving window size on close
+fn should_skip_saving_window_size(app: &tauri::AppHandle) -> bool {
+    use tauri_plugin_store::StoreExt;
+
+    match app.store(".settings.dat") {
+        Ok(store) => {
+            let settings: serde_json::Value = store
+                .get("settings")
+                .unwrap_or_else(|| serde_json::json!({}));
+            let skip = settings
+                .get("dontSaveWindowSizeOnClose")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            drop(store);
+            skip
+        }
+        Err(e) => {
+            warn!("[WindowState] Failed to read store for dontSaveWindowSizeOnClose: {}", e);
+            false
+        }
     }
 }
 

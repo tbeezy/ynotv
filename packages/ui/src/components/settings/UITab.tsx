@@ -8,6 +8,7 @@ interface UITabProps {
     showSidebar?: boolean;
     startupWidth?: number;
     startupHeight?: number;
+    dontSaveWindowSizeOnClose?: boolean;
   };
   onSettingsChange: (settings: {
     channelFontSize?: number;
@@ -15,6 +16,7 @@ interface UITabProps {
     showSidebar?: boolean;
     startupWidth?: number;
     startupHeight?: number;
+    dontSaveWindowSizeOnClose?: boolean;
   }) => void;
 }
 
@@ -212,6 +214,34 @@ export function UITab({ settings, onSettingsChange }: UITabProps) {
           height={settings.startupHeight || 1080}
           onChange={(w, h) => onSettingsChange({ ...settings, startupWidth: w, startupHeight: h })}
         />
+
+        {/* Don't Save Window Size on Close */}
+        <div style={{ marginTop: '1rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.75rem 0',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>
+                Do not save size on close
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                When enabled, the window size will not be saved when closing. The app will always launch with the dimensions set above.
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.dontSaveWindowSizeOnClose ?? false}
+              onChange={(e) => onSettingsChange({ ...settings, dontSaveWindowSizeOnClose: e.target.checked })}
+              style={{ cursor: 'pointer', marginLeft: '1rem' }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Font Size Section */}
