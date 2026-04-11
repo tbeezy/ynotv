@@ -7,15 +7,26 @@
 
 import { create } from 'zustand';
 import type { SportsTabId } from '@ynotv/core';
+import type { MediaItem } from '../types/media';
 
 interface UIState {
   // Movies page
   moviesSelectedCategory: string | null;  // null = home, 'all' = all, string = category id
   setMoviesSelectedCategory: (id: string | null) => void;
+  moviesSelectedItem: MediaItem | null;  // Currently selected movie detail
+  setMoviesSelectedItem: (item: MediaItem | null) => void;
+  moviesSearchQuery: string;  // Current search query
+  setMoviesSearchQuery: (query: string) => void;
 
   // Series page
   seriesSelectedCategory: string | null;
   setSeriesSelectedCategory: (id: string | null) => void;
+  seriesSelectedItem: MediaItem | null;  // Currently selected series detail
+  setSeriesSelectedItem: (item: MediaItem | null) => void;
+  seriesSearchQuery: string;  // Current search query
+  setSeriesSearchQuery: (query: string) => void;
+  seriesSelectedSeason: number | undefined;  // Selected season for series detail
+  setSeriesSelectedSeason: (season: number | undefined) => void;
 
   // Sports Hub
   sportsSelectedTab: SportsTabId;
@@ -46,10 +57,20 @@ export const useUIStore = create<UIState>((set) => ({
   // Movies
   moviesSelectedCategory: null,
   setMoviesSelectedCategory: (id) => set({ moviesSelectedCategory: id }),
+  moviesSelectedItem: null,
+  setMoviesSelectedItem: (item) => set({ moviesSelectedItem: item }),
+  moviesSearchQuery: '',
+  setMoviesSearchQuery: (query) => set({ moviesSearchQuery: query }),
 
   // Series
   seriesSelectedCategory: null,
   setSeriesSelectedCategory: (id) => set({ seriesSelectedCategory: id }),
+  seriesSelectedItem: null,
+  setSeriesSelectedItem: (item) => set({ seriesSelectedItem: item }),
+  seriesSearchQuery: '',
+  setSeriesSearchQuery: (query) => set({ seriesSearchQuery: query }),
+  seriesSelectedSeason: undefined,
+  setSeriesSelectedSeason: (season) => set({ seriesSelectedSeason: season }),
 
   // Sports Hub
   sportsSelectedTab: 'live',
@@ -80,10 +101,19 @@ export const useUIStore = create<UIState>((set) => ({
 // Selectors for cleaner component code
 export const useMoviesCategory = () => useUIStore((s) => s.moviesSelectedCategory);
 export const useSetMoviesCategory = () => useUIStore((s) => s.setMoviesSelectedCategory);
-
+export const useMoviesSelectedItem = () => useUIStore((s) => s.moviesSelectedItem);
+export const useSetMoviesSelectedItem = () => useUIStore((s) => s.setMoviesSelectedItem);
+export const useMoviesSearchQuery = () => useUIStore((s) => s.moviesSearchQuery);
+export const useSetMoviesSearchQuery = () => useUIStore((s) => s.setMoviesSearchQuery);
 
 export const useSeriesCategory = () => useUIStore((s) => s.seriesSelectedCategory);
 export const useSetSeriesCategory = () => useUIStore((s) => s.setSeriesSelectedCategory);
+export const useSeriesSelectedItem = () => useUIStore((s) => s.seriesSelectedItem);
+export const useSetSeriesSelectedItem = () => useUIStore((s) => s.setSeriesSelectedItem);
+export const useSeriesSearchQuery = () => useUIStore((s) => s.seriesSearchQuery);
+export const useSetSeriesSearchQuery = () => useUIStore((s) => s.setSeriesSearchQuery);
+export const useSeriesSelectedSeason = () => useUIStore((s) => s.seriesSelectedSeason);
+export const useSetSeriesSelectedSeason = () => useUIStore((s) => s.setSeriesSelectedSeason);
 
 // Sync state selectors
 export const useChannelSyncing = () => useUIStore((s) => s.channelSyncing);

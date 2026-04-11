@@ -25,8 +25,18 @@ import {
 import {
   useMoviesCategory,
   useSetMoviesCategory,
+  useMoviesSelectedItem,
+  useSetMoviesSelectedItem,
+  useMoviesSearchQuery,
+  useSetMoviesSearchQuery,
   useSeriesCategory,
   useSetSeriesCategory,
+  useSeriesSelectedItem,
+  useSetSeriesSelectedItem,
+  useSeriesSearchQuery,
+  useSetSeriesSearchQuery,
+  useSeriesSelectedSeason,
+  useSetSeriesSelectedSeason,
 } from '../stores/uiStore';
 import type { StoredMovie, StoredSeries } from '../db';
 import { removeFromRecentlyWatched } from '../db';
@@ -113,11 +123,7 @@ interface VodPageProps {
 }
 
 export function VodPage({ type, onPlay, onClose }: VodPageProps) {
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState<number | undefined>(undefined); // For Recently Watched season navigation
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Context Menu & Management State
+  // Context Menu & Management State (local, not persisted)
   const [contextMenu, setContextMenu] = useState<{ sourceId: string; sourceName: string; x: number; y: number } | null>(null);
   const [manageCategoriesSource, setManageCategoriesSource] = useState<{ id: string; name: string } | null>(null);
 
@@ -127,8 +133,31 @@ export function VodPage({ type, onPlay, onClose }: VodPageProps) {
   const seriesCategory = useSeriesCategory();
   const setSeriesCategory = useSetSeriesCategory();
 
+  // Selected item state - persisted in store for navigation resilience
+  const moviesSelectedItem = useMoviesSelectedItem();
+  const setMoviesSelectedItem = useSetMoviesSelectedItem();
+  const seriesSelectedItem = useSeriesSelectedItem();
+  const setSeriesSelectedItem = useSetSeriesSelectedItem();
+
+  // Search query state - persisted in store
+  const moviesSearchQuery = useMoviesSearchQuery();
+  const setMoviesSearchQuery = useSetMoviesSearchQuery();
+  const seriesSearchQuery = useSeriesSearchQuery();
+  const setSeriesSearchQuery = useSetSeriesSearchQuery();
+
+  // Selected season for series - persisted in store
+  const seriesSelectedSeason = useSeriesSelectedSeason();
+  const setSeriesSelectedSeason = useSetSeriesSelectedSeason();
+
+  // Use appropriate store values based on type
   const selectedCategoryId = type === 'movie' ? moviesCategory : seriesCategory;
   const setSelectedCategoryId = type === 'movie' ? setMoviesCategory : setSeriesCategory;
+  const selectedItem = type === 'movie' ? moviesSelectedItem : seriesSelectedItem;
+  const setSelectedItem = type === 'movie' ? setMoviesSelectedItem : setSeriesSelectedItem;
+  const searchQuery = type === 'movie' ? moviesSearchQuery : seriesSearchQuery;
+  const setSearchQuery = type === 'movie' ? setMoviesSearchQuery : setSeriesSearchQuery;
+  const selectedSeason = type === 'series' ? seriesSelectedSeason : undefined;
+  const setSelectedSeason = type === 'series' ? setSeriesSelectedSeason : () => {};
 
   // API key for TMDB
   const tmdbApiKey = useTmdbApiKey();
