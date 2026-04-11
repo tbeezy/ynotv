@@ -1168,6 +1168,19 @@ export function ChannelPanel({
                   </svg>
                 )}
               </button>
+              {/* Stop button */}
+              {onStop && (
+                <button
+                  className="guide-minibar-btn"
+                  onClick={onStop}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  title="Stop"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="1" />
+                  </svg>
+                </button>
+              )}
               {/* Up button */}
               {onChannelUp && (
                 <button
