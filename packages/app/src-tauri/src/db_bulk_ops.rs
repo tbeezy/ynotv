@@ -10,6 +10,36 @@ use tracing::info;
 
 use crate::dvr::database::DvrDatabase;
 
+/// Retry a database operation with exponential backoff when "database is locked" occurs.
+/// This is a safety net in addition to PRAGMA busy_timeout.
+fn with_db_retry<F, T>(mut operation: F) -> Result<T>
+where
+    F: FnMut() -> Result<T>,
+{
+    let max_retries = 5;
+    let mut last_error = None;
+
+    for attempt in 1..=max_retries {
+        match operation() {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let err_str = e.to_string().to_lowercase();
+                if err_str.contains("database is locked") || err_str.contains("busy") {
+                    if attempt < max_retries {
+                        let delay_ms = 100 * attempt as u64;
+                        std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+                    }
+                    last_error = Some(e);
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Max retries exceeded for database operation")))
+}
+
 /// A single channel to be inserted/updated
 #[derive(Debug, Clone, Deserialize)]
 pub struct BulkChannel {
@@ -252,6 +282,10 @@ pub struct BulkResult {
 /// Bulk insert or replace channels (upsert operation)
 /// Uses a single prepared statement in a transaction for maximum performance
 pub fn bulk_upsert_channels(db: &DvrDatabase, channels: Vec<BulkChannel>) -> Result<BulkResult> {
+    with_db_retry(|| bulk_upsert_channels_inner(db, channels.clone()))
+}
+
+fn bulk_upsert_channels_inner(db: &DvrDatabase, channels: Vec<BulkChannel>) -> Result<BulkResult> {
     let start = std::time::Instant::now();
     let mut conn = db.get_conn()?;
 
@@ -333,6 +367,13 @@ pub fn bulk_upsert_channels(db: &DvrDatabase, channels: Vec<BulkChannel>) -> Res
 
 /// Bulk insert or replace categories (upsert operation)
 pub fn bulk_upsert_categories(
+    db: &DvrDatabase,
+    categories: Vec<BulkCategory>,
+) -> Result<BulkResult> {
+    with_db_retry(|| bulk_upsert_categories_inner(db, categories.clone()))
+}
+
+fn bulk_upsert_categories_inner(
     db: &DvrDatabase,
     categories: Vec<BulkCategory>,
 ) -> Result<BulkResult> {
@@ -453,6 +494,14 @@ pub fn bulk_upsert_vod_categories(
 /// Bulk insert EPG programs with transaction
 /// First clears existing programs for the source, then inserts new ones
 pub fn bulk_replace_programs(
+    db: &DvrDatabase,
+    source_id: &str,
+    programs: Vec<BulkProgram>,
+) -> Result<BulkResult> {
+    with_db_retry(|| bulk_replace_programs_inner(db, source_id, programs.clone()))
+}
+
+fn bulk_replace_programs_inner(
     db: &DvrDatabase,
     source_id: &str,
     programs: Vec<BulkProgram>,
@@ -794,6 +843,10 @@ pub struct SourceMetaUpdate {
 }
 
 pub fn update_source_meta(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<()> {
+    with_db_retry(|| update_source_meta_inner(db, meta.clone()))
+}
+
+fn update_source_meta_inner(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<()> {
     let mut conn = db.get_conn()?;
     let tx = conn.transaction()?;
 

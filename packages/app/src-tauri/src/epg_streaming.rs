@@ -23,6 +23,65 @@ use futures_util::StreamExt;
 use crate::dvr::database::DvrDatabase;
 use tauri::Emitter;
 
+/// Retry an async database operation with exponential backoff when "database is locked" occurs.
+async fn with_async_db_retry<F, Fut, T>(mut operation: F) -> Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    let max_retries = 5;
+    let mut last_error = None;
+
+    for attempt in 1..=max_retries {
+        match operation().await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let err_str = e.to_string().to_lowercase();
+                if err_str.contains("database is locked") || err_str.contains("busy") {
+                    if attempt < max_retries {
+                        let delay_ms = 100 * attempt as u64;
+                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    }
+                    last_error = Some(e);
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Max retries exceeded for database operation")))
+}
+
+/// Retry a sync database operation with exponential backoff when "database is locked" occurs.
+fn with_sync_db_retry<F, T>(mut operation: F) -> Result<T>
+where
+    F: FnMut() -> Result<T>,
+{
+    let max_retries = 5;
+    let mut last_error = None;
+
+    for attempt in 1..=max_retries {
+        match operation() {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let err_str = e.to_string().to_lowercase();
+                if err_str.contains("database is locked") || err_str.contains("busy") {
+                    if attempt < max_retries {
+                        let delay_ms = 100 * attempt as u64;
+                        std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+                    }
+                    last_error = Some(e);
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Max retries exceeded for database operation")))
+}
+
 /// Batch size for database inserts - optimized for modern NVMe SSDs
 const BATCH_SIZE: usize = 25000;
 /// Channel buffer size for pipelining (number of batches in flight)
@@ -932,18 +991,28 @@ async fn insert_batches_pipeline<R: tauri::Runtime>(
 
 /// Delete all programs for a source (called before inserting new programs)
 fn delete_programs_for_source(db: &DvrDatabase, source_id: &str) -> Result<usize> {
-    let conn = db.get_conn()?;
-
-    let deleted = conn.execute(
-        "DELETE FROM programs WHERE source_id = ?1",
-        rusqlite::params![source_id],
-    )?;
-
-    Ok(deleted)
+    with_sync_db_retry(|| {
+        let conn = db.get_conn()?;
+        let deleted = conn.execute(
+            "DELETE FROM programs WHERE source_id = ?1",
+            rusqlite::params![source_id],
+        )?;
+        Ok(deleted)
+    })
 }
 
 /// Insert a batch of programs into database
 async fn insert_programs_batch(
+    db: &DvrDatabase,
+    source_id: &str,
+    programs: &[EpgProgram],
+) -> Result<usize> {
+    with_async_db_retry(|| async move {
+        insert_programs_batch_inner(db, source_id, programs).await
+    }).await
+}
+
+async fn insert_programs_batch_inner(
     db: &DvrDatabase,
     source_id: &str,
     programs: &[EpgProgram],

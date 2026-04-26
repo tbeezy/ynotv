@@ -4,7 +4,7 @@
 //! WAL mode is enabled for concurrent reads/writes with the frontend.
 
 use anyhow::{Context, Result};
-use r2d2::{Pool, PooledConnection};
+use r2d2::{Pool, PooledConnection, CustomizeConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension};
 use tauri::Manager;
@@ -16,6 +16,19 @@ use crate::dvr::models::*;
 pub struct Channel {
     pub stream_id: String,
     pub name: String,
+}
+
+/// Sets busy_timeout on every new connection to prevent "database is locked" errors
+/// when multiple sync operations write concurrently.
+#[derive(Debug)]
+struct BusyTimeoutCustomizer;
+
+impl CustomizeConnection<rusqlite::Connection, rusqlite::Error> for BusyTimeoutCustomizer {
+    fn on_acquire(&self, conn: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
+        // Wait up to 30 seconds for locks instead of immediately failing
+        conn.busy_timeout(std::time::Duration::from_secs(30))?;
+        Ok(())
+    }
 }
 
 /// Database connection pool for DVR operations
@@ -47,8 +60,9 @@ impl DvrDatabase {
 
         // Build connection pool with custom configuration
         let pool = Pool::builder()
-            .max_size(5) // Max 5 concurrent connections
-            .connection_timeout(std::time::Duration::from_secs(10))
+            .max_size(15) // Support 10+ concurrent syncs with headroom
+            .connection_timeout(std::time::Duration::from_secs(30))
+            .connection_customizer(Box::new(BusyTimeoutCustomizer))
             .build(manager)
             .context("Failed to create database pool")?;
 
