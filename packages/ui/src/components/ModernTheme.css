@@ -1054,3 +1054,362 @@
   ) !important;
   border-radius: 3px !important;
 }
+
+/* --------------------------------------------------
+   2. CHANNEL ROWS - Currently Playing Glow
+   -------------------------------------------------- */
+
+.modern-ui .guide-channel-row {
+  position: relative;
+}
+
+/* Currently playing channel - left accent glow bar */
+.modern-ui .guide-channel-row.currently-playing::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  background: linear-gradient(180deg,
+    var(--accent-primary, #00d4ff) 0%,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent) 100%
+  );
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent);
+  animation: accent-glow 3s ease-in-out infinite;
+}
+
+.modern-ui .guide-channel-row.currently-playing {
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 4%, transparent);
+}
+
+.modern-ui .guide-channel-row.currently-playing:hover {
+  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 6%, transparent);
+}
+
+.modern-ui .guide-channel-row.currently-playing .guide-channel-name {
+  color: white;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent-primary, #00d4ff) 40%, transparent);
+}
+
+/* --------------------------------------------------
+   3. PROGRAM BLOCKS - "Timeline Cards"
+   -------------------------------------------------- */
+
+.modern-ui .program-block {
+  top: 5px;
+  bottom: 5px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 10px;
+  border-left: none;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.modern-ui .program-block:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+
+/* Past programs - slightly dimmed */
+.modern-ui .program-block.past {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.03);
+}
+
+.modern-ui .program-block.past .program-block-title {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.modern-ui .program-block.past .program-block-desc {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Current program - accent glow with live indicator */
+.modern-ui .program-block.current {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 10%, rgba(255, 255, 255, 0.04)) 0%,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 5%, rgba(255, 255, 255, 0.02)) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-primary, #00d4ff) 15%, transparent) inset,
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modern-ui .program-block.current:hover {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 14%, rgba(255, 255, 255, 0.06)) 0%,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 7%, rgba(255, 255, 255, 0.03)) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent-primary, #00d4ff) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent) inset,
+    0 6px 24px color-mix(in srgb, var(--accent-primary, #00d4ff) 15%, rgba(0, 0, 0, 0.3));
+}
+
+/* Program title */
+.modern-ui .program-block-title {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.35;
+}
+
+.modern-ui .program-block.current .program-block-title {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+/* Program description */
+.modern-ui .program-block-desc {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 3px;
+  line-height: 1.25;
+}
+
+.modern-ui .program-block.current .program-block-desc {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Recording state */
+.modern-ui .program-block.is-recording {
+  background: linear-gradient(135deg,
+    rgba(204, 34, 34, 0.1) 0%,
+    rgba(204, 34, 34, 0.04) 100%
+  );
+  border-color: rgba(204, 34, 34, 0.35);
+}
+
+.modern-ui .program-block.is-recording:hover {
+  background: linear-gradient(135deg,
+    rgba(204, 34, 34, 0.15) 0%,
+    rgba(204, 34, 34, 0.07) 100%
+  );
+  border-color: rgba(204, 34, 34, 0.5);
+  box-shadow: 0 4px 16px rgba(204, 34, 34, 0.15);
+}
+
+/* Scheduled state */
+.modern-ui .program-block.is-scheduled {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.12);
+  border-style: dashed;
+}
+
+/* Catchup available */
+.modern-ui .program-block.catchup-available {
+  border-color: rgba(229, 160, 13, 0.4);
+}
+
+.modern-ui .program-block.catchup-available:hover {
+  background: rgba(229, 160, 13, 0.1);
+  border-color: rgba(229, 160, 13, 0.6);
+}
+
+.modern-ui .program-block.catchup-available .program-block-title::before {
+  content: '↺ ';
+  color: #e5a00d;
+  font-size: 1em;
+  vertical-align: middle;
+}
+
+/* Recording / scheduled indicators inside program block */
+.modern-ui .program-recording-indicator,
+.modern-ui .program-scheduled-indicator {
+  top: 6px;
+  right: 6px;
+}
+
+/* Empty program block */
+.modern-ui .program-block.empty {
+  background: rgba(255, 255, 255, 0.015);
+  border-color: rgba(255, 255, 255, 0.03);
+  border-style: dashed;
+}
+
+/* --------------------------------------------------
+   4. TIME HEADER - "Minimal Timeline"
+   -------------------------------------------------- */
+
+.modern-ui .guide-time-header {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--surface-color, rgba(0,0,0,0.3)), white 2%) 0%,
+    color-mix(in srgb, var(--surface-color, rgba(0,0,0,0.3)), white 1%) 100%
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(var(--glass-blur, 16px)) saturate(140%);
+}
+
+.modern-ui .guide-time-header-spacer {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modern-ui .guide-time-marker {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  padding-left: 14px;
+  letter-spacing: 0.02em;
+}
+
+.modern-ui .guide-time-marker:first-child {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* --------------------------------------------------
+   5. PREVIEW PANE - "Cinematic View"
+   -------------------------------------------------- */
+
+.modern-ui .guide-preview-pane {
+  border-radius: 0 0 20px 0;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.modern-ui .guide-preview-video {
+  border-radius: 0 0 16px 0;
+  overflow: hidden;
+}
+
+.modern-ui .guide-preview-placeholder {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--bg-primary, rgba(0,0,0,0.5)), white 4%) 0%,
+    var(--bg-primary, rgba(0,0,0,0.5)) 100%
+  );
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.02em;
+}
+
+/* Info pane */
+.modern-ui .guide-info-pane {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg-overlay, rgba(0,0,0,0.95)), white 2%) 0%,
+    var(--bg-overlay, rgba(0,0,0,0.95)) 100%
+  );
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 24px 28px;
+}
+
+.modern-ui .guide-program-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, white 0%, rgba(255, 255, 255, 0.85) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.modern-ui .guide-program-meta {
+  margin-top: 12px;
+  gap: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.modern-ui .guide-program-progress-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.modern-ui .guide-program-progress-fill {
+  background: linear-gradient(90deg,
+    var(--accent-primary, #00d4ff) 0%,
+    color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, white) 100%
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent);
+  border-radius: 2px;
+}
+
+.modern-ui .guide-program-description {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 16px;
+}
+
+/* --------------------------------------------------
+   6. CONTEXT MENUS
+   -------------------------------------------------- */
+
+.modern-ui .program-context-menu {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--surface-color, #1a1a1a), white 4%) 0%,
+    var(--surface-color, #1a1a1a) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(24px) saturate(160%);
+  padding: 6px;
+}
+
+.modern-ui .context-menu-item {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modern-ui .context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.modern-ui .context-menu-separator {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.08) 80%,
+    transparent 100%
+  );
+  margin: 4px 8px;
+}
+
+/* --------------------------------------------------
+   7. ANIMATIONS
+   -------------------------------------------------- */
+
+@keyframes accent-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 10px color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent); }
+  50% { opacity: 0.7; box-shadow: 0 0 16px color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent); }
+}
+
+@keyframes live-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(255, 59, 59, 0.8);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+    box-shadow: 0 0 2px rgba(255, 59, 59, 0.4);
+  }
+}
