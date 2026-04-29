@@ -65,7 +65,8 @@ struct MpvStatus {
 // MPV Helper Functions
 // ============================================================================
 
-/// Get custom MPV parameters from settings store
+/// Get custom MPV parameters from settings store.
+/// Supports both nested `settings` object (frontend format) and root-level keys (legacy).
 async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String> {
     use tauri_plugin_store::StoreExt;
 
@@ -73,13 +74,27 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
         Ok(store) => {
             let mut args: Vec<String> = Vec::new();
 
-            // Settings are stored nested under the "settings" key by the frontend
-            let settings = store.get("settings")
-                .and_then(|v| v.as_object().cloned())
-                .unwrap_or_default();
+            // Try nested "settings" object first (frontend format), fall back to root level
+            let nested = store.get("settings")
+                .and_then(|v| v.as_object().cloned());
+
+            // Helper to read a value: nested first, then root fallback
+            let get_value = |key: &str| -> Option<serde_json::Value> {
+                if let Some(ref obj) = nested {
+                    if let Some(v) = obj.get(key) {
+                        debug!("[MPV] Found '{}' in nested settings", key);
+                        return Some(v.clone());
+                    }
+                }
+                let root_val = store.get(key);
+                if root_val.is_some() {
+                    debug!("[MPV] Found '{}' at root level (legacy)", key);
+                }
+                root_val
+            };
 
             // Load user-defined MPV params
-            if let Some(params) = settings.get("mpvParams") {
+            if let Some(params) = get_value("mpvParams") {
                 if let Some(params_str) = params.as_str() {
                     let custom_args: Vec<String> = params_str
                         .lines()
@@ -88,19 +103,24 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
                         .map(|s| s.to_string())
                         .collect();
                     debug!("[MPV] Loaded {} custom parameters from settings", custom_args.len());
+                    for (i, arg) in custom_args.iter().enumerate() {
+                        debug!("[MPV]   Custom arg[{}]: {}", i, arg);
+                    }
                     args.extend(custom_args);
                 }
+            } else {
+                debug!("[MPV] No mpvParams found in store");
             }
 
             // Inject timeshift back-buffer arg if enabled
-            let ts_enabled = settings.get("timeshiftEnabled")
+            let ts_enabled = get_value("timeshiftEnabled")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
             debug!("[MPV] TimeShift enabled from store: {}", ts_enabled);
 
             if ts_enabled {
-                let cache_bytes = settings.get("timeshiftCacheBytes")
+                let cache_bytes = get_value("timeshiftCacheBytes")
                     .and_then(|v| v.as_u64())
                     .unwrap_or(1_073_741_824); // default 1 GB
                 let flag = format!("--demuxer-max-back-bytes={}", cache_bytes);
