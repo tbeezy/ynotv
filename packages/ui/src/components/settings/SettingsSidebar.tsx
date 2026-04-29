@@ -5,7 +5,6 @@ export type SettingsTabId =
   | 'tmdb'
   | 'refresh'
   | 'channels'
-  | 'posterdb'
   | 'security'
   | 'debug'
   | 'shortcuts'
@@ -36,8 +35,7 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
     tabs: [
       { id: 'sources', label: 'Sources' },
       { id: 'refresh', label: 'Data Refresh' },
-      { id: 'tmdb', label: 'TMDB' },
-      { id: 'posterdb', label: 'Poster DB' },
+      { id: 'tmdb', label: 'TMDB/RPDB' },
     ],
   },
   {

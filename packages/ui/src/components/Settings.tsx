@@ -6,7 +6,7 @@ import { SourcesTab } from './settings/SourcesTab';
 import { TmdbTab } from './settings/TmdbTab';
 import { DataRefreshTab } from './settings/DataRefreshTab';
 import { ChannelsTab } from './settings/ChannelsTab';
-import { PosterDbTab } from './settings/PosterDbTab';
+
 import { SecurityTab } from './settings/SecurityTab';
 import { DebugTab } from './settings/DebugTab';
 import { ShortcutsTab } from './settings/ShortcutsTab';
@@ -455,6 +455,12 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             tmdbKeyValid={tmdbKeyValid}
             onApiKeyChange={setTmdbApiKey}
             onApiKeyValidChange={setTmdbKeyValid}
+            rpdbApiKey={posterDbApiKey}
+            rpdbKeyValid={posterDbKeyValid}
+            onRpdbApiKeyChange={setPosterDbApiKey}
+            onRpdbKeyValidChange={setPosterDbKeyValid}
+            rpdbBackdropsEnabled={rpdbBackdropsEnabled}
+            onRpdbBackdropsEnabledChange={setRpdbBackdropsEnabled}
           />
         );
       case 'refresh':
@@ -481,17 +487,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
             onSearchResultsOrderChange={handleSearchResultsOrderChange}
           />
         );
-      case 'posterdb':
-        return (
-          <PosterDbTab
-            apiKey={posterDbApiKey}
-            apiKeyValid={posterDbKeyValid}
-            onApiKeyChange={setPosterDbApiKey}
-            onApiKeyValidChange={setPosterDbKeyValid}
-            backdropsEnabled={rpdbBackdropsEnabled}
-            onBackdropsEnabledChange={setRpdbBackdropsEnabled}
-          />
-        );
+
       case 'security':
         return (
           <SecurityTab
