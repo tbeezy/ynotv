@@ -146,6 +146,7 @@ const ALLOWED_MPV_KEYS: &[&str] = &[
     "audio-spdif", "audio-channels", "volume-max", "audio-exclusive",
     "cache", "cache-secs", "cache-pause", "demuxer-max-bytes", "demuxer-max-back-bytes",
     "demuxer-readahead-secs", "force-seekable",
+    "gpu-api", "gpu-context", "opengl-glfinish",
     "sub-font", "sub-font-size", "sub-color", "sub-border-color", "sub-border-size",
     "sub-shadow-color", "sub-shadow-offset", "sub-margin-y", "sub-align-x", "sub-align-y",
     "osd-font", "osd-font-size", "osd-color", "osd-border-color", "osd-border-size",
@@ -494,7 +495,7 @@ async fn mpv_kill<R: Runtime>(app: AppHandle<R>) {
     }
 }
 
-/// Debug command to get all cache-related MPV properties
+/// Debug command to get cache-related MPV properties
 #[tauri::command]
 async fn mpv_get_cache_debug<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
     use serde_json::json;
@@ -519,6 +520,24 @@ async fn mpv_get_cache_debug<R: Runtime>(app: AppHandle<R>) -> Result<serde_json
 
     debug!("[MPV Debug] Cache settings: {:?}", result);
     Ok(serde_json::Value::Object(result))
+}
+
+/// Debug command to get the custom MPV parameters loaded from store
+#[tauri::command]
+async fn mpv_get_params_debug<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value, String> {
+    use serde_json::json;
+
+    let raw_params = get_mpv_params_from_store(&app).await;
+    let safe_params = sanitize_mpv_args(raw_params.clone());
+
+    let result = json!({
+        "raw_loaded": raw_params,
+        "sanitized": safe_params,
+        "dropped_count": raw_params.len().saturating_sub(safe_params.len()),
+    });
+
+    debug!("[MPV Debug] Params debug: {:?}", result);
+    Ok(result)
 }
 
 #[tauri::command]
@@ -2077,6 +2096,7 @@ pub fn run() {
             mpv_set_geometry,
             mpv_kill,
             mpv_get_cache_debug,
+            mpv_get_params_debug,
             // Multiview secondary MPV commands
             multiview_load_slot,
             multiview_stop_slot,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import './PlaybackTab.css';
 
 interface PlaybackTabProps {
@@ -20,6 +21,7 @@ const DEFAULT_MPV_PARAMS = `--hwdec=auto
 export function PlaybackTab({ mpvParams, onMpvParamsChange }: PlaybackTabProps) {
   const [localParams, setLocalParams] = useState(mpvParams);
   const [hasChanges, setHasChanges] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalParams(mpvParams);
@@ -48,6 +50,15 @@ export function PlaybackTab({ mpvParams, onMpvParamsChange }: PlaybackTabProps) 
       setLocalParams('');
       onMpvParamsChange('');
       setHasChanges(false);
+    }
+  };
+
+  const checkMpvParams = async () => {
+    try {
+      const result = await invoke('mpv_get_params_debug') as Record<string, unknown>;
+      setDebugInfo(JSON.stringify(result, null, 2));
+    } catch (e) {
+      setDebugInfo(`Error: ${e}`);
     }
   };
 
@@ -124,6 +135,30 @@ export function PlaybackTab({ mpvParams, onMpvParamsChange }: PlaybackTabProps) 
             <button className="clear-btn" onClick={handleClear}>
               Clear All
             </button>
+          </div>
+
+          <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+            <button
+              className="sync-btn"
+              onClick={checkMpvParams}
+              style={{ maxWidth: '220px' }}
+            >
+              Check Loaded MPV Parameters
+            </button>
+            {debugInfo && (
+              <pre style={{
+                marginTop: '12px',
+                padding: '12px',
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                overflow: 'auto',
+                maxHeight: '300px',
+                color: 'rgba(255,255,255,0.8)'
+              }}>
+                {debugInfo}
+              </pre>
+            )}
           </div>
         </div>
       </div>
