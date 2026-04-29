@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { relaunch } from '@tauri-apps/plugin-process';
+import '../Modal.css';
 import './PlaybackTab.css';
 
 interface PlaybackTabProps {
   mpvParams: string;
   mpvDisableWhitelist: boolean;
-  onMpvParamsChange: (params: string) => void;
-  onMpvDisableWhitelistChange: (disabled: boolean) => void;
+  onMpvParamsChange: (params: string) => Promise<void>;
+  onMpvDisableWhitelistChange: (disabled: boolean) => Promise<void>;
 }
 
 const DEFAULT_MPV_PARAMS = `--hwdec=auto
@@ -24,6 +26,7 @@ export function PlaybackTab({ mpvParams, mpvDisableWhitelist, onMpvParamsChange,
   const [localParams, setLocalParams] = useState(mpvParams);
   const [hasChanges, setHasChanges] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [showRestartModal, setShowRestartModal] = useState(false);
 
   useEffect(() => {
     setLocalParams(mpvParams);
@@ -35,22 +38,38 @@ export function PlaybackTab({ mpvParams, mpvDisableWhitelist, onMpvParamsChange,
   };
 
   const handleSave = () => {
-    onMpvParamsChange(localParams.trim());
-    setHasChanges(false);
+    setShowRestartModal(true);
   };
 
-  const handleReset = () => {
+  const confirmSaveWithRestart = async () => {
+    await onMpvParamsChange(localParams.trim());
+    setHasChanges(false);
+    setShowRestartModal(false);
+    try {
+      await relaunch();
+    } catch (e) {
+      console.error('[PlaybackTab] Failed to relaunch:', e);
+    }
+  };
+
+  const confirmSaveWithoutRestart = async () => {
+    await onMpvParamsChange(localParams.trim());
+    setHasChanges(false);
+    setShowRestartModal(false);
+  };
+
+  const handleReset = async () => {
     if (confirm('Reset to recommended default parameters?')) {
       setLocalParams(DEFAULT_MPV_PARAMS);
-      onMpvParamsChange(DEFAULT_MPV_PARAMS);
+      await onMpvParamsChange(DEFAULT_MPV_PARAMS);
       setHasChanges(false);
     }
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (confirm('Clear all custom parameters?')) {
       setLocalParams('');
-      onMpvParamsChange('');
+      await onMpvParamsChange('');
       setHasChanges(false);
     }
   };
@@ -183,6 +202,31 @@ export function PlaybackTab({ mpvParams, mpvDisableWhitelist, onMpvParamsChange,
           </div>
         </div>
       </div>
+
+      {showRestartModal && (
+        <div className="modal-overlay" onClick={() => setShowRestartModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Restart Required</h3>
+            </div>
+            <div className="modal-body">
+              <p className="modal-message">
+                For playback settings to take effect, the app needs to restart.
+                <br /><br />
+                Would you like to restart now?
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn modal-btn-secondary" onClick={confirmSaveWithoutRestart}>
+                No, Save Only
+              </button>
+              <button className="modal-btn modal-btn-primary" onClick={confirmSaveWithRestart}>
+                Yes, Restart Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

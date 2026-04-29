@@ -1567,6 +1567,7 @@ export function ChannelPanel({
                       currentLayout={currentLayout}
                       onSendToSlot={onSendToSlot}
                       includeSourceInSearch={includeSourceInSearch}
+                      currentChannel={currentChannel}
                     />
                   ))}
                 </div>
@@ -1643,6 +1644,7 @@ export function ChannelPanel({
                                   onFavoriteToggle={refreshSearchResults}
                                   activeRecordings={activeRecordings}
                                   includeSourceInSearch={includeSourceInSearch}
+                                  currentChannel={currentChannel}
                                 />
                               ))}
                             </div>
@@ -1667,6 +1669,7 @@ export function ChannelPanel({
                                   onFavoriteToggle={refreshSearchResults}
                                   activeRecordings={activeRecordings}
                                   includeSourceInSearch={includeSourceInSearch}
+                                  currentChannel={currentChannel}
                                 />
                               ))}
                             </div>

@@ -20,6 +20,7 @@ interface SearchResultRowProps {
   currentLayout?: string;
   onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
   includeSourceInSearch?: boolean;
+  currentChannel?: StoredChannel | null;
 }
 
 // Width of the channel info column (must match ChannelPanel)
@@ -51,8 +52,10 @@ export const SearchResultRow = memo(function SearchResultRow({
   currentLayout,
   onSendToSlot,
   includeSourceInSearch,
+  currentChannel,
 }: SearchResultRowProps) {
   const now = new Date();
+  const isCurrentlyPlaying = currentChannel?.stream_id === channel.stream_id;
 
   // Context menu state
   const [channelContextMenu, setChannelContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -122,7 +125,7 @@ export const SearchResultRow = memo(function SearchResultRow({
   const displayPrograms = sortedPrograms.slice(0, 4);
 
   return (
-    <div className={`guide-channel-row search-result-row ${isRecording ? 'is-recording' : ''}`}>
+    <div className={`guide-channel-row search-result-row ${isRecording ? 'is-recording' : ''} ${isCurrentlyPlaying ? 'currently-playing' : ''}`}>
       {/* Channel info column */}
       <div
         className={`guide-channel-info ${isRecording ? 'is-recording' : ''}`}
