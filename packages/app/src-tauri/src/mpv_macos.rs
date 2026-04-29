@@ -70,6 +70,16 @@ pub async fn launch_mpv<R: Runtime>(
         args.push(param);
     }
 
+    // Auto-detect yt-dlp / youtube-dl if user hasn't already specified it via script-opts.
+    // MPV 0.40+ removed --ytdl-path; the correct option is now:
+    //   --script-opts=ytdl_hook-ytdl_path=<path>
+    if !crate::args_contains_ytdl_path(&args) {
+        if let Some(ytdl) = crate::find_ytdl_path() {
+            // No backslash escaping needed on macOS (Unix paths)
+            args.push(format!("--script-opts=ytdl_hook-ytdl_path={}", ytdl));
+        }
+    }
+
     // Get the sidecar command
     let sidecar = app.shell().sidecar("mpv")
         .map_err(|e| format!("Failed to create sidecar: {}", e))?;

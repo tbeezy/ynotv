@@ -41,7 +41,16 @@ case "$OS" in
     cp "$TEMP_DIR/mpv-extract/mpv.exe" "$TAURI_BIN_DIR/mpv-$TARGET.exe"
     cp "$TEMP_DIR/mpv-extract/"*.dll "$TAURI_BIN_DIR/" 2>/dev/null || true
 
+    # Copy yt-dlp / youtube-dl if bundled with mpv (needed for YouTube playback)
+    cp "$TEMP_DIR/mpv-extract/yt-dlp.exe" "$TAURI_BIN_DIR/" 2>/dev/null || true
+    cp "$TEMP_DIR/mpv-extract/youtube-dl.exe" "$TAURI_BIN_DIR/" 2>/dev/null || true
+
     rm -rf "$TEMP_DIR"
+
+    # Download latest yt-dlp explicitly (ensures it's named for Tauri externalBin)
+    echo "Downloading yt-dlp for Windows..."
+    YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+    curl -L -o "$TAURI_BIN_DIR/yt-dlp-$TARGET.exe" "$YTDLP_URL" || echo "Warning: Failed to download yt-dlp"
     echo "mpv for Windows (Tauri) setup at $TAURI_BIN_DIR/mpv-$TARGET.exe"
     ;;
 
@@ -76,6 +85,11 @@ case "$OS" in
         exit 1
     fi
     rm -rf "$TEMP_DIR"
+
+    # Download latest yt-dlp explicitly
+    echo "Downloading yt-dlp for macOS..."
+    YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
+    curl -L -o "$TAURI_BIN_DIR/yt-dlp-$TARGET" "$YTDLP_URL" && chmod +x "$TAURI_BIN_DIR/yt-dlp-$TARGET" || echo "Warning: Failed to download yt-dlp"
     ;;
 
   Linux)
@@ -104,6 +118,11 @@ EOF
         echo "  Arch: sudo pacman -S mpv"
         exit 1
     fi
+
+    # Download latest yt-dlp explicitly
+    echo "Downloading yt-dlp for Linux..."
+    YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+    curl -L -o "$TAURI_BIN_DIR/yt-dlp-$TARGET" "$YTDLP_URL" && chmod +x "$TAURI_BIN_DIR/yt-dlp-$TARGET" || echo "Warning: Failed to download yt-dlp"
     ;;
 
   *)

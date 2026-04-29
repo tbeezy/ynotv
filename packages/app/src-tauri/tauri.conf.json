@@ -49,7 +49,8 @@
     "licenseFile": "../../../LICENSE",
     "externalBin": [
       "bin/mpv",
-      "bin/ffmpeg"
+      "bin/ffmpeg",
+      "bin/yt-dlp"
     ],
     "resources": {},
     "windows": {

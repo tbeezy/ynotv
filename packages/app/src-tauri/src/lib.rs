@@ -177,6 +177,10 @@ const ALLOWED_MPV_KEYS: &[&str] = &[
     "network-timeout", "stream-buffer-size",
     // TimeShift/Dumping parameters
     "stream-record", "capture", "dump-stream", "recorder-muxer", "record-file",
+    // YouTube support (MPV 0.40+: configured via --script-opts=ytdl_hook-ytdl_path=...)
+    // The ytdl_hook-ytdl_path key itself lives in script-opts; we auto-inject it
+    // after sanitisation so it never needs to be in the user allowlist.
+    "ytdl", "ytdl-format",
 ];
 
 const BLOCKED_MPV_KEYS: &[&str] = &[
@@ -246,6 +250,127 @@ fn sanitize_mpv_args(args: Vec<String>, allow_all: bool) -> Vec<String> {
     }
     
     safe_args
+}
+
+/// Check if MPV arguments already contain a ytdl hook path override.
+/// Handles both the legacy --ytdl-path form and the MPV 0.40+ script-opts form.
+pub fn args_contains_ytdl_path(args: &[String]) -> bool {
+    args.iter().any(|a| {
+        a.starts_with("--ytdl-path")
+            || (a.starts_with("--script-opts") && a.contains("ytdl_hook-ytdl_path"))
+    })
+}
+
+/// Detect bundled yt-dlp sidecar next to the current executable.
+/// Tauri places sidecars in the same directory as the app binary.
+fn find_bundled_ytdl() -> Option<String> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+
+    // Platform-specific sidecar names (Tauri externalBin naming convention)
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    let names = ["yt-dlp-x86_64-pc-windows-msvc.exe", "yt-dlp.exe"];
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    let names = ["yt-dlp-aarch64-pc-windows-msvc.exe", "yt-dlp.exe"];
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    let names = ["yt-dlp-aarch64-apple-darwin", "yt-dlp"];
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    let names = ["yt-dlp-x86_64-apple-darwin", "yt-dlp"];
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    let names = ["yt-dlp-x86_64-unknown-linux-gnu", "yt-dlp"];
+    #[cfg(not(any(
+        all(target_os = "windows", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "x86_64")
+    )))]
+    let names = ["yt-dlp"];
+
+    for name in names {
+        let path = dir.join(name);
+        if path.exists() {
+            return Some(path.to_string_lossy().into_owned());
+        }
+    }
+    None
+}
+
+/// Auto-detect yt-dlp or youtube-dl:
+/// 1. Bundled sidecar next to the executable (production builds)
+/// 2. System PATH (dev / user-installed)
+pub fn find_ytdl_path() -> Option<String> {
+    // 1. Prefer bundled sidecar
+    if let Some(path) = find_bundled_ytdl() {
+        return Some(path);
+    }
+
+    // 2. Fall back to system PATH
+    #[cfg(target_os = "windows")]
+    {
+        let output = std::process::Command::new("where")
+            .arg("yt-dlp")
+            .output()
+            .ok()?;
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()?
+                .trim()
+                .to_string();
+            if !path.is_empty() {
+                return Some(path);
+            }
+        }
+        // Fallback to youtube-dl
+        let output = std::process::Command::new("where")
+            .arg("youtube-dl")
+            .output()
+            .ok()?;
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()?
+                .trim()
+                .to_string();
+            if !path.is_empty() {
+                return Some(path);
+            }
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = std::process::Command::new("which")
+            .arg("yt-dlp")
+            .output()
+            .ok()?;
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()?
+                .trim()
+                .to_string();
+            if !path.is_empty() {
+                return Some(path);
+            }
+        }
+        // Fallback to youtube-dl
+        let output = std::process::Command::new("which")
+            .arg("youtube-dl")
+            .output()
+            .ok()?;
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()?
+                .trim()
+                .to_string();
+            if !path.is_empty() {
+                return Some(path);
+            }
+        }
+    }
+    None
 }
 
 // ============================================================================

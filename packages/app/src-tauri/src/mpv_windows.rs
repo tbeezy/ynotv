@@ -9,13 +9,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Runtime, Manager};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-use tauri_plugin_shell::{ShellExt, process::CommandEvent};
+use tauri_plugin_shell::{ShellExt, process::{CommandEvent, CommandChild}};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::windows::named_pipe::ClientOptions;
 use serde_json::{json, Value};
 
 pub struct MpvState {
     pub process: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    pub child: Mutex<Option<CommandChild>>,
     pub pid: Mutex<u32>,
     pub socket_connected: Mutex<bool>,
     pub ipc_tx: Mutex<Option<tokio::sync::mpsc::Sender<String>>>,
@@ -28,6 +29,7 @@ impl MpvState {
     pub fn new() -> Self {
         MpvState {
             process: Mutex::new(None),
+            child: Mutex::new(None),
             pid: Mutex::new(0),
             socket_connected: Mutex::new(false),
             ipc_tx: Mutex::new(None),
@@ -36,6 +38,66 @@ impl MpvState {
             initializing: Mutex::new(false),
         }
     }
+}
+
+/// Fully reset MPV state so the next init attempt will respawn.
+fn kill_and_clear_state(state: &tauri::State<'_, MpvState>) {
+    log::warn!("[MPV] Clearing MPV state for respawn...");
+    {
+        let mut tx = state.ipc_tx.lock().unwrap();
+        *tx = None;
+    }
+    {
+        let mut connected = state.socket_connected.lock().unwrap();
+        *connected = false;
+    }
+    {
+        let mut child = state.child.lock().unwrap();
+        if let Some(c) = child.take() {
+            let _ = c.kill();
+        }
+    }
+    {
+        let mut proc = state.process.lock().unwrap();
+        if let Some(handle) = proc.take() {
+            handle.abort();
+        }
+    }
+    {
+        let mut pid = state.pid.lock().unwrap();
+        *pid = 0;
+    }
+    {
+        let mut init = state.initializing.lock().unwrap();
+        *init = false;
+    }
+}
+
+/// Check if a Windows process with the given PID is still alive.
+#[cfg(target_os = "windows")]
+fn is_process_alive(pid: u32) -> bool {
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+    use windows::Win32::Foundation::CloseHandle;
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if let Ok(h) = handle {
+            if h.is_invalid() {
+                return false;
+            }
+            let mut code: u32 = 0;
+            let ok = windows::Win32::System::Threading::GetExitCodeProcess(h, &mut code);
+            let _ = CloseHandle(h);
+            if let Ok(_) = ok {
+                return code == 259; // STILL_ACTIVE
+            }
+        }
+    }
+    false
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_process_alive(_pid: u32) -> bool {
+    false
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -116,8 +178,26 @@ fn get_socket_path() -> String {
     format!(r"\\.\pipe\mpv-socket-{}", std::process::id())
 }
 
-/// Spawn MPV embedded in the Tauri window
+/// Spawn MPV embedded in the Tauri window.
+/// If spawn fails and the ytdl-hook script-opts were auto-injected, retries once without them.
 async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>, custom_params: Vec<String>) -> Result<(), String> {
+    match try_spawn_mpv(app, state, custom_params.clone(), true).await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            // If the first attempt failed, check if we auto-injected the ytdl hook path.
+            // Retry without it so we can isolate whether yt-dlp is the culprit.
+            if crate::find_ytdl_path().is_some() && !crate::args_contains_ytdl_path(&custom_params) {
+                log::warn!("[MPV] First spawn failed ({}). Retrying WITHOUT ytdl-hook path...", e);
+                kill_and_clear_state(state);
+                try_spawn_mpv(app, state, custom_params, false).await
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+async fn try_spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvState>, custom_params: Vec<String>, inject_ytdl: bool) -> Result<(), String> {
     // Prevent concurrent inits
     {
         let mut init = state.initializing.lock().unwrap();
@@ -179,6 +259,22 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         args.push(param.clone());
     }
 
+    // Auto-detect yt-dlp / youtube-dl if user hasn't already specified it via script-opts.
+    // MPV 0.40+ removed --ytdl-path; the correct option is now:
+    //   --script-opts=ytdl_hook-ytdl_path=<path>
+    if inject_ytdl && !crate::args_contains_ytdl_path(&args) {
+        if let Some(ytdl) = crate::find_ytdl_path() {
+            log::info!("[MPV] Auto-detected yt-dlp at: {}", ytdl);
+            // Escape backslashes in the path for the script-opts value
+            let escaped = ytdl.replace('\\', "\\\\");
+            args.push(format!("--script-opts=ytdl_hook-ytdl_path={}", escaped));
+        } else {
+            log::info!("[MPV] No yt-dlp/youtube-dl found; YouTube URLs may fail");
+        }
+    }
+
+    log::info!("[MPV] Spawning mpv with {} args: {:?}", args.len(), args);
+
     // Launch MPV using shell plugin
     let sidecar = app.shell().sidecar("mpv")
         .map_err(|e| format!("Failed to create sidecar: {}", e))?;
@@ -188,7 +284,9 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
         .map_err(|e| format!("Failed to spawn mpv: {}", e))?;
 
     let pid = child.pid();
+    log::info!("[MPV] mpv spawned with pid={}", pid);
     *state.pid.lock().unwrap() = pid;
+    *state.child.lock().unwrap() = Some(child);
 
     // Spawn a thread to monitor the process
     {
@@ -227,27 +325,43 @@ async fn spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, MpvS
                 match event {
                     CommandEvent::Stdout(line) => {
                         let stdout_str = String::from_utf8_lossy(&line).to_string();
-                        // println!("[MPV] {}", stdout_str); // uncomment for local debugging
                         parse_and_emit(&stdout_str, &app_handle_for_stderr);
                     },
                     CommandEvent::Stderr(line) => {
                         let stderr_str = String::from_utf8_lossy(&line).to_string();
-                        // println!("[MPV stderr] {}", stderr_str); // uncomment for local debugging
                         parse_and_emit(&stderr_str, &app_handle_for_stderr);
                     },
-                    CommandEvent::Error(_) => {}
-                    CommandEvent::Terminated(_) => {}
+                    CommandEvent::Error(e) => {
+                        log::error!("[MPV] Process error: {}", e);
+                    }
+                    CommandEvent::Terminated(payload) => {
+                        log::warn!("[MPV] Process terminated. code={:?} signal={:?}", payload.code, payload.signal);
+                        let _ = app_handle_for_stderr.emit("mpv-terminated", "MPV process terminated unexpectedly");
+                    }
                     _ => {}
                 }
             }
+            log::warn!("[MPV] Monitor task ended (process output channel closed)");
         }));
     }
 
     // Wait for startup
     tokio::time::sleep(Duration::from_millis(1000)).await;
 
+    // Verify process is still alive before trying IPC
+    if !is_process_alive(pid) {
+        log::error!("[MPV] mpv process (pid={}) died during startup", pid);
+        kill_and_clear_state(state);
+        return Err(format!("mpv process (pid={}) died during startup. Check that target/debug/mpv.exe is valid and not blocked by antivirus.", pid));
+    }
+
     // Connect to IPC
     let connect_res = connect_ipc(app, state, &socket_path).await;
+
+    if connect_res.is_err() {
+        log::error!("[MPV] IPC connection failed: {:?}", connect_res);
+        kill_and_clear_state(state);
+    }
 
     *state.initializing.lock().unwrap() = false;
 
@@ -457,14 +571,21 @@ pub async fn init_mpv_with_params<R: Runtime>(
     state: tauri::State<'_, MpvState>,
     custom_params: Vec<String>,
 ) -> Result<(), String> {
-    let is_running = {
+    let (has_proc, pid) = {
         let proc = state.process.lock().unwrap();
-        proc.is_some()
+        let pid = *state.pid.lock().unwrap();
+        (proc.is_some(), pid)
     };
 
-    if is_running {
-        let socket_path = get_socket_path();
-        return connect_ipc(&app, &state, &socket_path).await;
+    if has_proc {
+        if pid > 0 && is_process_alive(pid) {
+            log::info!("[MPV] Process alive (pid={}), reconnecting IPC...", pid);
+            let socket_path = get_socket_path();
+            return connect_ipc(&app, &state, &socket_path).await;
+        } else {
+            log::warn!("[MPV] Previous process (pid={}) is dead; clearing state and respawning", pid);
+            kill_and_clear_state(&state);
+        }
     }
 
     spawn_mpv(&app, &state, custom_params).await
@@ -641,9 +762,19 @@ pub async fn kill_mpv<R: Runtime>(app: &AppHandle<R>) {
         *connected = false;
     }
     {
+        let mut child = state.child.lock().unwrap();
+        if let Some(c) = child.take() {
+            let _ = c.kill();
+        }
+    }
+    {
         let mut proc = state.process.lock().unwrap();
         if let Some(handle) = proc.take() {
             handle.abort();
         }
+    }
+    {
+        let mut pid = state.pid.lock().unwrap();
+        *pid = 0;
     }
 }
