@@ -65,6 +65,22 @@ struct MpvStatus {
 // MPV Helper Functions
 // ============================================================================
 
+/// Helper to read a single setting value from the store.
+/// Tries nested `settings` object first (frontend format), then root-level fallback.
+fn read_store_setting<R: Runtime>(app: &AppHandle<R>, key: &str) -> Option<serde_json::Value> {
+    use tauri_plugin_store::StoreExt;
+
+    let store = app.store(".settings.dat").ok()?;
+    let nested = store.get("settings").and_then(|v| v.as_object().cloned());
+
+    if let Some(ref obj) = nested {
+        if let Some(v) = obj.get(key) {
+            return Some(v.clone());
+        }
+    }
+    store.get(key)
+}
+
 /// Get custom MPV parameters from settings store.
 /// Supports both nested `settings` object (frontend format) and root-level keys (legacy).
 async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String> {
@@ -172,7 +188,20 @@ const BLOCKED_MPV_KEYS: &[&str] = &[
     "sub-file", "audio-file", "external-file",
 ];
 
-fn sanitize_mpv_args(args: Vec<String>) -> Vec<String> {
+fn sanitize_mpv_args(args: Vec<String>, allow_all: bool) -> Vec<String> {
+    // If user disabled the whitelist, accept all well-formed arguments
+    if allow_all {
+        let mut valid_args = Vec::new();
+        for arg in args {
+            if arg.starts_with("--") {
+                valid_args.push(arg);
+            } else {
+                log::warn!("SECURITY ALERT: Dropped malformed MPV argument (must start with --): {}", arg);
+            }
+        }
+        return valid_args;
+    }
+
     let mut safe_args = Vec::new();
     
     for arg in args {
@@ -233,6 +262,14 @@ async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<()
     // Load custom MPV parameters from settings
     let mut custom_params = get_mpv_params_from_store(&app).await;
 
+    // Check if user disabled the parameter whitelist
+    let disable_whitelist = read_store_setting(&app, "mpvDisableWhitelist")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if disable_whitelist {
+        log::warn!("[MPV] SECURITY: User has disabled the MPV parameter whitelist. All parameters will be accepted.");
+    }
+
     // Merge frontend-provided args (for timeshift settings from loaded state)
     // Frontend args are added after store params so they take precedence
     if !args.is_empty() {
@@ -246,8 +283,8 @@ async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<()
         }
     }
 
-    // Apply the Security Allowlist Firewall
-    let safe_custom_params = sanitize_mpv_args(custom_params);
+    // Apply the Security Allowlist Firewall (unless disabled by user)
+    let safe_custom_params = sanitize_mpv_args(custom_params, disable_whitelist);
 
     debug!("[MPV] Final params for MPV:");
     for (i, param) in safe_custom_params.iter().enumerate() {
@@ -528,12 +565,16 @@ async fn mpv_get_params_debug<R: Runtime>(app: AppHandle<R>) -> Result<serde_jso
     use serde_json::json;
 
     let raw_params = get_mpv_params_from_store(&app).await;
-    let safe_params = sanitize_mpv_args(raw_params.clone());
+    let disable_whitelist = read_store_setting(&app, "mpvDisableWhitelist")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let safe_params = sanitize_mpv_args(raw_params.clone(), disable_whitelist);
 
     let result = json!({
         "raw_loaded": raw_params,
         "sanitized": safe_params,
         "dropped_count": raw_params.len().saturating_sub(safe_params.len()),
+        "whitelist_disabled": disable_whitelist,
     });
 
     debug!("[MPV Debug] Params debug: {:?}", result);

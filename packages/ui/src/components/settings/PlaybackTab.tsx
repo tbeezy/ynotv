@@ -4,7 +4,9 @@ import './PlaybackTab.css';
 
 interface PlaybackTabProps {
   mpvParams: string;
+  mpvDisableWhitelist: boolean;
   onMpvParamsChange: (params: string) => void;
+  onMpvDisableWhitelistChange: (disabled: boolean) => void;
 }
 
 const DEFAULT_MPV_PARAMS = `--hwdec=auto
@@ -18,7 +20,7 @@ const DEFAULT_MPV_PARAMS = `--hwdec=auto
 --stream-lavf-o=reconnect_streamed=1
 --stream-lavf-o=reconnect_delay_max=5`;
 
-export function PlaybackTab({ mpvParams, onMpvParamsChange }: PlaybackTabProps) {
+export function PlaybackTab({ mpvParams, mpvDisableWhitelist, onMpvParamsChange, onMpvDisableWhitelistChange }: PlaybackTabProps) {
   const [localParams, setLocalParams] = useState(mpvParams);
   const [hasChanges, setHasChanges] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
@@ -135,6 +137,25 @@ export function PlaybackTab({ mpvParams, onMpvParamsChange }: PlaybackTabProps) 
             <button className="clear-btn" onClick={handleClear}>
               Clear All
             </button>
+          </div>
+
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="timeshift-toggle-row" style={{ marginBottom: '12px' }}>
+              <div className="timeshift-toggle-info">
+                <span className="timeshift-toggle-label">Disable Parameter Whitelist</span>
+                <span className="timeshift-toggle-sub">
+                  Allows any MPV parameter to be passed, including potentially unsafe ones. Use with caution.
+                </span>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={mpvDisableWhitelist}
+                  onChange={(e) => onMpvDisableWhitelistChange(e.target.checked)}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
           </div>
 
           <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>

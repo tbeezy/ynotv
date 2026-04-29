@@ -87,6 +87,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
   // Playback settings state
   const [mpvParams, setMpvParams] = useState<string>('');
+  const [mpvDisableWhitelist, setMpvDisableWhitelist] = useState(false);
   const [timeshiftEnabled, setTimeshiftEnabled] = useState(false);
   const [timeshiftCacheBytes, setTimeshiftCacheBytes] = useState(1_073_741_824);
   const [liveBufferOffset, setLiveBufferOffset] = useState(0);
@@ -170,6 +171,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         reopenLastOnStartup?: boolean;
         savedLayoutState?: SavedLayoutState;
         mpvParams?: string;
+        mpvDisableWhitelist?: boolean;
         timeshiftEnabled?: boolean;
         timeshiftCacheBytes?: number;
         liveBufferOffset?: number;
@@ -246,6 +248,7 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
 
       // Load playback settings
       setMpvParams(settings.mpvParams ?? '');
+      setMpvDisableWhitelist(settings.mpvDisableWhitelist ?? false);
       setTimeshiftEnabled(settings.timeshiftEnabled ?? false);
       setTimeshiftCacheBytes(settings.timeshiftCacheBytes ?? 1_073_741_824);
       setLiveBufferOffset(settings.liveBufferOffset ?? 0);
@@ -280,6 +283,13 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
     setMpvParams(params);
     if (window.storage) {
       await window.storage.updateSettings({ mpvParams: params });
+    }
+  };
+
+  const handleMpvDisableWhitelistChange = async (disabled: boolean) => {
+    setMpvDisableWhitelist(disabled);
+    if (window.storage) {
+      await window.storage.updateSettings({ mpvDisableWhitelist: disabled });
     }
   };
 
@@ -542,7 +552,9 @@ export function Settings({ onClose, onShortcutsChange, theme, onThemeChange, ini
         return (
           <PlaybackTab
             mpvParams={mpvParams}
+            mpvDisableWhitelist={mpvDisableWhitelist}
             onMpvParamsChange={handleMpvParamsChange}
+            onMpvDisableWhitelistChange={handleMpvDisableWhitelistChange}
           />
         );
       case 'cache':
