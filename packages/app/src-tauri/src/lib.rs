@@ -73,8 +73,13 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
         Ok(store) => {
             let mut args: Vec<String> = Vec::new();
 
+            // Settings are stored nested under the "settings" key by the frontend
+            let settings = store.get("settings")
+                .and_then(|v| v.as_object().cloned())
+                .unwrap_or_default();
+
             // Load user-defined MPV params
-            if let Some(params) = store.get("mpvParams") {
+            if let Some(params) = settings.get("mpvParams") {
                 if let Some(params_str) = params.as_str() {
                     let custom_args: Vec<String> = params_str
                         .lines()
@@ -88,14 +93,14 @@ async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) -> Vec<String
             }
 
             // Inject timeshift back-buffer arg if enabled
-            let ts_enabled = store.get("timeshiftEnabled")
+            let ts_enabled = settings.get("timeshiftEnabled")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
             debug!("[MPV] TimeShift enabled from store: {}", ts_enabled);
 
             if ts_enabled {
-                let cache_bytes = store.get("timeshiftCacheBytes")
+                let cache_bytes = settings.get("timeshiftCacheBytes")
                     .and_then(|v| v.as_u64())
                     .unwrap_or(1_073_741_824); // default 1 GB
                 let flag = format!("--demuxer-max-back-bytes={}", cache_bytes);
@@ -123,6 +128,8 @@ const ALLOWED_MPV_KEYS: &[&str] = &[
     "demuxer-readahead-secs", "force-seekable",
     "sub-font", "sub-font-size", "sub-color", "sub-border-color", "sub-border-size",
     "sub-shadow-color", "sub-shadow-offset", "sub-margin-y", "sub-align-x", "sub-align-y",
+    "osd-font", "osd-font-size", "osd-color", "osd-border-color", "osd-border-size",
+    "osd-shadow-color", "osd-shadow-offset", "osd-margin-x", "osd-margin-y",
     "slang", "alang", 
     "vd-lavc-dr", "vd-lavc-threads", "ad-lavc-threads",
     "video-sync", "interpolation", "tscale",
@@ -156,6 +163,25 @@ fn sanitize_mpv_args(args: Vec<String>) -> Vec<String> {
         let without_dashes = &arg[2..];
         let mut parts = without_dashes.splitn(2, '=');
         let key = parts.next().unwrap_or("");
+        
+        // Special handling for script-opts: allow only stats-* options
+        if key == "script-opts" {
+            if let Some(value) = parts.next() {
+                let opts: Vec<&str> = value.split(',').collect();
+                let all_stats = opts.iter().all(|opt| {
+                    let opt_key = opt.splitn(2, '=').next().unwrap_or("").trim();
+                    !opt_key.is_empty() && opt_key.starts_with("stats-")
+                });
+                if all_stats && !opts.is_empty() {
+                    safe_args.push(arg);
+                } else {
+                    log::warn!("SECURITY ALERT: Blocked script-opts with non-stats keys: {}", arg);
+                }
+            } else {
+                log::warn!("SECURITY ALERT: Blocked script-opts without value: {}", arg);
+            }
+            continue;
+        }
         
         if BLOCKED_MPV_KEYS.contains(&key) {
             log::warn!("SECURITY ALERT: Blocked blacklisted MPV argument: {}", key);
