@@ -3,6 +3,7 @@ import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
 import { db } from '../../db';
 import type { StoredChannel } from '../../db';
+import { useSportsSelectedChannels, useSetSportsSelectedChannel } from '../../stores/uiStore';
 import './styles/GameCard.css';
 
 /**
@@ -138,6 +139,10 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
 
   const [isSearching, setIsSearching] = useState(false);
   const [localSearchChannels, setLocalSearchChannels] = useState<StoredChannel[] | null>(() => inlineSearchCache.get(event.id) || null);
+
+  const sportsSelectedChannels = useSportsSelectedChannels();
+  const setSportsSelectedChannel = useSetSportsSelectedChannel();
+  const selectedChannelKey = sportsSelectedChannels[event.id] || null;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -291,9 +296,10 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
               {event.channels.map((channel, idx) => (
                 <button
                   key={`api-ch-${idx}`}
-                  className="game-card-channel-btn"
+                  className={`game-card-channel-btn ${selectedChannelKey === `api:${channel.name}` ? 'active' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    setSportsSelectedChannel(event.id, `api:${channel.name}`);
                     onChannelClick?.(channel.name);
                   }}
                 >
@@ -424,9 +430,10 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
               {localSearchChannels.map((channel, idx) => (
                 <button
                   key={`local-ch-${idx}`}
-                  className="game-card-channel-btn"
+                  className={`game-card-channel-btn ${selectedChannelKey === `local:${channel.stream_id}` ? 'active' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    setSportsSelectedChannel(event.id, `local:${channel.stream_id}`);
                     if (onPlayChannel && channel) {
                       onPlayChannel(channel);
                     } else {

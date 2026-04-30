@@ -240,6 +240,13 @@
   transition: all 0.15s ease;
 }
 
+.game-card-channel-btn.active {
+  background: var(--accent-color, #3b82f6);
+  border-color: var(--accent-color, #3b82f6);
+  color: white;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+}
+
 .game-card-channel-btn:hover {
   background: var(--accent-color, #3b82f6);
   border-color: var(--accent-color, #3b82f6);

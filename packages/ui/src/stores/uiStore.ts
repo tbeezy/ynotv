@@ -33,6 +33,8 @@ interface UIState {
   setSportsSelectedTab: (tab: SportsTabId) => void;
   sportsSelectedLeague: string | null;
   setSportsSelectedLeague: (id: string | null) => void;
+  sportsSelectedChannels: Record<string, string>;
+  setSportsSelectedChannel: (eventId: string, channelKey: string) => void;
 
   // Sync state - persists across Settings open/close
   channelSyncing: boolean;
@@ -77,6 +79,14 @@ export const useUIStore = create<UIState>((set) => ({
   setSportsSelectedTab: (tab) => set({ sportsSelectedTab: tab }),
   sportsSelectedLeague: null,
   setSportsSelectedLeague: (id) => set({ sportsSelectedLeague: id }),
+  sportsSelectedChannels: {},
+  setSportsSelectedChannel: (eventId, channelKey) =>
+    set((state) => ({
+      sportsSelectedChannels: {
+        ...state.sportsSelectedChannels,
+        [eventId]: channelKey,
+      },
+    })),
 
   // Sync state
   channelSyncing: false,
@@ -138,3 +148,5 @@ export const useSportsSelectedTab = () => useUIStore((s) => s.sportsSelectedTab)
 export const useSetSportsSelectedTab = () => useUIStore((s) => s.setSportsSelectedTab);
 export const useSportsSelectedLeague = () => useUIStore((s) => s.sportsSelectedLeague);
 export const useSetSportsSelectedLeague = () => useUIStore((s) => s.setSportsSelectedLeague);
+export const useSportsSelectedChannels = () => useUIStore((s) => s.sportsSelectedChannels);
+export const useSetSportsSelectedChannel = () => useUIStore((s) => s.setSportsSelectedChannel);
