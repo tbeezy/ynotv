@@ -1,10 +1,11 @@
   # Changelog
   
-    ## v1.6.6
+  ## v1.6.6
   Added:
-  - Integrated ytdlp for better YouTube playback
+  - Bundled ytdlp for better YouTube playback for playlists with youtube links
   - Highlight current channel being played in Search Results
-  - Settings -> Playback, added Check Loaded MPV Parameters button at the bottom to check if parameters are correctly loaded
+  - Highlight last clicked stream on Game Card for Sports when using "Show Search Results"
+  - Setting -> Playback, added Check Loaded MPV Parameters button at the bottom to check if parameters are correctly loaded
   - Setting -> Playback added a disable parameter whitelist
   
   Fixes:
