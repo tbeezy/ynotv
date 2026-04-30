@@ -7,7 +7,6 @@ interface ThemeTabProps {
 
 const THEMES: { id: ThemeId; name: string; description: string; preview: string; gradient?: string }[] = [
   { id: 'dark', name: 'Dark', description: 'Classic dark theme', preview: '#1a1a1a' },
-  { id: 'light', name: 'Light', description: 'Clean light theme', preview: '#f5f5f5' },
   { id: 'glass-ocean', name: 'Ocean Glass', description: 'Deep blues and teals with glass effect', preview: '#0a1628' },
   { id: 'glass-neon', name: 'Neon Glass', description: 'Cyberpunk vibes with neon accents', preview: '#0d0d1a' },
   { id: 'glass-galaxy', name: 'Galaxy Glass', description: 'Purple and pink nebula effect', preview: '#1a0b2e' },
