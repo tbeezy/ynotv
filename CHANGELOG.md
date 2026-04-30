@@ -1,5 +1,16 @@
   # Changelog
   
+    ## v1.6.6
+  Added:
+  - Integrated ytdlp for better YouTube playback
+  - Highlight current channel being played in Search Results
+  - Settings -> Playback, added Check Loaded MPV Parameters button at the bottom to check if parameters are correctly loaded
+  - Setting -> Playback added a disable parameter whitelist
+  
+  Fixes:
+  - Concurrent sync for multiple sources not updating EPG due to db lock
+  - Fixed MPV parameters not passing properly to MPV
+  
   ## v1.6.5
   Added:
   - Mediabar button on EPG Preview autohides unless mouse is over video
