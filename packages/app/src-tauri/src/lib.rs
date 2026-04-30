@@ -184,7 +184,7 @@ const ALLOWED_MPV_KEYS: &[&str] = &[
 ];
 
 const BLOCKED_MPV_KEYS: &[&str] = &[
-    "script", "script-opts", "scripts", 
+    "script", "scripts", 
     "config", "config-dir", "no-config",
     "input-ipc-server", "input-conf",
     "log-file", "dump-stats",
@@ -218,8 +218,8 @@ fn sanitize_mpv_args(args: Vec<String>, allow_all: bool) -> Vec<String> {
         let mut parts = without_dashes.splitn(2, '=');
         let key = parts.next().unwrap_or("");
         
-        // Special handling for script-opts: allow only stats-* options
-        if key == "script-opts" {
+        // Special handling for script-opts and its variants (append, add, etc): allow only stats-* options
+        if key == "script-opts" || key.starts_with("script-opts-") || key == "script-opt" {
             if let Some(value) = parts.next() {
                 let opts: Vec<&str> = value.split(',').collect();
                 let all_stats = opts.iter().all(|opt| {
@@ -257,7 +257,7 @@ fn sanitize_mpv_args(args: Vec<String>, allow_all: bool) -> Vec<String> {
 pub fn args_contains_ytdl_path(args: &[String]) -> bool {
     args.iter().any(|a| {
         a.starts_with("--ytdl-path")
-            || (a.starts_with("--script-opts") && a.contains("ytdl_hook-ytdl_path"))
+            || (a.starts_with("--script-opt") && a.contains("ytdl_hook-ytdl_path"))
     })
 }
 

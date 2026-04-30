@@ -261,13 +261,13 @@ async fn try_spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, 
 
     // Auto-detect yt-dlp / youtube-dl if user hasn't already specified it via script-opts.
     // MPV 0.40+ removed --ytdl-path; the correct option is now:
-    //   --script-opts=ytdl_hook-ytdl_path=<path>
+    //   --script-opts-append=ytdl_hook-ytdl_path=<path>
     if inject_ytdl && !crate::args_contains_ytdl_path(&args) {
         if let Some(ytdl) = crate::find_ytdl_path() {
             log::info!("[MPV] Auto-detected yt-dlp at: {}", ytdl);
             // Escape backslashes in the path for the script-opts value
             let escaped = ytdl.replace('\\', "\\\\");
-            args.push(format!("--script-opts=ytdl_hook-ytdl_path={}", escaped));
+            args.push(format!("--script-opts-append=ytdl_hook-ytdl_path={}", escaped));
         } else {
             log::info!("[MPV] No yt-dlp/youtube-dl found; YouTube URLs may fail");
         }

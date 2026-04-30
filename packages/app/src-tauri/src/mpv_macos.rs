@@ -72,11 +72,11 @@ pub async fn launch_mpv<R: Runtime>(
 
     // Auto-detect yt-dlp / youtube-dl if user hasn't already specified it via script-opts.
     // MPV 0.40+ removed --ytdl-path; the correct option is now:
-    //   --script-opts=ytdl_hook-ytdl_path=<path>
+    //   --script-opts-append=ytdl_hook-ytdl_path=<path>
     if !crate::args_contains_ytdl_path(&args) {
         if let Some(ytdl) = crate::find_ytdl_path() {
             // No backslash escaping needed on macOS (Unix paths)
-            args.push(format!("--script-opts=ytdl_hook-ytdl_path={}", ytdl));
+            args.push(format!("--script-opts-append=ytdl_hook-ytdl_path={}", ytdl));
         }
     }
 
