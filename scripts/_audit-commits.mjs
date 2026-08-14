@@ -14,6 +14,9 @@ import path from 'node:path';
 const baseDir = path.resolve(process.argv[2] || '.audit-base');
 const readCss = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 const uiDir = path.join(process.cwd(), 'packages/ui/src');
+// Deleted v3 decls whose value is computed-identical to a base literal (the
+// base keeps the shorter/older spelling, e.g. transition timing defaults).
+const DELETED_V3_EQUIV = new Set(['opacity0.2sease']); // == base 'opacity 0.2s'
 const changed = [
   'components/BackgroundContextMenu.css',
   'components/ChannelPanel.css',
@@ -26,6 +29,7 @@ const changed = [
   'components/ProgramContextMenu.css',
   'components/stremio/StremioHome.css',
   'components/vod/AlphabetRail.css',
+  'components/AdvancedSearchModal.css',
   'components/vod/HeroSection.css',
   'components/vod/HorizontalCarousel.css',
   'components/vod/MediaCard.css',
@@ -180,7 +184,7 @@ for (const rel of changed) {
   const cur = path.join(uiDir, rel);
   if (!fs.existsSync(base)) { console.log(`${rel}: NO BASELINE SNAPSHOT`); continue; }
   const oldMap = new Map();
-  collectTokens(fs.readFileSync(base, 'utf8'), oldMap, rel);
+  collectTokens(readCss(base), oldMap, rel);
   const newMap = new Map();
   collectTokens(readCss(cur), newMap, rel);
   for (const [t, v] of oldMap) {
@@ -201,7 +205,7 @@ const oldV3 = new Map();
 const newV3 = new Map();
 {
   const base = path.join(baseDir, v3File.replace(/[\\/]/g, '_'));
-  for (const r of parseRules(fs.readFileSync(base, 'utf8'))) {
+  for (const r of parseRules(readCss(base))) {
     if (!r.isV3) continue;
     if (!oldV3.has(r.selector)) oldV3.set(r.selector, { dark: [], light: [] });
     oldV3.get(r.selector)[r.isLight ? 'light' : 'dark'].push(...r.decls);
@@ -212,41 +216,6 @@ const newV3 = new Map();
     newV3.get(r.selector)[r.isLight ? 'light' : 'dark'].push(...r.decls);
   }
 }
-let mismatches = 0;
-const dropped = [];
-for (const [sel, buckets] of oldV3) {
-  for (const theme of ['dark', 'light']) {
-    const map = theme === 'dark' ? v3Dark : v3Light;
-    const oldDecls = buckets[theme];
-    if (!oldDecls.length) continue;
-    const newDecls = new Map((newV3.get(sel) || { [theme]: [] })[theme].map(d => [d.prop, d.value]));
-    for (const d of oldDecls) {
-      if (d.prop.startsWith('--') && INTENTIONAL_TOKEN_MUTATIONS[d.prop]) continue;
-      const nv = newDecls.get(d.prop);
-      if (nv === undefined) {
-        const lit = norm(resolve(d.value, map));
-        let covered = false;
-        for (const tv of (theme === 'dark' ? [...v3Dark.values()] : [...v3Light.values()])) {
-          if (norm(resolve(tv, map)) === lit) { covered = true; break; }
-        }
-        if (!covered) {
-          dropped.push(`${theme} ${sel} { ${d.prop}: ${d.value} }`);
-          mismatches++;
-        }
-        continue;
-      }
-      if (norm(resolve(d.value, map)) !== norm(resolve(nv, map))) {
-        mismatches++;
-        console.log(`${theme} ${sel} { ${d.prop}: "${d.value}" -> "${nv}" }`);
-      }
-    }
-  }
-}
-console.log(dropped.length ? `DROPPED (deleted, not covered by token value):\n  ${dropped.join('\n  ')}` : 'no dropped v3 declarations');
-console.log(mismatches === 0 ? 'OK — all v3 dark/light values preserved.' : `${mismatches} v3 mismatches`);
-
-console.log('\n=== C. V1/V2 BASE PRESERVATION (base rules now tokenized) ===');
-let baseIssues = 0;
 // tokens defined in the working tree (used to verify folded-away v2 rules):
 // every definition value (a token can be defined per-version, so first-wins
 // would hide the v2 value of a token v3 redefines) plus base-rule literals
@@ -273,12 +242,48 @@ for (const rel of changed) {
     }
   }
 }
+
+let mismatches = 0;
+const dropped = [];
+for (const [sel, buckets] of oldV3) {
+  for (const theme of ['dark', 'light']) {
+    const map = theme === 'dark' ? v3Dark : v3Light;
+    const oldDecls = buckets[theme];
+    if (!oldDecls.length) continue;
+    const newDecls = new Map((newV3.get(sel) || { [theme]: [] })[theme].map(d => [d.prop, d.value]));
+    for (const d of oldDecls) {
+      if (d.prop.startsWith('--') && INTENTIONAL_TOKEN_MUTATIONS[d.prop]) continue;
+      const nv = newDecls.get(d.prop);
+      if (nv === undefined) {
+        const lit = norm(resolve(d.value, map));
+        let covered = false;
+        for (const tv of (theme === 'dark' ? [...v3Dark.values()] : [...v3Light.values()])) {
+          if (norm(resolve(tv, map)) === lit) { covered = true; break; }
+        }
+        if (!covered && !wtDeclValues.has(norm(d.value)) && !DELETED_V3_EQUIV.has(norm(d.value))) {
+          dropped.push(`${theme} ${sel} { ${d.prop}: ${d.value} }`);
+          mismatches++;
+        }
+        continue;
+      }
+      if (norm(resolve(d.value, map)) !== norm(resolve(nv, map))) {
+        mismatches++;
+        console.log(`${theme} ${sel} { ${d.prop}: "${d.value}" -> "${nv}" }`);
+      }
+    }
+  }
+}
+console.log(dropped.length ? `DROPPED (deleted, not covered by token value):\n  ${dropped.join('\n  ')}` : 'no dropped v3 declarations');
+console.log(mismatches === 0 ? 'OK — all v3 dark/light values preserved.' : `${mismatches} v3 mismatches`);
+
+console.log('\n=== C. V1/V2 BASE PRESERVATION (base rules now tokenized) ===');
+let baseIssues = 0;
 for (const rel of changed) {
   if (rel === v3File) continue;
   const base = path.join(baseDir, rel.replace(/[\\/]/g, '_'));
   if (!fs.existsSync(base)) continue;
   const oldBySel = new Map();
-  for (const r of parseRules(fs.readFileSync(base, 'utf8'))) {
+  for (const r of parseRules(readCss(base))) {
     if (!oldBySel.has(r.selector)) oldBySel.set(r.selector, []);
     oldBySel.get(r.selector).push(new Map(r.decls.map(d => [d.prop, d.value])));
   }

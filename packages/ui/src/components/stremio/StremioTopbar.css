@@ -69,12 +69,12 @@
 }
 
 .stremio-topbar-item:hover {
-  color: var(--stremio-topbar-item-hover-color, var(--text-primary, #ffffff));
+  color: var(--tb-item-active-color, var(--stremio-topbar-item-hover-color, var(--text-primary, #ffffff)));
   background: var(--stremio-topbar-item-hover-bg, rgba(255, 255, 255, 0.03));
 }
 
 .stremio-topbar-item.active {
-  color: var(--stremio-topbar-item-active-color, var(--text-primary, #ffffff));
+  color: var(--tb-item-active-color, var(--stremio-topbar-item-active-color, var(--text-primary, #ffffff)));
 }
 
 /* Bottom Highlight Line */

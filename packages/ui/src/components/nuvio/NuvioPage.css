@@ -235,18 +235,18 @@
   flex-shrink: 0;
   width: var(--nuvio-poster-width, 150px);
   aspect-ratio: 2/3;
-  border-radius: var(--stremio-card-radius, 8px);
+  border-radius: var(--nuc-card-radius, 8px);
   overflow: hidden;
   background: var(--stremio-card-bg, rgba(255, 255, 255, 0.02));
-  border: var(--stremio-card-border, 1px solid rgba(255, 255, 255, 0.05));
+  border: var(--nuc-card-border, 1px solid rgba(255, 255, 255, 0.05));
   cursor: pointer;
-  transition: var(--stremio-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
+  transition: var(--nuc-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
 }
 
 .nuvio-card:hover {
   transform: var(--stremio-card-hover-transform, translateY(-5px) scale(1.02));
-  border-color: var(--stremio-card-hover-border-color, var(--accent-primary, #00d4ff));
-  box-shadow: var(--stremio-card-hover-shadow, 0 6px 20px color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent));
+  border-color: var(--nuc-card-hover-border, var(--accent-primary, #00d4ff));
+  box-shadow: var(--nuc-card-hover-shadow, 0 6px 20px color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent));
 }
 
 .nuvio-card-img {
@@ -315,18 +315,18 @@
   flex-shrink: 0;
   width: calc(var(--nuvio-poster-width, 150px) * 1.867);
   aspect-ratio: 16/9;
-  border-radius: var(--stremio-card-radius, 10px);
+  border-radius: var(--nuc-card-radius, 10px);
   overflow: hidden;
   cursor: pointer;
   background: var(--stremio-card-bg, transparent);
-  border: var(--stremio-card-border, none);
-  transition: var(--stremio-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
+  border: var(--nuc-card-border, none);
+  transition: var(--nuc-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
 }
 
 .nuvio-cw-card:hover {
   transform: var(--stremio-card-hover-transform, translateY(-4px) scale(1.02));
-  border-color: var(--stremio-card-hover-border-color, transparent);
-  box-shadow: var(--stremio-card-hover-shadow, 0 8px 24px rgba(0, 0, 0, 0.5));
+  border-color: var(--nuc-card-hover-border, transparent);
+  box-shadow: var(--nuc-card-hover-shadow, 0 8px 24px rgba(0, 0, 0, 0.5));
 }
 
 .nuvio-cw-card-img {
@@ -428,19 +428,19 @@
   flex-shrink: 0;
   width: 360px;
   height: 100px;
-  border-radius: var(--stremio-card-radius, 10px);
+  border-radius: var(--nuc-card-radius, 10px);
   overflow: hidden;
   cursor: pointer;
   display: flex;
   background: var(--stremio-card-bg, rgba(255, 255, 255, 0.03));
-  border: var(--stremio-card-border, 1px solid rgba(255, 255, 255, 0.06));
-  transition: var(--stremio-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease);
+  border: var(--nuc-card-border, 1px solid rgba(255, 255, 255, 0.06));
+  transition: var(--nuc-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease);
 }
 
 .nuvio-cw-wide-card:hover {
   transform: var(--stremio-card-hover-transform, translateY(-4px) scale(1.02));
-  border-color: var(--stremio-card-hover-border-color, var(--accent-primary, #00d4ff));
-  box-shadow: var(--stremio-card-hover-shadow, none);
+  border-color: var(--nuc-card-hover-border, var(--accent-primary, #00d4ff));
+  box-shadow: var(--nuc-card-hover-shadow, none);
 }
 
 .nuvio-cw-wide-poster {
@@ -520,18 +520,18 @@
   flex-shrink: 0;
   width: calc(var(--nuvio-poster-width, 150px) * 0.933);
   aspect-ratio: 2/3;
-  border-radius: var(--stremio-card-radius, 8px);
+  border-radius: var(--nuc-card-radius, 8px);
   overflow: hidden;
   cursor: pointer;
   background: var(--stremio-card-bg, rgba(255, 255, 255, 0.02));
-  border: var(--stremio-card-border, 1px solid rgba(255, 255, 255, 0.05));
-  transition: var(--stremio-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
+  border: var(--nuc-card-border, 1px solid rgba(255, 255, 255, 0.05));
+  transition: var(--nuc-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
 }
 
 .nuvio-cw-poster-card:hover {
   transform: var(--stremio-card-hover-transform, translateY(-5px) scale(1.02));
-  border-color: var(--stremio-card-hover-border-color, var(--accent-primary, #00d4ff));
-  box-shadow: var(--stremio-card-hover-shadow, 0 6px 20px color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent));
+  border-color: var(--nuc-card-hover-border, var(--accent-primary, #00d4ff));
+  box-shadow: var(--nuc-card-hover-shadow, 0 6px 20px color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent));
 }
 
 .nuvio-cw-poster-img {
@@ -606,18 +606,18 @@
 .nuvio-folder-card {
   position: relative;
   flex-shrink: 0;
-  border-radius: var(--stremio-card-radius, 8px);
+  border-radius: var(--nuc-card-radius, 8px);
   overflow: hidden;
   background: var(--stremio-card-bg, rgba(255, 255, 255, 0.02));
-  border: var(--stremio-card-border, 1px solid rgba(255, 255, 255, 0.06));
+  border: var(--nuc-card-border, 1px solid rgba(255, 255, 255, 0.06));
   cursor: pointer;
-  transition: var(--stremio-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
+  transition: var(--nuc-card-transition, transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.22s ease, box-shadow 0.22s ease);
 }
 
 .nuvio-folder-card:hover {
   transform: var(--stremio-card-hover-transform, translateY(-5px) scale(1.02));
-  border-color: var(--stremio-card-hover-border-color, var(--accent-primary, #00d4ff));
-  box-shadow: var(--stremio-card-hover-shadow, 0 6px 20px color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, transparent));
+  border-color: var(--nuc-card-hover-border, var(--accent-primary, #00d4ff));
+  box-shadow: var(--nuc-card-hover-shadow, 0 6px 20px color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, transparent));
 }
 
 .nuvio-folder-card-poster {
@@ -1011,12 +1011,12 @@
 }
 
 .nuvio-topbar-item:hover {
-  color: var(--stremio-topbar-item-hover-color, #ffffff);
+  color: var(--tb-item-active-color, var(--stremio-topbar-item-hover-color, #ffffff));
   background: var(--stremio-topbar-item-hover-bg, rgba(255, 255, 255, 0.03));
 }
 
 .nuvio-topbar-item.active {
-  color: var(--stremio-topbar-item-active-color, #ffffff);
+  color: var(--tb-item-active-color, var(--stremio-topbar-item-active-color, #ffffff));
   background: var(--stremio-topbar-item-active-bg, rgba(255, 255, 255, 0.06));
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -1725,10 +1725,11 @@ select.nuvio-input option {
   width: calc(100% + 56px);
   margin: 0 -28px 20px;
   padding: 12px 28px;
-  background: rgba(8, 8, 12, 0.55);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--nuc-filter-bg, rgba(8, 8, 12, 0.55));
+  backdrop-filter: var(--nuc-filter-blur, blur(14px));
+  -webkit-backdrop-filter: var(--nuc-filter-blur, blur(14px));
+  border-bottom: var(--nuc-filter-border-bottom, 1px solid rgba(255, 255, 255, 0.06));
+  box-shadow: var(--nuc-filter-shadow, none);
   box-sizing: border-box;
 }
 

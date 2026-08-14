@@ -6771,12 +6771,12 @@
 }
 
 .sports-topbar-item:hover {
-  color: var(--text-primary, #ffffff);
+  color: var(--tb-item-active-color, var(--text-primary, #ffffff));
   background: var(--sports-topbar-item-hover-bg, rgba(255, 255, 255, 0.03));
 }
 
 .sports-topbar-item.active {
-  color: var(--text-primary, #ffffff);
+  color: var(--tb-item-active-color, var(--text-primary, #ffffff));
 }
 
 .sports-topbar-item.active::after {

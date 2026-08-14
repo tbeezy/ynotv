@@ -5,6 +5,7 @@
   inset: 0;
   background: var(--gd-overlay-bg, rgba(0, 0, 0, 0.8));
   backdrop-filter: var(--gd-overlay-filter, blur(4px));
+  -webkit-backdrop-filter: var(--gd-overlay-filter, none);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -342,6 +343,7 @@
   padding: 12px 16px;
   text-align: center;
   font-size: 14px;
+  color: var(--gd-td-color, inherit);
   border-bottom: var(--gd-td-border-bottom, 1px solid var(--border-color, rgba(255, 255, 255, 0.05)));
 }
 
@@ -415,6 +417,7 @@
 
 .game-detail-players-table td {
   padding: 10px 12px;
+  color: var(--gd-td-color, inherit);
   border-bottom: var(--gd-td-border-bottom, 1px solid var(--border-color, rgba(255, 255, 255, 0.05)));
 }
 

@@ -1503,8 +1503,17 @@ html.modern-ui-v3 {
   --nuc-card-hover-border: rgba(255, 255, 255, 0.2);
   --nuc-card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(139, 92, 246, 0.2);
+  --nuc-card-transition: all 0.2s ease;
   /* Subtitle controls */
   --sm-a-toggle-checked-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent);
+  --sm-as-title-font-size: 1.15rem;
+  --sm-as-label-font-size: 0.7rem;
+  --sm-as-label-weight: 700;
+  --sm-as-label-spacing: 0.06em;
+  --sm-as-input-wrap-padding: 0 14px;
+  --sm-as-input-wrap-height: 44px;
+  --sm-as-clear-transition: all 0.2s ease;
+  --sm-as-scope-weight: 600;
   --sm-a-result-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 15%, transparent);
   --sm-a-result-border: 1px solid color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent);
   --sm-a-result-hover-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent);
@@ -2462,172 +2471,17 @@ html.modern-ui-v3[data-theme] .guide-channel-logo.logo-smart-trim img {
   margin: 12px;
 }
 
-/* Sports Match Detail Modals Liquid Glass Styling — token-driven via the
-   --gd-* family in the token blocks above; the GameDetail.css / SportsHub.css
-   bases consume the same tokens with v1/v2 fallbacks, and these thin rules
-   re-assert the v3 values over the base + glass-variant cascades. */
-
-.modern-ui-v3 .game-detail-overlay {
-  background: var(--gd-overlay-bg, rgba(8, 8, 12, 0.4)) !important;
-  backdrop-filter: var(--gd-overlay-filter, blur(10px)) !important;
-  -webkit-backdrop-filter: var(--gd-overlay-filter, blur(10px)) !important;
-}
-
-/* Inner Sections Transparency */
-
-.modern-ui-v3 .game-detail-header,
-.modern-ui-v3 .game-detail-scoreboard,
-.modern-ui-v3 .ufc-detail-title-bar,
-.modern-ui-v3 .ufc-detail-main-event,
-.modern-ui-v3 .racing-detail-title-bar,
-.modern-ui-v3 .golf-detail-title-bar,
-.modern-ui-v3 .tennis-detail-title-bar {
-  background: var(--gd-section-bg, transparent) !important;
-}
-
-.modern-ui-v3 .game-detail-header {
-  border-bottom: var(--gd-hdr-border-bottom, 1px solid rgba(255, 255, 255, 0.08)) !important;
-}
-
-.modern-ui-v3 .game-detail-scoreboard {
-  border-bottom: var(--gd-scoreboard-border-bottom, 1px solid rgba(255, 255, 255, 0.06)) !important;
-}
-
-.modern-ui-v3 .ufc-detail-title-bar,
-.modern-ui-v3 .ufc-detail-main-event,
-.modern-ui-v3 .racing-detail-title-bar,
-.modern-ui-v3 .golf-detail-title-bar,
-.modern-ui-v3 .tennis-detail-title-bar {
-  border-bottom: var(--gd-chrome-border-bottom, 1px solid rgba(255, 255, 255, 0.08)) !important;
-}
-
-/* Tabs */
-
-.modern-ui-v3 .game-detail-tab {
-  color: var(--gd-tab-color, rgba(255, 255, 255, 0.6)) !important;
-  transition: var(--gd-tab-transition, all 0.2s ease) !important;
-}
-
-.modern-ui-v3 .game-detail-tab:hover {
-  color: var(--gd-tab-hover-color, #fff) !important;
-  background: var(--gd-tab-hover-bg, rgba(255, 255, 255, 0.04)) !important;
-}
-
-.modern-ui-v3 .game-detail-tab.active {
-  color: var(--gd-tab-active-color, var(--accent-primary, #00d4ff)) !important;
-  border-bottom-color: var(--gd-tab-active-color, var(--accent-primary, #00d4ff)) !important;
-  text-shadow: var(--gd-tab-active-shadow, 0 0 8px color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent)) !important;
-  background: var(--gd-tab-active-bg, transparent) !important;
-}
-
-/* Tables and Lists */
-
-.modern-ui-v3 .game-detail-stats-table th,
-.modern-ui-v3 .game-detail-players-table th {
-  border-bottom: var(--gd-th-border-bottom, 2px solid rgba(255, 255, 255, 0.1)) !important;
-  color: var(--gd-th-color, rgba(255, 255, 255, 0.9)) !important;
-}
-
-.modern-ui-v3 .game-detail-stats-table td,
-.modern-ui-v3 .game-detail-players-table td {
-  border-bottom: var(--gd-td-border-bottom, 1px solid rgba(255, 255, 255, 0.05)) !important;
-  color: var(--gd-td-color, rgba(255, 255, 255, 0.8)) !important;
-}
-
-.modern-ui-v3 .game-detail-stats-table tbody tr:hover,
-.modern-ui-v3 .game-detail-players-table tbody tr:hover {
-  background: var(--gd-row-hover-bg, rgba(255, 255, 255, 0.04)) !important;
-}
-
-/* Channel buttons & scoring plays */
-
-.modern-ui-v3 .game-detail-channel-btn {
-  background: var(--gd-channel-bg, rgba(255, 255, 255, 0.04)) !important;
-  border: var(--gd-channel-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  color: var(--gd-channel-color, rgba(255, 255, 255, 0.8)) !important;
-  border-radius: var(--gd-channel-radius, 10px) !important;
-  transition: var(--gd-channel-transition, all 0.2s cubic-bezier(0.16, 1, 0.3, 1)) !important;
-}
-
-.modern-ui-v3 .game-detail-channel-btn:hover {
-  background: var(--gd-channel-hover-bg, rgba(255, 255, 255, 0.12)) !important;
-  border-color: var(--gd-channel-hover-border, rgba(255, 255, 255, 0.2)) !important;
-  color: var(--gd-channel-hover-color, #fff) !important;
-  transform: var(--gd-channel-hover-transform, translateY(-1px)) !important;
-  box-shadow: var(--gd-channel-hover-shadow, 0 4px 12px rgba(0, 0, 0, 0.15)) !important;
-}
+/* Sports Match Detail Modals Liquid Glass — DE-STACKED into the
+   GameDetail.css / SportsHub.css bases, which consume the --gd-* tokens with
+   v1/v2 fallbacks (dark + light token blocks define the values; no
+   themes/ModernThemeBase/light-sheet rule targets these classes). The
+   scoring-play keeps a thin rule: the base uses a 3px accent border-left
+   (home/away stripe) while v3 deliberately uses a uniform 1px border, so the
+   base cannot render both looks from one token. */
 
 .modern-ui-v3 .game-detail-scoring-play {
   background: var(--gd-scoring-bg, rgba(255, 255, 255, 0.03)) !important;
   border: var(--gd-scoring-border, 1px solid rgba(255, 255, 255, 0.04)) !important;
-}
-
-.modern-ui-v3 .ufc-detail-fighter-img {
-  background: var(--gd-fighter-bg, rgba(255, 255, 255, 0.04)) !important;
-  border: var(--gd-fighter-border, 2px solid rgba(255, 255, 255, 0.1)) !important;
-}
-
-/* Light theme overrides */
-
-html.modern-ui-v3[data-theme="light"] .game-detail-header {
-  border-bottom: var(--gd-hdr-border-bottom, 1px solid rgba(0, 0, 0, 0.06)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-scoreboard {
-  border-bottom: var(--gd-scoreboard-border-bottom, 1px solid rgba(0, 0, 0, 0.06)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .ufc-detail-title-bar,
-html.modern-ui-v3[data-theme="light"] .ufc-detail-main-event,
-html.modern-ui-v3[data-theme="light"] .racing-detail-title-bar,
-html.modern-ui-v3[data-theme="light"] .golf-detail-title-bar,
-html.modern-ui-v3[data-theme="light"] .tennis-detail-title-bar {
-  border-bottom: var(--gd-chrome-border-bottom, 1px solid rgba(0, 0, 0, 0.06)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-tab {
-  color: var(--gd-tab-color, rgba(0, 0, 0, 0.6)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-tab:hover {
-  color: var(--gd-tab-hover-color, #000) !important;
-  background: var(--gd-tab-hover-bg, rgba(0, 0, 0, 0.04)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-tab.active {
-  color: var(--gd-tab-active-color, var(--accent-primary, #00d4ff)) !important;
-  border-bottom-color: var(--gd-tab-active-color, var(--accent-primary, #00d4ff)) !important;
-  text-shadow: var(--gd-tab-active-shadow, none) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-stats-table th,
-html.modern-ui-v3[data-theme="light"] .game-detail-players-table th {
-  border-bottom: var(--gd-th-border-bottom, 2px solid rgba(0, 0, 0, 0.1)) !important;
-  color: var(--gd-th-color, rgba(0, 0, 0, 0.9)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-stats-table td,
-html.modern-ui-v3[data-theme="light"] .game-detail-players-table td {
-  border-bottom: var(--gd-td-border-bottom, 1px solid rgba(0, 0, 0, 0.05)) !important;
-  color: var(--gd-td-color, rgba(0, 0, 0, 0.8)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-stats-table tbody tr:hover,
-html.modern-ui-v3[data-theme="light"] .game-detail-players-table tbody tr:hover {
-  background: var(--gd-row-hover-bg, rgba(0, 0, 0, 0.03)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-channel-btn {
-  background: var(--gd-channel-bg, rgba(0, 0, 0, 0.04)) !important;
-  border: var(--gd-channel-border, 1px solid rgba(0, 0, 0, 0.08)) !important;
-  color: var(--gd-channel-color, rgba(0, 0, 0, 0.8)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .game-detail-channel-btn:hover {
-  background: var(--gd-channel-hover-bg, rgba(0, 0, 0, 0.08)) !important;
-  border-color: var(--gd-channel-hover-border, rgba(0, 0, 0, 0.15)) !important;
-  color: var(--gd-channel-hover-color, #000) !important;
-  box-shadow: var(--gd-channel-hover-shadow, 0 4px 12px rgba(0, 0, 0, 0.08)) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .game-detail-scoring-play {
@@ -2635,24 +2489,11 @@ html.modern-ui-v3[data-theme="light"] .game-detail-scoring-play {
   border: var(--gd-scoring-border, 1px solid rgba(0, 0, 0, 0.04)) !important;
 }
 
-html.modern-ui-v3[data-theme="light"] .ufc-detail-fighter-img {
-  background: var(--gd-fighter-bg, rgba(0, 0, 0, 0.04)) !important;
-  border: var(--gd-fighter-border, 2px solid rgba(0, 0, 0, 0.1)) !important;
-}
+/* 11. Alphabet Rail Glass — DE-STACKED into the AlphabetRail.css base, which
+   consumes all --ar-* tokens with v1/v2 fallbacks (the shared token block
+   defines the v3 values; no themes/ModernThemeBase/light-sheet rule targets
+   the rail). */
 
-/* 11. Alphabet Rail Glass Styling */
-
-.modern-ui-v3 .alphabet-rail {
-  background: var(--ar-bg, rgba(12, 14, 24, 0.3)) !important;
-  backdrop-filter: var(--ar-filter, blur(10px)) !important;
-  -webkit-backdrop-filter: var(--ar-filter, blur(10px)) !important;
-  border-left: var(--ar-border-left, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  border-top-right-radius: var(--ar-radius-tr, 24px) !important;
-  border-bottom-right-radius: var(--ar-radius-br, 24px) !important;
-  margin-top: var(--ar-margin-top, 16px) !important;
-  margin-bottom: var(--ar-margin-bottom, 16px) !important;
-  height: var(--ar-height, calc(100% - 32px)) !important;
-}
 
 /* 12. Stremio & Nuvio Liquid Glass — token-driven. The component bases
    (StremioTopbar / StremioHome / StremioDetail / NuvioPage / StreamPickerModal /
@@ -3346,37 +3187,15 @@ html.modern-ui-v3[data-theme="light"] .source-actions button:hover {
   color: var(--src-actions-btn-hover-color) !important;
 }
 
-html.modern-ui-v3[data-theme="light"] .settings-content select {
-  border: var(--sel-border, 1px solid rgba(0, 0, 0, 0.12)) !important;
-  background: var(--sel-bg, #ffffff) !important;
-  color: var(--sel-color, #0f172a) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .settings-content select:focus {
-  border-color: var(--sel-focus-border, var(--accent-primary, #0066cc)) !important;
-  background: var(--sel-focus-bg, #ffffff) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .settings-content select option {
-  background: var(--sel-option-bg, #ffffff) !important;
-  color: var(--sel-option-color, #0f172a) !important;
-}
-
 /* EPG text shadows in light theme come from the --guide-text-shadow /
    --guide-row-current-name-shadow light tokens (both none). */
 
-/* DVR, Sports, Stremio, Nuvio topbar active/hover tabs in light theme */
+/* DVR, Sports, Stremio, Nuvio topbar active/hover tabs in light theme —
+   DE-STACKED: the four component bases (DvrDashboard / SportsHub /
+   StremioTopbar / NuvioPage) consume --tb-item-active-color with their own
+   fallbacks, so v3 light resolves #0f172a directly from the light token block
+   with no override rule. */
 
-html.modern-ui-v3[data-theme="light"] .dvr-topbar-item.active,
-html.modern-ui-v3[data-theme="light"] .dvr-topbar-item:hover,
-html.modern-ui-v3[data-theme="light"] .sports-topbar-item.active,
-html.modern-ui-v3[data-theme="light"] .sports-topbar-item:hover,
-html.modern-ui-v3[data-theme="light"] .stremio-topbar-item.active,
-html.modern-ui-v3[data-theme="light"] .stremio-topbar-item:hover,
-html.modern-ui-v3[data-theme="light"] .nuvio-topbar-item.active,
-html.modern-ui-v3[data-theme="light"] .nuvio-topbar-item:hover {
-  color: var(--tb-item-active-color, #0f172a) !important;
-}
 
 /* Sports World Cup page container in light theme - styled dark so all EPG/stats text is legible */
 
@@ -3541,39 +3360,12 @@ html.modern-ui-v3[data-theme="dark-slate"] .livetv-liquid-glass-bg::after {
    them) with the v1/v2 literals as fallbacks. No themes/ModernThemeBase/
    light-sheet rule targets these classes, so the scoped rules were deleted. */
 
-/* 3. Filter Catalogs Bar */
-
-.modern-ui-v3 .nuvio-catalog-filter {
-  background: var(--nuc-filter-bg, rgba(255, 255, 255, 0.04)) !important;
-  backdrop-filter: var(--nuc-filter-blur, blur(20px)) !important;
-  -webkit-backdrop-filter: var(--nuc-filter-blur, blur(20px)) !important;
-  border-bottom: var(--nuc-filter-border-bottom, 1px solid rgba(255, 255, 255, 0.07)) !important;
-  box-shadow: var(--nuc-filter-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.06)) !important;
-}
-
-/* 4. Thumbnail Cards */
-
-.modern-ui-v3 .nuvio-card,
-.modern-ui-v3 .nuvio-cw-card,
-.modern-ui-v3 .nuvio-cw-wide-card,
-.modern-ui-v3 .nuvio-cw-poster-card,
-.modern-ui-v3 .nuvio-folder-card {
-  border-radius: var(--nuc-card-radius, 10px) !important;
-  overflow: hidden !important;
-  border: var(--nuc-card-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  transition: all 0.2s ease !important;
-}
-
-.modern-ui-v3 .nuvio-card:hover,
-.modern-ui-v3 .nuvio-cw-card:hover,
-.modern-ui-v3 .nuvio-cw-wide-card:hover,
-.modern-ui-v3 .nuvio-cw-poster-card:hover,
-.modern-ui-v3 .nuvio-folder-card:hover {
-  border-color: var(--nuc-card-hover-border, rgba(255, 255, 255, 0.2)) !important;
-  box-shadow: var(--nuc-card-hover-shadow, 0 8px 24px rgba(0, 0, 0, 0.4),
-              0 0 0 1px rgba(139, 92, 246, 0.2)) !important;
-  transform: translateY(-2px) !important;
-}
+/* 3. Nuvio filter bar + 4. thumbnail cards — DE-STACKED into the
+   NuvioPage.css base, which consumes the --nuc-filter-* and --nuc-card-*
+   tokens with v1/v2 literal fallbacks. The shared token block defines the v3
+   values; no themes/ModernThemeBase/light-sheet rule targets these classes.
+   The card hover transform stays on --stremio-card-hover-transform (its v3
+   value is translateY(-2px), byte-identical to the deleted hardcode). */
 
 /* 6. Hero Banner Container — de-stacked into the StremioHeroBanner.css
    base (--shb-banner-* tokens, v1/v2 literal fallbacks). */
@@ -4125,453 +3917,14 @@ html.modern-ui-v3[data-theme="light"] .subtitle-track-btn.active .subtitle-track
   color: var(--accent-primary, #00d4ff) !important;
 }
 
-/* ==========================================================================
+/* Advanced Search modal — DE-STACKED into the AdvancedSearchModal.css
+   base, which consumes the --sm-as-*, --sm-search-*, --sm-close-*, --sm-save-*,
+   --sm-ep-filter-active-*, --glass-overlay-* and --scrollbar-* tokens with
+   v1/v2 literal fallbacks (dark + light token blocks define the values; no
+   themes/ModernThemeBase/light-sheet rule targets these classes). The dark
+   and light .modern-ui-v3 scoped blocks are deleted — both are thin token
+   consumers now that the base covers every surface. */
 
-   V3 LIQUID GLASS - ADVANCED SEARCH MODAL OVERRIDES
-
-   ========================================================================== */
-
-/* 1. Backdrop Overlays — shared --glass-overlay-* family */
-
-.modern-ui-v3 .advanced-search-overlay {
-  background: var(--glass-overlay-bg, rgba(8, 8, 12, 0.4)) !important;
-  backdrop-filter: var(--glass-overlay-filter, blur(10px)) !important;
-  -webkit-backdrop-filter: var(--glass-overlay-filter, blur(10px)) !important;
-}
-
-/* 3. Headers & Footers — chrome reuses the --sm-a-hdr-* and --sm-a-footer-*
-   families with the dedicated --sm-as-* paddings */
-
-.modern-ui-v3 .advanced-search-header {
-  border-bottom: var(--sm-a-hdr-border-bottom, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  background: var(--sm-a-hdr-bg, transparent) !important;
-  padding: var(--sm-as-hdr-padding, 20px 24px 16px) !important;
-}
-
-.modern-ui-v3 .advanced-search-title h2 {
-  font-size: 1.15rem !important;
-  font-weight: 600 !important;
-  color: var(--sm-a-hdr-title-color, #fff) !important;
-  margin: 0 !important;
-}
-
-.modern-ui-v3 .advanced-search-title svg {
-  color: var(--accent-primary, #00d4ff) !important;
-}
-
-.modern-ui-v3 .advanced-search-footer {
-  border-top: var(--sm-a-footer-border-top, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  background: var(--sm-a-footer-bg, transparent) !important;
-  padding: var(--sm-as-footer-padding, 16px 24px 20px) !important;
-}
-
-/* 4. Close Buttons — shared --sm-close-* family (same values as the other
-   glass modals, dark + light) */
-
-.modern-ui-v3 .advanced-search-close-btn {
-  border-radius: var(--sm-close-radius, 50%) !important;
-  width: var(--sm-close-size, 32px) !important;
-  height: var(--sm-close-size, 32px) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: var(--sm-close-bg, rgba(255, 255, 255, 0.04)) !important;
-  border: var(--sm-close-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  color: var(--sm-close-color, rgba(255, 255, 255, 0.6)) !important;
-  transition: var(--sm-close-transition, all 0.2s cubic-bezier(0.16, 1, 0.3, 1)) !important;
-}
-
-.modern-ui-v3 .advanced-search-close-btn:hover {
-  background: var(--sm-close-hover-bg, rgba(255, 255, 255, 0.12)) !important;
-  border-color: var(--sm-close-hover-border, rgba(255, 255, 255, 0.2)) !important;
-  color: var(--sm-close-hover-color, #fff) !important;
-}
-
-/* 5. Labels & Links */
-
-.modern-ui-v3 .advanced-search-label {
-  color: var(--sm-a-col-title-color, rgba(255, 255, 255, 0.45)) !important;
-  font-size: 0.7rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-}
-
-.modern-ui-v3 .action-link {
-  color: var(--accent-primary, #00d4ff) !important;
-  transition: opacity 0.2s ease !important;
-}
-
-.modern-ui-v3 .action-link:hover {
-  opacity: 0.8 !important;
-}
-
-.modern-ui-v3 .action-divider {
-  color: var(--sm-as-divider-color, rgba(255, 255, 255, 0.15)) !important;
-}
-
-/* 6. Search Input Controls — reuses the --sm-search-input-* family (the
-   subtitle modal's search input carries the identical values) plus the
-   --sm-as-* extras (placeholder, clear button) */
-
-.modern-ui-v3 .advanced-search-input-wrap {
-  background: var(--sm-search-input-bg, rgba(255, 255, 255, 0.04)) !important;
-  border: var(--sm-search-input-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  border-radius: var(--sm-search-input-radius, 10px) !important;
-  padding: 0 14px !important;
-  height: 44px !important;
-  transition: var(--sm-search-input-transition, all 0.2s ease) !important;
-}
-
-.modern-ui-v3 .advanced-search-input-wrap:focus-within {
-  background: var(--sm-search-input-focus-bg, rgba(255, 255, 255, 0.08)) !important;
-  border-color: var(--sm-search-input-focus-border, rgba(255, 255, 255, 0.2)) !important;
-  box-shadow: var(--sm-search-input-focus-shadow, 0 0 0 2px rgba(255, 255, 255, 0.05)) !important;
-}
-
-.modern-ui-v3 .advanced-search-input {
-  color: var(--sm-search-input-color, #fff) !important;
-  font-size: 14px !important;
-}
-
-.modern-ui-v3 .advanced-search-input::placeholder {
-  color: var(--sm-as-input-placeholder, rgba(255, 255, 255, 0.3)) !important;
-}
-
-.modern-ui-v3 .advanced-search-input-clear {
-  background: var(--sm-as-clear-bg, rgba(255, 255, 255, 0.08)) !important;
-  color: var(--sm-as-clear-color, rgba(255, 255, 255, 0.6)) !important;
-  border-radius: var(--sm-as-clear-radius, 6px) !important;
-  transition: all 0.2s ease !important;
-}
-
-.modern-ui-v3 .advanced-search-input-clear:hover {
-  background: var(--sm-as-clear-hover-bg, rgba(255, 255, 255, 0.15)) !important;
-  color: var(--sm-as-clear-hover-color, #fff) !important;
-}
-
-/* 7. Scope Buttons — --sm-as-scope-*; the active state reuses
-   --sm-ep-filter-active-* (value-identical in both themes) */
-
-.modern-ui-v3 .scope-btn {
-  background: var(--sm-as-scope-bg, rgba(255, 255, 255, 0.04)) !important;
-  border: var(--sm-as-scope-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  color: var(--sm-as-scope-color, rgba(255, 255, 255, 0.7)) !important;
-  border-radius: var(--sm-as-scope-radius, 8px) !important;
-  font-weight: 600 !important;
-  transition: var(--sm-as-scope-transition, all 0.2s cubic-bezier(0.16, 1, 0.3, 1)) !important;
-}
-
-.modern-ui-v3 .scope-btn:hover {
-  background: var(--sm-as-scope-hover-bg, rgba(255, 255, 255, 0.12)) !important;
-  border-color: var(--sm-as-scope-hover-border, rgba(255, 255, 255, 0.2)) !important;
-  color: var(--sm-as-scope-hover-color, #fff) !important;
-}
-
-.modern-ui-v3 .scope-btn.active {
-  background: var(--sm-ep-filter-active-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 18%, rgba(255, 255, 255, 0.06))) !important;
-  border-color: var(--sm-ep-filter-active-border, color-mix(in srgb, var(--accent-primary, #00d4ff) 35%, rgba(255, 255, 255, 0.15))) !important;
-  color: var(--sm-ep-filter-active-color, #fff) !important;
-}
-
-/* 8. Filters & Checkboxes */
-
-.modern-ui-v3 .advanced-search-filters {
-  background: var(--sm-as-filters-bg, rgba(0, 0, 0, 0.15)) !important;
-  border: var(--sm-as-filters-border, 1px solid rgba(255, 255, 255, 0.06)) !important;
-  border-radius: var(--sm-as-filters-radius, 10px) !important;
-}
-
-.modern-ui-v3 .filter-source-header,
-.modern-ui-v3 .filter-category-item {
-  transition: background 0.15s ease !important;
-}
-
-.modern-ui-v3 .filter-source-header:hover,
-.modern-ui-v3 .filter-category-item:hover {
-  background: var(--sm-as-filter-hover-bg, rgba(255, 255, 255, 0.05)) !important;
-}
-
-.modern-ui-v3 .filter-source-name {
-  color: var(--sm-as-src-name-color, rgba(255, 255, 255, 0.85)) !important;
-}
-
-.modern-ui-v3 .filter-category-name {
-  color: var(--sm-as-cat-name-color, rgba(255, 255, 255, 0.6)) !important;
-  transition: color 0.15s ease !important;
-}
-
-.modern-ui-v3 .filter-category-item.selected .filter-category-name {
-  color: var(--sm-as-cat-name-sel-color, #fff) !important;
-}
-
-.modern-ui-v3 .filter-checkbox {
-  border-color: var(--sm-as-checkbox-border, rgba(255, 255, 255, 0.3)) !important;
-  border-radius: var(--sm-as-checkbox-radius, 5px) !important;
-  background: transparent !important;
-}
-
-.modern-ui-v3 .filter-checkbox.checked {
-  background: var(--accent-primary, #00d4ff) !important;
-  border-color: var(--accent-primary, #00d4ff) !important;
-}
-
-.modern-ui-v3 .filter-checkbox.indeterminate {
-  background: var(--sm-as-checkbox-indet-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent)) !important;
-  border-color: var(--sm-as-checkbox-indet-border, color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent)) !important;
-}
-
-/* 9. Loading & Empty States */
-
-.modern-ui-v3 .advanced-search-loading {
-  color: var(--sm-as-loading-color, rgba(255, 255, 255, 0.5)) !important;
-}
-
-.modern-ui-v3 .spinner-small {
-  border-color: var(--sm-as-spinner-border, rgba(255, 255, 255, 0.15)) !important;
-  border-top-color: var(--accent-primary, #00d4ff) !important;
-}
-
-.modern-ui-v3 .advanced-search-empty {
-  color: var(--sm-as-empty-color, rgba(255, 255, 255, 0.4)) !important;
-}
-
-/* 10. Toggles & Switches */
-
-.modern-ui-v3 .advanced-search-modal .toggle-switch {
-  background: var(--sm-as-toggle-bg, rgba(255, 255, 255, 0.15)) !important;
-}
-
-.modern-ui-v3 .advanced-search-modal .toggle-switch.on {
-  background: var(--accent-primary, #00d4ff) !important;
-}
-
-.modern-ui-v3 .advanced-search-modal .toggle-label {
-  color: var(--sm-as-toggle-label-color, rgba(255, 255, 255, 0.75)) !important;
-}
-
-/* 11. Footer buttons — primary reuses --sm-save-* (the settings save-btn
-   carries the identical values), secondary uses --sm-as-secondary-* */
-
-.modern-ui-v3 .advanced-search-btn.primary {
-  background: var(--sm-save-bg, var(--accent-primary, #00d4ff)) !important;
-  color: var(--sm-save-color, #121424) !important;
-  font-weight: 600 !important;
-  border: var(--sm-save-border, 1px solid transparent) !important;
-  box-shadow: var(--sm-save-shadow, 0 4px 12px rgba(0, 212, 255, 0.25)) !important;
-}
-
-.modern-ui-v3 .advanced-search-btn.primary:hover:not(.disabled) {
-  background: var(--sm-save-hover-bg, #33e0ff) !important;
-  transform: var(--sm-save-hover-transform, translateY(-1px)) !important;
-  box-shadow: var(--sm-save-hover-shadow, 0 6px 16px rgba(0, 212, 255, 0.4)) !important;
-}
-
-.modern-ui-v3 .advanced-search-btn.secondary {
-  background: var(--sm-as-secondary-bg, rgba(255, 255, 255, 0.04)) !important;
-  border: var(--sm-as-secondary-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  color: var(--sm-as-secondary-color, rgba(255, 255, 255, 0.8)) !important;
-}
-
-.modern-ui-v3 .advanced-search-btn.secondary:hover {
-  background: var(--sm-as-secondary-hover-bg, rgba(255, 255, 255, 0.12)) !important;
-  border-color: var(--sm-as-secondary-hover-border, rgba(255, 255, 255, 0.2)) !important;
-  color: var(--sm-as-secondary-hover-color, #fff) !important;
-}
-
-/* 12. Scrollbar customization — shared --scrollbar-* family */
-
-.modern-ui-v3 .advanced-search-filters::-webkit-scrollbar-thumb,
-.modern-ui-v3 .advanced-search-body::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-bg, rgba(255, 255, 255, 0.08)) !important;
-}
-
-.modern-ui-v3 .advanced-search-filters::-webkit-scrollbar-thumb:hover,
-.modern-ui-v3 .advanced-search-body::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover-bg, var(--accent-primary, #00d4ff)) !important;
-}
-
-/* ==========================================================================
-
-   V3 LIQUID GLASS - ADVANCED SEARCH LIGHT THEME OVERRIDES
-
-   ========================================================================== */
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-modal {
-  background: var(--sm-as-modal-bg, rgba(255, 255, 255, 0.45)) !important;
-  border: var(--sm-as-modal-border, 1px solid rgba(0, 0, 0, 0.08)) !important;
-  box-shadow: var(--sm-as-modal-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.02)) !important;
-  color: var(--sm-as-modal-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-header {
-  border-bottom: var(--sm-a-hdr-border-bottom, 1px solid rgba(0, 0, 0, 0.08)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-title h2 {
-  color: var(--sm-a-hdr-title-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-title svg {
-  color: var(--accent-primary, #00d4ff) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-footer {
-  border-top: var(--sm-a-footer-border-top, 1px solid rgba(0, 0, 0, 0.08)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-close-btn {
-  background: var(--sm-close-bg, rgba(0, 0, 0, 0.04)) !important;
-  border: var(--sm-close-border, 1px solid rgba(0, 0, 0, 0.08)) !important;
-  color: var(--sm-close-color, rgba(0, 0, 0, 0.6)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-close-btn:hover {
-  background: var(--sm-close-hover-bg, rgba(0, 0, 0, 0.08)) !important;
-  border-color: var(--sm-close-hover-border, rgba(0, 0, 0, 0.15)) !important;
-  color: var(--sm-close-hover-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-label {
-  color: var(--sm-a-col-title-color, rgba(0, 0, 0, 0.45)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .action-divider {
-  color: var(--sm-as-divider-color, rgba(0, 0, 0, 0.15)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-input-wrap {
-  background: var(--sm-search-input-bg, rgba(0, 0, 0, 0.02)) !important;
-  border: var(--sm-search-input-border, 1px solid rgba(0, 0, 0, 0.08)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-input-wrap:focus-within {
-  background: var(--sm-search-input-focus-bg, rgba(0, 0, 0, 0.05)) !important;
-  border-color: var(--sm-search-input-focus-border, rgba(0, 0, 0, 0.15)) !important;
-  box-shadow: var(--sm-search-input-focus-shadow, 0 0 0 2px rgba(0, 0, 0, 0.03)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-input {
-  color: var(--sm-search-input-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-input::placeholder {
-  color: var(--sm-as-input-placeholder, rgba(0, 0, 0, 0.3)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-input-clear {
-  background: var(--sm-as-clear-bg, rgba(0, 0, 0, 0.05)) !important;
-  color: var(--sm-as-clear-color, rgba(0, 0, 0, 0.6)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-input-clear:hover {
-  background: var(--sm-as-clear-hover-bg, rgba(0, 0, 0, 0.1)) !important;
-  color: var(--sm-as-clear-hover-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .scope-btn {
-  background: var(--sm-as-scope-bg, rgba(0, 0, 0, 0.03)) !important;
-  border: var(--sm-as-scope-border, 1px solid rgba(0, 0, 0, 0.08)) !important;
-  color: var(--sm-as-scope-color, rgba(0, 0, 0, 0.7)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .scope-btn:hover {
-  background: var(--sm-as-scope-hover-bg, rgba(0, 0, 0, 0.06)) !important;
-  border-color: var(--sm-as-scope-hover-border, rgba(0, 0, 0, 0.15)) !important;
-  color: var(--sm-as-scope-hover-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .scope-btn.active {
-  background: var(--sm-ep-filter-active-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 12%, rgba(0, 0, 0, 0.03))) !important;
-  border-color: var(--sm-ep-filter-active-border, color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, rgba(0, 0, 0, 0.08))) !important;
-  color: var(--sm-ep-filter-active-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-filters {
-  background: var(--sm-as-filters-bg, rgba(0, 0, 0, 0.03)) !important;
-  border: var(--sm-as-filters-border, 1px solid rgba(0, 0, 0, 0.06)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .filter-source-header:hover,
-html.modern-ui-v3[data-theme="light"] .filter-category-item:hover {
-  background: var(--sm-as-filter-hover-bg, rgba(0, 0, 0, 0.04)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .filter-source-name {
-  color: var(--sm-as-src-name-color, rgba(0, 0, 0, 0.85)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .filter-category-name {
-  color: var(--sm-as-cat-name-color, rgba(0, 0, 0, 0.6)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .filter-category-item.selected .filter-category-name {
-  color: var(--sm-as-cat-name-sel-color, #000) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .filter-checkbox {
-  border-color: var(--sm-as-checkbox-border, rgba(0, 0, 0, 0.25)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .filter-source-count,
-html.modern-ui-v3[data-theme="light"] .filter-category-count {
-  color: var(--sm-as-count-color, rgba(0, 0, 0, 0.35)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-loading {
-  color: var(--sm-as-loading-color, rgba(0, 0, 0, 0.5)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-empty {
-  color: var(--sm-as-empty-color, rgba(0, 0, 0, 0.4)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-modal .toggle-switch {
-  background: var(--sm-as-toggle-bg, rgba(0, 0, 0, 0.08)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-modal .toggle-switch.on {
-  background: var(--accent-primary, #00d4ff) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-modal .toggle-label {
-  color: var(--sm-as-toggle-label-color, rgba(0, 0, 0, 0.7)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-btn.secondary {
-  background: var(--sm-as-secondary-bg, rgba(0, 0, 0, 0.03)) !important;
-  border: var(--sm-as-secondary-border, 1px solid rgba(0, 0, 0, 0.08)) !important;
-  color: var(--sm-as-secondary-color, rgba(0, 0, 0, 0.7)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .advanced-search-btn.secondary:hover {
-  background: var(--sm-as-secondary-hover-bg, rgba(0, 0, 0, 0.06)) !important;
-  border-color: var(--sm-as-secondary-hover-border, rgba(0, 0, 0, 0.15)) !important;
-  color: var(--sm-as-secondary-hover-color, #000) !important;
-}
-
-/* ============================================
-
-   V3 LIQUID GLASS — NOW PLAYING BAR
-
-   ============================================ */
-
-/* Folded into the NowPlayingBar.css base via the --npb-* token family
-   (v3 values defined in the token block; v2 keeps its own token set). */
-
-/* ============================================
-
-   V3 LIQUID GLASS — TITLE BAR SCRIM
-
-   Gradient vignette so the nav is always
-
-   readable over bright video content.
-
-   ============================================ */
-
-/* Much darker backing — readable on any video */
-
-/* Title-bar nav is token-driven (see the .title-bar / .segmented-btn bases in
-   App.css consuming --titlebar-* and --seg-btn-* tokens). */
 
 /* Custom Theme - V3 Liquid Glass Background & Bulb Adaptations */
 
