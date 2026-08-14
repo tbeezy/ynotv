@@ -1189,11 +1189,7 @@ export function Settings({
       setEpgPreferEpgLogos(settings.epgPreferEpgLogos ?? false);
       setEpgLogoDisplay(settings.epgLogoDisplay ?? 'square');
       if (settings.epgLogoDisplay === 'rectangle') {
-        document.documentElement.classList.add('epg-rectangle-logos');
-      }
-
-      // Load EPG view layout setting
-      setEpgView(settings.epgView ?? 'traditional');
+        document.documentElement.classList.add('epg-rectangle-logos');      }
 
       // Load EPG visible hours setting
       const rawEpgVisibleHours = settings.epgVisibleHours ?? 'auto';

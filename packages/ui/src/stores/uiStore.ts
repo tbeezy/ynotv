@@ -161,6 +161,21 @@ interface UIState {
   setNuvioPosterSize: (size: number) => void;
 }
 
+function getInitialEpgView(): 'traditional' | 'alternate' {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const localData = localStorage.getItem('app-settings');
+      if (localData) {
+        const parsed = JSON.parse(localData);
+        if (parsed.epgView === 'alternate' || parsed.epgView === 'traditional') {
+          return parsed.epgView;
+        }
+      }
+    }
+  } catch {}
+  return 'traditional';
+}
+
 export const useUIStore = create<UIState>((set) => ({
   // Movies
   moviesSelectedCategory: null,
@@ -213,8 +228,17 @@ export const useUIStore = create<UIState>((set) => ({
   setChannelSortOrderMigrated: (value) => set({ channelSortOrderMigrated: value }),
   categorySortOrder: 'default',
   setCategorySortOrder: (value) => set({ categorySortOrder: value }),
-  epgView: 'traditional',
-  setEpgView: (value) => set({ epgView: value }),
+  epgView: getInitialEpgView(),
+  setEpgView: (value) => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const existing = localStorage.getItem('app-settings');
+        const parsed = existing ? JSON.parse(existing) : {};
+        localStorage.setItem('app-settings', JSON.stringify({ ...parsed, epgView: value }));
+      }
+    } catch {}
+    set({ epgView: value });
+  },
   epgVisibleHours: 'auto',
   setEpgVisibleHours: (value) => set({ epgVisibleHours: value }),
   epgClockFormat: '12h',

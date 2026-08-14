@@ -3,6 +3,7 @@ import type { SavedLayoutState } from './useLayoutPersistence';
 import type { ThemeId, CustomThemeConfig, ShortcutsMap } from '../types/app';
 import { applyCustomTheme } from '../utils/themeHelper';
 import i18n, { isSupportedLocale } from '../i18n';
+import { useEpgView, useSetEpgView } from '../stores/uiStore';
 
 function getInitialSettingsFromStorage(): Record<string, any> | null {
   try {
@@ -55,6 +56,7 @@ export interface AppSettings {
 
   // LiveTV
   epgView: 'traditional' | 'alternate';
+  setEpgView: (view: 'traditional' | 'alternate') => Promise<void>;
   channelInfoOverlayEnabled: boolean;
   channelInfoOverlayFontSize: number;
   channelInfoOverlayLogoSize: number;
@@ -285,7 +287,18 @@ export function useAppSettings(): AppSettings {
   const [showVolumePercent, setShowVolumePercentState] = useState<boolean>(false);
 
   // LiveTV settings
-  const [epgView, setEpgView] = useState<'traditional' | 'alternate'>('traditional');
+  const epgView = useEpgView();
+  const setEpgViewStore = useSetEpgView();
+  const setEpgView = useCallback(async (view: 'traditional' | 'alternate') => {
+    setEpgViewStore(view);
+    if (window.storage) {
+      try {
+        await window.storage.updateSettings({ epgView: view });
+      } catch (e) {
+        console.error('[useAppSettings] Failed to save epgView:', e);
+      }
+    }
+  }, [setEpgViewStore]);
   const [channelInfoOverlayEnabled, setChannelInfoOverlayEnabledState] = useState(false);
   const [channelInfoOverlayFontSize, setChannelInfoOverlayFontSizeState] = useState(16);
   const [channelInfoOverlayLogoSize, setChannelInfoOverlayLogoSizeState] = useState(42);
@@ -680,7 +693,6 @@ export function useAppSettings(): AppSettings {
           setAdvancedSearchCategoryIds(result.data.advancedSearchCategoryIds ?? []);
           setUseAdvancedSearchForRegular(result.data.useAdvancedSearchForRegular ?? false);
           setSearchCustomPlaylists(result.data.searchCustomPlaylists ?? false);
-          setEpgView(result.data.epgView ?? 'traditional');
           setChannelInfoOverlayEnabled(result.data.channelInfoOverlayEnabled ?? false);
           setChannelInfoOverlayFontSizeState(result.data.channelInfoOverlayFontSize ?? 16);
           setChannelInfoOverlayLogoSizeState(result.data.channelInfoOverlayLogoSize ?? 42);
@@ -2037,6 +2049,7 @@ export function useAppSettings(): AppSettings {
     setTransparentGuideOnZap,
     setCategorySortOrder: setCategorySortOrderSetting,
     setIncludeAllChannelsToPlaylist: setIncludeAllChannelsToPlaylistSetting,
+    setEpgView,
     setWidgetScale,
     setWidgetBgOpacity,
     setSportsScale,

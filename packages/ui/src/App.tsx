@@ -59,7 +59,6 @@ import {
   useSetChannelSortOrderMigrated,
   useChannelSortOrderMigrated,
   useSetCategorySortOrder,
-  useEpgView,
   useSetEpgView,
   useSetEpgVisibleHours,
   useSetEpgClockFormat,
@@ -2271,21 +2270,21 @@ function useTmdbPresencePoster(
   const channelSortOrderMigrated = useChannelSortOrderMigrated();
   const setCategorySortOrder = useSetCategorySortOrder();
   const setEpgView = useSetEpgView();
-  const epgView = useEpgView();
   const setEpgVisibleHours = useSetEpgVisibleHours();
   const setEpgClockFormat = useSetEpgClockFormat();
   const setEpgShowDate = useSetEpgShowDate();
   const setIncludeAllChannelsToPlaylist = useSetIncludeAllChannelsToPlaylist();
 
   const handleToggleEpgView = useCallback(() => {
-    const nextView = epgView === 'traditional' ? 'alternate' : 'traditional';
+    const current = useUIStore.getState().epgView;
+    const nextView = current === 'traditional' ? 'alternate' : 'traditional';
     setEpgView(nextView);
     if (window.storage) {
       window.storage.updateSettings({ epgView: nextView }).catch((err: any) => {
         console.error('Failed to save epg view shortcut preference:', err);
       });
     }
-  }, [epgView, setEpgView]);
+  }, [setEpgView]);
 
   // ==========================================================================
   // TimeShift State

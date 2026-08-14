@@ -18,6 +18,23 @@ async function getStore() {
     return store;
 }
 
+// ── Serialized write queue ────────────────────────────────────────────────────
+// Bridge.updateSettings / saveSource / deleteSource all perform a non-atomic
+// get → merge → set → save cycle. If two of these run concurrently they can
+// interleave: a write that reads the store before another write lands will later
+// persist its stale snapshot, silently reverting the other write (e.g. epgView
+// being reset back to 'traditional' seconds after the user changed it).
+// Chaining every write through this promise serializes the full read-modify-write
+// cycle so later writes always merge on top of the previous write's result.
+let _writeQueue: Promise<unknown> = Promise.resolve();
+function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+    const run = _writeQueue.then(task);
+    // Keep the chain alive even if a task rejects; the error still surfaces to
+    // the caller through `run`.
+    _writeQueue = run.then(() => undefined, () => undefined);
+    return run;
+}
+
 // Window sync state for macOS hole punch
 type UnlistenFn = () => void;
 let windowSyncListeners: { move?: UnlistenFn; resize?: UnlistenFn; focus?: UnlistenFn; close?: UnlistenFn } = {};
@@ -866,42 +883,57 @@ export const Bridge = {
     },
 
     async saveSource(source: any) {
-        const s = await getStore();
-        let sources: any[] = (await s.get('sources')) || [];
-        // Update or Add
-        const index = sources.findIndex((src: any) => src.id === source.id);
-        if (index >= 0) {
-            sources[index] = source;
-        } else {
-            sources.push(source);
-        }
-        await s.set('sources', sources);
-        await s.save();
-        return { success: true };
+        return enqueueWrite(async () => {
+            const s = await getStore();
+            let sources: any[] = (await s.get('sources')) || [];
+            // Update or Add
+            const index = sources.findIndex((src: any) => src.id === source.id);
+            if (index >= 0) {
+                sources[index] = source;
+            } else {
+                sources.push(source);
+            }
+            await s.set('sources', sources);
+            await s.save();
+            return { success: true };
+        });
     },
 
     async deleteSource(id: string) {
-        const s = await getStore();
-        let sources: any[] = (await s.get('sources')) || [];
-        sources = sources.filter((src: any) => src.id !== id);
-        await s.set('sources', sources);
-        await s.save();
-        return { success: true };
+        return enqueueWrite(async () => {
+            const s = await getStore();
+            let sources: any[] = (await s.get('sources')) || [];
+            sources = sources.filter((src: any) => src.id !== id);
+            await s.set('sources', sources);
+            await s.save();
+            return { success: true };
+        });
     },
 
     async getSettings() {
         const s = await getStore();
-        const settings = await s.get('settings');
+        const settings = (await s.get('settings')) as Record<string, any> | null;
         return { success: true, data: settings || {} };
     },
 
     async updateSettings(newSettings: any) {
-        const s = await getStore();
-        const current = (await s.get('settings')) || {};
-        const updated = { ...current as object, ...newSettings };
-        await s.set('settings', updated);
-        await s.save();
-        return { success: true };
+        // Mirror to localStorage so uiStore's synchronous hydration
+        // (getInitialEpgView) sees the latest value before the async disk
+        // write settles. Disk (.settings.dat) remains authoritative for reads.
+        try {
+            const existing = typeof localStorage !== 'undefined' ? localStorage.getItem('app-settings') : null;
+            const parsed = existing ? JSON.parse(existing) : {};
+            localStorage.setItem('app-settings', JSON.stringify({ ...parsed, ...newSettings }));
+        } catch (e) {}
+
+        return enqueueWrite(async () => {
+            const s = await getStore();
+            const current = (await s.get('settings')) || {};
+            const updated = { ...current as object, ...newSettings };
+            await s.set('settings', updated);
+            await s.save();
+            return { success: true };
+        });
     },
 
     async getSource(id: string) {
