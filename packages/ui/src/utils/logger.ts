@@ -68,3 +68,16 @@ export function logError(...args: any[]): void {
   console.error(...args);
   if (_error) _error(msg).catch(() => {});
 }
+
+/**
+ * Log at ERROR level even when debug logging is disabled.
+ *
+ * Used for crash reporting (e.g. the top-level ErrorBoundary), where the whole
+ * point is that the user can share the log WITHOUT having enabled Debug mode
+ * beforehand. Still safe: it only writes when running inside Tauri.
+ */
+export function logErrorAlways(...args: any[]): void {
+  const msg = stringify(...args);
+  console.error(...args);
+  if (_error) _error(msg).catch(() => {});
+}

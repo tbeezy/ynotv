@@ -5,6 +5,7 @@ import {
   getLocalStorageUsage,
   type StorageUsageEntry,
 } from '../services/safeStorage';
+import { logErrorAlways } from '../utils/logger';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -46,6 +47,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('[ErrorBoundary] Uncaught render error:', error, errorInfo);
+    // Write the crash to the app log even when Debug logging is off, so the
+    // user can share a log that contains it without enabling Debug mode first.
+    logErrorAlways('[ErrorBoundary] Uncaught render error:', error?.message, error?.stack, errorInfo?.componentStack);
     // If this is a storage-quota crash, measure what's consuming localStorage
     // so the user (and the log) can see the culprit right on the error screen.
     if (isQuotaError(error)) {

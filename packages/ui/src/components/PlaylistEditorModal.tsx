@@ -374,17 +374,6 @@ function CategoryBlockCard({
     setDragOverIdx(null);
   }, []);
 
-  // Hide if not showing hidden and category is native + disabled
-  if (block.type === 'native' && block.category.enabled === false && !showHidden) {
-    return null;
-  }
-
-  const srcName = block.type === 'link' 
-    ? (block.link.source_id === 'custom' ? t('customCategory') : (sources.find(s => s.id === block.link.source_id)?.name || t('source'))) 
-    : '';
-
-  const visibleChannelsCount = combinedChannels.filter(c => showHidden || c.enabled !== false).length;
-
   const {
     attributes,
     listeners,
@@ -400,6 +389,21 @@ function CategoryBlockCard({
     opacity: isSortableDragging || isDragging ? 0.4 : 1,
     zIndex: isSortableDragging || isDragging ? 99 : 1,
   };
+
+  // Hide if not showing hidden and category is native + disabled.
+  // NOTE: this early return MUST stay after every hook (useSortable above).
+  // If it runs first, toggling "Show Hidden" changes this component's hook
+  // count and React throws ("Rendered more hooks than during the previous
+  // render"), unmounting the whole app -> black/invisible window.
+  if (block.type === 'native' && block.category.enabled === false && !showHidden) {
+    return null;
+  }
+
+  const srcName = block.type === 'link' 
+    ? (block.link.source_id === 'custom' ? t('customCategory') : (sources.find(s => s.id === block.link.source_id)?.name || t('source'))) 
+    : '';
+
+  const visibleChannelsCount = combinedChannels.filter(c => showHidden || c.enabled !== false).length;
 
   return (
     <div 
