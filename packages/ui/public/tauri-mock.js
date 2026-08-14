@@ -3,13 +3,34 @@
   if (window.__TAURI_MOCK_INSTALLED__) return;
   window.__TAURI_MOCK_INSTALLED__ = true;
 
+  // Query-param overrides for visual debugging: ?ui=v1|v2|v3&theme=dark|light
+  const qp = new URLSearchParams(window.location.search);
+  const uiOverride = qp.get('ui');
+  const themeOverride = qp.get('theme');
+
   const store = {
     data: {
-      modernUiEnabled: true,
+      modernUiEnabled: 'v2',
       theme: 'dark',
       guideTransparent: false,
       layoutSettingsLoaded: true,
       sourceVersion: 'v1',
+      sources: [
+        {
+          id: 'mock-source',
+          name: 'Mock Source',
+          type: 'xtream',
+          enabled: true,
+          vod_only: false,
+        },
+      ],
+      settings: {
+        modernUiEnabled: uiOverride && ['v1', 'v2', 'v3'].includes(uiOverride) ? uiOverride : 'v2',
+        theme: themeOverride === 'light' ? 'light' : 'dark',
+        guideTransparent: false,
+        v3DefaultMigrated: true,
+        layoutSettingsLoaded: true,
+      },
     },
     async get(key, fallback) {
       return key in this.data ? this.data[key] : fallback;
@@ -33,11 +54,13 @@
       chans.push({
         num: String(i).padStart(3, '0'),
         name: `Channel ${i}`,
-        stream_id: 10000 + i,
+        stream_id: String(10000 + i),
+        source_id: 'mock-source',
         icon: '',
         epg_channel_id: `chan${i}.example.com`,
         category_id: 1,
         category_name: 'All',
+        category_ids: JSON.stringify([1]),
         is_favorite: i % 4 === 0 ? 1 : 0,
         archive: 0,
         epg_category: null,
@@ -48,17 +71,19 @@
 
   function buildPrograms() {
     const progs = [];
+    const nowHour = now - (now % HOUR); // start of current hour
+    const start = nowHour - 3 * HOUR;   // 3h in the past, so a program is live now
     for (let c = 1; c <= 12; c++) {
       const chId = `chan${c}.example.com`;
-      for (let h = -3; h < 10; h++) {
+      for (let h = 0; h < 14; h++) {
         progs.push({
           id: c * 1000 + h,
-          stream_id: 10000 + c,
+          stream_id: String(10000 + c),
           epg_channel_id: chId,
           title: `Program ${c}-${h}`,
           description: `Description for program ${c}-${h} on channel ${c}.`,
-          start: dayStart + h * HOUR,
-          end: dayStart + (h + 1) * HOUR,
+          start: start + h * HOUR,
+          end: start + (h + 1) * HOUR,
           category: 'General',
         });
       }
@@ -69,8 +94,8 @@
   const channels = buildChannels();
   const programs = buildPrograms();
   const categories = [
-    { id: 1, name: 'All', order: 0, hidden: 0 },
-    { id: 2, name: 'Sports', order: 1, hidden: 0 },
+    { id: 1, category_id: 1, name: 'All', category_name: 'All', alias: null, order: 0, display_order: 0, hidden: 0, enabled: 1, source_id: 'mock-source' },
+    { id: 2, category_id: 2, name: 'Sports', category_name: 'Sports', alias: null, order: 1, display_order: 1, hidden: 0, enabled: 1, source_id: 'mock-source' },
   ];
 
   class MockDB {
@@ -83,6 +108,9 @@
         return channels.map((c) => ({ ...c }));
       }
       if (sql.includes('from programs')) {
+        return programs.map((p) => ({ ...p }));
+      }
+      if (sql.includes('from programs_effective')) {
         return programs.map((p) => ({ ...p }));
       }
       if (sql.includes('from categories')) {
@@ -100,10 +128,12 @@
 
   let eventId = 100;
   const invokeHandlers = {
-    get_settings: async () => ({}),
-    load_settings: async () => ({ settings: {} }),
-    'plugin:store|get': async () => null,
-    'plugin:store|set': async () => null,
+    get_settings: async () => ({ settings: store.data.settings }),
+    load_settings: async () => ({ settings: store.data.settings }),
+    'plugin:store|load': async () => 1,
+    'plugin:store|get': async (args) => (args && args.key in store.data ? [store.data[args.key], true] : [null, false]),
+    'plugin:store|keys': async () => Object.keys(store.data),
+    'plugin:store|set': async (args) => { if (args && args.key === 'settings' && args.value) { store.data.settings = { ...store.data.settings, ...args.value }; store.data.settings.modernUiEnabled = args.value.modernUiEnabled !== undefined ? args.value.modernUiEnabled : store.data.settings.modernUiEnabled; store.data.settings.theme = args.value.theme !== undefined ? args.value.theme : store.data.settings.theme; } else if (args && args.key && 'value' in args) { store.data[args.key] = args.value; } return null; },
     'plugin:event|listen': async () => eventId++,
     'plugin:event|unlisten': async () => null,
     'plugin:event|emit': async () => null,
