@@ -759,6 +759,11 @@ export function useAppSettings(): AppSettings {
           // Load EPG hidden buttons
           setEpgHiddenButtonsState(result.data.epgHiddenButtons ?? []);
 
+          // Load shortcuts (rebinds like mouse buttons must be hydrated at startup —
+          // otherwise the runtime uses DEFAULT_SHORTCUTS until the user re-applies
+          // them in Settings)
+          setShortcutsState(result.data.shortcuts ?? {});
+
           // Load startup view
           setStartupViewState(result.data.startupView ?? 'none');
 

@@ -75,9 +75,14 @@ export function bindStoreToKv<T>(
   const bootstrapRaw = readAppKvSync(key);
   if (bootstrapRaw !== null) hydrate(bootstrapRaw);
 
-  // 2. Authoritative load from SQLite.
+  // 2. Authoritative load from SQLite. If the store changed before this load
+  // resolved (a write queued during hydration), the newer in-memory state wins
+  // — applying the stale SQLite blob would revert the change and the next flush
+  // would persist the stale value. Skipping hydration lets the pending flush
+  // write the user's state instead.
+  let userChanged = false;
   const whenReady = loadAppKv(key).then((raw) => {
-    if (raw !== null) hydrate(raw);
+    if (raw !== null && !userChanged) hydrate(raw);
   });
 
   // 3. Debounced persistence of subsequent changes.
@@ -94,6 +99,7 @@ export function bindStoreToKv<T>(
     await writeAppKv(key, current);
   };
   const schedule = () => {
+    userChanged = true;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;

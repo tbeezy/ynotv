@@ -104,6 +104,32 @@ describe('KV hydration schema layer', () => {
     expect(applied[1]).toEqual({ library: [libItem] });
   });
 
+  it('does not let a stale SQLite load stomp a change made before it resolved', async () => {
+    const applied: Array<LibraryKvValue | null> = [];
+    let onChangeCb: (() => void) | null = null;
+    vi.mocked(readAppKvSync).mockReturnValue(null);
+    vi.mocked(loadAppKv).mockResolvedValue(CURRENT_LIB_RAW);
+
+    const binding = bindStoreToKv<LibraryKvValue>(
+      'test-key',
+      (raw) => JSON.parse(raw),
+      (value) => void applied.push(value),
+      (state) => JSON.stringify(state),
+      () => null as unknown as LibraryKvValue,
+      (fn) => {
+        onChangeCb = fn;
+        return () => {};
+      },
+      sanitizeLibraryValue
+    );
+
+    // A store change lands while the authoritative SQLite load is still in
+    // flight — the newer in-memory state must win over the stale stored blob.
+    onChangeCb!();
+    await binding.whenReady;
+    expect(applied).toEqual([]);
+  });
+
   it('watch history: legacy wrapper, current, and bare-array all hydrate to an array', async () => {
     const legacy = await hydrate<WatchKvValue>((raw) => JSON.parse(raw), sanitizeWatchState, LEGACY_WATCH_RAW, null);
     expect(legacy).toEqual([{ history: [watchEntry], episodeProgress: { v1: { videoId: 'v1' } } }]);
