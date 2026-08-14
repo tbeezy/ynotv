@@ -1,0 +1,504 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Nuvio Cloud Library (Torbox / Premiumize)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Library / Cloud view switcher */
+.nuvio-library-view-tabs {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.nuvio-library-view-tab {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.nuvio-library-view-tab:hover {
+  color: #fff;
+}
+
+.nuvio-library-view-tab.active {
+  background: var(--accent-primary, #00d4ff);
+  color: #000;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent);
+}
+
+.nuvio-cloud {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 24px;
+}
+
+/* Toolbar */
+.nuvio-cloud-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nuvio-cloud-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.nuvio-cloud-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 5px 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.nuvio-cloud-chip:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nuvio-cloud-chip.active {
+  background: var(--accent-primary, #00d4ff);
+  border-color: var(--accent-primary, #00d4ff);
+  color: #000;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent);
+}
+
+.nuvio-cloud-chip-separator {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 4px;
+}
+
+.nuvio-cloud-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.nuvio-cloud-refresh-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.nuvio-cloud-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nuvio-cloud-refresh-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.nuvio-cloud-refresh-btn svg.spinning {
+  animation: nuvio-cloud-spin 0.9s linear infinite;
+}
+
+@keyframes nuvio-cloud-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Search */
+.nuvio-cloud-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nuvio-cloud-search-icon {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.nuvio-cloud-search {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 9px 34px 9px 34px;
+  font-size: 0.82rem;
+  color: #fff;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.nuvio-cloud-search:focus {
+  border-color: var(--accent-primary, #00d4ff);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.nuvio-cloud-search::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.nuvio-cloud-search-clear {
+  position: absolute;
+  right: 6px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+
+.nuvio-cloud-search-clear:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.nuvio-cloud-search-clear svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Item rows */
+.nuvio-cloud-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nuvio-cloud-row {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  overflow: hidden;
+}
+
+.nuvio-cloud-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.nuvio-cloud-row.disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.nuvio-cloud-row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nuvio-cloud-row-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.nuvio-cloud-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nuvio-cloud-row-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nuvio-cloud-row-sub {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nuvio-cloud-row-status {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nuvio-cloud-row-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-primary, #00d4ff);
+  color: #000;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-primary, #00d4ff) 35%, transparent);
+}
+
+.nuvio-cloud-row-play svg {
+  width: 15px;
+  height: 15px;
+}
+
+.nuvio-cloud-progress-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.nuvio-cloud-progress-fill {
+  height: 100%;
+  background: var(--accent-primary, #00d4ff);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* File picker */
+.nuvio-cloud-file-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nuvio-cloud-file-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nuvio-cloud-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.nuvio-cloud-back-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.nuvio-cloud-back-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nuvio-cloud-file-picker-title-wrap {
+  min-width: 0;
+}
+
+.nuvio-cloud-file-picker-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nuvio-cloud-file-picker-sub {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.nuvio-cloud-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nuvio-cloud-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nuvio-cloud-file-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--accent-primary, #00d4ff);
+}
+
+.nuvio-cloud-file-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--accent-primary, #00d4ff);
+  flex-shrink: 0;
+}
+
+.nuvio-cloud-file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nuvio-cloud-file-size {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+}
+
+.nuvio-cloud-file-play {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-primary, #00d4ff);
+  flex-shrink: 0;
+}
+
+/* Empty / error / connect states */
+.nuvio-cloud-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 20px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.nuvio-cloud-empty-icon {
+  font-size: 1.8rem;
+}
+
+.nuvio-cloud-empty-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.nuvio-cloud-empty-message {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+.nuvio-cloud-error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  background: rgba(255, 79, 79, 0.06);
+  border: 1px solid rgba(255, 79, 79, 0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.nuvio-cloud-error-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ff7b7b;
+}
+
+.nuvio-cloud-error-message {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.nuvio-cloud-connected-hint {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  padding-top: 6px;
+}
+
+/* Skeleton */
+.nuvio-cloud-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nuvio-cloud-skeleton-toolbar {
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.03) 75%);
+  background-size: 200% 100%;
+  animation: nuvio-cloud-shimmer 1.3s infinite linear;
+  margin-bottom: 4px;
+}
+
+.nuvio-cloud-skeleton-row {
+  height: 64px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.03) 75%);
+  background-size: 200% 100%;
+  animation: nuvio-cloud-shimmer 1.3s infinite linear;
+}
+
+@keyframes nuvio-cloud-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}

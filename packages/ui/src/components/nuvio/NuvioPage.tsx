@@ -58,7 +58,11 @@ import { StreamingServiceView } from '../stremio/StreamingServiceView';
 import { compileBadgeSources } from '../../utils/streamBadges';
 import { NuvioTab } from '../settings/NuvioTab';
 import { NuvioSearchPage } from './NuvioSearchPage';
+import { NuvioCloudLibrary } from './NuvioCloudLibrary';
 import { LazyImage } from '../LazyImage';
+import { useNuvioCloudStore } from '../../stores/nuvioCloudStore';
+import { cloudProviderApiKeysFromSettings, cloudLibraryEnabledFromSettings } from '../../services/cloud-api';
+import type { CloudLibraryFile, CloudLibraryItem } from '../../types/cloud';
 import '../Settings.css';
 import './NuvioPage.css';
 
@@ -362,7 +366,19 @@ function NuvioPageContent({
 
   const [library, setLibrary] = useState<NuvioLibrarySyncItem[]>([]);
   const [libraryLoaded, setLibraryLoaded] = useState(false);
+  const [libraryViewTab, setLibraryViewTab] = useState<'library' | 'cloud'>('library');
   const libraryIds = useMemo(() => new Set(library.map(l => l.content_id)), [library]);
+
+  // Cloud library: API keys + enable flag come from the Nuvio profile settings
+  // (features.debrid_settings), synced by useNuvioAuthStore.
+  const cloudApiKeys = useMemo(
+    () => cloudProviderApiKeysFromSettings(authStore.settings),
+    [authStore.settings],
+  );
+  const cloudEnabled = useMemo(
+    () => cloudLibraryEnabledFromSettings(authStore.settings),
+    [authStore.settings],
+  );
   const isLandscapePosters = !!authStore.homeCatalogSettings?.landscape_posters;
   const [resolvedWatchProgress, setResolvedWatchProgress] = useState<(NuvioWatchProgressSyncEntry & { poster?: string; name?: string; background?: string; episodeTitle?: string; episodeThumbnail?: string })[]>([]);
   const [rawWatchProgress, setRawWatchProgress] = useState<NuvioWatchProgressSyncEntry[]>([]);
@@ -1360,6 +1376,44 @@ function NuvioPageContent({
       },
     }));
   };
+
+  // Cloud library playback: resolve a direct URL from the debrid provider,
+  // then hand it to the normal Nuvio playback pipeline.
+  const handleCloudPlay = useCallback(async (item: CloudLibraryItem, file: CloudLibraryFile) => {
+    const keys = cloudProviderApiKeysFromSettings(useNuvioAuthStore.getState().settings);
+    const apiKey = keys[item.providerId];
+    if (!apiKey) return;
+    try {
+      const url = await useNuvioCloudStore.getState().resolvePlayback(apiKey, item, file);
+      const meta = {
+        id: `cloud:${item.providerId}:${item.type}:${item.id}`,
+        type: 'movie' as const,
+        name: item.name,
+        poster: null,
+        background: null,
+      };
+      window.dispatchEvent(new CustomEvent('ynotv:stremio-play', {
+        detail: {
+          stream: {
+            url,
+            name: file.name,
+            title: file.name,
+            addonName: item.providerName,
+            behaviorHints: {
+              filename: file.name,
+              videoSize: file.sizeBytes ?? undefined,
+            },
+          },
+          meta,
+          episodeVideo: undefined,
+          isNuvio: true,
+        },
+      }));
+    } catch (e: any) {
+      console.error('[NuvioCloud] Failed to play cloud file:', e);
+      alert(e?.message || 'Failed to play cloud file.');
+    }
+  }, []);
 
   const handleNuvioNavigate = (newMeta: StremioMeta) => {
     if (newMeta.type === 'person') {
@@ -2621,57 +2675,82 @@ function NuvioPageContent({
 
             {nuvioView === 'library' && (
               <div>
-                {/* Sync Library */}
-                <div className="nuvio-row">
-                  <div className="nuvio-row-header">
-                    <h3 className="nuvio-row-title">{t('library')}</h3>
-                  </div>
-                  {library.length > 0 ? (
-                    <div className="nuvio-library-grid">
-                      {library.map((item) => {
-                        const previewItem = {
-                          id: item.content_id,
-                          type: item.content_type,
-                          name: item.name,
-                          poster: item.poster || undefined,
-                          background: item.background || undefined,
-                          description: item.description || undefined,
-                          releaseInfo: item.release_info || undefined,
-                          imdbRating: item.imdb_rating ? String(item.imdb_rating) : undefined,
-                          genres: item.genres,
-                        };
-                        return (
-                          <div
-                            key={item.content_id}
-                            className="nuvio-card"
-                            onMouseEnter={(e) => onCardMouseEnter(previewItem, e.currentTarget, e)}
-                            onMouseLeave={onCardMouseLeave}
-                            onClick={() => {
-                              onCardClick();
-                              handleItemClick(item);
-                            }}
-                          >
-                            {item.poster ? (
-                              <LazyImage src={item.poster} alt={item.name} className="nuvio-card-img" fetchPriority="low" />
-                            ) : (
-                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.3)', padding: '12px', boxSizing: 'border-box', textAlign: 'center', fontSize: '0.75rem' }}>
-                                {item.name}
-                              </div>
-                            )}
-                            <div className="nuvio-card-info">
-                              <div className="nuvio-card-title">{item.name}</div>
-                              <div className="nuvio-card-sub">{item.release_info} · {item.content_type}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="nuvio-empty-state">
-                      No items in library. Star movies or shows to see them here.
-                    </div>
-                  )}
+                {/* Library / Cloud view switcher */}
+                <div className="nuvio-library-view-tabs">
+                  <button
+                    className={`nuvio-library-view-tab ${libraryViewTab === 'library' ? 'active' : ''}`}
+                    onClick={() => setLibraryViewTab('library')}
+                  >
+                    {t('library')}
+                  </button>
+                  <button
+                    className={`nuvio-library-view-tab ${libraryViewTab === 'cloud' ? 'active' : ''}`}
+                    onClick={() => setLibraryViewTab('cloud')}
+                  >
+                    Cloud
+                  </button>
                 </div>
+
+                {libraryViewTab === 'cloud' ? (
+                  <NuvioCloudLibrary
+                    apiKeys={cloudApiKeys}
+                    enabled={cloudEnabled}
+                    onPlay={handleCloudPlay}
+                    onConnectCloudClick={handleOpenSettings}
+                  />
+                ) : (
+                  /* Sync Library */
+                  <div className="nuvio-row">
+                    <div className="nuvio-row-header">
+                      <h3 className="nuvio-row-title">{t('library')}</h3>
+                    </div>
+                    {library.length > 0 ? (
+                      <div className="nuvio-library-grid">
+                        {library.map((item) => {
+                          const previewItem = {
+                            id: item.content_id,
+                            type: item.content_type,
+                            name: item.name,
+                            poster: item.poster || undefined,
+                            background: item.background || undefined,
+                            description: item.description || undefined,
+                            releaseInfo: item.release_info || undefined,
+                            imdbRating: item.imdb_rating ? String(item.imdb_rating) : undefined,
+                            genres: item.genres,
+                          };
+                          return (
+                            <div
+                              key={item.content_id}
+                              className="nuvio-card"
+                              onMouseEnter={(e) => onCardMouseEnter(previewItem, e.currentTarget, e)}
+                              onMouseLeave={onCardMouseLeave}
+                              onClick={() => {
+                                onCardClick();
+                                handleItemClick(item);
+                              }}
+                            >
+                              {item.poster ? (
+                                <LazyImage src={item.poster} alt={item.name} className="nuvio-card-img" fetchPriority="low" />
+                              ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.3)', padding: '12px', boxSizing: 'border-box', textAlign: 'center', fontSize: '0.75rem' }}>
+                                  {item.name}
+                                </div>
+                              )}
+                              <div className="nuvio-card-info">
+                                <div className="nuvio-card-title">{item.name}</div>
+                                <div className="nuvio-card-sub">{item.release_info} · {item.content_type}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="nuvio-empty-state">
+                        No items in library. Star movies or shows to see them here.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
