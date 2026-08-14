@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db, type StoredMovie } from '../db';
 import { getTmdb, getTmdbImageUrl, searchMovies, getMovieDetails, getMovieCredits, formatLanguageCode, formatCountryCode } from '../services/tmdb';
-import { fetchVodProviderTmdbId } from '../db/sync';
+import { fetchVodProviderTmdbId, isTmdbMatchStale } from '../db/sync';
 import { cleanTitleForSearch } from '../utils/cleanTitle';
 
 export interface CastMember {
@@ -75,16 +75,19 @@ export function useLazyMovieExtras(
           return;
         }
 
-        let foundTmdbId: number | null = movie.tmdb_id || null;
+        const cachedTmdbId = movie.tmdb_id ? Number(movie.tmdb_id) || null : null;
+        const revalidate = isTmdbMatchStale(movie.match_attempted);
+        let foundTmdbId: number | null = cachedTmdbId;
         let newCast: CastMember[] = [];
         let newLogo: string | null = null;
         let newImdbId: string | null = null;
         let newCountry: string | null = null;
         let newLanguage: string | null = null;
 
-        // Resolve TMDB ID if missing
-        if (!foundTmdbId) {
-          // Prefer the provider-supplied tmdb_id from get_vod_info (exact match)
+        // Resolve TMDB ID when missing OR stale. Prefer the provider-supplied
+        // get_vod_info id (exact match) so ids added/fixed by the provider after
+        // a fuzzy-search match are picked up instead of being locked in forever.
+        if (!foundTmdbId || revalidate) {
           try {
             if (window.storage && movie.source_id) {
               const sourcesResult = await window.storage.getSources();
@@ -99,16 +102,16 @@ export function useLazyMovieExtras(
           } catch (e) {
             console.warn('[useLazyMovieExtras] Provider tmdb_id fetch failed:', e);
           }
-        }
 
-        if (!foundTmdbId) {
-          try {
-            const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
-            if (!cancelled && results.length > 0) {
-              foundTmdbId = results[0].id;
+          if (!foundTmdbId) {
+            try {
+              const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
+              if (!cancelled && results.length > 0) {
+                foundTmdbId = results[0].id;
+              }
+            } catch (e) {
+              console.warn('[useLazyMovieExtras] TMDB search failed:', e);
             }
-          } catch (e) {
-            console.warn('[useLazyMovieExtras] TMDB search failed:', e);
           }
         }
 
@@ -161,8 +164,9 @@ export function useLazyMovieExtras(
         // Cache discovered IDs to DB
         if (!cancelled) {
           const updates: Partial<StoredMovie> = {};
-          if (!movie.tmdb_id) updates.tmdb_id = foundTmdbId;
+          if (foundTmdbId && cachedTmdbId !== foundTmdbId) updates.tmdb_id = foundTmdbId;
           if (newImdbId && !movie.imdb_id) updates.imdb_id = newImdbId;
+          if (!cachedTmdbId || revalidate) updates.match_attempted = new Date().toISOString();
 
           if (Object.keys(updates).length > 0) {
             await db.vodMovies.update(movie.stream_id, updates);
@@ -190,7 +194,7 @@ export function useLazyMovieExtras(
       cancelled = true;
       fetchingRef.current = false;
     };
-  }, [movie?.stream_id, movie?.title, movie?.name, movie?.tmdb_id, movie?.imdb_id, apiKey]);
+  }, [movie?.stream_id, movie?.title, movie?.name, movie?.tmdb_id, movie?.imdb_id, movie?.match_attempted, apiKey]);
 
   return { cast, logoUrl, imdbId, country, language, loading };
 }

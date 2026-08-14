@@ -3540,12 +3540,20 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
     }
   }
 
-  // Store episodes
-  // Removed db.transaction wrapper to allow sqlite string queue mutex
-  // Clear existing episodes for this series
-  await db.vodEpisodes.where('series_id').equals(seriesId).delete();
-
+  // Store episodes.
+  // Removed db.transaction wrapper to allow sqlite string queue mutex.
+  // Merge instead of delete-all-then-reinsert: existing episodes stay visible
+  // while the fresh provider data lands (no empty flash on re-sync), and
+  // episodes that are no longer on the provider get pruned. Only prune when
+  // the fetch came back non-empty so a transient empty/partial provider
+  // response never wipes the cached episode list.
   if (storedEpisodes.length > 0) {
+    const fetchedIds = new Set(storedEpisodes.map(e => e.id));
+    const existing = await db.vodEpisodes.where('series_id').equals(seriesId).toArray();
+    const staleIds = existing.filter(e => !fetchedIds.has(e.id)).map(e => e.id);
+    if (staleIds.length > 0) {
+      await db.vodEpisodes.bulkDelete(staleIds);
+    }
     await db.vodEpisodes.bulkPut(storedEpisodes);
   }
 
@@ -3556,10 +3564,16 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
   // searching on the pretext-prefixed name.
   if (source.type === 'xtream' && xtreamSeriesInfo) {
     const seriesRow = await db.vodSeries.get(seriesId);
-    if (seriesRow && !seriesRow.tmdb_id) {
+    // Revalidate when the id is missing OR stale so a provider-supplied
+    // tmdb_id (added/fixed after the original match) replaces a cached id
+    // that may have come from a fuzzy title search. Stamps match_attempted so
+    // a provider with no id isn't hammered on every open.
+    if (seriesRow && (!seriesRow.tmdb_id || isTmdbMatchStale(seriesRow.match_attempted))) {
       try {
         const tmdb = xtreamSeriesInfo.tmdb_id ? Number(xtreamSeriesInfo.tmdb_id) || null : null;
-        if (tmdb) await db.vodSeries.update(seriesId, { tmdb_id: tmdb });
+        const updates: any = { match_attempted: new Date().toISOString() };
+        if (tmdb && Number(seriesRow.tmdb_id) !== tmdb) updates.tmdb_id = tmdb;
+        await db.vodSeries.update(seriesId, updates);
       } catch (metaErr) {
         console.warn('[Sync episodes] Failed to backfill series tmdb_id:', metaErr);
       }
@@ -3567,6 +3581,24 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
   }
 
   return storedEpisodes.length;
+}
+
+const TMDB_ID_REVALIDATE_DAYS = 7;
+
+/**
+ * Whether a cached TMDB id should be revalidated against the provider.
+ *
+ * Returns true when the id was never resolved, or was resolved longer ago than
+ * TMDB_ID_REVALIDATE_DAYS. Enrichment hooks use this so provider-supplied
+ * tmdb_ids (added or fixed in get_vod_info / get_series_info after the
+ * original fuzzy-search match) are picked up instead of being locked in
+ * forever. `match_attempted` is preserved across playlist syncs.
+ */
+export function isTmdbMatchStale(matchAttempted?: string | Date | null): boolean {
+  if (!matchAttempted) return true;
+  const t = typeof matchAttempted === 'string' ? new Date(matchAttempted) : matchAttempted;
+  if (isNaN(t.getTime())) return true;
+  return Date.now() - t.getTime() > TMDB_ID_REVALIDATE_DAYS * 24 * 60 * 60 * 1000;
 }
 
 /**

@@ -12,7 +12,7 @@ import { useState, useEffect, useRef } from 'react';
 import { db, type StoredMovie, type StoredSeries } from '../db';
 import { getMovieDetails, getTvShowDetails, searchMovies, searchTvShows } from '../services/tmdb';
 import { getTvShowMetadataWithCast } from '../services/tvmaze';
-import { fetchVodProviderTmdbId } from '../db/sync';
+import { fetchVodProviderTmdbId, isTmdbMatchStale } from '../db/sync';
 import { type MediaItem, isMovie } from '../types/media';
 import { cleanTitleForSearch } from '../utils/cleanTitle';
 
@@ -64,8 +64,13 @@ export function useLazyPlot(
 
     console.log('[useLazyPlot] Starting fetch for:', item.name || item.title, { hasTmdbId: !!item.tmdb_id, apiKey: !!apiKey, isMovie: isMovie(item) });
 
-    // If we already have both plot and genre, no need to fetch
-    if (existingPlot && existingGenre) {
+    const cachedTmdbId = item.tmdb_id ? Number(item.tmdb_id) || null : null;
+    const revalidate = isTmdbMatchStale(item.match_attempted);
+
+    // Fast path: fresh id + complete metadata → nothing to do. When the id is
+    // missing or stale, keep going so a provider-supplied tmdb_id (added or
+    // fixed after the original fuzzy-search match) can be picked up.
+    if (existingPlot && existingGenre && !revalidate) {
       console.log('[useLazyPlot] Already have plot and genre, skipping');
       return;
     }
@@ -88,7 +93,8 @@ export function useLazyPlot(
         let overview: string | null = null;
         let genreStr: string | null = null;
         let ratingValue: number | null = null;
-        let foundTmdbId: number | null = item.tmdb_id || null;
+        let foundTmdbId: number | null = cachedTmdbId;
+        let idChanged = false;
 
         // Get search query
         const searchQuery = cleanTitleForSearch(item.title || item.name);
@@ -161,9 +167,13 @@ export function useLazyPlot(
           return;
         }
 
-        // If no tmdb_id but we have a title, search TMDB
-        if (!foundTmdbId) {
-          // Prefer the provider-supplied tmdb_id from get_vod_info (exact match)
+        // Resolve the TMDB id when it's missing OR stale. Prefer the
+        // provider-supplied id from get_vod_info (exact match) so ids that the
+        // provider added or fixed after the original fuzzy-search match are
+        // picked up instead of being locked in forever. Title search only runs
+        // when there is no id at all — re-searching a cached id is
+        // deterministic and would just burn API calls.
+        if (!foundTmdbId || revalidate) {
           if (isMovie(item)) {
             try {
               if (window.storage && item.source_id) {
@@ -172,6 +182,7 @@ export function useLazyPlot(
                 if (source) {
                   const providerTmdbId = await fetchVodProviderTmdbId(source, item.stream_id);
                   if (!cancelled && providerTmdbId) {
+                    idChanged = !!cachedTmdbId && cachedTmdbId !== providerTmdbId;
                     foundTmdbId = providerTmdbId;
                   }
                 }
@@ -181,28 +192,32 @@ export function useLazyPlot(
             }
           }
 
-          console.log('[useLazyPlot] Searching TMDB for:', searchQuery, year ? `(${year})` : '');
+          if (!foundTmdbId) {
+            console.log('[useLazyPlot] Searching TMDB for:', searchQuery, year ? `(${year})` : '');
 
-          try {
-            if (isMovie(item)) {
-              const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
-              if (cancelled) return;
-              console.log('[useLazyPlot] Search results:', results.length);
-              if (results.length > 0) {
-                foundTmdbId = results[0].id;
-                console.log('[useLazyPlot] Found TMDB ID:', foundTmdbId, results[0].title);
+            try {
+              if (isMovie(item)) {
+                const results = await searchMovies(apiKey, searchQuery, year ? parseInt(year) : undefined);
+                if (cancelled) return;
+                console.log('[useLazyPlot] Search results:', results.length);
+                if (results.length > 0) {
+                  foundTmdbId = results[0].id;
+                  idChanged = !!cachedTmdbId && cachedTmdbId !== results[0].id;
+                  console.log('[useLazyPlot] Found TMDB ID:', foundTmdbId, results[0].title);
+                }
+              } else {
+                const results = await searchTvShows(apiKey, searchQuery, year ? parseInt(year) : undefined);
+                if (cancelled) return;
+                console.log('[useLazyPlot] Search results:', results.length);
+                if (results.length > 0) {
+                  foundTmdbId = results[0].id;
+                  idChanged = !!cachedTmdbId && cachedTmdbId !== results[0].id;
+                  console.log('[useLazyPlot] Found TMDB ID:', foundTmdbId, results[0].name);
+                }
               }
-            } else {
-              const results = await searchTvShows(apiKey, searchQuery, year ? parseInt(year) : undefined);
-              if (cancelled) return;
-              console.log('[useLazyPlot] Search results:', results.length);
-              if (results.length > 0) {
-                foundTmdbId = results[0].id;
-                console.log('[useLazyPlot] Found TMDB ID:', foundTmdbId, results[0].name);
-              }
+            } catch (searchErr) {
+              console.warn('[useLazyPlot] TMDB search failed:', searchErr);
             }
-          } catch (searchErr) {
-            console.warn('[useLazyPlot] TMDB search failed:', searchErr);
           }
         }
 
@@ -281,12 +296,15 @@ export function useLazyPlot(
           const existingRating = existingRatingStr ? parseFloat(existingRatingStr) : NaN;
           const hasValidExistingRating = !isNaN(existingRating) && existingRating > 0;
 
-          // Cache to DB
+          // Cache to DB. When the id changed (stale revalidation found a new
+          // provider id), overwrite plot/genre/rating so metadata doesn't stay
+          // locked to the old match.
           const updates: Partial<StoredMovie> = {};
-          if (!item.tmdb_id) updates.tmdb_id = foundTmdbId;
-          if (overview && !existingPlot) updates.plot = overview;
-          if (genreStr && !existingGenre) updates.genre = genreStr;
-          if (ratingValue && !hasValidExistingRating) updates.rating = ratingValue.toString();
+          if (foundTmdbId && cachedTmdbId !== foundTmdbId) updates.tmdb_id = foundTmdbId;
+          if (overview && (!existingPlot || idChanged)) updates.plot = overview;
+          if (genreStr && (!existingGenre || idChanged)) updates.genre = genreStr;
+          if (ratingValue && (!hasValidExistingRating || idChanged)) updates.rating = ratingValue.toString();
+          if (!cachedTmdbId || revalidate) updates.match_attempted = new Date().toISOString();
 
           if (Object.keys(updates).length > 0) {
             await db.vodMovies.update(item.stream_id, updates);
@@ -310,12 +328,15 @@ export function useLazyPlot(
           const existingRating = existingRatingStr ? parseFloat(existingRatingStr) : NaN;
           const hasValidExistingRating = !isNaN(existingRating) && existingRating > 0;
 
-          // Cache to DB
+          // Cache to DB. When the id changed (stale revalidation found a new
+          // provider id), overwrite plot/genre/rating so metadata doesn't stay
+          // locked to the old match.
           const updates: Partial<StoredSeries> = {};
-          if (!item.tmdb_id) updates.tmdb_id = foundTmdbId;
-          if (overview && !existingPlot) updates.plot = overview;
-          if (genreStr && !existingGenre) updates.genre = genreStr;
-          if (ratingValue && !hasValidExistingRating) updates.rating = ratingValue.toString();
+          if (foundTmdbId && cachedTmdbId !== foundTmdbId) updates.tmdb_id = foundTmdbId;
+          if (overview && (!existingPlot || idChanged)) updates.plot = overview;
+          if (genreStr && (!existingGenre || idChanged)) updates.genre = genreStr;
+          if (ratingValue && (!hasValidExistingRating || idChanged)) updates.rating = ratingValue.toString();
+          if (!cachedTmdbId || revalidate) updates.match_attempted = new Date().toISOString();
 
           if (Object.keys(updates).length > 0) {
             await db.vodSeries.update(item.series_id, updates);
@@ -345,7 +366,7 @@ export function useLazyPlot(
       cancelled = true;
       fetchingRef.current = false;
     };
-  }, [item?.tmdb_id, item?.title, item?.name, existingPlot, existingGenre, apiKey]);
+  }, [item?.tmdb_id, item?.title, item?.name, item?.match_attempted, existingPlot, existingGenre, apiKey]);
 
   // Return existing data or fetched data
   // Handle empty strings by treating them as null

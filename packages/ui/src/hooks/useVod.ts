@@ -337,17 +337,21 @@ export function useSeriesDetails(seriesId: string | null) {
     }
   }, [seriesId]);
 
-  // Fetch on mount if no episodes cached
-  const fetchAttempted = useRef(false);
+  // Fetch fresh episodes from the provider once per series whenever the
+  // details view opens. Episodes are NOT part of the playlist sync (only
+  // series metadata is), and previously this fetched only when the DB had
+  // zero episodes for the series — so once cached, new episodes added by the
+  // provider never showed up until the user cleared the VOD cache.
+  // The Set tracks which series this mount has already tried so a series that
+  // genuinely has 0 episodes doesn't cause an infinite fetch loop.
+  const fetchAttempted = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    // Only fetch if we have a valid ID, no episodes, and haven't tried yet
-    // This prevents infinite loops if the series truly has 0 episodes
-    if (seriesId && episodes && episodes.length === 0 && !loading && !fetchAttempted.current) {
-      fetchAttempted.current = true;
+    if (seriesId && !loading && !fetchAttempted.current.has(seriesId)) {
+      fetchAttempted.current.add(seriesId);
       fetchEpisodes();
     }
-  }, [episodes, seriesId, fetchEpisodes, loading]);
+  }, [seriesId, fetchEpisodes, loading]);
 
   // Group episodes by season
   const seasons = episodes?.reduce((acc, ep) => {
