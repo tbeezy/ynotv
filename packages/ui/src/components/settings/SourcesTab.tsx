@@ -292,10 +292,13 @@ function SortableSourceItem(props: SortableSourceItemProps) {
 
   useTranslation();
 
+  // NOTE: opacity is only set while dragging. When idle, leave it unset so the
+  // CSS class (.source-item.source-disabled -> opacity 0.5) controls the look;
+  // an inline opacity: 1 here would override the disabled greying-out.
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.4 : undefined,
     zIndex: isDragging ? 99 : 1,
     touchAction: 'none',
   };
@@ -763,6 +766,14 @@ export function SourcesTab({
       return a.name.localeCompare(b.name);
     });
   }, [sources]);
+
+  // Hide/Show disabled sources in the Playlist Sources list
+  const [hideDisabledSources, setHideDisabledSources] = useState(false);
+  const visibleSources = useMemo(() => {
+    return hideDisabledSources
+      ? sortedSources.filter((s) => s.enabled !== false)
+      : sortedSources;
+  }, [sortedSources, hideDisabledSources]);
 
   // Track imported M3U data (file import flow)
   const [importedM3U, setImportedM3U] = useState<{
@@ -1779,7 +1790,18 @@ export function SourcesTab({
           {/* Sources List */}
           <div className="settings-section">
             <div className="section-header">
-              <h3>{i18n.t('settings:sources.sourcesTitle')}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h3>{i18n.t('settings:sources.sourcesTitle')}</h3>
+                <button
+                  className={`sources-hide-toggle${hideDisabledSources ? ' active' : ''}`}
+                  onClick={() => setHideDisabledSources((v) => !v)}
+                  title={i18n.t('settings:channelManager.hideDisabled')}
+                >
+                  {hideDisabledSources
+                    ? '👁 ' + i18n.t('common:showAll')
+                    : '👁‍🗨 ' + i18n.t('settings:channelManager.hideDisabled')}
+                </button>
+              </div>
               <div className="section-actions">
                 <button
                   className="sync-btn"
@@ -1809,6 +1831,11 @@ export function SourcesTab({
             <p>{i18n.t('settings:sources.noSources')}</p>
             <p className="hint">{i18n.t('settings:sources.noSourcesHint')}</p>
           </div>
+        ) : visibleSources.length === 0 ? (
+          <div className="empty-state">
+            <p>{i18n.t('settings:channelManager.hideDisabled')}</p>
+            <p className="hint">{i18n.t('common:showAll')}</p>
+          </div>
         ) : (
           <DndContext
             sensors={sourceSensors}
@@ -1816,11 +1843,11 @@ export function SourcesTab({
             onDragEnd={handleSourceDragEnd}
           >
             <SortableContext
-              items={sortedSources.map((s) => s.id)}
+              items={visibleSources.map((s) => s.id)}
               strategy={verticalListSortingStrategy}
             >
               <ul className="sources-list sortable-list">
-                {sortedSources.map((source) => {
+                {visibleSources.map((source) => {
                   const meta = syncStatus.find(s => s.source_id === source.id);
                   return (
                     <SortableSourceItem

@@ -391,6 +391,34 @@
     margin-top: 4px;
 }
 
+/* ── Hide/Show disabled sources toggle (SOURCES section header) ── */
+.sources-hide-toggle {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    background: transparent;
+    border: 1px solid var(--surface-border, rgba(255, 255, 255, 0.08));
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.sources-hide-toggle:hover {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+    border-color: var(--surface-border, rgba(255, 255, 255, 0.2));
+    background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+}
+
+.sources-hide-toggle.active {
+    color: var(--accent-primary, #00d4ff);
+    border-color: var(--accent-glow, rgba(0, 212, 255, 0.35));
+    background: var(--surface-glow, rgba(0, 212, 255, 0.1));
+}
+
 /* ── Enabled / disabled left-border accent ── */
 .source-item.source-enabled {
     border-left: var(--src-enabled-border-left, 3px solid color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent)) !important;
