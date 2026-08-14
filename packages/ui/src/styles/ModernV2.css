@@ -605,6 +605,53 @@
     color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 20%,
     color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) 80%,
     transparent 100%);
+
+  --cat-title-dot-radius: 50%;
+  /* Video preview resizer — v2 handle/dot chrome + differing geometry
+     (v3 inherits; base fallbacks are the v1 values) */
+  --resizer-size: 28px;
+  --resizer-v-width: 44px;
+  --resizer-v-height: 18px;
+  --resizer-v-bottom: -9px;
+  --resizer-dot-size: 10px;
+  --resizer-dot-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent);
+  --resizer-dot-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5),
+    0 0 8px color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent);
+  --resizer-dot-transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --resizer-dot-v-width: 36px;
+  --resizer-dot-v-height: 8px;
+  --resizer-dot-v-radius: 4px;
+  --resizer-dot-hover-transform: scale(1.4);
+  --resizer-dot-hover-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 0 16px color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent);
+  --resizer-dot-v-hover-transform: scaleY(1.4);
+  --resizer-dot-active-transform: scale(1.1);
+  --resizer-dot-active-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(255, 255, 255, 0.5);
+  --resizer-dot-v-active-transform: scaleY(1.1);
+  /* Program context menu — v2 glass chrome (v3 inherits; base fallbacks are
+     the v1 values; the background menu's separator shares the family) */
+  --ctx-menu-bg: linear-gradient(135deg,
+    color-mix(in srgb, var(--surface-color, #1a1a1a), white 4%) 0%,
+    var(--surface-color, #1a1a1a) 100%);
+  --ctx-menu-border: 1px solid rgba(255, 255, 255, 0.1);
+  --ctx-menu-radius: 14px;
+  --ctx-menu-shadow: 0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  --ctx-menu-padding: 6px;
+  --ctx-menu-backdrop: blur(24px) saturate(160%);
+  --ctx-menu-item-padding: 10px 14px;
+  --ctx-menu-item-radius: 10px;
+  --ctx-menu-item-font: 0.88rem;
+  --ctx-menu-item-weight: 500;
+  --ctx-menu-item-transition: all 0.2s ease;
+  --ctx-menu-item-hover-bg: rgba(255, 255, 255, 0.08);
+  --ctx-menu-separator-bg: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.08) 80%,
+    transparent 100%);
+  --ctx-menu-separator-margin: 4px 8px;
 }
 
 /* Modern Category Strip Header */
@@ -623,24 +670,23 @@
   left: 16px; /* Match new horizontal padding */
   right: 16px; /* Match new horizontal padding */
   height: 1px;
-  background: linear-gradient(90deg, 
+  background: var(--cat-divider-bg, linear-gradient(90deg,
     transparent 0%,
     color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent) 50%,
-    transparent 100%
-  );
+    transparent 100%));
 }
 
 /* Modern Category Strip Title / Section Headers / Add Group / Section Divider —
-   surface + typography values folded into the --cat-title-*/--cat-hdr-*/
-   --cat-add-*/--cat-divider-* tokens above, consumed by the CategoryStrip.css
-   base (v3 inherits). The title::before dot has no v1 base (modern-UI
-   construct), so it stays a thin consumer here. */
+   surface + typography values folded into the --cat-title / --cat-hdr /
+   --cat-add / --cat-divider token families above, consumed by the
+   CategoryStrip.css base (v3 inherits). The title::before dot has no v1 base
+   (modern-UI construct), so it stays a thin consumer here. */
 .modern-ui .category-strip-title::before {
   content: '';
   width: 6px;
   height: 6px;
   background: var(--accent-primary, #00d4ff);
-  border-radius: 50%;
+  border-radius: var(--cat-title-dot-radius, 50%);
   box-shadow: var(--cat-title-dot-shadow, 0 0 8px var(--accent-primary, #00d4ff));
 }
 
@@ -662,7 +708,9 @@
 /* Modern Current Time Indicator + Program Progress — surface values folded
    into the --gcti-* / --guide-prog-* tokens above, consumed by the
    ChannelPanel.css base (v3 inherits). */
-
+/* Video preview resizer — surface + geometry values folded into the
+   --resizer-* tokens above, consumed by the ChannelPanel.css base with v1
+   fallbacks (v3 inherits). */
 
 /* Alternate view NowPlayingBar: compact layout (modern UI only — no v1 base
    equivalent, kept as additive layout, not an override) */
@@ -709,70 +757,6 @@
 }
 
 /* Modern Video Preview Resizer */
-.modern-ui .guide-preview-resizer {
-  position: absolute;
-  bottom: -12px;
-  right: -12px;
-  width: 28px;
-  height: 28px;
-  cursor: nwse-resize;
-  z-index: 110;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-}
-
-.modern-ui .guide-preview-resizer.vertical {
-  width: 44px;
-  height: 18px;
-  bottom: -9px;
-  right: auto;
-  left: 50%;
-  transform: translateX(-50%);
-  cursor: ns-resize;
-}
-
-.modern-ui .resizer-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent);
-  box-shadow: 
-    0 0 0 2px rgba(0, 0, 0, 0.5),
-    0 0 8px color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.modern-ui .guide-preview-resizer.vertical .resizer-dot {
-  width: 36px;
-  height: 8px;
-  border-radius: 4px;
-}
-
-.modern-ui .guide-preview-resizer:hover .resizer-dot {
-  background: var(--accent-primary, #00d4ff);
-  transform: scale(1.4);
-  box-shadow: 
-    0 0 0 3px rgba(0, 0, 0, 0.4),
-    0 0 16px color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent);
-}
-
-.modern-ui .guide-preview-resizer.vertical:hover .resizer-dot {
-  transform: scaleY(1.4);
-}
-
-.modern-ui .guide-preview-resizer:active .resizer-dot {
-  transform: scale(1.1);
-  background: white;
-  box-shadow: 
-    0 0 0 2px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(255, 255, 255, 0.5);
-}
-
-.modern-ui .guide-preview-resizer.vertical:active .resizer-dot {
-  transform: scaleY(1.1);
-}
 
 /* --------------------------------------------------
    3. PROGRAM BLOCKS - "Timeline Cards" (surface values folded into
@@ -790,42 +774,7 @@
    -------------------------------------------------- */
 
 /* --------------------------------------------------
-   6. CONTEXT MENUS
+   6. CONTEXT MENUS — surface values folded into the --ctx-menu-* tokens
+   above, consumed by the ProgramContextMenu.css / BackgroundContextMenu.css
+   bases with v1 fallbacks (v3 inherits).
    -------------------------------------------------- */
-.modern-ui .program-context-menu {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--surface-color, #1a1a1a), white 4%) 0%,
-    var(--surface-color, #1a1a1a) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  backdrop-filter: blur(24px) saturate(160%);
-  padding: 6px;
-}
-
-.modern-ui .context-menu-item {
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 0.88rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.modern-ui .context-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.modern-ui .context-menu-separator {
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.08) 20%,
-    rgba(255, 255, 255, 0.08) 80%,
-    transparent 100%
-  );
-  margin: 4px 8px;
-}
-

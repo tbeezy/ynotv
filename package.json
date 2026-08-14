@@ -13,7 +13,7 @@
     "dev:clean": "node scripts/kill-dev.js && pnpm dev",
     "kill-port": "node scripts/kill-dev.js",
     "build": "pnpm -r build",
-    "css:audit": "node scripts/check-globals.mjs && node scripts/audit-tokens.mjs && node scripts/check-css.mjs packages/ui/src",
+    "css:audit": "node scripts/check-globals.mjs && node scripts/audit-tokens.mjs && node scripts/check-modern-scoped.mjs && node scripts/check-de-stack.mjs && node scripts/check-css.mjs packages/ui/src",
     "typecheck": "pnpm css:audit && pnpm -r typecheck",
     "tauri": "pnpm --filter @ynotv/app tauri"
   },

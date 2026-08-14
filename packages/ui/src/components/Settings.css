@@ -666,6 +666,7 @@
   color: var(--sm-input-color, var(--text-primary, white));
   font-size: 0.9rem;
   box-sizing: border-box;
+  box-shadow: var(--sm-input-shadow, none);
   transition: var(--sm-input-transition, border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease);
 }
 
@@ -1763,6 +1764,7 @@
   font-size: 0.85rem;
   cursor: pointer;
   outline: none;
+  box-shadow: var(--sel-shadow, none);
   transition: var(--sel-transition, all 0.15s ease);
 }
 

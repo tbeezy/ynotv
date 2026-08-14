@@ -1,13 +1,17 @@
+/* Hero surfaces consume the --shb-* tokens (defined in the ModernV3.css
+   shared block) with the v1/v2 literals as fallbacks — v1/v2 render the
+   fallbacks, v3 resolves the glass values. */
+
 .stremio-hero-banner {
   position: relative;
   height: 480px;
   background-color: #0c0c10;
-  border-radius: 16px;
+  border-radius: var(--shb-banner-radius, 16px);
   overflow: hidden;
   margin-bottom: 32px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shb-banner-shadow, 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 0, 0, 0.2));
   z-index: 10;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: var(--shb-banner-border, 1px solid rgba(255, 255, 255, 0.03));
 }
 
 /* ─── Backdrop Image & Cross-fade ────────────────────────── */
@@ -195,14 +199,14 @@
 
 .stremio-hero-genre-tag {
   font-size: 0.75rem;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.06);
+  font-weight: var(--shb-genre-weight, 600);
+  background: var(--shb-genre-bg, rgba(255, 255, 255, 0.06));
   color: rgba(255, 255, 255, 0.8);
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  padding: var(--shb-genre-padding, 4px 10px);
+  border-radius: var(--shb-genre-radius, 6px);
+  border: var(--shb-genre-border, 1px solid rgba(255, 255, 255, 0.08));
+  backdrop-filter: var(--shb-genre-filter, blur(8px));
+  -webkit-backdrop-filter: var(--shb-genre-filter, blur(8px));
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
@@ -231,21 +235,24 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #ffffff;
-  color: #0a0a0f;
-  border: none;
-  padding: 12px 28px;
-  border-radius: 8px;
+  background: var(--shb-watch-bg, #ffffff);
+  color: var(--shb-watch-color, #0a0a0f);
+  border: var(--shb-watch-border, none);
+  padding: var(--shb-watch-padding, 12px 28px);
+  border-radius: var(--shb-watch-radius, 8px);
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: var(--shb-watch-weight, 700);
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.12), 0 0 30px rgba(255, 255, 255, 0.05);
-  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: var(--shb-watch-shadow, 0 4px 15px rgba(255, 255, 255, 0.12), 0 0 30px rgba(255, 255, 255, 0.05));
+  backdrop-filter: var(--shb-watch-filter, none);
+  -webkit-backdrop-filter: var(--shb-watch-filter, none);
+  transition: var(--shb-watch-transition, all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1));
 }
 
 .stremio-hero-btn-watch:hover {
-  background: var(--accent-primary, #00d4ff);
-  color: #ffffff;
+  background: var(--shb-watch-hover-bg, var(--accent-primary, #00d4ff));
+  border-color: var(--shb-watch-hover-border, transparent);
+  color: var(--shb-watch-hover-color, #ffffff);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 212, 255, 0.35), 0 0 30px rgba(0, 212, 255, 0.15);
 }
@@ -472,35 +479,36 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 12px 28px;
-  border-radius: 8px;
+  background: var(--shb-watchlist-bg, rgba(255, 255, 255, 0.08));
+  color: var(--shb-watchlist-color, #ffffff);
+  border: var(--shb-watchlist-border, 1px solid rgba(255, 255, 255, 0.15));
+  padding: var(--shb-watchlist-padding, 12px 28px);
+  border-radius: var(--shb-watchlist-radius, 8px);
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  backdrop-filter: var(--shb-watchlist-filter, blur(8px));
+  -webkit-backdrop-filter: var(--shb-watchlist-filter, blur(8px));
+  transition: var(--shb-watchlist-transition, all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1));
 }
 
 .stremio-hero-btn-watchlist:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--shb-watchlist-hover-bg, rgba(255, 255, 255, 0.15));
+  border-color: var(--shb-watchlist-hover-border, rgba(255, 255, 255, 0.3));
+  color: var(--shb-watchlist-hover-color, #ffffff);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
 .stremio-hero-btn-watchlist.in-watchlist {
-  background: rgba(0, 212, 255, 0.1);
-  color: var(--accent-primary, #00d4ff);
-  border-color: rgba(0, 212, 255, 0.3);
+  background: var(--shb-watchlist-active-bg, rgba(0, 212, 255, 0.1));
+  color: var(--shb-watchlist-active-color, var(--accent-primary, #00d4ff));
+  border-color: var(--shb-watchlist-active-border, rgba(0, 212, 255, 0.3));
 }
 
 .stremio-hero-btn-watchlist.in-watchlist:hover {
-  background: rgba(0, 212, 255, 0.15);
-  border-color: rgba(0, 212, 255, 0.5);
+  background: var(--shb-watchlist-active-hover-bg, rgba(0, 212, 255, 0.15));
+  border-color: var(--shb-watchlist-active-hover-border, rgba(0, 212, 255, 0.5));
 }
 
 .stremio-hero-btn-watchlist:active {

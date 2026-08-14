@@ -1,16 +1,16 @@
 .program-context-menu {
     position: fixed;
-    background: var(--bg-secondary, rgba(42, 42, 42, 0.85));
-    border: 1px solid var(--border-color, #444);
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    background: var(--ctx-menu-bg, var(--bg-secondary, rgba(42, 42, 42, 0.85)));
+    border: var(--ctx-menu-border, 1px solid var(--border-color, #444));
+    border-radius: var(--ctx-menu-radius, 8px);
+    box-shadow: var(--ctx-menu-shadow, 0 4px 16px rgba(0, 0, 0, 0.4));
     min-width: 180px;
-    padding: 6px 0;
+    padding: var(--ctx-menu-padding, 6px 0);
     z-index: 10000;
     animation: contextMenuFadeIn 0.15s ease-out;
     font-size: 0.9rem;
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: var(--ctx-menu-backdrop, blur(12px));
+    backdrop-filter: var(--ctx-menu-backdrop, blur(12px));
 }
 
 @keyframes contextMenuFadeIn {
@@ -26,18 +26,21 @@
 }
 
 .context-menu-item {
-    padding: 10px 16px;
+    padding: var(--ctx-menu-item-padding, 10px 16px);
     cursor: pointer;
     color: var(--text-primary, #e0e0e0);
-    transition: all 0.15s ease;
+    transition: var(--ctx-menu-item-transition, all 0.15s ease);
     user-select: none;
     display: flex;
     align-items: center;
     gap: 10px;
+    border-radius: var(--ctx-menu-item-radius, 0);
+    font-size: var(--ctx-menu-item-font, 0.9rem);
+    font-weight: var(--ctx-menu-item-weight, normal);
 }
 
 .context-menu-item:hover {
-    background: var(--accent-primary-transparent, rgba(0, 212, 255, 0.1));
+    background: var(--ctx-menu-item-hover-bg, var(--accent-primary-transparent, rgba(0, 212, 255, 0.1)));
     color: var(--accent-primary, #00d4ff);
 }
 
@@ -52,8 +55,8 @@
 
 .context-menu-separator {
     height: 1px;
-    background: var(--border-color, #444);
-    margin: 6px 8px;
+    background: var(--ctx-menu-separator-bg, var(--border-color, #444));
+    margin: var(--ctx-menu-separator-margin, 6px 8px);
 }
 
 /* Channel Context Menu - Duration Picker */

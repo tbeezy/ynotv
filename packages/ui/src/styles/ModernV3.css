@@ -706,7 +706,7 @@ html.modern-ui-v3 {
   --sm-input-bg: rgba(255, 255, 255, 0.04);
   --sm-input-color: #fff;
   --sm-input-padding: 10px 14px;
-  --sm-input-transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  --sm-input-transition: all 0.2s ease;
   --sm-input-focus-border: rgba(255, 255, 255, 0.2);
   --sm-input-focus-bg: rgba(255, 255, 255, 0.08);
   --sm-input-focus-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
@@ -1422,6 +1422,96 @@ html.modern-ui-v3 {
   --npb-livebtn-color: #ff6080;
   --npb-livebtn-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(255, 64, 96, 0.15);
   --npb-livebtn-transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Settings form inputs — v3 glass (light redefines below) */
+  --sm-input-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  /* Settings modal buttons — primary (save) */
+  --set-save-color: #121424;
+  --set-save-radius: 10px;
+  --set-save-shadow: 0 4px 12px rgba(0, 212, 255, 0.25);
+  --set-save-hover-bg: #33e0ff;
+  --set-save-hover-shadow: 0 6px 16px rgba(0, 212, 255, 0.4);
+  /* Settings modal buttons — secondary (cancel/close/sync/add/import) */
+  --set-btn-bg: rgba(255, 255, 255, 0.04);
+  --set-btn-border: 1px solid rgba(255, 255, 255, 0.08);
+  --set-btn-color: rgba(255, 255, 255, 0.8);
+  --set-btn-radius: 10px;
+  --set-btn-hover-bg: rgba(255, 255, 255, 0.12);
+  --set-btn-hover-border: rgba(255, 255, 255, 0.2);
+  --set-btn-hover-color: #fff;
+  --set-btn-hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --set-btn-transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --set-btn-hover-transform: translateY(-1px);
+  /* Settings modal buttons — danger (sync) */
+  --set-danger-bg: rgba(239, 68, 68, 0.15);
+  --set-danger-border: rgba(239, 68, 68, 0.4);
+  --set-danger-color: #ef4444;
+  --set-danger-hover-bg: rgba(239, 68, 68, 0.25);
+  --set-danger-hover-border: rgba(239, 68, 68, 0.5);
+  /* Transparent-EPG sidebar */
+  --guide-transparent-sidebar-bg: rgba(0, 0, 0, var(--transparent-guide-sidebar-opacity, 0));
+  --guide-transparent-sidebar-border-right: 1px solid rgba(255, 255, 255, 0.08);
+  /* TV Calendar topbar */
+  --tvcp-topbar-border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  --tvcp-item-hover-bg: rgba(255, 255, 255, 0.05);
+  --tvcp-item-hover-color: #fff;
+  /* Stremio hero — watch / watchlist / genre tags / banner */
+  --shb-watch-bg: rgba(255, 255, 255, 0.15);
+  --shb-watch-filter: blur(12px);
+  --shb-watch-border: 1px solid rgba(255, 255, 255, 0.25);
+  --shb-watch-radius: 8px;
+  --shb-watch-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shb-watch-color: #ffffff;
+  --shb-watch-hover-bg: rgba(255, 255, 255, 0.22);
+  --shb-watch-hover-border: rgba(255, 255, 255, 0.35);
+  --shb-watch-hover-color: #ffffff;
+  --shb-watchlist-bg: rgba(255, 255, 255, 0.06);
+  --shb-watchlist-filter: blur(12px);
+  --shb-watchlist-border: 1px solid rgba(255, 255, 255, 0.12);
+  --shb-watchlist-radius: 8px;
+  --shb-watchlist-color: rgba(255, 255, 255, 0.85);
+  --shb-watchlist-hover-bg: rgba(255, 255, 255, 0.12);
+  --shb-watchlist-hover-border: rgba(255, 255, 255, 0.22);
+  --shb-watchlist-hover-color: #ffffff;
+  --shb-watchlist-active-bg: rgba(0, 212, 255, 0.12);
+  --shb-watchlist-active-border: rgba(0, 212, 255, 0.3);
+  --shb-watchlist-active-color: #00d4ff;
+  --shb-watchlist-active-hover-bg: rgba(0, 212, 255, 0.18);
+  --shb-watchlist-active-hover-border: rgba(0, 212, 255, 0.4);
+  --shb-watchlist-padding: 10px 24px;
+  --shb-watchlist-transition: all 0.2s ease;
+  --shb-genre-bg: rgba(255, 255, 255, 0.08);
+  --shb-genre-border: 1px solid rgba(255, 255, 255, 0.15);
+  --shb-genre-radius: 20px;
+  --shb-genre-filter: blur(8px);
+  --shb-genre-padding: 3px 12px;
+  --shb-genre-weight: 500;
+  --shb-banner-border: 1px solid rgba(255, 255, 255, 0.08);
+  --shb-banner-radius: 12px;
+  --shb-banner-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+  --shb-watch-padding: 10px 24px;
+  --shb-watch-weight: 600;
+  --shb-watch-transition: all 0.2s ease;
+  /* Nuvio catalog filter + cards */
+  --nuc-filter-bg: rgba(255, 255, 255, 0.04);
+  --nuc-filter-blur: blur(20px);
+  --nuc-filter-border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  --nuc-filter-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --nuc-card-border: 1px solid rgba(255, 255, 255, 0.08);
+  --nuc-card-radius: 10px;
+  --nuc-card-hover-border: rgba(255, 255, 255, 0.2);
+  --nuc-card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(139, 92, 246, 0.2);
+  /* Subtitle controls */
+  --sm-a-toggle-checked-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent);
+  --sm-a-result-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 15%, transparent);
+  --sm-a-result-border: 1px solid color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent);
+  --sm-a-result-hover-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent);
+  --sm-a-result-hover-border: var(--accent-primary, #00d4ff);
+  /* Advanced-search filter checkbox — indeterminate */
+  --sm-as-checkbox-indet-bg: color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent);
+  --sm-as-checkbox-indet-border: color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent);
 }
 
 /* v3 light theme — redefine the glass tokens so the same base rules produce the
@@ -1846,6 +1936,70 @@ html.modern-ui-v3[data-theme="light"] {
   --stremio-ep-unwatched-hover-bg: rgba(0, 0, 0, 0.1);
   --stremio-ep-unwatched-hover-border-color: rgba(0, 0, 0, 0.15);
   --stremio-ep-unwatched-svg-stroke: rgba(0, 0, 0, 0.6);
+
+  /* Settings form inputs — light */
+  --sm-input-bg: #ffffff;
+  --sm-input-border: 1px solid rgba(0, 0, 0, 0.12);
+  --sm-input-color: #0f172a;
+  --sm-input-shadow: none;
+  --sm-input-focus-bg: #ffffff;
+  --sm-input-focus-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary, #0066cc) 20%, transparent);
+  --sm-input-placeholder-color: #94a3b8;
+  /* Settings modal buttons — light */
+  --set-save-color: #ffffff;
+  --set-save-hover-bg: color-mix(in srgb, var(--accent-primary, #0066cc) 85%, black);
+  --set-btn-bg: rgba(0, 0, 0, 0.03);
+  --set-btn-border: 1px solid rgba(0, 0, 0, 0.12);
+  --set-btn-color: #475569;
+  --set-btn-hover-bg: rgba(0, 0, 0, 0.06);
+  --set-btn-hover-color: #0f172a;
+  /* Generic settings close-btn — light (dedicated family: the manager-header
+     close buttons use --sm-close-* with different values) */
+  --set-close-border: 1px solid rgba(0, 0, 0, 0.1);
+  --set-close-color: #64748b;
+  --set-close-hover-bg: rgba(0, 0, 0, 0.05);
+  --set-close-hover-color: #0f172a;
+  /* Settings text — light */
+  --stg-section-title-color: #0f172a;
+  --stg-section-desc-color: #64748b;
+  --stg-scroll-thumb-bg: rgba(0, 0, 0, 0.15);
+  --stg-scroll-thumb-hover-bg: rgba(0, 0, 0, 0.25);
+  /* EPG program-block — light liquid glass (beats the light sheet's flat rule) */
+  --prog-bg: rgba(255, 255, 255, 0.3);
+  --prog-border-color: rgba(0, 0, 0, 0.06);
+  --prog-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --prog-hover-bg: rgba(255, 255, 255, 0.6);
+  --prog-hover-border-color: rgba(0, 0, 0, 0.12);
+  --prog-hover-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+  /* Generic modal close button — light */
+  --close-border: 1px solid rgba(0, 0, 0, 0.1);
+  --close-color: #64748b;
+  --close-hover-bg: rgba(0, 0, 0, 0.05);
+  --close-hover-color: #0f172a;
+  /* Topbar active/hover tab text — light */
+  --tb-item-active-color: #0f172a;
+  /* World Cup hub — light keeps the dark shell for legibility */
+  --wc-hub-bg: rgba(16, 12, 26, 0.92);
+  --wc-hub-radius: 16px;
+  --wc-hub-border: 1px solid rgba(255, 255, 255, 0.1);
+  --wc-hub-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  /* Nuvio login form — light */
+  --nuv-login-input-bg: rgba(255, 255, 255, 0.6);
+  --nuv-login-input-border: 1px solid rgba(0, 0, 0, 0.12);
+  --nuv-login-input-color: #0f172a;
+  --nuv-login-input-focus-bg: #ffffff;
+  --nuv-login-input-placeholder: #94a3b8;
+  --nuv-login-title-color: #0f172a;
+  --nuv-login-desc-color: #475569;
+  --nuv-login-toggle-hover-color: #0f172a;
+  --nuv-login-card-bg: rgba(255, 255, 255, 0.5);
+  --nuv-login-card-border: 1px solid rgba(0, 0, 0, 0.08);
+  --nuv-login-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  /* Failover/channel-manager scrollbars — light */
+  --fgl-scroll-color: rgba(0, 0, 0, 0.08) transparent;
+  --fgl-scroll-thumb-bg: rgba(0, 0, 0, 0.08);
+  --fgl-scroll-thumb-hover-bg: rgba(0, 0, 0, 0.2);
 }
 
 /* Stat chips — dark-only look (the light sheet owns the light values, so the
@@ -1896,6 +2050,11 @@ html.modern-ui-v3:not([data-theme="light"]) {
   --gtm-bg: linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.01) 100%);
   --csh-divider-bg: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.12) 50%, transparent 100%);
   --ssha-divider-bg: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+
+  /* Video glass border + preview minibar — radius (geometry shared by both
+     themes via the fallback; tokens live here with the rest of the family) */
+  --vgb-radius: 20px;
+  --gpm-radius: 0 0 12px 12px;
 }
 /* Rectangle (horizontal) channel logos when epg-rectangle-logos is enabled */
 
@@ -2017,7 +2176,7 @@ html.modern-ui-v3[data-theme] .guide-channel-logo.logo-smart-trim img {
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: 20px;
+  border-radius: var(--vgb-radius, 20px);
   border: var(--vgb-border, 1px solid rgba(255, 255, 255, 0.12)) !important;
   pointer-events: none;
   z-index: 11;
@@ -2044,7 +2203,7 @@ html.modern-ui-v3[data-theme] .guide-channel-logo.logo-smart-trim img {
   box-shadow: var(--gpm-shadow, none) !important;
   padding: 20px 14px 12px 14px !important;
   margin: 0 !important;
-  border-radius: 0 0 12px 12px !important;
+  border-radius: var(--gpm-radius, 0 0 12px 12px) !important;
 }
 
 /* 4. Soft Gradient Dividers (channel-row divider moved into base tokens) */
@@ -2660,34 +2819,23 @@ html.modern-ui-v3[data-theme="light"] .settings-sidebar {
   border-right: var(--stg-sidebar-border-right) !important;
 }
 
-/* V3 Form Controls */
-
-.modern-ui-v3 .form-group input {
-  border-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  color: #fff !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-  transition: all 0.2s ease !important;
-}
-
-/* Settings selects — v3 glass look via the --sel-* tokens; the Settings.css
-   base consumes the same tokens with v1/v2 fallbacks. */
-.modern-ui-v3 .settings-content select {
-  border-radius: var(--sel-radius, 10px) !important;
-  border: var(--sel-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
-  background: var(--sel-bg, rgba(255, 255, 255, 0.04)) !important;
-  color: var(--sel-color, #fff) !important;
-  box-shadow: var(--sel-shadow, 0 1px 2px rgba(0, 0, 0, 0.05)) !important;
-  transition: var(--sel-transition, all 0.2s ease) !important;
-}
+/* V3 Form Controls — inputs consume the --sm-input-* tokens from the
+   Settings.css base (v3 dark + light values live in the token blocks). The
+   plain input rule was de-stacked into the base; the :focus rule stays here
+   because themes.css [data-theme^="dark-"] .form-group input:focus (higher
+   specificity) would otherwise force the per-accent focus ring on dark-*
+   themes. */
 
 .modern-ui-v3 .form-group input:focus {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05) !important;
-  outline: none !important;
+  border-color: var(--sm-input-focus-border, rgba(255, 255, 255, 0.2));
+  box-shadow: var(--sm-input-focus-shadow, 0 0 0 2px rgba(255, 255, 255, 0.05));
+  outline: none;
 }
+
+/* Settings selects — fully base-driven now: the Settings.css base consumes
+   the --sel-* tokens (including the shadow added during the de-stack) with
+   v1/v2 fallbacks. The :focus / option rules below stay scoped: themes.css
+   [data-theme^="dark-"] targets them with higher specificity. */
 
 .modern-ui-v3 .settings-content select:focus {
   border-color: var(--sel-focus-border, rgba(255, 255, 255, 0.2)) !important;
@@ -2745,59 +2893,63 @@ html.modern-ui-v3[data-theme="light"] .type-selector button.active {
 .modern-ui-v3 .save-btn,
 .modern-ui-v3 .settings-fullscreen-btn {
   background: var(--accent-primary, #00d4ff) !important;
-  color: #121424 !important;
+  color: var(--set-save-color, #121424) !important;
   font-weight: 600 !important;
   border: 1px solid transparent !important;
-  border-radius: 10px !important;
+  border-radius: var(--set-save-radius, 10px) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.25) !important;
+  box-shadow: var(--set-save-shadow, 0 4px 12px rgba(0, 212, 255, 0.25)) !important;
 }
 
 .modern-ui-v3 .save-btn:hover:not(:disabled),
 .modern-ui-v3 .settings-fullscreen-btn:hover {
-  background: #33e0ff !important;
+  background: var(--set-save-hover-bg, #33e0ff) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 6px 16px rgba(0, 212, 255, 0.4) !important;
+  box-shadow: var(--set-save-hover-shadow, 0 6px 16px rgba(0, 212, 255, 0.4)) !important;
 }
 
-.modern-ui-v3 .cancel-btn,
+/* Settings secondary buttons (reset-shortcuts/close/sync/add) keep a thin
+   consumer here and CANNOT move to the Settings.css base: themes.css
+   [data-theme^="dark-"] re-colors .sync-btn/.add-btn per-accent (higher
+   specificity than the base), so the v3 glass must win by specificity +
+   order. Values are --set-btn-* token refs with the original v3 literals as
+   fallbacks. cancel/import/change-file are covered by the --sm-btn-* family
+   (later modal-input batch) in dark and the light rules below. */
+
 .modern-ui-v3 .reset-shortcuts-btn,
 .modern-ui-v3 .close-btn,
 .modern-ui-v3 .sync-btn,
-.modern-ui-v3 .add-btn,
-.modern-ui-v3 .import-btn,
-.modern-ui-v3 .change-file-btn {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: rgba(255, 255, 255, 0.8) !important;
-  border-radius: 10px !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+.modern-ui-v3 .add-btn {
+  background: var(--set-btn-bg, rgba(255, 255, 255, 0.04)) !important;
+  border: var(--set-btn-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
+  color: var(--set-btn-color, rgba(255, 255, 255, 0.8)) !important;
+  border-radius: var(--set-btn-radius, 10px) !important;
+  transition: var(--set-btn-transition, all 0.2s cubic-bezier(0.16, 1, 0.3, 1)) !important;
 }
 
-.modern-ui-v3 .cancel-btn:hover,
 .modern-ui-v3 .reset-shortcuts-btn:hover,
 .modern-ui-v3 .close-btn:hover,
 .modern-ui-v3 .sync-btn:hover:not(:disabled),
-.modern-ui-v3 .add-btn:hover,
-.modern-ui-v3 .import-btn:hover,
-.modern-ui-v3 .change-file-btn:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  color: #fff !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+.modern-ui-v3 .add-btn:hover {
+  background: var(--set-btn-hover-bg, rgba(255, 255, 255, 0.12)) !important;
+  border-color: var(--set-btn-hover-border, rgba(255, 255, 255, 0.2)) !important;
+  color: var(--set-btn-hover-color, #fff) !important;
+  transform: var(--set-btn-hover-transform, translateY(-1px)) !important;
+  box-shadow: var(--set-btn-hover-shadow, 0 4px 12px rgba(0, 0, 0, 0.15)) !important;
 }
 
+/* Danger variant — same cascade reasoning as the batch above. */
+
 .modern-ui-v3 .sync-btn.danger {
-  background: rgba(239, 68, 68, 0.15) !important;
-  border-color: rgba(239, 68, 68, 0.4) !important;
-  color: #ef4444 !important;
+  background: var(--set-danger-bg, rgba(239, 68, 68, 0.15)) !important;
+  border-color: var(--set-danger-border, rgba(239, 68, 68, 0.4)) !important;
+  color: var(--set-danger-color, #ef4444) !important;
 }
 
 .modern-ui-v3 .sync-btn.danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.25) !important;
-  border-color: rgba(239, 68, 68, 0.5) !important;
-  color: #ef4444 !important;
+  background: var(--set-danger-hover-bg, rgba(239, 68, 68, 0.25)) !important;
+  border-color: var(--set-danger-hover-border, rgba(239, 68, 68, 0.5)) !important;
+  color: var(--set-danger-color, #ef4444) !important;
 }
 
 /* ==========================================================================
@@ -2815,11 +2967,11 @@ html.modern-ui-v3[data-theme="light"] .type-selector button.active {
 /* Respect Category Sidebar Opacity setting in V3 Transparent EPG Mode */
 
 html.modern-ui-v3[data-theme]:has(.guide-transparent-mode) .category-strip {
-  background: rgba(0, 0, 0, var(--transparent-guide-sidebar-opacity, 0)) !important;
+  background: var(--guide-transparent-sidebar-bg, rgba(0, 0, 0, var(--transparent-guide-sidebar-opacity, 0))) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border: none !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-right: var(--guide-transparent-sidebar-border-right, 1px solid rgba(255, 255, 255, 0.08)) !important;
   box-shadow: none !important;
 }
 
@@ -2981,12 +3133,12 @@ html.modern-ui-v3[data-theme] .tvcp-page {
 
 html.modern-ui-v3[data-theme] .tvcp-topbar {
   background: transparent !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: var(--tvcp-topbar-border-bottom, 1px solid rgba(255, 255, 255, 0.08)) !important;
 }
 
 html.modern-ui-v3[data-theme] .tvcp-topbar-item:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #fff !important;
+  background: var(--tvcp-item-hover-bg, rgba(255, 255, 255, 0.05)) !important;
+  color: var(--tvcp-item-hover-color, #fff) !important;
 }
 
 html.modern-ui-v3[data-theme] .tvcp-topbar-item.active::after {
@@ -3123,67 +3275,46 @@ html.modern-ui-v3[data-theme="light"] .livetv-liquid-glass-bg::after {
    (the v3 light titlebar surface is covered by the token-driven consumer + tokens) */
 
 html.modern-ui-v3[data-theme="light"] .program-block {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border-color: rgba(0, 0, 0, 0.06) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  background: var(--prog-bg, rgba(255, 255, 255, 0.3)) !important;
+  border-color: var(--prog-border-color, rgba(0, 0, 0, 0.06)) !important;
+  box-shadow: var(--prog-shadow, 0 1px 2px rgba(0, 0, 0, 0.02)) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .program-block:hover {
-  background: rgba(255, 255, 255, 0.6) !important;
-  border-color: rgba(0, 0, 0, 0.12) !important;
+  background: var(--prog-hover-bg, rgba(255, 255, 255, 0.6)) !important;
+  border-color: var(--prog-hover-border-color, rgba(0, 0, 0, 0.12)) !important;
   box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 4px 12px rgba(0, 0, 0, 0.06) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .close-btn {
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  color: #64748b !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .close-btn:hover {
-  background: rgba(0, 0, 0, 0.05) !important;
-  color: #0f172a !important;
+    var(--prog-hover-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 4px 12px rgba(0, 0, 0, 0.06)) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .settings-content {
   background: transparent !important;
 }
 
-html.modern-ui-v3[data-theme="light"] .section-header h3 {
-  color: #0f172a !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .section-description,
-html.modern-ui-v3[data-theme="light"] .form-group label {
-  color: #64748b !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .form-group input {
-  background: #ffffff !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
-  color: #0f172a !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .form-group input:focus {
-  border-color: var(--accent-primary, #0066cc) !important;
-  background: #ffffff !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary, #0066cc) 20%, transparent) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .form-group input::placeholder {
-  color: #94a3b8 !important;
-}
-
 html.modern-ui-v3[data-theme="light"] .cancel-btn {
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
-  color: #475569 !important;
-  background: rgba(0, 0, 0, 0.03) !important;
+  border: var(--set-btn-border, 1px solid rgba(0, 0, 0, 0.12)) !important;
+  color: var(--set-btn-color, #475569) !important;
+  background: var(--set-btn-bg, rgba(0, 0, 0, 0.03)) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .cancel-btn:hover {
-  background: rgba(0, 0, 0, 0.06) !important;
-  color: #0f172a !important;
+  background: var(--set-btn-hover-bg, rgba(0, 0, 0, 0.06)) !important;
+  color: var(--set-btn-hover-color, #0f172a) !important;
+}
+
+/* Generic settings close-btn — light values stay literal here: the light
+   --set-btn-* tokens differ slightly, and ModernThemeBase's light close
+   rules only cover the manager headers (not the generic .close-btn). */
+
+html.modern-ui-v3[data-theme="light"] .close-btn {
+  border: var(--set-close-border, 1px solid rgba(0, 0, 0, 0.1)) !important;
+  color: var(--set-close-color, #64748b) !important;
+}
+
+html.modern-ui-v3[data-theme="light"] .close-btn:hover {
+  background: var(--set-close-hover-bg, rgba(0, 0, 0, 0.05)) !important;
+  color: var(--set-close-hover-color, #0f172a) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .save-btn,
@@ -3191,13 +3322,13 @@ html.modern-ui-v3[data-theme="light"] .sync-btn,
 html.modern-ui-v3[data-theme="light"] .add-btn {
   border: 1px solid transparent !important;
   background: var(--accent-primary, #0066cc) !important;
-  color: #ffffff !important;
+  color: var(--set-save-color, #ffffff) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .save-btn:hover:not(:disabled),
 html.modern-ui-v3[data-theme="light"] .sync-btn:hover:not(:disabled),
 html.modern-ui-v3[data-theme="light"] .add-btn:hover {
-  background: color-mix(in srgb, var(--accent-primary, #0066cc) 85%, black) !important;
+  background: var(--set-save-hover-bg, color-mix(in srgb, var(--accent-primary, #0066cc) 85%, black)) !important;
 }
 
 /* Source items & buttons — light values are token-driven via the --src-*
@@ -3231,20 +3362,6 @@ html.modern-ui-v3[data-theme="light"] .settings-content select option {
   color: var(--sel-option-color, #0f172a) !important;
 }
 
-html.modern-ui-v3[data-theme="light"] .settings-disclaimer,
-html.modern-ui-v3[data-theme="light"] .settings-content small,
-html.modern-ui-v3[data-theme="light"] .settings-section p.section-description {
-  color: #64748b !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .settings-tab-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .settings-tab-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25) !important;
-}
-
 /* EPG text shadows in light theme come from the --guide-text-shadow /
    --guide-row-current-name-shadow light tokens (both none). */
 
@@ -3258,17 +3375,17 @@ html.modern-ui-v3[data-theme="light"] .stremio-topbar-item.active,
 html.modern-ui-v3[data-theme="light"] .stremio-topbar-item:hover,
 html.modern-ui-v3[data-theme="light"] .nuvio-topbar-item.active,
 html.modern-ui-v3[data-theme="light"] .nuvio-topbar-item:hover {
-  color: #0f172a !important;
+  color: var(--tb-item-active-color, #0f172a) !important;
 }
 
 /* Sports World Cup page container in light theme - styled dark so all EPG/stats text is legible */
 
 html.modern-ui-v3[data-theme="light"] .wc-hub-container {
-  background: rgba(16, 12, 26, 0.92) !important;
-  border-radius: 16px !important;
+  background: var(--wc-hub-bg, rgba(16, 12, 26, 0.92)) !important;
+  border-radius: var(--wc-hub-radius, 16px) !important;
   padding: 20px !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  border: var(--wc-hub-border, 1px solid rgba(255, 255, 255, 0.1)) !important;
+  box-shadow: var(--wc-hub-shadow, 0 8px 32px rgba(0, 0, 0, 0.3)) !important;
   box-sizing: border-box !important;
   min-height: 100% !important;
   height: auto !important;
@@ -3277,39 +3394,39 @@ html.modern-ui-v3[data-theme="light"] .wc-hub-container {
 /* Nuvio login form page styling overrides for Light Theme */
 
 html.modern-ui-v3[data-theme="light"] .nuvio-login-input {
-  background: rgba(255, 255, 255, 0.6) !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
-  color: #0f172a !important;
+  background: var(--nuv-login-input-bg, rgba(255, 255, 255, 0.6)) !important;
+  border: var(--nuv-login-input-border, 1px solid rgba(0, 0, 0, 0.12)) !important;
+  color: var(--nuv-login-input-color, #0f172a) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .nuvio-login-input:focus {
-  background: #ffffff !important;
+  background: var(--nuv-login-input-focus-bg, #ffffff) !important;
   border-color: var(--accent-primary, #8b5cf6) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .nuvio-login-input::placeholder {
-  color: #94a3b8 !important;
+  color: var(--nuv-login-input-placeholder, #94a3b8) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .nuvio-login-title,
 html.modern-ui-v3[data-theme="light"] .nuvio-login-card-title {
-  color: #0f172a !important;
+  color: var(--nuv-login-title-color, #0f172a) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .nuvio-login-desc,
 html.modern-ui-v3[data-theme="light"] .nuvio-login-toggle-btn,
 html.modern-ui-v3[data-theme="light"] .nuvio-login-disclaimer {
-  color: #475569 !important;
+  color: var(--nuv-login-desc-color, #475569) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .nuvio-login-toggle-btn:hover {
-  color: #0f172a !important;
+  color: var(--nuv-login-toggle-hover-color, #0f172a) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .nuvio-login-card {
-  background: rgba(255, 255, 255, 0.5) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02) !important;
+  background: var(--nuv-login-card-bg, rgba(255, 255, 255, 0.5)) !important;
+  border: var(--nuv-login-card-border, 1px solid rgba(0, 0, 0, 0.08)) !important;
+  box-shadow: var(--nuv-login-card-shadow, 0 4px 12px rgba(0, 0, 0, 0.02)) !important;
 }
 
 /* ==========================================================================
@@ -3419,86 +3536,19 @@ html.modern-ui-v3[data-theme="dark-slate"] .livetv-liquid-glass-bg::after {
 
    ========================================================================== */
 
-/* 1. Hero Buttons */
-
-.modern-ui-v3 .stremio-hero-btn-watch {
-  background: rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  border-radius: 8px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  color: #ffffff !important;
-  font-weight: 600 !important;
-  padding: 10px 24px !important;
-  transition: all 0.2s ease !important;
-}
-
-.modern-ui-v3 .stremio-hero-btn-watch:hover {
-  background: rgba(255, 255, 255, 0.22) !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
-  color: #ffffff !important;
-  transform: translateY(-2px) !important;
-}
-
-.modern-ui-v3 .stremio-hero-btn-watch:active {
-  transform: translateY(0) !important;
-}
-
-.modern-ui-v3 .stremio-hero-btn-watchlist {
-  background: rgba(255, 255, 255, 0.06) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 8px !important;
-  color: rgba(255, 255, 255, 0.85) !important;
-  padding: 10px 24px !important;
-  transition: all 0.2s ease !important;
-}
-
-.modern-ui-v3 .stremio-hero-btn-watchlist:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  color: #ffffff !important;
-  transform: translateY(-2px) !important;
-}
-
-.modern-ui-v3 .stremio-hero-btn-watchlist.in-watchlist {
-  background: rgba(0, 212, 255, 0.12) !important;
-  border-color: rgba(0, 212, 255, 0.3) !important;
-  color: #00d4ff !important;
-}
-
-.modern-ui-v3 .stremio-hero-btn-watchlist.in-watchlist:hover {
-  background: rgba(0, 212, 255, 0.18) !important;
-  border-color: rgba(0, 212, 255, 0.4) !important;
-}
-
-.modern-ui-v3 .stremio-hero-btn-watchlist:active {
-  transform: translateY(0) !important;
-}
-
-/* 2. Genre Tags */
-
-.modern-ui-v3 .stremio-hero-genre-tag {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  border-radius: 20px !important;
-  padding: 3px 12px !important;
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-}
+/* 1. Hero Buttons + 2. Genre Tags — de-stacked: the StremioHeroBanner.css
+   base consumes the --shb-* tokens (shared block, so v3 dark + light resolve
+   them) with the v1/v2 literals as fallbacks. No themes/ModernThemeBase/
+   light-sheet rule targets these classes, so the scoped rules were deleted. */
 
 /* 3. Filter Catalogs Bar */
 
 .modern-ui-v3 .nuvio-catalog-filter {
-  background: rgba(255, 255, 255, 0.04) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  background: var(--nuc-filter-bg, rgba(255, 255, 255, 0.04)) !important;
+  backdrop-filter: var(--nuc-filter-blur, blur(20px)) !important;
+  -webkit-backdrop-filter: var(--nuc-filter-blur, blur(20px)) !important;
+  border-bottom: var(--nuc-filter-border-bottom, 1px solid rgba(255, 255, 255, 0.07)) !important;
+  box-shadow: var(--nuc-filter-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.06)) !important;
 }
 
 /* 4. Thumbnail Cards */
@@ -3508,9 +3558,9 @@ html.modern-ui-v3[data-theme="dark-slate"] .livetv-liquid-glass-bg::after {
 .modern-ui-v3 .nuvio-cw-wide-card,
 .modern-ui-v3 .nuvio-cw-poster-card,
 .modern-ui-v3 .nuvio-folder-card {
-  border-radius: 10px !important;
+  border-radius: var(--nuc-card-radius, 10px) !important;
   overflow: hidden !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: var(--nuc-card-border, 1px solid rgba(255, 255, 255, 0.08)) !important;
   transition: all 0.2s ease !important;
 }
 
@@ -3519,21 +3569,14 @@ html.modern-ui-v3[data-theme="dark-slate"] .livetv-liquid-glass-bg::after {
 .modern-ui-v3 .nuvio-cw-wide-card:hover,
 .modern-ui-v3 .nuvio-cw-poster-card:hover,
 .modern-ui-v3 .nuvio-folder-card:hover {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
-              0 0 0 1px rgba(139, 92, 246, 0.2) !important;
+  border-color: var(--nuc-card-hover-border, rgba(255, 255, 255, 0.2)) !important;
+  box-shadow: var(--nuc-card-hover-shadow, 0 8px 24px rgba(0, 0, 0, 0.4),
+              0 0 0 1px rgba(139, 92, 246, 0.2)) !important;
   transform: translateY(-2px) !important;
 }
 
-/* 6. Hero Banner Container */
-
-.modern-ui-v3 .stremio-hero-banner {
-  border-radius: 12px !important;
-  overflow: hidden !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04),
-              0 20px 60px rgba(0, 0, 0, 0.5) !important;
-}
+/* 6. Hero Banner Container — de-stacked into the StremioHeroBanner.css
+   base (--shb-banner-* tokens, v1/v2 literal fallbacks). */
 
 /* ==========================================================================
 
@@ -3801,7 +3844,7 @@ html.modern-ui-v3[data-theme="light"] .search-bar input:focus {
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content,
 html.modern-ui-v3[data-theme="light"] .channel-list-container,
 html.modern-ui-v3[data-theme="light"] .selector-content {
-  scrollbar-color: rgba(0, 0, 0, 0.08) transparent !important;
+  scrollbar-color: var(--fgl-scroll-color, rgba(0, 0, 0, 0.08) transparent) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content:hover,
@@ -3813,13 +3856,13 @@ html.modern-ui-v3[data-theme="light"] .selector-content:hover {
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content::-webkit-scrollbar-thumb,
 html.modern-ui-v3[data-theme="light"] .channel-list-container::-webkit-scrollbar-thumb,
 html.modern-ui-v3[data-theme="light"] .selector-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.08) !important;
+  background: var(--fgl-scroll-thumb-bg, rgba(0, 0, 0, 0.08)) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content:hover::-webkit-scrollbar-thumb,
 html.modern-ui-v3[data-theme="light"] .channel-list-container:hover::-webkit-scrollbar-thumb,
 html.modern-ui-v3[data-theme="light"] .selector-content:hover::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2) !important;
+  background: var(--fgl-scroll-thumb-hover-bg, rgba(0, 0, 0, 0.2)) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content::-webkit-scrollbar-thumb:hover,
@@ -3951,7 +3994,7 @@ html.modern-ui-v3[data-theme="light"] .selector-content::-webkit-scrollbar-thumb
 }
 
 .modern-ui-v3 .subtitle-toggle-switch input:checked + .subtitle-toggle-slider {
-  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent) !important;
+  background: var(--sm-a-toggle-checked-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 60%, transparent)) !important;
 }
 
 /* 9. Action Buttons */
@@ -3973,14 +4016,14 @@ html.modern-ui-v3[data-theme="light"] .selector-content::-webkit-scrollbar-thumb
 }
 
 .modern-ui-v3 .subtitle-result-action {
-  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 15%, transparent) !important;
+  background: var(--sm-a-result-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 15%, transparent)) !important;
   color: var(--accent-primary, #00d4ff) !important;
-  border: 1px solid color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent) !important;
+  border: var(--sm-a-result-border, 1px solid color-mix(in srgb, var(--accent-primary, #00d4ff) 30%, transparent)) !important;
   transition: all 0.2s ease !important;
 }
 
 .modern-ui-v3 .subtitle-result-btn:hover:not(:disabled) .subtitle-result-action {
-  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent) !important;
+  background: var(--sm-a-result-hover-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, transparent)) !important;
   border-color: var(--accent-primary, #00d4ff) !important;
 }
 
@@ -4273,8 +4316,8 @@ html.modern-ui-v3[data-theme="light"] .subtitle-track-btn.active .subtitle-track
 }
 
 .modern-ui-v3 .filter-checkbox.indeterminate {
-  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent) !important;
-  border-color: color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent) !important;
+  background: var(--sm-as-checkbox-indet-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 50%, transparent)) !important;
+  border-color: var(--sm-as-checkbox-indet-border, color-mix(in srgb, var(--accent-primary, #00d4ff) 70%, transparent)) !important;
 }
 
 /* 9. Loading & Empty States */

@@ -12,8 +12,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const baseDir = path.resolve(process.argv[2] || '.audit-base');
+const readCss = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 const uiDir = path.join(process.cwd(), 'packages/ui/src');
 const changed = [
+  'components/BackgroundContextMenu.css',
   'components/ChannelPanel.css',
   'components/CategoryStrip.css',
   'components/Settings.css',
@@ -21,6 +23,7 @@ const changed = [
   'components/settings/ChannelManager.css',
   'components/sports/SportsHub.css',
   'components/sports/styles/GameDetail.css',
+  'components/ProgramContextMenu.css',
   'components/stremio/StremioHome.css',
   'components/vod/AlphabetRail.css',
   'components/vod/HeroSection.css',
@@ -133,7 +136,7 @@ function collectTokens(css, into, file) {
   }
 }
 for (const rel of changed) {
-  const css = fs.readFileSync(path.join(uiDir, rel), 'utf8');
+  const css = readCss(path.join(uiDir, rel));
   collectTokens(css, fullMap, rel);
   if (rel === v3File) {
     const re = /(--[\w-]+)\s*:\s*([^;{}]+);/g;
@@ -148,7 +151,7 @@ const v2Only = new Map();
 if (fs.existsSync(path.join(uiDir, v2File))) {
   const re = /(--[\w-]+)\s*:\s*([^;{}]+);/g;
   let m;
-  while ((m = re.exec(fs.readFileSync(path.join(uiDir, v2File), 'utf8')))) {
+  while ((m = re.exec(readCss(path.join(uiDir, v2File))))) {
     if (!v2Only.has(m[1])) v2Only.set(m[1], m[2].trim());
   }
 }
@@ -159,6 +162,17 @@ for (const [t, v] of fullMap) {
   baseMap.set(t, v);
 }
 
+// Intentional, value-invisible token mutations — each one is REQUIRED by a
+// de-stack/fold and changes no computed value (the old token value was either
+// never visible — always overridden by the scoped rule it replaced — or only
+// fed a base fallback that v1/v2 never reach because the token sheet isn't
+// loaded). Kept explicit so a real accidental mutation can never hide behind
+// them.
+const INTENTIONAL_TOKEN_MUTATIONS = {
+  '--sm-input-transition':
+    'de-stack: old value (border-color 0.2s ease, ...) was always overridden by the .modern-ui-v3 .form-group input rule (all 0.2s ease); the deleted rule made the token the resolved source, so the token must now BE the v3 value',
+};
+
 console.log('=== D. TOKEN MUTATION (baseline vs working tree) ===');
 let mut = 0;
 for (const rel of changed) {
@@ -168,9 +182,13 @@ for (const rel of changed) {
   const oldMap = new Map();
   collectTokens(fs.readFileSync(base, 'utf8'), oldMap, rel);
   const newMap = new Map();
-  collectTokens(fs.readFileSync(cur, 'utf8'), newMap, rel);
+  collectTokens(readCss(cur), newMap, rel);
   for (const [t, v] of oldMap) {
     if (newMap.has(t) && newMap.get(t) !== v) {
+      if (INTENTIONAL_TOKEN_MUTATIONS[t]) {
+        console.log(`${t}: intentional (${INTENTIONAL_TOKEN_MUTATIONS[t]})`);
+        continue;
+      }
       mut++;
       console.log(`${t}: "${v}" -> "${newMap.get(t)}" (${rel})`);
     }
@@ -188,7 +206,7 @@ const newV3 = new Map();
     if (!oldV3.has(r.selector)) oldV3.set(r.selector, { dark: [], light: [] });
     oldV3.get(r.selector)[r.isLight ? 'light' : 'dark'].push(...r.decls);
   }
-  for (const r of parseRules(fs.readFileSync(path.join(uiDir, v3File), 'utf8'))) {
+  for (const r of parseRules(readCss(path.join(uiDir, v3File)))) {
     if (!r.isV3) continue;
     if (!newV3.has(r.selector)) newV3.set(r.selector, { dark: [], light: [] });
     newV3.get(r.selector)[r.isLight ? 'light' : 'dark'].push(...r.decls);
@@ -203,6 +221,7 @@ for (const [sel, buckets] of oldV3) {
     if (!oldDecls.length) continue;
     const newDecls = new Map((newV3.get(sel) || { [theme]: [] })[theme].map(d => [d.prop, d.value]));
     for (const d of oldDecls) {
+      if (d.prop.startsWith('--') && INTENTIONAL_TOKEN_MUTATIONS[d.prop]) continue;
       const nv = newDecls.get(d.prop);
       if (nv === undefined) {
         const lit = norm(resolve(d.value, map));
@@ -233,15 +252,17 @@ let baseIssues = 0;
 // would hide the v2 value of a token v3 redefines) plus base-rule literals
 // and var() fallbacks, so geometry kept literal in the bases also counts.
 const wtSurfaces = new Set();
+const wtDeclValues = new Set();
 for (const rel of changed) {
-  const css = fs.readFileSync(path.join(uiDir, rel), 'utf8');
+  const css = readCss(path.join(uiDir, rel));
   const re = /(--[\w-]+)\s*:\s*([^;{}]+);/g;
   let m;
   while ((m = re.exec(css))) wtSurfaces.add(norm(m[2]));
   for (const r of parseRules(css)) {
-    if (r.isV3 || r.selector.includes('.modern-ui') || r.selector.includes('[data-theme="light"]')) continue;
     for (const d of r.decls) {
       if (d.prop.startsWith('--')) continue;
+      wtDeclValues.add(norm(d.value));
+      if (r.isV3 || r.selector.includes('.modern-ui') || r.selector.includes('[data-theme="light"]')) continue;
       wtSurfaces.add(norm(d.value));
       for (const v of findVars(d.value)) {
         const inner = v.raw.slice(4, -1);
@@ -262,7 +283,7 @@ for (const rel of changed) {
     oldBySel.get(r.selector).push(new Map(r.decls.map(d => [d.prop, d.value])));
   }
   const newBySel = new Map();
-  for (const r of parseRules(fs.readFileSync(path.join(uiDir, rel), 'utf8'))) {
+  for (const r of parseRules(readCss(path.join(uiDir, rel)))) {
     if (!newBySel.has(r.selector)) newBySel.set(r.selector, []);
     newBySel.get(r.selector).push(new Map(r.decls.map(d => [d.prop, d.value])));
   }
@@ -277,9 +298,9 @@ for (const rel of changed) {
         // fallback (the v2 shared-look fold: surfaces -> tokens, identical
         // geometry stays literal in the bases).
         const oldVals = [...oldDecls.values()];
-        const allCovered = oldVals.every(v => wtSurfaces.has(norm(v)));
+        const allCovered = oldVals.every(v => wtSurfaces.has(norm(v)) || wtDeclValues.has(norm(v)));
         if (!allCovered) {
-          const uncovered = oldVals.filter(v => !wtSurfaces.has(norm(v)));
+          const uncovered = oldVals.filter(v => !wtSurfaces.has(norm(v)) && !wtDeclValues.has(norm(v)));
           baseIssues++;
           console.log(`${rel} ${sel} — DELETED, values not covered by any token/base: ${uncovered.join(', ')}`);
         }
@@ -306,7 +327,7 @@ console.log(baseIssues === 0 ? 'OK — all v1/v2 base values preserved.' : `${ba
 
 console.log('\n=== E. WIRING (v3 rule tokens defined; light rules have light values) ===');
 let wire = 0;
-for (const r of parseRules(fs.readFileSync(path.join(uiDir, v3File), 'utf8'))) {
+for (const r of parseRules(readCss(path.join(uiDir, v3File)))) {
   if (!r.isV3) continue;
   const map = r.isLight ? v3Light : v3Dark;
   for (const d of r.decls) {

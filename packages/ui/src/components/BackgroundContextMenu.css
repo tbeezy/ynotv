@@ -71,7 +71,7 @@
 
 .background-context-menu .context-menu-separator {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--ctx-menu-separator-bg, rgba(255, 255, 255, 0.08));
   margin: 6px 4px;
 }
 
