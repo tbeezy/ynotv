@@ -549,6 +549,14 @@
     transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
+    /* Full-surface drag: the whole card is the drag handle */
+    cursor: grab;
+    user-select: none;
+}
+
+.epg-card:active,
+.epg-card.dragging {
+    cursor: grabbing;
 }
 
 .epg-card:hover {

@@ -420,6 +420,187 @@ function SortableSourceItem(props: SortableSourceItemProps) {
   );
 }
 
+interface SortableEpgCardProps {
+  epg: GlobalEpgLink;
+  index: number;
+  isLast: boolean;
+  sources: Source[];
+  isSyncing: boolean;
+  syncingAllEpg: boolean;
+  formatLastSynced: (timestamp?: number) => string;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
+  onSync: (epg: GlobalEpgLink) => void;
+  onViewMatches: (epg: GlobalEpgLink) => void;
+  onEdit: (epg: GlobalEpgLink) => void;
+  onDelete: (epg: GlobalEpgLink) => void;
+}
+
+/**
+ * Sortable global EPG link card — the whole card surface is the drag handle.
+ * Interactive controls stop pointer propagation so clicks never start a drag
+ * (the PointerSensor's 5px activation distance is a second guard).
+ */
+function SortableEpgCard(props: SortableEpgCardProps) {
+  const {
+    epg,
+    index,
+    isLast,
+    sources,
+    isSyncing,
+    syncingAllEpg,
+    formatLastSynced,
+    onMoveUp,
+    onMoveDown,
+    onSync,
+    onViewMatches,
+    onEdit,
+    onDelete,
+  } = props;
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: epg.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 99 : 1,
+    touchAction: 'none',
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`epg-card${isSyncing ? ' syncing' : ''}${isDragging ? ' dragging' : ''}`}
+    >
+      {/* Priority badge */}
+      <div className="epg-priority">{index + 1}</div>
+
+      <div className="epg-card-content">
+        {/* Header row: name + status */}
+        <div className="epg-card-header">
+          <span className="epg-card-name">{epg.name}</span>
+          <span className={`epg-status${epg.lastSynced ? ' synced' : ' never'}`}>
+            {formatLastSynced(epg.lastSynced)}
+          </span>
+        </div>
+
+        {/* Linked sources as pills */}
+        <div className="epg-card-sources">
+          {epg.sourceIds.map(id => {
+            const src = sources.find(s => s.id === id);
+            return (
+              <span key={id} className="epg-source-pill">
+                {src?.name || id}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* Sync results bar */}
+        {epg.lastSyncResult && (
+          <div className="epg-card-results">
+            <span className="epg-results-total">
+              {epg.lastSyncResult.channelsMatched !== undefined 
+                ? i18n.t('settings:sources.channelsPrograms', { channels: epg.lastSyncResult.channelsMatched.toLocaleString(activeLocale()), programs: epg.lastSyncResult.totalInserted.toLocaleString(activeLocale()) }) 
+                : i18n.t('settings:sources.programsCount', { count: epg.lastSyncResult.totalInserted.toLocaleString(activeLocale()) })}
+            </span>
+            <div className="epg-results-breakdown">
+              {Object.entries(epg.lastSyncResult.perSource).map(([srcId, count]) => {
+                const srcName = sources.find(s => s.id === srcId)?.name || srcId;
+                const channelCount = epg.lastSyncResult?.perSourceChannels?.[srcId];
+                return (
+                  <span key={srcId} className="epg-results-item">
+                    {srcName}: {channelCount !== undefined ? i18n.t('settings:sources.channelsCount', { count: channelCount.toLocaleString(activeLocale()) }) + ', ' : ''}{i18n.t('settings:sources.programsCount', { count: Number(count).toLocaleString(activeLocale()) })}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Actions row */}
+      <div className="epg-card-actions">
+        <button
+          className="epg-reorder-btn"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onMoveUp(index)}
+          disabled={index === 0}
+          title={i18n.t('settings:sources.higherPriority')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <button
+          className="epg-reorder-btn"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onMoveDown(index)}
+          disabled={isLast}
+          title={i18n.t('settings:sources.lowerPriority')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div className="epg-action-divider" />
+        <button
+          className="epg-sync-btn"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onSync(epg)}
+          disabled={isSyncing || syncingAllEpg}
+          title={i18n.t('settings:sources.syncThisEpg')}
+        >
+          {isSyncing ? (
+            <svg className="epg-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+          )}
+          {isSyncing ? i18n.t('common:syncing') : i18n.t('common:sync')}
+        </button>
+        <button
+          className="epg-icon-btn"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onViewMatches(epg)}
+          title={i18n.t('settings:sources.viewMatches')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </button>
+        <button
+          className="epg-icon-btn"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onEdit(epg)}
+          title={i18n.t('common:edit')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button
+          className="epg-icon-btn delete"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onDelete(epg)}
+          title={i18n.t('common:delete')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    </li>
+  );
+}
+
 export function SourcesTab({
   initialSubTab,
   sources,
@@ -1363,28 +1544,39 @@ export function SourcesTab({
     }));
   }
 
-  async function moveEpgUp(index: number) {
-    if (index <= 0 || !window.storage) return;
-    const newLinks = [...globalEpgLinks];
-    const currentOrder = newLinks[index].display_order ?? index;
-    const prevOrder = newLinks[index - 1].display_order ?? (index - 1);
-    // Swap display_order values
-    newLinks[index] = { ...newLinks[index], display_order: prevOrder };
-    newLinks[index - 1] = { ...newLinks[index - 1], display_order: currentOrder };
+  /**
+   * Reorder the global EPG links by moving the link at `fromIndex` (in the
+   * SORTED list) to `toIndex`, then rewrite explicit sequential display_orders.
+   *
+   * MUST operate on sortedEpgLinks, not globalEpgLinks: the rendered list is
+   * the sorted array, so the old code indexed into the unsorted array with the
+   * visible index and moved a random, unrelated link whenever insertion order
+   * differed from display_order (the "changes randomly" bug in issue #171).
+   * Rewriting gap-free sequential orders also removes the
+   * undefined/MAX_SAFE_INTEGER fallback mess.
+   */
+  async function reorderEpgLinks(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex || !window.storage) return;
+    const sorted = [...sortedEpgLinks];
+    const [moved] = sorted.splice(fromIndex, 1);
+    sorted.splice(toIndex, 0, moved);
+    const orderById = new Map(sorted.map((e, i) => [e.id, i]));
+    const newLinks = globalEpgLinks.map(e => ({
+      ...e,
+      display_order: orderById.get(e.id) ?? e.display_order,
+    }));
     setGlobalEpgLinks(newLinks);
     await window.storage.updateSettings({ globalEpgLinks: newLinks });
   }
 
+  async function moveEpgUp(index: number) {
+    if (index <= 0 || !window.storage) return;
+    await reorderEpgLinks(index, index - 1);
+  }
+
   async function moveEpgDown(index: number) {
-    if (index >= globalEpgLinks.length - 1 || !window.storage) return;
-    const newLinks = [...globalEpgLinks];
-    const currentOrder = newLinks[index].display_order ?? index;
-    const nextOrder = newLinks[index + 1].display_order ?? (index + 1);
-    // Swap display_order values
-    newLinks[index] = { ...newLinks[index], display_order: nextOrder };
-    newLinks[index + 1] = { ...newLinks[index + 1], display_order: currentOrder };
-    setGlobalEpgLinks(newLinks);
-    await window.storage.updateSettings({ globalEpgLinks: newLinks });
+    if (index >= sortedEpgLinks.length - 1 || !window.storage) return;
+    await reorderEpgLinks(index, index + 1);
   }
 
   async function handleSyncEpg(epg: GlobalEpgLink) {
@@ -1484,6 +1676,27 @@ export function SourcesTab({
 
     onSourcesChange();
     incrementVersion();
+  };
+
+  // --- @dnd-kit Drag and Drop Handlers for Global EPG Links ---
+  const epgSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleEpgDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sortedEpgLinks.findIndex((e) => e.id === active.id);
+    const newIndex = sortedEpgLinks.findIndex((e) => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    await reorderEpgLinks(oldIndex, newIndex);
   };
 
 
@@ -2506,123 +2719,37 @@ export function SourcesTab({
               <p className="hint">{i18n.t('settings:sources.noEpgLinksHint')}</p>
             </div>
           ) : (
-            <ul className="epg-links-list">
-              {sortedEpgLinks.map((epg, index) => {
-                const isSyncing = syncingEpgId === epg.id;
-                return (
-                  <li key={epg.id} className={`epg-card${isSyncing ? ' syncing' : ''}`}>
-                    {/* Priority badge */}
-                    <div className="epg-priority">{index + 1}</div>
-
-                    <div className="epg-card-content">
-                      {/* Header row: name + status */}
-                      <div className="epg-card-header">
-                        <span className="epg-card-name">{epg.name}</span>
-                        <span className={`epg-status${epg.lastSynced ? ' synced' : ' never'}`}>
-                          {formatLastSynced(epg.lastSynced)}
-                        </span>
-                      </div>
-
-                      {/* Linked sources as pills */}
-                      <div className="epg-card-sources">
-                        {epg.sourceIds.map(id => {
-                          const src = sources.find(s => s.id === id);
-                          return (
-                            <span key={id} className="epg-source-pill">
-                              {src?.name || id}
-                            </span>
-                          );
-                        })}
-                      </div>
-
-                      {/* Sync results bar */}
-                      {epg.lastSyncResult && (
-                        <div className="epg-card-results">
-                          <span className="epg-results-total">
-                            {epg.lastSyncResult.channelsMatched !== undefined 
-                              ? i18n.t('settings:sources.channelsPrograms', { channels: epg.lastSyncResult.channelsMatched.toLocaleString(activeLocale()), programs: epg.lastSyncResult.totalInserted.toLocaleString(activeLocale()) }) 
-                              : i18n.t('settings:sources.programsCount', { count: epg.lastSyncResult.totalInserted.toLocaleString(activeLocale()) })}
-                          </span>
-                          <div className="epg-results-breakdown">
-                            {Object.entries(epg.lastSyncResult.perSource).map(([srcId, count]) => {
-                              const srcName = sources.find(s => s.id === srcId)?.name || srcId;
-                              const channelCount = epg.lastSyncResult?.perSourceChannels?.[srcId];
-                              return (
-                                <span key={srcId} className="epg-results-item">
-                                  {srcName}: {channelCount !== undefined ? i18n.t('settings:sources.channelsCount', { count: channelCount.toLocaleString(activeLocale()) }) + ', ' : ''}{i18n.t('settings:sources.programsCount', { count: Number(count).toLocaleString(activeLocale()) })}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions row */}
-                    <div className="epg-card-actions">
-                      <button
-                        className="epg-reorder-btn"
-                        onClick={() => moveEpgUp(index)}
-                        disabled={index === 0}
-                        title={i18n.t('settings:sources.higherPriority')}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-                      </button>
-                      <button
-                        className="epg-reorder-btn"
-                        onClick={() => moveEpgDown(index)}
-                        disabled={index === sortedEpgLinks.length - 1}
-                        title={i18n.t('settings:sources.lowerPriority')}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                      </button>
-                      <div className="epg-action-divider" />
-                      <button
-                        className="epg-sync-btn"
-                        onClick={() => handleSyncEpg(epg)}
-                        disabled={isSyncing || syncingAllEpg}
-                        title={i18n.t('settings:sources.syncThisEpg')}
-                      >
-                        {isSyncing ? (
-                          <svg className="epg-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
-                        )}
-                        {isSyncing ? i18n.t('common:syncing') : i18n.t('common:sync')}
-                      </button>
-                      <button
-                        className="epg-icon-btn"
-                        onClick={() => setViewMatchesEpg(epg)}
-                        title={i18n.t('settings:sources.viewMatches')}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="8" y1="6" x2="21" y2="6"></line>
-                          <line x1="8" y1="12" x2="21" y2="12"></line>
-                          <line x1="8" y1="18" x2="21" y2="18"></line>
-                          <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                          <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                          <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                        </svg>
-                      </button>
-                      <button
-                        className="epg-icon-btn"
-                        onClick={() => handleEditEpg(epg)}
-                        title={i18n.t('common:edit')}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button
-                        className="epg-icon-btn delete"
-                        onClick={() => handleDeleteEpgClick(epg)}
-                        title={i18n.t('common:delete')}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <DndContext
+              sensors={epgSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleEpgDragEnd}
+            >
+              <SortableContext
+                items={sortedEpgLinks.map((e) => e.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul className="epg-links-list sortable-list">
+                  {sortedEpgLinks.map((epg, index) => (
+                    <SortableEpgCard
+                      key={epg.id}
+                      epg={epg}
+                      index={index}
+                      isLast={index === sortedEpgLinks.length - 1}
+                      sources={sources}
+                      isSyncing={syncingEpgId === epg.id}
+                      syncingAllEpg={syncingAllEpg}
+                      formatLastSynced={formatLastSynced}
+                      onMoveUp={moveEpgUp}
+                      onMoveDown={moveEpgDown}
+                      onSync={handleSyncEpg}
+                      onViewMatches={setViewMatchesEpg}
+                      onEdit={handleEditEpg}
+                      onDelete={handleDeleteEpgClick}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       )}
