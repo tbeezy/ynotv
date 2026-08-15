@@ -8,6 +8,7 @@ import i18n, { translateNativeError } from './i18n';
 import type { StremioStream, StremioStreamPickerMode, StremioMeta, StremioVideo, BadgeSource, StreamAutoPlayMode, StreamAutoPlaySourceScope } from './types/stremio';
 import { checkForUpdates, checkForUpdatesSilent } from './services/updater';
 import { getCachedSettings } from './services/settings-cache';
+import { startAutoBackupScheduler, stopAutoBackupScheduler } from './services/autoBackup';
 import { Settings } from './components/Settings';
 import type { SettingsTabId } from './components/settings/SettingsSidebar';
 import { useModal } from './components/Modal';
@@ -510,6 +511,12 @@ function App() {
       window.removeEventListener('resize', handleResize);
       if (resizeTimeout) clearTimeout(resizeTimeout);
     };
+  }, []);
+
+  // Automated backup scheduler (Settings -> Export / Import)
+  useEffect(() => {
+    startAutoBackupScheduler();
+    return () => stopAutoBackupScheduler();
   }, []);
 
   // Load stremioStreamPickerMode from storage

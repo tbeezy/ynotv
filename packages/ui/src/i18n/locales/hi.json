@@ -1539,6 +1539,40 @@
       "configurableInSettings": "सेटिंग्स → शॉर्टकट में कॉन्फ़िगर करने योग्य"
     },
     "exportImport": {
+      "autoBackup": {
+        "title": "Automated Backup",
+        "description": "Automatically save a backup file at a regular interval, using the same format as the Export option below.",
+        "enabled": "Enable automated backups",
+        "intervalLabel": "Backup interval",
+        "maxBackupsLabel": "Maximum backups to keep",
+        "backupNow": "Back up now",
+        "backupNowSuccess": "Backup saved: {{filePath}}",
+        "backupNowError": "Backup failed: {{error}}",
+        "lastBackup": "Last backup: {{time}}",
+        "never": "Never",
+        "folderLabel": "Backup folder",
+        "customFolderBadge": "(custom)",
+        "chooseFolder": "Choose folder…",
+        "useDefaultFolder": "Use default folder",
+        "openFolder": "Open folder",
+        "backupCount": "{{count}} backup(s) saved",
+        "processing": "Backing up...",
+        "intervalOptions": {
+          "1h": "Every hour",
+          "6h": "Every 6 hours",
+          "12h": "Every 12 hours",
+          "24h": "Every day",
+          "48h": "Every 2 days",
+          "168h": "Every week"
+        },
+        "maxOptions": {
+          "1": "Keep 1 backup",
+          "3": "Keep 3 backups",
+          "5": "Keep 5 backups",
+          "10": "Keep 10 backups",
+          "20": "Keep 20 backups"
+        }
+      },
       "title": "सिस्टम बैकअप और पुनर्स्थापना",
       "description": "डिवाइसों के बीच स्थानांतरण या बैकअप बनाने के लिए अपना कॉन्फ़िगरेशन JSON फ़ाइल में निर्यात करें।",
       "exportTitle": "कॉन्फ़िगरेशन निर्यात करें",

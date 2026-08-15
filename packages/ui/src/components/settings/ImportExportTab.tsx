@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import i18n, { translateNativeError } from '../../i18n';
 import { exportAllData, importAllData } from '../../utils/exportImport';
 import { RecoveryScreen } from '../RecoveryScreen';
 import { getDbHealth, isDbUnhealthy, formatBytes, RECOVERY_SCREEN_ENABLED, type DbHealth } from '../../services/recovery';
+import {
+    runAutoBackupNow,
+    listBackups,
+    getBackupDirPath,
+    openBackupFolder,
+    getLastBackupAt,
+    pickBackupFolder,
+    hasCustomBackupDir,
+    AUTO_BACKUP_DEFAULTS
+} from '../../services/autoBackup';
 
 export function ImportExportTab() {
     useTranslation();
@@ -15,6 +25,121 @@ export function ImportExportTab() {
     const [recoveryHealth, setRecoveryHealth] = useState<DbHealth | null>(null);
     const [checkingHealth, setCheckingHealth] = useState(false);
     const [healthChecked, setHealthChecked] = useState(false);
+
+    // Automated backup settings
+    const [autoBackupEnabled, setAutoBackupEnabled] = useState(AUTO_BACKUP_DEFAULTS.enabled);
+    const [autoBackupIntervalHours, setAutoBackupIntervalHours] = useState(AUTO_BACKUP_DEFAULTS.intervalHours);
+    const [autoBackupMaxBackups, setAutoBackupMaxBackups] = useState(AUTO_BACKUP_DEFAULTS.maxBackups);
+    const [autoBackupProcessing, setAutoBackupProcessing] = useState(false);
+    const [autoBackupStatus, setAutoBackupStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [backupFolder, setBackupFolder] = useState('');
+    const [backupCount, setBackupCount] = useState(0);
+    const [lastBackupAt, setLastBackupAt] = useState<number | null>(getLastBackupAt());
+    const [isCustomFolder, setIsCustomFolder] = useState(false);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await window.storage?.getSettings();
+                const s = (res?.data ?? {}) as Record<string, any>;
+                setAutoBackupEnabled(s.autoBackupEnabled ?? AUTO_BACKUP_DEFAULTS.enabled);
+                setAutoBackupIntervalHours(s.autoBackupIntervalHours ?? AUTO_BACKUP_DEFAULTS.intervalHours);
+                setAutoBackupMaxBackups(s.autoBackupMaxBackups ?? AUTO_BACKUP_DEFAULTS.maxBackups);
+            } catch (e) {
+                console.warn('[ImportExport] Failed to load auto-backup settings:', e);
+            }
+            try {
+                const dir = await getBackupDirPath();
+                setBackupFolder(dir);
+                setIsCustomFolder(await hasCustomBackupDir());
+                setBackupCount((await listBackups(dir)).length);
+            } catch (e) {
+                console.warn('[ImportExport] Failed to load backup folder info:', e);
+            }
+        };
+        load();
+    }, []);
+
+    const persistAutoBackup = async (patch: Record<string, any>) => {
+        if (window.storage) {
+            try {
+                await window.storage.updateSettings(patch);
+            } catch (e) {
+                console.error('[ImportExport] Failed to save auto-backup settings:', e);
+            }
+        }
+        // Notify the scheduler so it reschedules immediately.
+        window.dispatchEvent(new CustomEvent('ynotv:auto-backup-settings-changed'));
+    };
+
+    const handleAutoBackupEnabledChange = (enabled: boolean) => {
+        setAutoBackupEnabled(enabled);
+        void persistAutoBackup({ autoBackupEnabled: enabled });
+    };
+
+    const handleAutoBackupIntervalChange = (hours: number) => {
+        setAutoBackupIntervalHours(hours);
+        void persistAutoBackup({ autoBackupIntervalHours: hours });
+    };
+
+    const handleAutoBackupMaxBackupsChange = (max: number) => {
+        setAutoBackupMaxBackups(max);
+        void persistAutoBackup({ autoBackupMaxBackups: max });
+    };
+
+    const handleBackupNow = async () => {
+        setAutoBackupProcessing(true);
+        setAutoBackupStatus(null);
+        try {
+            const result = await runAutoBackupNow();
+            if (result.success) {
+                setAutoBackupStatus({
+                    type: 'success',
+                    message: i18n.t('settings:exportImport.autoBackup.backupNowSuccess', { filePath: result.filePath })
+                });
+                setLastBackupAt(Date.now());
+            } else {
+                setAutoBackupStatus({
+                    type: 'error',
+                    message: i18n.t('settings:exportImport.autoBackup.backupNowError', { error: result.error || '' })
+                });
+            }
+        } catch (e) {
+            setAutoBackupStatus({ type: 'error', message: String(e) });
+        } finally {
+            setAutoBackupProcessing(false);
+            try {
+                setBackupCount((await listBackups(await getBackupDirPath())).length);
+            } catch (e) {
+                // Ignore listing errors after a manual backup.
+            }
+        }
+    };
+
+    const handleChooseFolder = async () => {
+        const dir = await pickBackupFolder();
+        if (!dir) return;
+        setIsCustomFolder(true);
+        setBackupFolder(dir);
+        void persistAutoBackup({ autoBackupDirectory: dir });
+        try {
+            setBackupCount((await listBackups(dir)).length);
+        } catch (e) {
+            // Ignore listing errors right after choosing a folder.
+        }
+    };
+
+    const handleUseDefaultFolder = async () => {
+        setIsCustomFolder(false);
+        void persistAutoBackup({ autoBackupDirectory: '' });
+        try {
+            const dir = await getBackupDirPath();
+            setBackupFolder(dir);
+            setBackupCount((await listBackups(dir)).length);
+        } catch (e) {
+            // Ignore listing errors when resetting the folder.
+        }
+    };
 
     const handleCheckHealth = async () => {
         setCheckingHealth(true);
@@ -118,6 +243,147 @@ export function ImportExportTab() {
                 >
                     {isProcessing ? i18n.t('settings:exportImport.processing') : i18n.t('settings:exportImport.exportBtn')}
                 </button>
+            </div>
+
+            {/* Automated Backup */}
+            <div className="settings-section" style={{ paddingTop: '8px', paddingBottom: '8px' }}>
+                <div className="section-header">
+                    <h3>{i18n.t('settings:exportImport.autoBackup.title')}</h3>
+                </div>
+                <p className="section-description" style={{ marginBottom: '12px' }}>
+                    {i18n.t('settings:exportImport.autoBackup.description')}
+                </p>
+
+                <label className="genre-checkbox" style={{ maxWidth: '320px' }}>
+                    <input
+                        type="checkbox"
+                        checked={autoBackupEnabled}
+                        onChange={(e) => handleAutoBackupEnabledChange(e.target.checked)}
+                    />
+                    <span className="genre-name">{i18n.t('settings:exportImport.autoBackup.enabled')}</span>
+                </label>
+
+                {autoBackupEnabled && (
+                    <div className="tmdb-form" style={{ marginTop: '1rem', maxWidth: '320px' }}>
+                        <label className="settings-label" style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                            {i18n.t('settings:exportImport.autoBackup.intervalLabel')}
+                        </label>
+                        <select
+                            value={autoBackupIntervalHours}
+                            onChange={(e) => handleAutoBackupIntervalChange(parseInt(e.target.value, 10))}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                backgroundColor: 'var(--bg-tertiary)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '6px',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            <option value={1}>{i18n.t('settings:exportImport.autoBackup.intervalOptions.1h')}</option>
+                            <option value={6}>{i18n.t('settings:exportImport.autoBackup.intervalOptions.6h')}</option>
+                            <option value={12}>{i18n.t('settings:exportImport.autoBackup.intervalOptions.12h')}</option>
+                            <option value={24}>{i18n.t('settings:exportImport.autoBackup.intervalOptions.24h')}</option>
+                            <option value={48}>{i18n.t('settings:exportImport.autoBackup.intervalOptions.48h')}</option>
+                            <option value={168}>{i18n.t('settings:exportImport.autoBackup.intervalOptions.168h')}</option>
+                        </select>
+
+                        <label className="settings-label" style={{ display: 'block', marginBottom: '0.5rem', marginTop: '1rem', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                            {i18n.t('settings:exportImport.autoBackup.maxBackupsLabel')}
+                        </label>
+                        <select
+                            value={autoBackupMaxBackups}
+                            onChange={(e) => handleAutoBackupMaxBackupsChange(parseInt(e.target.value, 10))}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                backgroundColor: 'var(--bg-tertiary)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '6px',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            <option value={1}>{i18n.t('settings:exportImport.autoBackup.maxOptions.1')}</option>
+                            <option value={3}>{i18n.t('settings:exportImport.autoBackup.maxOptions.3')}</option>
+                            <option value={5}>{i18n.t('settings:exportImport.autoBackup.maxOptions.5')}</option>
+                            <option value={10}>{i18n.t('settings:exportImport.autoBackup.maxOptions.10')}</option>
+                            <option value={20}>{i18n.t('settings:exportImport.autoBackup.maxOptions.20')}</option>
+                        </select>
+                    </div>
+                )}
+
+                <div style={{ marginTop: '1rem' }}>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                        {i18n.t('settings:exportImport.autoBackup.folderLabel')}
+                        {isCustomFolder && (
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                                {i18n.t('settings:exportImport.autoBackup.customFolderBadge')}
+                            </span>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <button
+                            className="sync-btn"
+                            onClick={() => void handleChooseFolder()}
+                            style={{ maxWidth: '200px', borderColor: 'var(--surface-border)' }}
+                        >
+                            {i18n.t('settings:exportImport.autoBackup.chooseFolder')}
+                        </button>
+                        {isCustomFolder && (
+                            <button
+                                className="sync-btn"
+                                onClick={() => void handleUseDefaultFolder()}
+                                style={{ maxWidth: '200px', borderColor: 'var(--surface-border)' }}
+                            >
+                                {i18n.t('settings:exportImport.autoBackup.useDefaultFolder')}
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                        className="sync-btn"
+                        onClick={handleBackupNow}
+                        disabled={autoBackupProcessing}
+                        style={{ maxWidth: '200px', borderColor: 'var(--surface-border)' }}
+                    >
+                        {autoBackupProcessing ? i18n.t('settings:exportImport.autoBackup.processing') : i18n.t('settings:exportImport.autoBackup.backupNow')}
+                    </button>
+                    {backupFolder && (
+                        <button
+                            className="sync-btn"
+                            onClick={() => void openBackupFolder()}
+                            style={{ maxWidth: '200px', borderColor: 'var(--surface-border)' }}
+                        >
+                            {i18n.t('settings:exportImport.autoBackup.openFolder')}
+                        </button>
+                    )}
+                </div>
+
+                {autoBackupStatus && (
+                    <div className={`sync-status-item ${autoBackupStatus.type === 'success' ? 'success' : 'error'}`} style={{ marginTop: '12px' }}>
+                        <span className="status-name">{autoBackupStatus.message}</span>
+                    </div>
+                )}
+
+                <div style={{ marginTop: '12px', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                    <div>
+                        {i18n.t('settings:exportImport.autoBackup.lastBackup', {
+                            time: lastBackupAt ? new Date(lastBackupAt).toLocaleString() : i18n.t('settings:exportImport.autoBackup.never')
+                        })}
+                    </div>
+                    {backupFolder && (
+                        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                            {backupFolder}
+                        </div>
+                    )}
+                    <div>
+                        {i18n.t('settings:exportImport.autoBackup.backupCount', { count: backupCount })}
+                    </div>
+                </div>
             </div>
 
             {/* Import Configuration */}

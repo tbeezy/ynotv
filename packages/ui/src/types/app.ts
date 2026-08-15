@@ -126,6 +126,11 @@ export interface AppSettings {
     categorySortOrder?: 'default' | 'alphabetical';
     // Favorites placement in the LiveTV sidebar: 'global' (top-level), 'perSource' (nested under each source), or 'both'
     favoritesMode?: 'global' | 'perSource' | 'both';
+    // Automated backups (same JSON format as Settings -> Export / Import)
+    autoBackupEnabled?: boolean;
+    autoBackupIntervalHours?: number;
+    autoBackupMaxBackups?: number;
+    autoBackupDirectory?: string;
     channelFontSize?: number;
     categoryFontSize?: number;
     epgTitleFontSize?: number;

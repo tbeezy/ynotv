@@ -196,9 +196,10 @@ export interface ExportData {
 const EXPORT_VERSION = 11;
 
 /**
- * Export all application data to a JSON file
+ * Collect the full application data payload. Shared by the interactive export
+ * (save dialog) and the automated backup scheduler.
  */
-export async function exportAllData(): Promise<{ success: boolean; filePath?: string; error?: string }> {
+async function buildExportData(): Promise<ExportData> {
     try {
         if (!window.storage) throw new Error(i18n.t('common:storageApiUnavailable'));
 
@@ -590,6 +591,20 @@ export async function exportAllData(): Promise<{ success: boolean; filePath?: st
             uiLayout
         };
 
+        return exportData;
+
+    } catch (err) {
+        console.error('Export data collection failed:', err);
+        throw err;
+    }
+}
+
+/**
+ * Export all application data to a JSON file via an interactive save dialog.
+ */
+export async function exportAllData(): Promise<{ success: boolean; filePath?: string; error?: string }> {
+    try {
+        const exportData = await buildExportData();
         const fileName = `ynotv-backup-${new Date().toISOString().split('T')[0]}.json`;
         // Use Bridge for save dialog
         const result = await Bridge.saveJsonFile(JSON.stringify(exportData, null, 2), fileName);
@@ -600,6 +615,22 @@ export async function exportAllData(): Promise<{ success: boolean; filePath?: st
 
     } catch (err) {
         console.error('Export failed:', err);
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+}
+
+/**
+ * Write the full application data to an explicit file path (no dialog).
+ * Used by the automated backup scheduler.
+ */
+export async function exportAllDataToPath(filePath: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const exportData = await buildExportData();
+        const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+        await writeTextFile(filePath, JSON.stringify(exportData, null, 2));
+        return { success: true };
+    } catch (err) {
+        console.error('Export to path failed:', err);
         return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
 }
