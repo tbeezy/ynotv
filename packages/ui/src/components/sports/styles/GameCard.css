@@ -251,7 +251,8 @@
   border-radius: 12px;
   flex-shrink: 0;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.06);
+  /* ESPN logos are designed for (and shipped on) a white background */
+  background: #fff;
   transition: transform 0.2s ease;
 }
 

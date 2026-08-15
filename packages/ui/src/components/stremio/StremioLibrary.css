@@ -61,7 +61,11 @@
 }
 
 .stremio-library-select option {
-  background: var(--bg-primary, #14141e);
+  /* Use --bg-secondary, not --bg-primary: on gradient (solid-*) and custom
+     gradient themes --bg-primary is a linear-gradient(), which native
+     <option> elements can't render — the browser falls back to a white
+     background while --text-primary stays white (invisible text). */
+  background: var(--bg-secondary, #14141e);
   color: var(--text-primary, white);
 }
 

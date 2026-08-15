@@ -5264,8 +5264,12 @@ html.modern-ui-v3[data-theme="light"] .logo-editor-btn-primary {
 
 /* ==================== TITLE BAR & TOP NAVIGATION (LIGHT THEME) ==================== */
 
-[data-theme="light"] .title-bar,
-html[data-theme="light"] .title-bar,
+/* The floating transparent titlebar is a v3-only concept. v1/v2 cover the
+   titlebar with the page background (--titlebar-cover-bg), so leaving the
+   unversioned selectors here made the titlebar transparent in v1/v2 light
+   too — letting the desktop bleed through on pages whose top area is
+   transparent (LiveTV guide, Sports with preview). Scoping to v3 keeps the
+   v1/v2 light titlebar opaque (white via the rule above). */
 html.modern-ui-v3[data-theme="light"] .title-bar {
   background: transparent !important;
   border-bottom: none !important;

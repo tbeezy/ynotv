@@ -46,6 +46,9 @@ export interface AppSettings {
   categorySortOrder: 'default' | 'alphabetical';
   includeAllChannelsToPlaylist: boolean;
   setIncludeAllChannelsToPlaylist: (enabled: boolean) => void;
+  // Sources list
+  hideDisabledSources: boolean;
+  setHideDisabledSources: (hidden: boolean) => void;
 
   // Advanced Search
   advancedSearchScope: 'channels' | 'epg' | 'both';
@@ -274,6 +277,7 @@ export function useAppSettings(): AppSettings {
   // Category display settings
   const [categorySortOrder, setCategorySortOrder] = useState<'default' | 'alphabetical'>('default');
   const [includeAllChannelsToPlaylist, setIncludeAllChannelsToPlaylist] = useState(false);
+  const [hideDisabledSources, setHideDisabledSourcesState] = useState(false);
 
   // Advanced search settings
   const [advancedSearchScope, setAdvancedSearchScope] = useState<'channels' | 'epg' | 'both'>('both');
@@ -692,6 +696,7 @@ export function useAppSettings(): AppSettings {
           setSourceFontSize(result.data.sourceFontSize ?? 12);
           setCategorySortOrder(result.data.categorySortOrder ?? 'default');
           setIncludeAllChannelsToPlaylist(result.data.includeAllChannelsToPlaylist ?? false);
+          setHideDisabledSourcesState(result.data.hideDisabledSources ?? false);
           setAdvancedSearchScope(result.data.advancedSearchScope ?? 'both');
           setAdvancedSearchSourceIds(result.data.advancedSearchSourceIds ?? []);
           setAdvancedSearchCategoryIds(result.data.advancedSearchCategoryIds ?? []);
@@ -1179,6 +1184,17 @@ export function useAppSettings(): AppSettings {
         await window.storage.updateSettings({ includeAllChannelsToPlaylist: enabled });
       } catch (e) {
         console.error('[useAppSettings] Failed to save includeAllChannelsToPlaylist:', e);
+      }
+    }
+  }, []);
+
+  const setHideDisabledSourcesSetting = useCallback(async (hidden: boolean) => {
+    setHideDisabledSourcesState(hidden);
+    if (window.storage) {
+      try {
+        await window.storage.updateSettings({ hideDisabledSources: hidden });
+      } catch (e) {
+        console.error('[useAppSettings] Failed to save hideDisabledSources:', e);
       }
     }
   }, []);
@@ -1985,6 +2001,7 @@ export function useAppSettings(): AppSettings {
     sourceFontSize,
     categorySortOrder,
     includeAllChannelsToPlaylist,
+    hideDisabledSources,
     advancedSearchScope,
     advancedSearchSourceIds,
     advancedSearchCategoryIds,
@@ -2058,6 +2075,7 @@ export function useAppSettings(): AppSettings {
     setTransparentGuideOnZap,
     setCategorySortOrder: setCategorySortOrderSetting,
     setIncludeAllChannelsToPlaylist: setIncludeAllChannelsToPlaylistSetting,
+    setHideDisabledSources: setHideDisabledSourcesSetting,
     setEpgView,
     setWidgetScale,
     setWidgetBgOpacity,

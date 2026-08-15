@@ -619,7 +619,7 @@ export function SourcesTab({
 }: SourcesTabProps) {
   const { incrementVersion } = useSourceVersion(); // Get version incrementer
   useTranslation();
-  const { globalLiveTvUserAgent, setGlobalLiveTvUserAgent } = useAppSettings();
+  const { globalLiveTvUserAgent, setGlobalLiveTvUserAgent, hideDisabledSources, setHideDisabledSources } = useAppSettings();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<SourceFormData>(emptyForm);
@@ -767,8 +767,7 @@ export function SourcesTab({
     });
   }, [sources]);
 
-  // Hide/Show disabled sources in the Playlist Sources list
-  const [hideDisabledSources, setHideDisabledSources] = useState(false);
+  // Hide/Show disabled sources in the Playlist Sources list (persisted)
   const visibleSources = useMemo(() => {
     return hideDisabledSources
       ? sortedSources.filter((s) => s.enabled !== false)
@@ -1794,7 +1793,7 @@ export function SourcesTab({
                 <h3>{i18n.t('settings:sources.sourcesTitle')}</h3>
                 <button
                   className={`sources-hide-toggle${hideDisabledSources ? ' active' : ''}`}
-                  onClick={() => setHideDisabledSources((v) => !v)}
+                  onClick={() => setHideDisabledSources(!hideDisabledSources)}
                   title={i18n.t('settings:channelManager.hideDisabled')}
                 >
                   {hideDisabledSources
