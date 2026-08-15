@@ -8720,10 +8720,33 @@
   border-style: dashed;
 }
 
-.favorite-scoreboard-card.drag-over {
-  border-color: #00d4ff;
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
-  transform: translateY(-4px);
+.favorite-scoreboard-card.drop-above,
+.favorite-scoreboard-card.drop-below {
+  /* The card clips overflow for its gradient; allow the drop line to poke
+     out into the 20px grid gap instead. */
+  overflow: visible;
+}
+
+.favorite-scoreboard-card.drop-above::after,
+.favorite-scoreboard-card.drop-below::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--accent-primary, #00d4ff);
+  border-radius: 1px;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+  z-index: 3;
+}
+
+.favorite-scoreboard-card.drop-above::after {
+  top: -11px;
+}
+
+.favorite-scoreboard-card.drop-below::after {
+  bottom: -11px;
 }
 
 /* Teams Grid & Search Bar V2 */

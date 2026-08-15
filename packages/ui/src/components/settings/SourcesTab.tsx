@@ -31,6 +31,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -260,6 +262,7 @@ interface SortableSourceItemProps {
   setCategoryManagerSource: (src: { id: string; name: string }) => void;
   handleEdit: (source: Source) => void;
   handleDeleteClick: (id: string, name: string) => void;
+  dropIndicator?: 'above' | 'below' | null;
 }
 
 function SortableSourceItem(props: SortableSourceItemProps) {
@@ -279,6 +282,7 @@ function SortableSourceItem(props: SortableSourceItemProps) {
     setCategoryManagerSource,
     handleEdit,
     handleDeleteClick,
+    dropIndicator = null,
   } = props;
 
   const {
@@ -309,7 +313,7 @@ function SortableSourceItem(props: SortableSourceItemProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`source-item${isDragging ? ' dragging' : ''}${source.enabled !== false ? ' source-enabled' : ' source-disabled'}`}
+      className={`source-item${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}${source.enabled !== false ? ' source-enabled' : ' source-disabled'}`}
     >
       <div className="source-info">
         <div className="source-header">
@@ -437,6 +441,7 @@ interface SortableEpgCardProps {
   onViewMatches: (epg: GlobalEpgLink) => void;
   onEdit: (epg: GlobalEpgLink) => void;
   onDelete: (epg: GlobalEpgLink) => void;
+  dropIndicator?: 'above' | 'below' | null;
 }
 
 /**
@@ -459,6 +464,7 @@ function SortableEpgCard(props: SortableEpgCardProps) {
     onViewMatches,
     onEdit,
     onDelete,
+    dropIndicator = null,
   } = props;
 
   const {
@@ -484,7 +490,7 @@ function SortableEpgCard(props: SortableEpgCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`epg-card${isSyncing ? ' syncing' : ''}${isDragging ? ' dragging' : ''}`}
+      className={`epg-card${isSyncing ? ' syncing' : ''}${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
     >
       {/* Priority badge */}
       <div className="epg-priority">{index + 1}</div>
@@ -752,10 +758,9 @@ export function SourcesTab({
     }
   }, [editSourceId, sources]);
 
-  // Drag and drop state
-  const dragFromIdx = useRef<number | null>(null);
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const listRef = useRef<HTMLUListElement>(null);
+  // Drag and drop state (shared across the source and EPG lists — only one drag is active at a time)
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overDragId, setOverDragId] = useState<string | null>(null);
 
   // Sorted sources for rendering (ensures UI matches DB order)
   const sortedSources = useMemo(() => {
@@ -1664,8 +1669,27 @@ export function SourcesTab({
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      setOverDragId(String(event.over.id));
+    } else {
+      setOverDragId(null);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+    setOverDragId(null);
+  };
+
   const handleSourceDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
     if (!over || active.id === over.id) return;
 
     const oldIndex = sortedSources.findIndex((s) => s.id === active.id);
@@ -1702,6 +1726,8 @@ export function SourcesTab({
 
   const handleEpgDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
     if (!over || active.id === over.id) return;
     const oldIndex = sortedEpgLinks.findIndex((e) => e.id === active.id);
     const newIndex = sortedEpgLinks.findIndex((e) => e.id === over.id);
@@ -1839,6 +1865,9 @@ export function SourcesTab({
           <DndContext
             sensors={sourceSensors}
             collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragCancel={handleDragCancel}
             onDragEnd={handleSourceDragEnd}
           >
             <SortableContext
@@ -1848,6 +1877,10 @@ export function SourcesTab({
               <ul className="sources-list sortable-list">
                 {visibleSources.map((source) => {
                   const meta = syncStatus.find(s => s.source_id === source.id);
+                  const activeIndex = activeDragId ? visibleSources.findIndex(s => s.id === activeDragId) : -1;
+                  const overIndex = overDragId ? visibleSources.findIndex(s => s.id === overDragId) : -1;
+                  const isOver = overDragId === source.id && activeDragId !== overDragId;
+                  const dropIndicator = isOver ? (activeIndex < overIndex ? 'below' : 'above') : null;
                   return (
                     <SortableSourceItem
                       key={source.id}
@@ -1866,6 +1899,7 @@ export function SourcesTab({
                       setCategoryManagerSource={setCategoryManagerSource}
                       handleEdit={handleEdit}
                       handleDeleteClick={handleDeleteClick}
+                      dropIndicator={dropIndicator}
                     />
                   );
                 })}
@@ -2748,6 +2782,9 @@ export function SourcesTab({
             <DndContext
               sensors={epgSensors}
               collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragCancel={handleDragCancel}
               onDragEnd={handleEpgDragEnd}
             >
               <SortableContext
@@ -2755,24 +2792,31 @@ export function SourcesTab({
                 strategy={verticalListSortingStrategy}
               >
                 <ul className="epg-links-list sortable-list">
-                  {sortedEpgLinks.map((epg, index) => (
-                    <SortableEpgCard
-                      key={epg.id}
-                      epg={epg}
-                      index={index}
-                      isLast={index === sortedEpgLinks.length - 1}
-                      sources={sources}
-                      isSyncing={syncingEpgId === epg.id}
-                      syncingAllEpg={syncingAllEpg}
-                      formatLastSynced={formatLastSynced}
-                      onMoveUp={moveEpgUp}
-                      onMoveDown={moveEpgDown}
-                      onSync={handleSyncEpg}
-                      onViewMatches={setViewMatchesEpg}
-                      onEdit={handleEditEpg}
-                      onDelete={handleDeleteEpgClick}
-                    />
-                  ))}
+                  {sortedEpgLinks.map((epg, index) => {
+                    const activeIndex = activeDragId ? sortedEpgLinks.findIndex(e => e.id === activeDragId) : -1;
+                    const overIndex = overDragId ? sortedEpgLinks.findIndex(e => e.id === overDragId) : -1;
+                    const isOver = overDragId === epg.id && activeDragId !== overDragId;
+                    const dropIndicator = isOver ? (activeIndex < overIndex ? 'below' : 'above') : null;
+                    return (
+                      <SortableEpgCard
+                        key={epg.id}
+                        epg={epg}
+                        index={index}
+                        isLast={index === sortedEpgLinks.length - 1}
+                        sources={sources}
+                        isSyncing={syncingEpgId === epg.id}
+                        syncingAllEpg={syncingAllEpg}
+                        formatLastSynced={formatLastSynced}
+                        onMoveUp={moveEpgUp}
+                        onMoveDown={moveEpgDown}
+                        onSync={handleSyncEpg}
+                        onViewMatches={setViewMatchesEpg}
+                        onEdit={handleEditEpg}
+                        onDelete={handleDeleteEpgClick}
+                        dropIndicator={dropIndicator}
+                      />
+                    );
+                  })}
                 </ul>
               </SortableContext>
             </DndContext>

@@ -33,6 +33,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -234,6 +236,7 @@ interface SortableFavoriteCardProps {
   onSearchClick: (query: string) => void;
   onToggleInlineStreams: (cardKey: string, query: string) => void;
   onStreamClick: (channel: StoredChannel) => void;
+  dropIndicator?: 'above' | 'below' | null;
 }
 
 function SortableFavoriteCard(props: SortableFavoriteCardProps) {
@@ -253,6 +256,7 @@ function SortableFavoriteCard(props: SortableFavoriteCardProps) {
     onSearchClick,
     onToggleInlineStreams,
     onStreamClick,
+    dropIndicator = null,
   } = props;
 
   const {
@@ -286,7 +290,7 @@ function SortableFavoriteCard(props: SortableFavoriteCardProps) {
       style={cardStyle}
       {...attributes}
       {...listeners}
-      className={`favorite-scoreboard-card ${isLive ? 'is-live' : ''} ${team.isPinned ? 'is-pinned' : ''} ${isDragging ? 'is-dragging' : ''}`}
+      className={`favorite-scoreboard-card ${isLive ? 'is-live' : ''} ${team.isPinned ? 'is-pinned' : ''} ${isDragging ? 'is-dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
     >
       {/* Team Brand Accent Bar */}
       <div className="favorite-card-color-strip" />
@@ -706,8 +710,30 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
   }, [favorites, teamGameMap]);
 
   // @dnd-kit drag end handler
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overDragId, setOverDragId] = useState<string | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      setOverDragId(String(event.over.id));
+    } else {
+      setOverDragId(null);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+    setOverDragId(null);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
 
     if (over && active.id !== over.id) {
       const oldIndex = sortedFavorites.findIndex((t) => t.id === active.id);
@@ -921,6 +947,9 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragCancel={handleDragCancel}
           onDragEnd={handleDragEnd}
         >
           <SortableContext
@@ -933,6 +962,11 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
                 const { liveEvent, nextEvent } = teamGameMap[team.id] || {};
                 const isLive = Boolean(liveEvent);
                 const cardKey = `fav-${team.id}`;
+                const activeIndex = activeDragId ? sortedFavorites.findIndex((t) => t.id === activeDragId) : -1;
+                const overIndex = overDragId ? sortedFavorites.findIndex((t) => t.id === overDragId) : -1;
+                const dropIndicator = overDragId === team.id && activeDragId !== overDragId
+                  ? (activeIndex < overIndex ? 'below' : 'above')
+                  : null;
 
                 const activeGame = liveEvent || nextEvent;
                 const searchQuery = activeGame 
@@ -960,6 +994,7 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
                     onSearchClick={handleChannelClick}
                     onToggleInlineStreams={toggleInlineStreams}
                     onStreamClick={handleStreamClick}
+                    dropIndicator={dropIndicator}
                   />
                 );
               })}

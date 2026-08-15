@@ -634,6 +634,7 @@
 }
 
 .ple-indiv-card {
+    position: relative;
     display: flex;
     align-items: center;
     padding: 8px 12px;
@@ -644,9 +645,26 @@
     transition: all 0.2s;
 }
 
-.ple-indiv-card.drag-over {
-    border-top: 2px solid var(--accent-primary, #00d4ff);
-    background: rgba(0, 212, 255, 0.05);
+.ple-indiv-card.drop-above::before,
+.ple-indiv-card.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+    z-index: 3;
+}
+
+.ple-indiv-card.drop-above::before {
+    top: -3px;
+}
+
+.ple-indiv-card.drop-below::after {
+    bottom: -3px;
 }
 
 .ple-indiv-card.dragging {
@@ -730,6 +748,7 @@
 
 /* ── Expanded Category Blocks & Nested Channels ── */
 .ple-block-card-wrapper {
+    position: relative;
     border: 1px solid rgba(255, 255, 255, 0.05);
     background: rgba(255, 255, 255, 0.02);
     border-radius: 8px;
@@ -738,9 +757,33 @@
     margin-bottom: 8px;
 }
 
-.ple-block-card-wrapper.drag-over {
-    border-top: 2px solid var(--accent-primary, #00d4ff);
-    background: rgba(0, 212, 255, 0.05);
+.ple-block-card-wrapper.drop-above,
+.ple-block-card-wrapper.drop-below {
+    /* The wrapper clips overflow for rounded corners; let the drop line
+       poke out into the 8px margin gap instead. */
+    overflow: visible;
+}
+
+.ple-block-card-wrapper.drop-above::before,
+.ple-block-card-wrapper.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+    z-index: 3;
+}
+
+.ple-block-card-wrapper.drop-above::before {
+    top: -5px;
+}
+
+.ple-block-card-wrapper.drop-below::after {
+    bottom: -5px;
 }
 
 .ple-block-card-wrapper.dragging {

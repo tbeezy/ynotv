@@ -73,7 +73,7 @@ export function FavoritesWidget({
     [],
     [],
     0,
-    'channels'
+    ['channels', 'favorites']
   );
 
   // Only visible on main screen when controls are shown

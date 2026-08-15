@@ -16,7 +16,7 @@ export function useLiveQuery<T>(
     deps: any[] = [], 
     defaultResult?: T,
     staleTime: number = 0, // Time in milliseconds to consider data fresh (0 = no caching)
-    tableName?: string // Optional: only listen to changes on this table
+    tableName?: string | string[] // Optional: only listen to changes on this table (or these tables)
 ): T | undefined {
     const [result, setResult] = useState<T | undefined>(defaultResult);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,21 +105,23 @@ export function useLiveQuery<T>(
             }, 50); // 50ms debounce - batch rapid DB events
         };
 
-        // Subscribe to DB events - only for our table if specified
-        const unsubscribe = tableName 
-            ? dbEvents.subscribe(tableName, (event) => {
+        // Subscribe to DB events - only for our table(s) if specified
+        const unsubscribers = tableName
+            ? (Array.isArray(tableName) ? tableName : [tableName]).map((name) =>
+                dbEvents.subscribe(name, () => {
+                    debouncedUpdate();
+                })
+            )
+            : [dbEvents.subscribe(() => {
                 debouncedUpdate();
-            })
-            : dbEvents.subscribe((event) => {
-                debouncedUpdate();
-            });
+            })];
 
         return () => {
             isMounted = false;
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
             }
-            unsubscribe();
+            unsubscribers.forEach((unsubscribe) => unsubscribe());
         };
     }, deps);
 

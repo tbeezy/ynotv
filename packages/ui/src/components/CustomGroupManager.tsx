@@ -14,6 +14,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -37,8 +39,9 @@ function SortableGroupChannelItem(props: {
     displaySource: boolean;
     getChannelSourceCategory: (ch: GroupChannel) => string;
     handleRemove: (streamId: string) => void;
+    dropIndicator?: 'above' | 'below' | null;
 }) {
-    const { ch, displaySource, getChannelSourceCategory, handleRemove } = props;
+    const { ch, displaySource, getChannelSourceCategory, handleRemove, dropIndicator = null } = props;
     const {
         attributes,
         listeners,
@@ -62,7 +65,7 @@ function SortableGroupChannelItem(props: {
             style={style}
             {...attributes}
             {...listeners}
-            className={`group-channel-item${isDragging ? ' dragging' : ''}`}
+            className={`group-channel-item${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
         >
             {ch.stream_icon
                 ? <img src={ch.stream_icon} className="cgm-ch-logo" alt="" />
@@ -350,8 +353,30 @@ export function CustomGroupManager({ groupId, groupName, onClose }: CustomGroupM
         })
     );
 
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
+    const [overDragId, setOverDragId] = useState<string | null>(null);
+
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        setActiveDragId(String(event.active.id));
+    }, []);
+
+    const handleDragOver = useCallback((event: DragOverEvent) => {
+        if (event.over && event.active.id !== event.over.id) {
+            setOverDragId(String(event.over.id));
+        } else {
+            setOverDragId(null);
+        }
+    }, []);
+
+    const handleDragCancel = useCallback(() => {
+        setActiveDragId(null);
+        setOverDragId(null);
+    }, []);
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
+        setActiveDragId(null);
+        setOverDragId(null);
         if (!over || active.id === over.id || !groupChannels) return;
 
         const oldIndex = groupChannels.findIndex((ch) => ch.stream_id === active.id);
@@ -560,6 +585,9 @@ export function CustomGroupManager({ groupId, groupName, onClose }: CustomGroupM
                                 <DndContext
                                     sensors={sensors}
                                     collisionDetection={closestCenter}
+                                    onDragStart={handleDragStart}
+                                    onDragOver={handleDragOver}
+                                    onDragCancel={handleDragCancel}
                                     onDragEnd={handleDragEnd}
                                 >
                                     <SortableContext
@@ -567,15 +595,22 @@ export function CustomGroupManager({ groupId, groupName, onClose }: CustomGroupM
                                         strategy={verticalListSortingStrategy}
                                     >
                                         <div className="channel-list-container">
-                                            {groupChannels.map((ch) => (
-                                                <SortableGroupChannelItem
-                                                    key={ch.stream_id}
-                                                    ch={ch}
-                                                    displaySource={displaySource}
-                                                    getChannelSourceCategory={getChannelSourceCategory}
-                                                    handleRemove={handleRemove}
-                                                />
-                                            ))}
+                                            {groupChannels.map((ch) => {
+                                                const activeIndex = activeDragId ? groupChannels.findIndex(c => c.stream_id === activeDragId) : -1;
+                                                const overIndex = overDragId ? groupChannels.findIndex(c => c.stream_id === overDragId) : -1;
+                                                const isOver = overDragId === ch.stream_id && activeDragId !== overDragId;
+                                                const dropIndicator = isOver ? (activeIndex < overIndex ? 'below' : 'above') : null;
+                                                return (
+                                                    <SortableGroupChannelItem
+                                                        key={ch.stream_id}
+                                                        ch={ch}
+                                                        displaySource={displaySource}
+                                                        getChannelSourceCategory={getChannelSourceCategory}
+                                                        handleRemove={handleRemove}
+                                                        dropIndicator={dropIndicator}
+                                                    />
+                                                );
+                                            })}
                                         </div>
                                     </SortableContext>
                                 </DndContext>

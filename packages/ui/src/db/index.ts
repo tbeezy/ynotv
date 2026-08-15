@@ -42,6 +42,9 @@ export interface StoredChannel extends Omit<Channel, 'stream_icon' | 'epg_channe
   logo_padding?: string;
   // Per-source logo display override ('square' | 'rectangle') applied from sourceLogoDisplayOverrides
   logo_display?: 'square' | 'rectangle';
+  // Filter words that were applied to this channel's name/alias for the current
+  // view (used to explain trimmed names on hover).
+  applied_filter_words?: string[];
 }
 
 // Extended category with channel count
@@ -2108,20 +2111,20 @@ export async function updateCustomGroupChannelsBatch(
 // Favorites Functions
 // ============================================================================
 
-/** Toggle channel favorite status */
-export async function toggleChannelFavorite(streamId: string): Promise<boolean> {
+/** Set a channel's favorite status explicitly (no read-before-write). */
+export async function setChannelFavorite(streamId: string, isFavorite: boolean): Promise<boolean> {
   try {
-    const channel = await db.channels.get(streamId);
-    if (channel) {
-      const newValue = !channel.is_favorite;
-      await db.channels.update(streamId, { is_favorite: newValue });
-      // Explicitly notify that channels have been updated
-      dbEvents.notify('channels', 'update');
-      return newValue;
-    }
-    return false;
+    // Emit a dedicated 'favorites' event rather than the generic 'channels'
+    // event so the heavy All-Channels live query and the category stream index
+    // are not invalidated by a mere favorite toggle.
+    const result = await db.channels.update(
+      streamId,
+      { is_favorite: isFavorite },
+      { notifyTable: 'favorites' }
+    );
+    return result > 0;
   } catch (error) {
-    console.error('[toggleChannelFavorite] Error toggling favorite:', error);
+    console.error('[setChannelFavorite] Error setting favorite:', error);
     throw error;
   }
 }

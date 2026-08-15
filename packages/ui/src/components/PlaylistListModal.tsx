@@ -22,6 +22,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -101,6 +103,7 @@ interface SortablePlaylistItemProps {
   deleteConfirmId: string | null;
   setDeleteConfirmId: (id: string | null) => void;
   handleDelete: (id: string) => void;
+  dropIndicator?: 'above' | 'below' | null;
 }
 
 function SortablePlaylistItem(props: SortablePlaylistItemProps) {
@@ -124,6 +127,7 @@ function SortablePlaylistItem(props: SortablePlaylistItemProps) {
     deleteConfirmId,
     setDeleteConfirmId,
     handleDelete,
+    dropIndicator = null,
   } = props;
 
   const {
@@ -150,7 +154,7 @@ function SortablePlaylistItem(props: SortablePlaylistItemProps) {
         style={style}
         {...attributes}
         {...listeners}
-        className={`pll-item pll-real-source-item${isDragging ? ' dragging' : ''}`}
+        className={`pll-item pll-real-source-item${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
       >
         <div className="pll-item-main">
           <div className="pll-item-info readonly">
@@ -207,7 +211,7 @@ function SortablePlaylistItem(props: SortablePlaylistItemProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`pll-item${isDragging ? ' dragging' : ''}`}
+      className={`pll-item${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
     >
       {editingId === plId ? (
         <div className="pll-edit-row" onPointerDown={(e) => e.stopPropagation()}>
@@ -303,8 +307,8 @@ export function PlaylistListModal({ onClose }: PlaylistListModalProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
   // Drag state
-  const dragFromIdx = useRef<number | null>(null);
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overDragId, setOverDragId] = useState<string | null>(null);
 
   // Live Query custom playlists
   const playlists = useLiveQuery<CustomPlaylist[]>(
@@ -447,8 +451,27 @@ export function PlaylistListModal({ onClose }: PlaylistListModalProps) {
     })
   );
 
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      setOverDragId(String(event.over.id));
+    } else {
+      setOverDragId(null);
+    }
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null);
+    setOverDragId(null);
+  }, []);
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
     if (!over || active.id === over.id || !combinedItems) return;
 
     const oldIndex = combinedItems.findIndex((item) => item.id === active.id);
@@ -621,6 +644,9 @@ export function PlaylistListModal({ onClose }: PlaylistListModalProps) {
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragCancel={handleDragCancel}
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
@@ -633,6 +659,11 @@ export function PlaylistListModal({ onClose }: PlaylistListModalProps) {
                       const catCount = categoryLinkCounts?.get(plId) || 0;
                       const indivCount = individualCounts?.get(plId) || 0;
                       const playlist = item.type === 'playlist' ? playlists.find(p => p.playlist_id === plId) : undefined;
+
+                      const activeIndex = activeDragId ? combinedItems.findIndex(i => i.id === activeDragId) : -1;
+                      const overIndex = overDragId ? combinedItems.findIndex(i => i.id === overDragId) : -1;
+                      const isOver = overDragId === item.id && activeDragId !== overDragId;
+                      const dropIndicator = isOver ? (activeIndex < overIndex ? 'below' : 'above') : null;
 
                       return (
                         <SortablePlaylistItem
@@ -655,6 +686,7 @@ export function PlaylistListModal({ onClose }: PlaylistListModalProps) {
                           deleteConfirmId={deleteConfirmId}
                           setDeleteConfirmId={setDeleteConfirmId}
                           handleDelete={handleDelete}
+                          dropIndicator={dropIndicator}
                         />
                       );
                     })}

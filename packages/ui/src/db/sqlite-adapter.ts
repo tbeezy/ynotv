@@ -652,7 +652,7 @@ export class SqliteTable<T, TKey> {
     }
 
     // Dexie Compatibility: update
-    async update(key: TKey, changes: Partial<T>): Promise<number> {
+    async update(key: TKey, changes: Partial<T>, options?: { notifyTable?: string }): Promise<number> {
         return writeLock.run(async () => {
             const db = await this.getDb();
             const keys = Object.keys(changes).filter(k => (changes as any)[k] !== undefined);
@@ -701,7 +701,7 @@ export class SqliteTable<T, TKey> {
                 values
             );
 
-            dbEvents.notify(this.tableName, 'update');
+            dbEvents.notify(options?.notifyTable || this.tableName, 'update');
             return result.rowsAffected;
         });
     }

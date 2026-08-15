@@ -199,6 +199,7 @@
 }
 
 .group-channel-item {
+    position: relative;
     padding: 7px 10px;
     margin-bottom: 3px;
     background: var(--mg-item-bg, rgba(255, 255, 255, 0.04));
@@ -211,6 +212,27 @@
     transition: var(--mg-item-transition, background 0.15s, border-color 0.15s);
     user-select: none;
     cursor: grab;
+}
+
+.group-channel-item.drop-above::before,
+.group-channel-item.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+.group-channel-item.drop-above::before {
+    top: -2px;
+}
+
+.group-channel-item.drop-below::after {
+    bottom: -2px;
 }
 
 .group-channel-item:active {

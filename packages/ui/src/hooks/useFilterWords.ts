@@ -18,19 +18,36 @@ export function useCategoryFilterWords(categoryId: string | null): string[] {
 }
 
 /**
+ * Apply filter words to a string, returning the cleaned text plus the list of
+ * words that actually matched (and therefore changed the text).
+ */
+export function applyFilterWordsDetailed(
+  name: string,
+  filterWords: string[]
+): { text: string; matched: string[] } {
+  if (!filterWords || filterWords.length === 0) return { text: name, matched: [] };
+
+  let filteredName = name;
+  const matched: string[] = [];
+  filterWords.forEach(word => {
+    const trimmed = word.trim();
+    if (trimmed) {
+      // Escape special regex characters
+      const escapedWord = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedWord, 'gi');
+      if (regex.test(filteredName)) {
+        matched.push(trimmed);
+        filteredName = filteredName.replace(regex, '').trim();
+      }
+    }
+  });
+
+  return { text: filteredName, matched };
+}
+
+/**
  * Apply filter words to a channel name
  */
 export function applyFilterWords(name: string, filterWords: string[]): string {
-  if (!filterWords || filterWords.length === 0) return name;
-  
-  let filteredName = name;
-  filterWords.forEach(word => {
-    if (word.trim()) {
-      // Escape special regex characters
-      const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filteredName = filteredName.replace(new RegExp(escapedWord, 'gi'), '').trim();
-    }
-  });
-  
-  return filteredName;
+  return applyFilterWordsDetailed(name, filterWords).text;
 }

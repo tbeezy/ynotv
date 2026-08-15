@@ -35,6 +35,8 @@ import {
   useSensors,
   closestCenter,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -46,7 +48,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import './CategoryStrip.css';
 
-function SortableSidebarItem({ id, children, disabled, className = '', stickyStyle }: { id: string; children: React.ReactNode; disabled?: boolean; className?: string; stickyStyle?: React.CSSProperties }) {
+function SortableSidebarItem({ id, children, disabled, className = '', stickyStyle, dropIndicator = null }: { id: string; children: React.ReactNode; disabled?: boolean; className?: string; stickyStyle?: React.CSSProperties; dropIndicator?: 'above' | 'below' | null }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
   // IMPORTANT: position:sticky must live on THIS wrapper div, not on the inner
   // child element. The wrapper is the block containing block — if sticky is set
@@ -69,7 +71,7 @@ function SortableSidebarItem({ id, children, disabled, className = '', stickySty
       style={style}
       {...attributes}
       {...listeners}
-      className={`sortable-sidebar-item ${className} ${isDragging ? 'dragging' : ''}`}
+      className={`sortable-sidebar-item ${className} ${isDragging ? 'dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
     >
       {children}
     </div>
@@ -82,6 +84,7 @@ function SortableSourceHeader({
   className = '',
   onClick,
   onContextMenu,
+  dropIndicator = null,
   children
 }: {
   id: string;
@@ -89,6 +92,7 @@ function SortableSourceHeader({
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  dropIndicator?: 'above' | 'below' | null;
   children: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
@@ -105,7 +109,7 @@ function SortableSourceHeader({
       style={style}
       {...attributes}
       {...listeners}
-      className={`sortable-sidebar-item ${className} ${isDragging ? 'dragging' : ''}`}
+      className={`sortable-sidebar-item ${className} ${isDragging ? 'dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
       onClick={onClick}
       onContextMenu={onContextMenu}
     >
@@ -1315,8 +1319,33 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Drag-over tracking for the above/below drop indicator. Shared across the
+  // three DndContexts (sources, per-source categories, per-playlist categories)
+  // since only one drag is ever active at a time.
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overDragId, setOverDragId] = useState<string | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      setOverDragId(String(event.over.id));
+    } else {
+      setOverDragId(null);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+    setOverDragId(null);
+  };
+
   const handleSourceDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
     if (!over || active.id === over.id || !combinedSources) return;
 
     const oldIndex = combinedSources.findIndex((item: SidebarSourceItem) => item.id === active.id);
@@ -1345,6 +1374,8 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
 
   const handleCategoryDragEnd = async (sourceId: string, currentList: { id: string; type: 'native' | 'link'; nativeCat?: any; customLink?: any }[], event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
     if (!over || active.id === over.id || !currentList) return;
 
     const oldIndex = currentList.findIndex(c => c.id === active.id);
@@ -1712,9 +1743,14 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
       </div>
 
       <div className="category-strip-scrollable" ref={scrollContainerRef}>
-        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleSourceDragEnd}>
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragCancel={handleDragCancel} onDragEnd={handleSourceDragEnd}>
           <SortableContext items={combinedSources.map(s => s.id)} strategy={verticalListSortingStrategy}>
             {combinedSources.map((item, index) => {
+          const sourceActiveIndex = activeDragId ? combinedSources.findIndex((s: SidebarSourceItem) => s.id === activeDragId) : -1;
+          const sourceOverIndex = overDragId ? combinedSources.findIndex((s: SidebarSourceItem) => s.id === overDragId) : -1;
+          const sourceDropIndicator = overDragId === item.id && activeDragId !== overDragId
+            ? (sourceActiveIndex < sourceOverIndex ? 'below' : 'above')
+            : null;
           if (item.type === 'real' && item.realGroup) {
             const group = item.realGroup;
             const isExpanded = expandedSources[group.sourceId] || searchQuery.trim().length > 0;
@@ -1729,6 +1765,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                   className="category-source-header"
                   onClick={() => toggleSource(group.sourceId)}
                   onContextMenu={(e) => handleSourceContextMenu(e, group.sourceId, sources[group.sourceId] || t('source'))}
+                  dropIndicator={sourceDropIndicator}
                 >
                   <div className="source-header-left">
                     <ChevronIcon expanded={isExpanded} />
@@ -1872,6 +1909,11 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                             const renderCatItem = (catItem: UnifiedSidebarCat, isFolderChild: boolean) => {
                               let itemContent: React.ReactNode = null;
                               let wrapperStickyStyle: React.CSSProperties | undefined;
+                              const activeIdx = activeDragId ? list.findIndex(c => c.id === activeDragId) : -1;
+                              const overIdx = overDragId ? list.findIndex(c => c.id === overDragId) : -1;
+                              const dropIndicator = overDragId === catItem.id && activeDragId !== overDragId
+                                ? (activeIdx < overIdx ? 'below' : 'above')
+                                : null;
                               if (catItem.type === 'native' && catItem.nativeCat) {
                                 const category = catItem.nativeCat;
                                 const isPinned = pinnedCategories.includes(`${group.sourceId}:${category.category_id}`);
@@ -1923,7 +1965,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                               }
                               if (!itemContent) return null;
                               return (
-                                <SortableSidebarItem key={catItem.id} id={catItem.id} disabled={!isDragActive} stickyStyle={wrapperStickyStyle}>
+                                <SortableSidebarItem key={catItem.id} id={catItem.id} disabled={!isDragActive} stickyStyle={wrapperStickyStyle} dropIndicator={dropIndicator}>
                                   {itemContent}
                                 </SortableSidebarItem>
                               );
@@ -1955,7 +1997,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                             });
 
                             return (
-                              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleCategoryDragEnd(group.sourceId, list, e)}>
+                              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragCancel={handleDragCancel} onDragEnd={(e) => handleCategoryDragEnd(group.sourceId, list, e)}>
                                 <SortableContext items={list.map(c => c.id)} strategy={verticalListSortingStrategy}>
                                   {sortedSourceFolders.map((folder: CategoryFolder) => {
                                     const folderCats = folderMap.get(folder.folder_id) || [];
@@ -2066,6 +2108,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                   className="category-source-header playlist-source-header"
                   onClick={() => handleTogglePlaylist(playlist.playlist_id)}
                   onContextMenu={(e) => handlePlaylistContextMenu(e, playlist.playlist_id, playlist.name)}
+                  dropIndicator={sourceDropIndicator}
                 >
                   <div className="source-header-left">
                     <ChevronIcon expanded={isExpanded} />
@@ -2118,6 +2161,11 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                           const count = nativeCount + manualCount;
                           const name = link.custom_name || (categoryNamesMap.get(link.category_id) || link.category_id);
                           const isPinned = pinnedCategories.includes(`${playlist.playlist_id}:link:${link.id}`);
+                          const activeIdx = activeDragId ? plCatList.findIndex(c => c.id === activeDragId) : -1;
+                          const overIdx = overDragId ? plCatList.findIndex(c => c.id === overDragId) : -1;
+                          const dropIndicator = overDragId === `link:${link.id}` && activeDragId !== overDragId
+                            ? (activeIdx < overIdx ? 'below' : 'above')
+                            : null;
                           // Sticky must live on the wrapper div, not the inner component.
                           const wrapperStickyStyle: React.CSSProperties | undefined = isPinned
                             ? { position: 'sticky', top: takePinTop(40, 38), zIndex: isFolderChild ? 90 : 99 }
@@ -2125,7 +2173,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                           // paddingLeft only affects the inner item's visual indent, not stickiness.
                           const innerStyle: React.CSSProperties | undefined = isFolderChild ? { paddingLeft: '32px' } : undefined;
                           return (
-                            <SortableSidebarItem key={`link:${link.id}`} id={`link:${link.id}`} disabled={!isDragActive} stickyStyle={wrapperStickyStyle}>
+                            <SortableSidebarItem key={`link:${link.id}`} id={`link:${link.id}`} disabled={!isDragActive} stickyStyle={wrapperStickyStyle} dropIndicator={dropIndicator}>
                               <PlaylistCategoryLinkItem
                                 key={link.id}
                                 link={link}
@@ -2169,7 +2217,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                         const plCatList = playlistLinks.map(l => ({ id: `link:${l.id}`, type: 'link' as const, customLink: l }));
 
                         return (
-                          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleCategoryDragEnd(playlist.playlist_id, plCatList, e)}>
+                          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragCancel={handleDragCancel} onDragEnd={(e) => handleCategoryDragEnd(playlist.playlist_id, plCatList, e)}>
                             <SortableContext items={plCatList.map(c => c.id)} strategy={verticalListSortingStrategy}>
                               {sortedSourceFolders.map((folder: CategoryFolder) => {
                                 const fLinks = folderMap.get(folder.folder_id) || [];

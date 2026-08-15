@@ -331,6 +331,7 @@
 }
 
 .source-item {
+    position: relative;
     transition: transform 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
     display: flex;
     align-items: flex-start;
@@ -349,29 +350,25 @@
     z-index: 10;
 }
 
-.source-item.drag-over {
-    border: 2px solid var(--accent-primary, #00d4ff) !important;
-    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3) !important;
+.source-item.drop-above::before,
+.source-item.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
 }
 
-.drag-handle {
-    cursor: grab;
-    user-select: none;
-    color: var(--text-muted, rgba(255, 255, 255, 0.4));
-    font-size: 1.2rem;
-    padding-right: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.15s ease;
+.source-item.drop-above::before {
+    top: -6px;
 }
 
-.drag-handle:hover {
-    color: var(--text-secondary, rgba(255, 255, 255, 0.8));
-}
-
-.drag-handle:active {
-    cursor: grabbing;
+.source-item.drop-below::after {
+    bottom: -6px;
 }
 
 /* ─── Source Card — Stats Row ──────────────────────────────────────────────── */
@@ -585,6 +582,35 @@
 .epg-card:active,
 .epg-card.dragging {
     cursor: grabbing;
+}
+
+.epg-card.drop-above,
+.epg-card.drop-below {
+    /* The card clips overflow for the syncing shimmer; allow the drop line
+       to poke out into the 12px list gap instead. */
+    overflow: visible;
+}
+
+.epg-card.drop-above::before,
+.epg-card.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+    z-index: 2;
+}
+
+.epg-card.drop-above::before {
+    top: -7px;
+}
+
+.epg-card.drop-below::after {
+    bottom: -7px;
 }
 
 .epg-card:hover {

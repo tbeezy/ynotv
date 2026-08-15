@@ -5,7 +5,7 @@ import { decompressEpgDescription } from '../utils/compression';
 import { getRecentChannels, onRecentChannelsUpdate } from '../utils/recentChannels';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
-import { applyFilterWords } from './useFilterWords';
+import { applyFilterWordsDetailed } from './useFilterWords';
 import { useCategorySortOrder } from '../stores/uiStore';
 import { useAppSettings } from './useAppSettings';
 import { getCachedSettings } from '../services/settings-cache';
@@ -330,6 +330,76 @@ export function useCategoriesForSource(sourceId: string | null) {
   return categories ?? [];
 }
 
+/**
+ * Apply filter words to a channel's display name (alias if set, otherwise
+ * name) and its original name, recording which words actually matched so the
+ * UI can explain why a name looks trimmed on hover.
+ */
+function applyFilterWordsToChannel(ch: StoredChannel, filterWords: string[]): StoredChannel {
+  const matched: string[] = [];
+  const collect = (words: string[]) => {
+    for (const w of words) {
+      if (!matched.includes(w)) matched.push(w);
+    }
+  };
+
+  const next: StoredChannel = { ...ch };
+  if (ch.alias) {
+    const res = applyFilterWordsDetailed(ch.alias, filterWords);
+    next.alias = res.text;
+    collect(res.matched);
+  }
+  const nameRes = applyFilterWordsDetailed(ch.name, filterWords);
+  next.name = nameRes.text;
+  collect(nameRes.matched);
+
+  if (matched.length > 0) {
+    next.applied_filter_words = matched;
+  }
+  return next;
+}
+
+/**
+ * Apply each channel's home-category filter words to its name, mirroring what
+ * the standard category view does. The virtual Favorites views span many
+ * categories, so they have no single category filter_words to apply — instead
+ * we look up each channel's own categories and apply their words.
+ */
+async function applyHomeCategoryFilterWords(results: StoredChannel[]): Promise<StoredChannel[]> {
+  if (results.length === 0) return results;
+
+  const categoryIds = new Set<string>();
+  for (const ch of results) {
+    for (const id of parseCategoryIds(ch.category_ids)) {
+      categoryIds.add(id);
+    }
+  }
+  if (categoryIds.size === 0) return results;
+
+  const cats = await db.categories.where('category_id').anyOf(Array.from(categoryIds)).toArray();
+  const wordsByCategory = new Map<string, string[]>();
+  for (const cat of cats) {
+    if (cat.filter_words && cat.filter_words.length > 0) {
+      wordsByCategory.set(cat.category_id, cat.filter_words);
+    }
+  }
+  if (wordsByCategory.size === 0) return results;
+
+  return results.map(ch => {
+    const words = new Set<string>();
+    for (const id of parseCategoryIds(ch.category_ids)) {
+      const fw = wordsByCategory.get(id);
+      if (fw) {
+        for (const w of fw) {
+          if (w && w.trim()) words.add(w.trim());
+        }
+      }
+    }
+    if (words.size === 0) return ch;
+    return applyFilterWordsToChannel(ch, Array.from(words));
+  });
+}
+
 // Hook to get channels for a category (or all if categoryId is null)
 // sortOrder: 'alphabetical' (default), 'number' (by channel_num from provider), or 'provider' (M3U file order)
 // Filters out channels from disabled sources
@@ -380,6 +450,9 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
           }
           orderingIsFixed = true;
         }
+        // Apply each channel's home-category filter words so Recently Viewed
+        // names match the category and Favorites views.
+        results = await applyHomeCategoryFilterWords(results);
       } else if (categoryId === '__favorites__') {
         // Use SQL WHERE for better performance
         if (enabledSourceIds) {
@@ -396,6 +469,9 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         } else {
           results = await db.channels.whereRaw('(is_favorite = 1 OR is_favorite = true)').toArray();
         }
+        // Apply filter words from each channel's home category before sorting,
+        // so the sort uses the same cleaned names as the category view.
+        results = await applyHomeCategoryFilterWords(results);
         // Sort by fav_order (nulls last, then by name for items without order)
         results.sort((a, b) => {
           if (a.fav_order != null && b.fav_order != null) return a.fav_order - b.fav_order;
@@ -411,6 +487,9 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
           `(is_favorite = 1 OR is_favorite = true) AND source_id = ?`,
           [sourceId]
         ).toArray();
+        // Apply filter words from each channel's home category before ordering,
+        // matching the global Favorites and standard category views.
+        results = await applyHomeCategoryFilterWords(results);
         // Per-source custom order (stored independently per provider).
         // Falls back to the global fav_order for sources without a saved order.
         const savedOrder = await getFavoriteSourceOrder(sourceId);
@@ -643,12 +722,10 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         }
       }
 
-      // Apply filter words to channel names
+      // Apply filter words to channel names (and aliases) so the guide matches
+      // the ChannelManager preview, and record which words matched for hover.
       if (filterWords.length > 0) {
-        results = results.map(ch => ({
-          ...ch,
-          name: applyFilterWords(ch.name, filterWords)
-        }));
+        results = results.map(ch => applyFilterWordsToChannel(ch, filterWords));
       }
 
       // Apply logo overrides from epg_channel_overrides so the guide shows

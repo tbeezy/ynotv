@@ -170,6 +170,7 @@
 }
 
 .pll-item {
+    position: relative;
     border: 1px solid rgba(255, 255, 255, 0.05);
     background: rgba(255, 255, 255, 0.02);
     border-radius: 8px;
@@ -186,9 +187,25 @@
     background: rgba(255, 255, 255, 0.04);
 }
 
-.pll-item.drag-over {
-    border-top: 2px solid var(--accent-primary, #00d4ff);
-    background: rgba(0, 212, 255, 0.05);
+.pll-item.drop-above::before,
+.pll-item.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+.pll-item.drop-above::before {
+    top: -4px;
+}
+
+.pll-item.drop-below::after {
+    bottom: -4px;
 }
 
 .pll-item.dragging {
@@ -201,18 +218,6 @@
     align-items: center;
     padding: 10px 16px;
     gap: 12px;
-}
-
-.pll-drag-handle {
-    color: var(--text-secondary, #aaa);
-    cursor: grab;
-    font-size: 1.1rem;
-    user-select: none;
-    padding: 0 4px;
-}
-
-.pll-drag-handle:active {
-    cursor: grabbing;
 }
 
 .pll-item-info {

@@ -33,6 +33,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -151,6 +153,7 @@ interface CategoryBlockCardProps {
   onPointerDown: (e: React.PointerEvent, index: number) => void;
   onRemove?: () => void;
   showHidden: boolean;
+  dropIndicator?: 'above' | 'below' | null;
 }
 
 function CategoryBlockCard({
@@ -166,6 +169,7 @@ function CategoryBlockCard({
   onPointerDown,
   onRemove,
   showHidden,
+  dropIndicator = null,
 }: CategoryBlockCardProps) {
   const { t } = useTranslation('playlist');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -409,7 +413,7 @@ function CategoryBlockCard({
     <div 
       ref={setNodeRef}
       style={sortableStyle}
-      className={`ple-block-card-wrapper${isSortableDragging || isDragging ? ' dragging' : ''}${isDragOver ? ' drag-over' : ''}${isMarked ? ' marked' : ''}${block.type === 'native' && block.category.enabled === false ? ' ple-hidden-item' : ''}`}
+      className={`ple-block-card-wrapper${isSortableDragging || isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}${isMarked ? ' marked' : ''}${block.type === 'native' && block.category.enabled === false ? ' ple-hidden-item' : ''}`}
       data-index={index}
     >
       <div
@@ -607,9 +611,10 @@ function SortableIndivChannelCard(props: {
   playlistId: string;
   showHidden: boolean;
   toggleChannelEnabledGlobal: (streamId: string, currentEnabled: boolean) => void;
+  dropIndicator?: 'above' | 'below' | null;
 }) {
   const { t } = useTranslation('playlist');
-  const { ch, index, sources, playlistId, showHidden, toggleChannelEnabledGlobal } = props;
+  const { ch, index, sources, playlistId, showHidden, toggleChannelEnabledGlobal, dropIndicator = null } = props;
   const {
     attributes,
     listeners,
@@ -637,7 +642,7 @@ function SortableIndivChannelCard(props: {
       style={style}
       {...attributes}
       {...listeners}
-      className={`ple-indiv-card${isDragging ? ' dragging' : ''}${ch.enabled === false ? ' ple-hidden-item' : ''}`}
+      className={`ple-indiv-card${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}${ch.enabled === false ? ' ple-hidden-item' : ''}`}
       data-index={index}
     >
       <div className="ple-indiv-ch-info">
@@ -1235,8 +1240,48 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
     })
   );
 
+  // Drag-over tracking for the above/below drop indicator (shared by the
+  // category blocks context and the individual-channels context).
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overDragId, setOverDragId] = useState<string | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      setOverDragId(String(event.over.id));
+    } else {
+      setOverDragId(null);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+    setOverDragId(null);
+  };
+
+  const getBlockDropIndicator = (blockId: string): 'above' | 'below' | null => {
+    if (!activeDragId || !overDragId || overDragId !== blockId || activeDragId === blockId) return null;
+    const activeIdx = (combinedBlocks || []).findIndex((b) => b.id === activeDragId);
+    const overIdx = (combinedBlocks || []).findIndex((b) => b.id === overDragId);
+    if (activeIdx === -1 || overIdx === -1) return null;
+    return activeIdx < overIdx ? 'below' : 'above';
+  };
+
+  const getIndivDropIndicator = (streamId: string): 'above' | 'below' | null => {
+    if (!activeDragId || !overDragId || overDragId !== streamId || activeDragId === streamId) return null;
+    const activeIdx = (individualChannels || []).findIndex((c) => c.stream_id === activeDragId);
+    const overIdx = (individualChannels || []).findIndex((c) => c.stream_id === overDragId);
+    if (activeIdx === -1 || overIdx === -1) return null;
+    return activeIdx < overIdx ? 'below' : 'above';
+  };
+
   const handleCategoryDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
     if (!over || active.id === over.id || !combinedBlocks) return;
 
     const oldIndex = combinedBlocks.findIndex((b) => b.id === active.id);
@@ -1262,6 +1307,8 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
 
   const handleIndivDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveDragId(null);
+    setOverDragId(null);
     if (!over || active.id === over.id || !individualChannels) return;
 
     const oldIndex = individualChannels.findIndex((ch) => ch.stream_id === active.id);
@@ -1652,6 +1699,9 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
                     <DndContext
                       sensors={pleSensors}
                       collisionDetection={closestCenter}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragCancel={handleDragCancel}
                       onDragEnd={handleCategoryDragEnd}
                     >
                       <SortableContext
@@ -1740,6 +1790,7 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
                                               index={origIndex}
                                               isDragging={false}
                                               isDragOver={false}
+                                              dropIndicator={getBlockDropIndicator(block.id)}
                                               isMarked={isMarked}
                                               onMark={() => setMarkedCategoryId(prev => prev === blockId ? null : blockId)}
                                               onPointerDown={() => {}}
@@ -1779,6 +1830,7 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
                                         index={origIndex}
                                         isDragging={false}
                                         isDragOver={false}
+                                        dropIndicator={getBlockDropIndicator(block.id)}
                                         isMarked={isMarked}
                                         onMark={() => setMarkedCategoryId(prev => prev === blockId ? null : blockId)}
                                         onPointerDown={() => {}}
@@ -1808,6 +1860,7 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
                                     index={index}
                                     isDragging={false}
                                     isDragOver={false}
+                                    dropIndicator={getBlockDropIndicator(block.id)}
                                     isMarked={isMarked}
                                     onMark={() => setMarkedCategoryId(prev => prev === blockId ? null : blockId)}
                                     onPointerDown={() => {}}
@@ -1827,6 +1880,9 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
                     <DndContext
                       sensors={pleSensors}
                       collisionDetection={closestCenter}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragCancel={handleDragCancel}
                       onDragEnd={handleIndivDragEnd}
                     >
                       <SortableContext
@@ -1848,6 +1904,7 @@ export function PlaylistEditorModal({ playlistId, playlistName, onClose }: Playl
                                 playlistId={playlistId}
                                 showHidden={showHidden}
                                 toggleChannelEnabledGlobal={toggleChannelEnabledGlobal}
+                                dropIndicator={getIndivDropIndicator(ch.stream_id)}
                               />
                             ))}
                           </div>

@@ -77,6 +77,13 @@ export const ChannelRow = memo(function ChannelRow({
   // Normalize the is_favorite value (SQLite stores BOOLEAN as 0/1)
   const isFavorite = normalizeBoolean(channel.is_favorite);
 
+  // Display name is already filtered at the data level (useChannels hook).
+  const channelDisplayName = channel.alias || channel.name;
+  // Surface which filter words were applied so users can see why a name looks trimmed.
+  const channelTitle = channel.applied_filter_words && channel.applied_filter_words.length > 0
+    ? `${channelDisplayName}\n${i18n.t('settings:channelManager.filterWords')}: ${channel.applied_filter_words.join(', ')}`
+    : channelDisplayName;
+
   // Channel name is already filtered at the data level (useChannels hook)
   // No need to apply filter words here anymore
 
@@ -192,15 +199,15 @@ export const ChannelRow = memo(function ChannelRow({
         />
         <ChannelLogo
           src={channel.stream_icon}
-          name={channel.alias || channel.name}
+          name={channelDisplayName}
           className="guide-channel-logo"
           background={channel.logo_background as 'auto' | 'light' | 'dark' | undefined}
           padding={channel.logo_padding as 'default' | 'none' | undefined}
           shape={channel.logo_display as 'square' | 'rectangle' | undefined}
         />
         <div className="guide-channel-name-container">
-          <span className="guide-channel-name" title={channel.alias || channel.name}>
-            {channel.alias || channel.name}
+          <span className="guide-channel-name" title={channelTitle}>
+            {channelDisplayName}
             {(Boolean(channel.tv_archive) || channel.tv_archive === 1) && (
               <span style={{ color: '#e5a00d', marginLeft: '4px', fontSize: '1.1em', verticalAlign: 'middle' }}>↺</span>
             )}

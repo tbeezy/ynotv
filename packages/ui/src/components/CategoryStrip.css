@@ -541,6 +541,28 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
+.sortable-sidebar-item.drop-above::before,
+.sortable-sidebar-item.drop-below::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--accent-primary, #00d4ff);
+  border-radius: 1px;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+  z-index: 100;
+}
+
+.sortable-sidebar-item.drop-above::before {
+  top: -1px;
+}
+
+.sortable-sidebar-item.drop-below::after {
+  bottom: -1px;
+}
+
 /* Base styles for list bars (v1 fallbacks; v2 pill / v3 clean look via --cat-list-* tokens) */
 .category-list-bar {
   width: var(--cat-list-width, 100%);
