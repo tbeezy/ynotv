@@ -7,7 +7,7 @@ import { WidgetsTab } from './WidgetsTab';
 import { LogosTab } from './LogosTab';
 import './PlaybackTab.css'; // Reuse existing tab styles
 
-export type LiveTVSubTabId = 'epg' | 'logos' | 'font-size' | 'sort-order' | 'search' | 'live-view' | 'widgets';
+export type LiveTVSubTabId = 'epg' | 'logos' | 'font-size' | 'sort-order' | 'search' | 'live-view' | 'widgets' | 'favorites';
 
 interface LiveTVTabProps {
   initialSubTab?: LiveTVSubTabId;
@@ -134,6 +134,8 @@ interface LiveTVTabProps {
   onTransparentGuideOverlayOpacityChange: (opacity: number) => void;
   transparentGuideSidebarOpacity: number;
   onTransparentGuideSidebarOpacityChange: (opacity: number) => void;
+  favoritesMode: 'global' | 'perSource' | 'both';
+  onFavoritesModeChange: (mode: 'global' | 'perSource' | 'both') => void;
   modernUiEnabled?: boolean | string;
 }
 
@@ -255,6 +257,8 @@ export function LiveTVTab({
   onTransparentGuideOverlayOpacityChange,
   transparentGuideSidebarOpacity,
   onTransparentGuideSidebarOpacityChange,
+  favoritesMode,
+  onFavoritesModeChange,
   modernUiEnabled,
 }: LiveTVTabProps) {
   useTranslation();
@@ -310,6 +314,12 @@ export function LiveTVTab({
           onClick={() => setActiveSubTab('widgets')}
         >
           {i18n.t('settings:livetv.tabs.widgets')}
+        </button>
+        <button
+          className={`settings-tab ${activeSubTab === 'favorites' ? 'active' : ''}`}
+          onClick={() => setActiveSubTab('favorites')}
+        >
+          ⭐ {i18n.t('settings:livetv.favoritesTitle')}
         </button>
       </div>
 
@@ -1028,6 +1038,34 @@ export function LiveTVTab({
             sportsBgOpacity={sportsBgOpacity}
             onSportsBgOpacityChange={onSportsBgOpacityChange}
           />
+        )}
+
+        {activeSubTab === 'favorites' && (
+          <div className="settings-section">
+            <div className="section-header">
+              <h3>{i18n.t('settings:livetv.favoritesTitle')}</h3>
+            </div>
+            <p className="section-description">
+              {i18n.t('settings:livetv.favoritesSub')}
+            </p>
+
+            <div className="timeshift-settings" style={{ marginTop: '12px' }}>
+              <div className="timeshift-toggle-row">
+                <div className="timeshift-toggle-info">
+                  <span className="timeshift-toggle-label">{i18n.t('settings:livetv.favoritesMode')}</span>
+                  <span className="timeshift-toggle-sub">{i18n.t('settings:livetv.favoritesModeSub')}</span>
+                </div>
+                <select
+                  value={favoritesMode}
+                  onChange={(e) => onFavoritesModeChange(e.target.value as 'global' | 'perSource' | 'both')}
+                >
+                  <option value="global">{i18n.t('settings:livetv.favoritesModeGlobal')}</option>
+                  <option value="perSource">{i18n.t('settings:livetv.favoritesModePerSource')}</option>
+                  <option value="both">{i18n.t('settings:livetv.favoritesModeBoth')}</option>
+                </select>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

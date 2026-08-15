@@ -563,6 +563,7 @@ export function ChannelPanel({
   // State for channel manager modal
   const [managingCategory, setManagingCategory] = useState<{ id: string; name: string; sourceId: string } | null>(null);
   const [managingFavorites, setManagingFavorites] = useState(false);
+  const [managingFavoritesSourceId, setManagingFavoritesSourceId] = useState<string | null>(null);
 
   const [showFavPlaylistName, setShowFavPlaylistName] = useState(() => {
     const saved = localStorage.getItem('showFavPlaylistName');
@@ -2486,29 +2487,35 @@ export function ChannelPanel({
             ) : (
               <>
                 <span className="guide-current-time">{formatEpgTime(currentTime)}</span>
+                {(categoryId === '__favorites__' || categoryId?.startsWith('__favsrc_')) && (
+                  <button
+                    className="guide-manage-channels-btn"
+                    onClick={() => {
+                      const srcId = categoryId?.startsWith('__favsrc_')
+                        ? categoryId.replace('__favsrc_', '')
+                        : null;
+                      setManagingFavoritesSourceId(srcId);
+                      setManagingFavorites(true);
+                    }}
+                    title={t('manageFavoritesOrder')}
+                  >
+                    <span style={{ flexShrink: 0 }}>⭐</span>
+                    <span className="btn-label">{t('manageFavorites')}</span>
+                  </button>
+                )}
                 {categoryId === '__favorites__' && (
-                  <>
-                    <button
-                      className="guide-manage-channels-btn"
-                      onClick={() => setManagingFavorites(true)}
-                      title={t('manageFavoritesOrder')}
-                    >
-                      <span style={{ flexShrink: 0 }}>⭐</span>
-                      <span className="btn-label">{t('manageFavorites')}</span>
-                    </button>
-                    <button
-                      className={`guide-manage-channels-btn ${showFavPlaylistName ? 'active-toggle' : ''}`}
-                      onClick={() => {
-                        const newVal = !showFavPlaylistName;
-                        setShowFavPlaylistName(newVal);
-                        localStorage.setItem('showFavPlaylistName', String(newVal));
-                      }}
-                      title={t('showPlaylistName')}
-                    >
-                      <span style={{ flexShrink: 0 }}>{showFavPlaylistName ? '📋' : '📄'}</span>
-                      <span className="btn-label">{t('showSource')}</span>
-                    </button>
-                  </>
+                  <button
+                    className={`guide-manage-channels-btn ${showFavPlaylistName ? 'active-toggle' : ''}`}
+                    onClick={() => {
+                      const newVal = !showFavPlaylistName;
+                      setShowFavPlaylistName(newVal);
+                      localStorage.setItem('showFavPlaylistName', String(newVal));
+                    }}
+                    title={t('showPlaylistName')}
+                  >
+                    <span style={{ flexShrink: 0 }}>{showFavPlaylistName ? '📋' : '📄'}</span>
+                    <span className="btn-label">{t('showSource')}</span>
+                  </button>
                 )}
                 {categoryId === '__recent__' && (
                   <button
@@ -3148,7 +3155,11 @@ export function ChannelPanel({
 
       {managingFavorites && (
         <FavoriteManager
-          onClose={() => setManagingFavorites(false)}
+          sourceId={managingFavoritesSourceId}
+          onClose={() => {
+            setManagingFavorites(false);
+            setManagingFavoritesSourceId(null);
+          }}
           onChange={() => setFavoritesVersion(v => v + 1)}
         />
       )}

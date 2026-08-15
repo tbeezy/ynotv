@@ -615,6 +615,7 @@ export function Settings({
   const [showFavorites, setShowFavorites] = useState(true);
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [showRecentlyViewed, setShowRecentlyViewed] = useState(true);
+  const [favoritesMode, setFavoritesMode] = useState<'global' | 'perSource' | 'both'>('global');
 
   // LiveTV settings state
   const [epgDarkenCurrent, setEpgDarkenCurrent] = useState(false);
@@ -942,6 +943,7 @@ export function Settings({
         showFavorites?: boolean;
         showWatchlist?: boolean;
         showRecentlyViewed?: boolean;
+        favoritesMode?: 'global' | 'perSource' | 'both';
         showNuvioHoverDetails?: boolean;
         nuvioAutoPlayMode?: StreamAutoPlayMode;
         nuvioAutoPlayTimeout?: number;
@@ -961,6 +963,8 @@ export function Settings({
       setShowFavorites(settings.showFavorites ?? true);
       setShowWatchlist(settings.showWatchlist ?? true);
       setShowRecentlyViewed(settings.showRecentlyViewed ?? true);
+      const favMode = settings.favoritesMode;
+      setFavoritesMode(favMode === 'perSource' || favMode === 'both' || favMode === 'global' ? favMode : 'global');
 
       if (settings.castEnabled !== undefined) {
         setCastEnabled(settings.castEnabled);
@@ -1772,6 +1776,16 @@ export function Settings({
     }
     window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
       detail: { showFavorites: enabled }
+    }));
+  };
+
+  const handleFavoritesModeChange = async (mode: 'global' | 'perSource' | 'both') => {
+    setFavoritesMode(mode);
+    if (window.storage) {
+      await window.storage.updateSettings({ favoritesMode: mode });
+    }
+    window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
+      detail: { favoritesMode: mode }
     }));
   };
 
@@ -2911,6 +2925,8 @@ export function Settings({
             onSportsScaleChange={handleSportsScaleChange}
             sportsBgOpacity={sportsBgOpacity}
             onSportsBgOpacityChange={handleSportsBgOpacityChange}
+            favoritesMode={favoritesMode}
+            onFavoritesModeChange={handleFavoritesModeChange}
             modernUiEnabled={uiSettings.modernUiEnabled}
           />
         );

@@ -697,7 +697,7 @@
         "liveView": "Live-Ansicht und Player",
         "widgets": "Widgets und Skalierungen"
       },
-      "epgVisibleHours": "Im EPG sichtbare Stunden",
+      "favoritesTitle": "Favoriten", "favoritesSub": "Wählen Sie, wo favorisierte Sender in der Live-TV-Seitenleiste erscheinen.", "favoritesMode": "Favoriten-Platzierung", "favoritesModeSub": "Global zeigt eine einzelne Favoritenliste oben in der Seitenleiste. Pro Quelle fügt einen Favoriten-Eintrag in jedem Anbieter-/Quellenabschnitt hinzu.", "favoritesModeGlobal": "Global", "favoritesModePerSource": "Pro Quelle", "favoritesModeBoth": "Global + pro Quelle", "epgVisibleHours": "Im EPG sichtbare Stunden",
       "epgVisibleHoursSub": "Passen Sie die Anzahl der im Raster sichtbaren Stunden an (Automatisch verwendet dynamisch 2 bis 5 Stunden je nach Breite).",
       "autoDefault": "Automatisch (Standard)",
       "hours": "{{count}} Stunden",

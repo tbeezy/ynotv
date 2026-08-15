@@ -1074,6 +1074,12 @@
   min-width: 0;
 }
 
+/* Per-source Favorites entry: give the star icon the same gap the top-level
+   Favorites button gets from .category-item-left's gap:10px. */
+.category-item.favorites-source-item .category-icon.favorites-icon {
+  margin-right: 10px;
+}
+
 .category-pin-icon {
   color: var(--accent-primary, #00d4ff);
   opacity: 0.85;

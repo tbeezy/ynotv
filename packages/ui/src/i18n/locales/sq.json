@@ -697,7 +697,7 @@
         "liveView": "Pamja live dhe luajtësi",
         "widgets": "Veglat dhe shkallët"
       },
-      "epgVisibleHours": "Orët e dukshme në EPG",
+      "favoritesTitle": "Të preferuarat", "favoritesSub": "Zgjidhni ku shfaqen kanalet e preferuara në shiritin anësor të TV-së live.", "favoritesMode": "Vendosja e të preferuarave", "favoritesModeSub": "Global shfaq një listë të vetme të preferuarash në krye të shiritit anësor. Sipas burimit shton një hyrje Të preferuarat brenda çdo seksioni ofruesi/burimi.", "favoritesModeGlobal": "Global", "favoritesModePerSource": "Sipas burimit", "favoritesModeBoth": "Global + sipas burimit", "epgVisibleHours": "Orët e dukshme në EPG",
       "epgVisibleHoursSub": "Rregullo numrin e orëve të dukshme në rrjet (Automatik përdor 2–5 orë dinamikisht bazuar në gjerësi).",
       "autoDefault": "Automatik (parazgjedhur)",
       "hours": "{{count}} orë.",

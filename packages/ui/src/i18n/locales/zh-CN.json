@@ -697,7 +697,7 @@
         "liveView": "直播视图与播放器",
         "widgets": "小部件与缩放"
       },
-      "epgVisibleHours": "EPG 可见小时数",
+      "favoritesTitle": "收藏", "favoritesSub": "选择收藏频道在直播电视侧边栏中的显示位置。", "favoritesMode": "收藏位置", "favoritesModeSub": "全局模式在侧边栏顶部显示单个收藏列表。按来源模式会在每个提供商/来源分区内嵌套一个收藏条目。", "favoritesModeGlobal": "全局", "favoritesModePerSource": "按来源", "favoritesModeBoth": "全局 + 按来源", "epgVisibleHours": "EPG 可见小时数",
       "epgVisibleHoursSub": "自定义网格中可见的小时数（自动模式根据宽度动态使用 2-5 小时）。",
       "autoDefault": "自动（默认）",
       "hours": "{{count}} 小时",

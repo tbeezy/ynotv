@@ -697,7 +697,7 @@
         "liveView": "Vue Direct & Lecteur",
         "widgets": "Widgets & Échelles"
       },
-      "epgVisibleHours": "Heures visibles EPG",
+      "favoritesTitle": "Favoris", "favoritesSub": "Choisissez où les chaînes favorites apparaissent dans la barre latérale de la TV en direct.", "favoritesMode": "Emplacement des favoris", "favoritesModeSub": "Global affiche une seule liste de favoris en haut de la barre latérale. Par source ajoute une entrée Favoris dans chaque section de fournisseur/source.", "favoritesModeGlobal": "Global", "favoritesModePerSource": "Par source", "favoritesModeBoth": "Global + par source", "epgVisibleHours": "Heures visibles EPG",
       "epgVisibleHoursSub": "Personnalisez le nombre d'heures visibles dans la grille (Automatique utilise 2 à 5 heures selon la largeur).",
       "autoDefault": "Automatique (Par défaut)",
       "hours": "{{count}} Heures",

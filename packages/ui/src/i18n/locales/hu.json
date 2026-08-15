@@ -697,7 +697,7 @@
         "liveView": "Élő nézet és lejátszó",
         "widgets": "Widgetek és méretek"
       },
-      "epgVisibleHours": "Látható EPG-órák",
+      "favoritesTitle": "Kedvencek", "favoritesSub": "Válassza ki, hol jelenjenek meg a kedvenc csatornák az élő TV oldalsávjában.", "favoritesMode": "Kedvencek elhelyezése", "favoritesModeSub": "Globális egyetlen kedvencek listát jelenít meg az oldalsáv tetején. Forrásonként egy Kedvencek bejegyzést ágyaz be minden szolgáltató/forrás szakaszba.", "favoritesModeGlobal": "Globális", "favoritesModePerSource": "Forrásonként", "favoritesModeBoth": "Globális + forrásonként", "epgVisibleHours": "Látható EPG-órák",
       "epgVisibleHoursSub": "A rácsban látható órák számának testreszabása (az Automatikus 2–5 órát használ dinamikusan a szélesség alapján).",
       "autoDefault": "Automatikus (alapértelmezett)",
       "hours": "{{count}} óra",

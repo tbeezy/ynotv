@@ -697,7 +697,7 @@
         "liveView": "लाइव व्यू",
         "widgets": "विजेट्स"
       },
-      "epgVisibleHours": "EPG दृश्य घंटे",
+      "favoritesTitle": "पसंदीदा", "favoritesSub": "चुनें कि पसंदीदा चैनल लाइव टीवी साइडबार में कहाँ दिखें।", "favoritesMode": "पसंदीदा की स्थिति", "favoritesModeSub": "ग्लोबल साइडबार के शीर्ष पर एक ही पसंदीदा सूची दिखाता है। प्रति स्रोत हर प्रदाता/स्रोत अनुभाग के अंदर एक पसंदीदा प्रविष्टि जोड़ता है।", "favoritesModeGlobal": "ग्लोबल", "favoritesModePerSource": "प्रति स्रोत", "favoritesModeBoth": "ग्लोबल + प्रति स्रोत", "epgVisibleHours": "EPG दृश्य घंटे",
       "epgVisibleHoursSub": "ग्रिड में दिखाई देने वाले घंटों की संख्या कस्टमाइज़ करें (स्वचालित चौड़ाई के आधार पर गतिशील रूप से 2-5 घंटे उपयोग करता है)।",
       "autoDefault": "स्वतः (डिफ़ॉल्ट)",
       "hours": "{{count}} घंटे",

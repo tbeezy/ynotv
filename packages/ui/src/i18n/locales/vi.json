@@ -1927,7 +1927,7 @@
         "liveView": "Chế Độ Xem & Trình Phát",
         "widgets": "Tiện Ích & Tỷ Lệ"
       },
-      "epgVisibleHours": "Số Giờ Hiển Thị EPG",
+      "favoritesTitle": "Yêu Thích", "favoritesSub": "Chọn nơi các kênh yêu thích xuất hiện trong thanh bên TV trực tiếp.", "favoritesMode": "Vị trí mục yêu thích", "favoritesModeSub": "Toàn cục hiển thị một danh sách yêu thích duy nhất ở đầu thanh bên. Theo nguồn thêm mục Yêu thích bên trong mỗi phần nhà cung cấp/nguồn.", "favoritesModeGlobal": "Toàn cục", "favoritesModePerSource": "Theo nguồn", "favoritesModeBoth": "Toàn cục + theo nguồn", "epgVisibleHours": "Số Giờ Hiển Thị EPG",
       "epgVisibleHoursSub": "Tùy chỉnh số giờ hiển thị trong lưới (Tự Động dùng 2-5 giờ động theo chiều rộng).",
       "autoDefault": "Tự Động (Mặc Định)",
       "hours": "{{count}} Giờ",

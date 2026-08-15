@@ -73,6 +73,11 @@
     border: 1px solid transparent;
     transition: background 0.12s;
     user-select: none;
+    cursor: grab;
+}
+
+.fav-manager-item:active {
+    cursor: grabbing;
 }
 
 .fav-manager-item:hover {
@@ -82,23 +87,7 @@
 
 .fav-manager-item.dragging {
     opacity: 0.4;
-}
-
-.fav-manager-item.drag-over {
-    border-top: 2px solid var(--accent-primary, #00d4ff);
-}
-
-.drag-handle {
-    color: var(--text-muted, rgba(255, 255, 255, 0.25));
-    cursor: grab;
-    font-size: 1rem;
-    letter-spacing: -2px;
-    flex-shrink: 0;
-    padding: 0 3px;
-}
-
-.fav-manager-item:hover .drag-handle {
-    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    cursor: grabbing;
 }
 
 .fav-ch-logo {

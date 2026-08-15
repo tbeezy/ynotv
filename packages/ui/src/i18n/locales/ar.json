@@ -697,7 +697,7 @@
         "liveView": "العرض المباشر والمشغّل",
         "widgets": "الأدوات والمقاييس"
       },
-      "epgVisibleHours": "ساعات دليل البرامج المرئية",
+      "favoritesTitle": "المفضلة", "favoritesSub": "اختر مكان ظهور القنوات المفضلة في الشريط الجانبي للبث المباشر.", "favoritesMode": "موضع المفضلة", "favoritesModeSub": "يعرض «عام» قائمة مفضلة واحدة أعلى الشريط الجانبي، ويعرض «لكل مصدر» إدخال مفضلة داخل كل قسم مزود/مصدر.", "favoritesModeGlobal": "عام", "favoritesModePerSource": "لكل مصدر", "favoritesModeBoth": "عام + لكل مصدر", "epgVisibleHours": "ساعات دليل البرامج المرئية",
       "epgVisibleHoursSub": "خصص عدد الساعات المرئية في الشبكة (التلقائي يستخدم 2-5 ساعات ديناميكيًا حسب العرض).",
       "autoDefault": "تلقائي (الافتراضي)",
       "hours": "{{count}} ساعة",

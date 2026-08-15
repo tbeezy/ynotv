@@ -697,7 +697,7 @@
         "liveView": "Canlı Görünüm ve Oynatıcı",
         "widgets": "Widget’lar ve Ölçekler"
       },
-      "epgVisibleHours": "Rehber Görünür Saatleri",
+      "favoritesTitle": "Favoriler", "favoritesSub": "Favori kanalların Canlı TV kenar çubuğunda nerede görüneceğini seçin.", "favoritesMode": "Favori yerleşimi", "favoritesModeSub": "Genel, kenar çubuğunun üstünde tek bir Favoriler listesi gösterir. Kaynak Başına, her sağlayıcı/kaynak bölümünün içine bir Favoriler girişi ekler.", "favoritesModeGlobal": "Genel", "favoritesModePerSource": "Kaynak Başına", "favoritesModeBoth": "Genel + Kaynak Başına", "epgVisibleHours": "Rehber Görünür Saatleri",
       "epgVisibleHoursSub": "Izgarada görünen saat sayısını özelleştirin (Otomatik, genişliğe göre dinamik olarak 2-5 saat kullanır).",
       "autoDefault": "Otomatik (Varsayılan)",
       "hours": "{{count}} Saat",

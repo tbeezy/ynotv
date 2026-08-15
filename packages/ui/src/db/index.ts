@@ -2134,6 +2134,26 @@ export async function getFavoriteChannelCount(): Promise<number> {
   return await db.channels.countWhere('(is_favorite = 1 OR is_favorite = true)');
 }
 
+/** Get the per-source custom favorite order (list of stream_ids) for a source. */
+export async function getFavoriteSourceOrder(sourceId: string): Promise<string[]> {
+  try {
+    const pref = await db.prefs.get(`favorite_source_order:${sourceId}`);
+    if (!pref?.value) return [];
+    const parsed = JSON.parse(pref.value);
+    return Array.isArray(parsed) ? parsed.filter((v: unknown) => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Persist the per-source custom favorite order (list of stream_ids) for a source. */
+export async function setFavoriteSourceOrder(sourceId: string, streamIds: string[]): Promise<void> {
+  await db.prefs.put({ key: `favorite_source_order:${sourceId}`, value: JSON.stringify(streamIds) });
+  // Per-source favorites are read through the channels query, so notify the channels
+  // table so open guides re-run their `__favsrc_` query with the new order.
+  dbEvents.notify('channels', 'update');
+}
+
 // ============================================================================
 // DVR Functions
 // ============================================================================

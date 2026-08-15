@@ -697,7 +697,7 @@
         "liveView": "Live weergave & speler",
         "widgets": "Widgets & schalen"
       },
-      "epgVisibleHours": "Zichtbare EPG-uren",
+      "favoritesTitle": "Favorieten", "favoritesSub": "Kies waar favoriete kanalen in de zijbalk van live-tv verschijnen.", "favoritesMode": "Plaatsing van favorieten", "favoritesModeSub": "Globaal toont één favorietenlijst bovenaan de zijbalk. Per bron voegt een Favorieten-item toe in elke provider-/bronsectie.", "favoritesModeGlobal": "Globaal", "favoritesModePerSource": "Per bron", "favoritesModeBoth": "Globaal + per bron", "epgVisibleHours": "Zichtbare EPG-uren",
       "epgVisibleHoursSub": "Pas het aantal zichtbare uren in het raster aan (Automatisch gebruikt dynamisch 2-5 uur op basis van breedte).",
       "autoDefault": "Automatisch (standaard)",
       "hours": "{{count}} uur",

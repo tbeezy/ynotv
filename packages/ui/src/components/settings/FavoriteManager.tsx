@@ -1,44 +1,117 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { db, type StoredChannel, updateChannelsBatch } from '../../db';
+import { db, type StoredChannel, updateChannelsBatch, setFavoriteSourceOrder, getFavoriteSourceOrder } from '../../db';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import './FavoriteManager.css';
 
 interface FavoriteManagerProps {
     onClose: () => void;
     onChange?: () => void;
+    sourceId?: string | null;
 }
 
-export function FavoriteManager({ onClose, onChange }: FavoriteManagerProps) {
+interface SortableFavoriteItemProps {
+    channel: StoredChannel;
+    onRemove: (streamId: string) => void;
+}
+
+// Whole card is the drag surface — no handle. Interactive controls inside stop
+// pointer propagation so they never start a drag.
+function SortableFavoriteItem({ channel, onRemove }: SortableFavoriteItemProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: channel.stream_id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 99 : 1,
+        touchAction: 'none',
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`fav-manager-item${isDragging ? ' dragging' : ''}`}
+            {...attributes}
+            {...listeners}
+        >
+            {channel.stream_icon
+                ? <img src={channel.stream_icon} className="fav-ch-logo" alt="" />
+                : <span className="fav-ch-logo-placeholder">📺</span>
+            }
+            <span className="fav-ch-name">{channel.name}</span>
+            <button
+                className="fav-remove-btn"
+                onClick={() => onRemove(channel.stream_id)}
+                onPointerDown={(e) => e.stopPropagation()}
+                title={i18n.t('settings:favoriteManager.removeFromFavorites')}
+            >✕</button>
+        </div>
+    );
+}
+
+export function FavoriteManager({ onClose, onChange, sourceId = null }: FavoriteManagerProps) {
     useTranslation();
     const [favorites, setFavorites] = useState<StoredChannel[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
 
-    // Container-level pointer drag (same pattern as CategoryManager / CustomGroupManager)
-    const dragFromIdx = useRef<number | null>(null);
-    const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-    const listRef = useRef<HTMLDivElement>(null);
-
-    const getIndexFromClientY = (clientY: number): number => {
-        if (!listRef.current) return 0;
-        const children = Array.from(listRef.current.children) as HTMLElement[];
-        for (let i = 0; i < children.length; i++) {
-            const rect = children[i].getBoundingClientRect();
-            if (clientY < rect.top + rect.height / 2) return i;
-        }
-        return Math.max(0, children.length - 1);
-    };
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
 
     useEffect(() => {
         let isMounted = true;
         async function load() {
             try {
-                const all = await db.channels
-                    .whereRaw('(is_favorite = 1 OR is_favorite = true)', [])
-                    .toArray();
+                const all = sourceId
+                    ? await db.channels
+                        .whereRaw('(is_favorite = 1 OR is_favorite = true) AND source_id = ?', [sourceId])
+                        .toArray()
+                    : await db.channels
+                        .whereRaw('(is_favorite = 1 OR is_favorite = true)', [])
+                        .toArray();
+                // Per-source: reflect the saved per-source order (if any) instead of the global order.
+                if (sourceId) {
+                    const savedOrder = await getFavoriteSourceOrder(sourceId);
+                    if (savedOrder.length > 0) {
+                        const byId = new Map(all.map(ch => [ch.stream_id, ch]));
+                        const ordered: StoredChannel[] = [];
+                        for (const id of savedOrder) {
+                            const ch = byId.get(id);
+                            if (ch) { ordered.push(ch); byId.delete(id); }
+                        }
+                        const remaining = Array.from(byId.values()).sort((a, b) => {
+                            if (a.fav_order != null && b.fav_order != null) return a.fav_order - b.fav_order;
+                            if (a.fav_order != null) return -1;
+                            if (b.fav_order != null) return 1;
+                            return a.name.localeCompare(b.name);
+                        });
+                        if (isMounted) { setFavorites([...ordered, ...remaining]); setLoading(false); }
+                        return;
+                    }
+                }
                 // Sort by fav_order (nulls last, then by name)
                 all.sort((a, b) => {
                     if (a.fav_order != null && b.fav_order != null) return a.fav_order - b.fav_order;
@@ -54,41 +127,18 @@ export function FavoriteManager({ onClose, onChange }: FavoriteManagerProps) {
         }
         load();
         return () => { isMounted = false; };
-    }, []);
+    }, [sourceId]);
 
-    // Pointer drag handlers — on container
-    const handleHandlePointerDown = useCallback((e: React.PointerEvent, index: number) => {
-        if (e.button !== 0) return;
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        dragFromIdx.current = index;
-        setDragOverIdx(index);
-    }, []);
-
-    const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
-        if (dragFromIdx.current === null) return;
-        e.preventDefault();
-        setDragOverIdx(getIndexFromClientY(e.clientY));
-    }, []);
-
-    const handleContainerPointerUp = useCallback((e: React.PointerEvent) => {
-        if (dragFromIdx.current === null) return;
-        const from = dragFromIdx.current;
-        const to = getIndexFromClientY(e.clientY);
-        dragFromIdx.current = null;
-        setDragOverIdx(null);
-        if (from === to) return;
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
         setFavorites(prev => {
-            const next = [...prev];
-            const [moved] = next.splice(from, 1);
-            next.splice(to, 0, moved);
-            return next;
+            const oldIndex = prev.findIndex(c => c.stream_id === active.id);
+            const newIndex = prev.findIndex(c => c.stream_id === over.id);
+            if (oldIndex === -1 || newIndex === -1) return prev;
+            return arrayMove(prev, oldIndex, newIndex);
         });
         setIsDirty(true);
-    }, []);
-
-    const handleContainerPointerCancel = useCallback(() => {
-        dragFromIdx.current = null;
-        setDragOverIdx(null);
     }, []);
 
     const handleRemoveFavorite = useCallback(async (streamId: string) => {
@@ -117,9 +167,14 @@ export function FavoriteManager({ onClose, onChange }: FavoriteManagerProps) {
     const handleSave = useCallback(async () => {
         setSaving(true);
         try {
-            const updates = favorites.map((ch, i) => ({ streamId: ch.stream_id, favOrder: i }));
-            if (updates.length > 0) {
-                await updateChannelsBatch(updates);
+            if (sourceId) {
+                // Per-source ordering is stored independently from the global order.
+                await setFavoriteSourceOrder(sourceId, favorites.map(ch => ch.stream_id));
+            } else {
+                const updates = favorites.map((ch, i) => ({ streamId: ch.stream_id, favOrder: i }));
+                if (updates.length > 0) {
+                    await updateChannelsBatch(updates);
+                }
             }
             if (onChange) onChange();
             onClose();
@@ -129,7 +184,7 @@ export function FavoriteManager({ onClose, onChange }: FavoriteManagerProps) {
         } finally {
             setSaving(false);
         }
-    }, [favorites, onChange, onClose]);
+    }, [favorites, onChange, onClose, sourceId]);
 
     return createPortal(
         <div className="fav-manager-overlay" onClick={onClose}>
@@ -167,40 +222,26 @@ export function FavoriteManager({ onClose, onChange }: FavoriteManagerProps) {
                     : favorites.length === 0
                         ? <div className="fav-manager-empty">{i18n.t('settings:favoriteManager.noFavorites')}</div>
                         : (
-                            <div
-                                className="fav-manager-list"
-                                ref={listRef}
-                                onPointerMove={handleContainerPointerMove}
-                                onPointerUp={handleContainerPointerUp}
-                                onPointerCancel={handleContainerPointerCancel}
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
                             >
-                                {favorites.map((ch, index) => {
-                                    const isDragging = dragFromIdx.current === index;
-                                    const isDragOver = dragOverIdx === index && dragFromIdx.current !== null && dragFromIdx.current !== index;
-                                    return (
-                                        <div
-                                            key={ch.stream_id}
-                                            className={`fav-manager-item${isDragging ? ' dragging' : ''}${isDragOver ? ' drag-over' : ''}`}
-                                        >
-                                            <span
-                                                className="drag-handle"
-                                                style={{ touchAction: 'none' }}
-                                                onPointerDown={e => handleHandlePointerDown(e, index)}
-                                            >⋮⋮</span>
-                                            {ch.stream_icon
-                                                ? <img src={ch.stream_icon} className="fav-ch-logo" alt="" />
-                                                : <span className="fav-ch-logo-placeholder">📺</span>
-                                            }
-                                            <span className="fav-ch-name">{ch.name}</span>
-                                            <button
-                                                className="fav-remove-btn"
-                                                onClick={() => handleRemoveFavorite(ch.stream_id)}
-                                                title={i18n.t('settings:favoriteManager.removeFromFavorites')}
-                                            >✕</button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                <SortableContext
+                                    items={favorites.map(ch => ch.stream_id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    <div className="fav-manager-list">
+                                        {favorites.map(ch => (
+                                            <SortableFavoriteItem
+                                                key={ch.stream_id}
+                                                channel={ch}
+                                                onRemove={handleRemoveFavorite}
+                                            />
+                                        ))}
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
                         )
                 }
 

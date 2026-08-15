@@ -697,7 +697,7 @@
         "liveView": "直播視圖與播放器",
         "widgets": "小工具與縮放"
       },
-      "epgVisibleHours": "EPG 可見小時數",
+      "favoritesTitle": "收藏", "favoritesSub": "選擇收藏頻道在直播電視側邊欄中的顯示位置。", "favoritesMode": "收藏位置", "favoritesModeSub": "全域模式在側邊欄頂部顯示單一收藏列表。按來源模式會在每個供應商/來源區段內巢狀加入一個收藏項目。", "favoritesModeGlobal": "全域", "favoritesModePerSource": "按來源", "favoritesModeBoth": "全域 + 按來源", "epgVisibleHours": "EPG 可見小時數",
       "epgVisibleHoursSub": "自訂網格中可見的小時數（自動模式根據寬度動態使用 2-5 小時）。",
       "autoDefault": "自動（預設）",
       "hours": "{{count}} 小時",

@@ -697,7 +697,7 @@
         "liveView": "Vista live e player",
         "widgets": "Widget e scale"
       },
-      "epgVisibleHours": "Ore visibili nell'EPG",
+      "favoritesTitle": "Preferiti", "favoritesSub": "Scegli dove mostrare i canali preferiti nella barra laterale della TV in diretta.", "favoritesMode": "Posizionamento preferiti", "favoritesModeSub": "Globale mostra un'unica lista Preferiti in cima alla barra laterale. Per sorgente aggiunge una voce Preferiti dentro ogni sezione provider/sorgente.", "favoritesModeGlobal": "Globale", "favoritesModePerSource": "Per sorgente", "favoritesModeBoth": "Globale + per sorgente", "epgVisibleHours": "Ore visibili nell'EPG",
       "epgVisibleHoursSub": "Personalizza il numero di ore visibili nella griglia (Automatico usa da 2 a 5 ore dinamicamente in base alla larghezza).",
       "autoDefault": "Automatico (predefinito)",
       "hours": "{{count}} ore",

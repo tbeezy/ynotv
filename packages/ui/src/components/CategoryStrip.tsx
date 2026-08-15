@@ -610,6 +610,7 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
   const [showFavorites, setShowFavorites] = useState(true);
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [showRecentlyViewed, setShowRecentlyViewed] = useState(true);
+  const [favoritesMode, setFavoritesMode] = useState<'global' | 'perSource' | 'both'>('global');
 
   // Listen for setting changes to immediately reflect them
   useEffect(() => {
@@ -627,6 +628,9 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
         }
         if (customEvent.detail.showRecentlyViewed !== undefined) {
           setShowRecentlyViewed(customEvent.detail.showRecentlyViewed);
+        }
+        if (customEvent.detail.favoritesMode !== undefined) {
+          setFavoritesMode(customEvent.detail.favoritesMode);
         }
       }
     };
@@ -801,6 +805,21 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
     () => db.customGroups.orderBy('display_order').toArray()
   );
 
+  // Per-source favorite counts (source_id -> count) for the per-source Favorites entries.
+  // No table filter so it reacts to is_favorite changes on the channels table.
+  const perSourceFavoriteCounts = useLiveQuery(
+    async () => {
+      const rows = await db.channels.whereRaw('(is_favorite = 1 OR is_favorite = true)').toArray();
+      const map = new Map<string, number>();
+      for (const ch of rows) {
+        map.set(ch.source_id, (map.get(ch.source_id) || 0) + 1);
+      }
+      return map;
+    },
+    [],
+    new Map<string, number>()
+  );
+
   // Load all custom playlists ordered by display_order
   const customPlaylists = useLiveQuery(
     () => db.customPlaylists.orderBy('display_order').toArray(),
@@ -958,6 +977,9 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
       resolved = true;
     } else if (selectedCategoryId.startsWith('__allsrc_')) {
       parentSourceId = selectedCategoryId.replace('__allsrc_', '');
+      resolved = true;
+    } else if (selectedCategoryId.startsWith('__favsrc_')) {
+      parentSourceId = selectedCategoryId.replace('__favsrc_', '');
       resolved = true;
     } else if (selectedCategoryId.startsWith('__plindiv_')) {
       const id = selectedCategoryId.replace('__plindiv_', '');
@@ -1509,6 +1531,8 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
         setShowFavorites(settingsResult.data?.showFavorites ?? true);
         setShowWatchlist(settingsResult.data?.showWatchlist ?? true);
         setShowRecentlyViewed(settingsResult.data?.showRecentlyViewed ?? true);
+        const favMode = settingsResult.data?.favoritesMode;
+        setFavoritesMode(favMode === 'perSource' || favMode === 'both' || favMode === 'global' ? favMode : 'global');
 
         if (collapseOnStartup && isFirstLoad.current) {
           setExpandedPlaylists({});
@@ -1640,8 +1664,8 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
           </button>
         )}
 
-        {/* "Favorites" option */}
-        {showFavorites && (
+        {/* "Favorites" option (top-level, shown in global or both mode) */}
+        {showFavorites && (favoritesMode === 'global' || favoritesMode === 'both') && (
           <FavoritesButton
             selectedCategoryId={selectedCategoryId}
             onSelectCategory={onSelectCategory}
@@ -1799,6 +1823,23 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
                             >
                               <ScrollingText className="category-name">{t('allChannels')}</ScrollingText>
                               <span className="category-count">{item.count}</span>
+                            </button>
+                          )}
+                          {(favoritesMode === 'perSource' || favoritesMode === 'both') && (perSourceFavoriteCounts?.get(group.sourceId) || 0) > 0 && (
+                            <button
+                              key={`__favsrc_${group.sourceId}`}
+                              className={`category-item nested favorites-source-item ${selectedCategoryId === `__favsrc_${group.sourceId}` ? 'selected' : ''}`}
+                              onClick={() => onSelectCategory(`__favsrc_${group.sourceId}`)}
+                            >
+                              <div className="nested-category-wrapper">
+                                <span className="category-icon favorites-icon">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                  </svg>
+                                </span>
+                                <ScrollingText className="category-name">{t('favorites')}</ScrollingText>
+                              </div>
+                              <span className="category-count">{perSourceFavoriteCounts?.get(group.sourceId) ?? 0}</span>
                             </button>
                           )}
                           {(() => {

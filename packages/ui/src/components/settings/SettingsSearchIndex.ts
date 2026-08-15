@@ -18,7 +18,7 @@ export interface SettingsSearchResult {
   labelKey?: SettingsSearchLabelKey;
 }
 
-export type LiveTVSubTabId = 'epg' | 'logos' | 'font-size' | 'sort-order' | 'search' | 'live-view' | 'widgets';
+export type LiveTVSubTabId = 'epg' | 'logos' | 'font-size' | 'sort-order' | 'search' | 'live-view' | 'widgets' | 'favorites';
 
 const TAB_LABELS: Record<SettingsTabId, string> = {
   sources: 'Sources',
@@ -115,6 +115,10 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchResult[] = [
   { id: 'sports-scale', label: 'Sports Scores Overlay Scale', description: 'Scale the height of the scores bar.', tabId: 'livetv', tabLabel: 'LiveTV', subTabId: 'widgets', section: 'Sports Scores Overlay' },
   { id: 'sports-background-opacity', label: 'Sports Scores Background Opacity', description: 'Controls how dark the gradient background of the scores bar is.', tabId: 'livetv', tabLabel: 'LiveTV', subTabId: 'widgets', section: 'Sports Scores Overlay' },
   { id: 'widgets', label: 'Widgets', tabId: 'livetv', tabLabel: 'LiveTV', subTabId: 'widgets', section: 'Overlay Widgets' },
+
+  // LiveTV > Favorites
+  { id: 'livetv-favorites', label: 'Favorites', description: 'Choose where favorited channels appear in the Live TV sidebar.', tabId: 'livetv', tabLabel: 'LiveTV', subTabId: 'favorites', section: 'Favorites' },
+  { id: 'favorites-placement', label: 'Favorites Placement', description: 'Global shows a single Favorites list at the top of the sidebar. Per Source nests a Favorites entry inside each provider/source section.', tabId: 'livetv', tabLabel: 'LiveTV', subTabId: 'favorites', section: 'Favorites' },
 
 
   // --- Playback ---

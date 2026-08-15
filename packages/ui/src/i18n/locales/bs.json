@@ -697,7 +697,7 @@
         "liveView": "Prikaz uživo i plejer",
         "widgets": "Vidžeti i skale"
       },
-      "epgVisibleHours": "Vidljivi sati u EPG-u",
+      "favoritesTitle": "Omiljeno", "favoritesSub": "Odaberite gdje se omiljeni kanali prikazuju na bočnoj traci TV uživo.", "favoritesMode": "Položaj omiljenih", "favoritesModeSub": "Globalno prikazuje jednu listu omiljenih na vrhu bočne trake. Po izvoru dodaje stavku Omiljeno unutar svake sekcije davatelja/izvora.", "favoritesModeGlobal": "Globalno", "favoritesModePerSource": "Po izvoru", "favoritesModeBoth": "Globalno + po izvoru", "epgVisibleHours": "Vidljivi sati u EPG-u",
       "epgVisibleHoursSub": "Prilagodite broj vidljivih sati u mreži (Automatski koristi 2–5 sati dinamički na osnovu širine).",
       "autoDefault": "Automatski (podrazumijevano)",
       "hours": "{{count}} sati",

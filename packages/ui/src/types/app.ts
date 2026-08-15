@@ -124,6 +124,8 @@ export interface AppSettings {
     vodRefreshHours?: number;
     channelSortOrder?: string;
     categorySortOrder?: 'default' | 'alphabetical';
+    // Favorites placement in the LiveTV sidebar: 'global' (top-level), 'perSource' (nested under each source), or 'both'
+    favoritesMode?: 'global' | 'perSource' | 'both';
     channelFontSize?: number;
     categoryFontSize?: number;
     epgTitleFontSize?: number;

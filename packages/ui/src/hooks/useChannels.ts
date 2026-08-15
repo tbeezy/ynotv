@@ -1,5 +1,5 @@
 import { useLiveQuery } from './useSqliteLiveQuery';
-import { db, getLastCategory, setLastCategory } from '../db';
+import { db, getLastCategory, setLastCategory, getFavoriteSourceOrder } from '../db';
 import type { StoredChannel, StoredCategory, SourceMeta, StoredProgram } from '../db';
 import { decompressEpgDescription } from '../utils/compression';
 import { getRecentChannels, onRecentChannelsUpdate } from '../utils/recentChannels';
@@ -345,7 +345,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
   // Custom groups need to watch customGroupChannels table for updates
   const tableName = useMemo(() => {
     if (!categoryId) return 'channels';
-    if (categoryId === '__recent__' || categoryId === '__favorites__') return 'channels';
+    if (categoryId === '__recent__' || categoryId === '__favorites__' || categoryId.startsWith('__favsrc_')) return 'channels';
     // For custom groups (UUID format), watch both channels and customGroupChannels
     // We'll use a special indicator and handle it in the effect
     return 'channels'; // Default, we'll add custom subscription
@@ -403,6 +403,43 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
           if (b.fav_order != null) return 1;
           return (a.alias || a.name).localeCompare(b.alias || b.name);
         });
+        orderingIsFixed = true;
+      } else if (categoryId && categoryId.startsWith('__favsrc_')) {
+        // Per-source favorites: favorites scoped to a single source
+        const sourceId = categoryId.replace('__favsrc_', '');
+        results = await db.channels.whereRaw(
+          `(is_favorite = 1 OR is_favorite = true) AND source_id = ?`,
+          [sourceId]
+        ).toArray();
+        // Per-source custom order (stored independently per provider).
+        // Falls back to the global fav_order for sources without a saved order.
+        const savedOrder = await getFavoriteSourceOrder(sourceId);
+        if (savedOrder.length > 0) {
+          const byId = new Map(results.map(ch => [ch.stream_id, ch]));
+          const ordered: StoredChannel[] = [];
+          for (const id of savedOrder) {
+            const ch = byId.get(id);
+            if (ch) {
+              ordered.push(ch);
+              byId.delete(id);
+            }
+          }
+          const remaining = Array.from(byId.values()).sort((a, b) => {
+            if (a.fav_order != null && b.fav_order != null) return a.fav_order - b.fav_order;
+            if (a.fav_order != null) return -1;
+            if (b.fav_order != null) return 1;
+            return (a.alias || a.name).localeCompare(b.alias || b.name);
+          });
+          results = [...ordered, ...remaining];
+        } else {
+          // Sort by fav_order (nulls last, then by name for items without order)
+          results.sort((a, b) => {
+            if (a.fav_order != null && b.fav_order != null) return a.fav_order - b.fav_order;
+            if (a.fav_order != null) return -1;
+            if (b.fav_order != null) return 1;
+            return (a.alias || a.name).localeCompare(b.alias || b.name);
+          });
+        }
         orderingIsFixed = true;
       } else if (categoryId && categoryId.startsWith('__plcat_')) {
         const linkId = parseInt(categoryId.replace('__plcat_', ''), 10);

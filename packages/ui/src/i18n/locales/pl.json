@@ -697,7 +697,7 @@
         "liveView": "Widok na żywo i odtwarzacz",
         "widgets": "Widgety i skale"
       },
-      "epgVisibleHours": "Widoczne godziny w EPG",
+      "favoritesTitle": "Ulubione", "favoritesSub": "Wybierz, gdzie ulubione kanały mają pojawiać się na pasku bocznym telewizji na żywo.", "favoritesMode": "Umiejscowienie ulubionych", "favoritesModeSub": "Globalnie pokazuje jedną listę ulubionych u góry paska bocznego. Według źródła dodaje pozycję Ulubione w każdej sekcji dostawcy/źródła.", "favoritesModeGlobal": "Globalnie", "favoritesModePerSource": "Według źródła", "favoritesModeBoth": "Globalnie + według źródła", "epgVisibleHours": "Widoczne godziny w EPG",
       "epgVisibleHoursSub": "Dostosuj liczbę widocznych godzin w siatce (Automatycznie używa 2–5 godzin dynamicznie na podstawie szerokości).",
       "autoDefault": "Automatycznie (domyślnie)",
       "hours": "{{count}} godz.",
