@@ -27,7 +27,7 @@
 }
 
 .sources-list:hover {
-    scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+    scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .sources-list::-webkit-scrollbar {
@@ -44,7 +44,7 @@
 }
 
 .sources-list::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+    background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 /* Fix "random 0" rendering issue overrides if needed */

@@ -4,7 +4,7 @@
 }
 
 .changelog-content:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .changelog-content::-webkit-scrollbar {
@@ -21,7 +21,7 @@
 }
 
 .changelog-content::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .changelog-content h2 {

@@ -30,11 +30,11 @@
 
 /* Light up when hovering over the container (e.g. cursor inside the app/Sports section) */
 .sports-hub:hover ::-webkit-scrollbar-thumb {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .sports-hub ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
   filter: brightness(1.2);
 }
 
@@ -49,7 +49,7 @@
 }
 
 .sports-hub:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 /* Sidebar */

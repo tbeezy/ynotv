@@ -91,7 +91,7 @@
 
 .series-detail:hover::-webkit-scrollbar-thumb,
 .series-detail::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, #00d4ff);
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
 }
 
 /* Header */

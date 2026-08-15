@@ -751,12 +751,12 @@ html.modern-ui-v3 {
   --scrollbar-thumb-bg: rgba(255, 255, 255, 0.08);
   --scrollbar-thumb-radius: 3px;
   --scrollbar-thumb-radius-round: 4px;
-  --scrollbar-thumb-hover-bg: var(--accent-primary, #00d4ff);
+  --scrollbar-thumb-hover-bg: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
   --scrollbar-thumb-container-hover-bg: var(--surface-hover, rgba(255, 255, 255, 0.25));
   --scrollbar-track-bg: transparent;
   --scrollbar-width: 6px;
   --scrollbar-color: rgba(255, 255, 255, 0.08);
-  --scrollbar-color-hover: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  --scrollbar-color-hover: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
   --sm-item-move-bg: color-mix(in srgb, var(--accent-primary, #8b5cf6) 12%, rgba(255, 255, 255, 0.04));
   --sm-item-move-border: var(--accent-primary, #8b5cf6);
   --sm-item-move-shadow: 0 0 12px color-mix(in srgb, var(--accent-primary, #8b5cf6) 20%, transparent);
@@ -3642,7 +3642,7 @@ html.modern-ui-v3[data-theme="light"] .selector-content {
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content:hover,
 html.modern-ui-v3[data-theme="light"] .channel-list-container:hover,
 html.modern-ui-v3[data-theme="light"] .selector-content:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent !important;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content::-webkit-scrollbar-thumb,
@@ -3660,7 +3660,7 @@ html.modern-ui-v3[data-theme="light"] .selector-content:hover::-webkit-scrollbar
 html.modern-ui-v3[data-theme="light"] .failover-group-list-content::-webkit-scrollbar-thumb:hover,
 html.modern-ui-v3[data-theme="light"] .channel-list-container::-webkit-scrollbar-thumb:hover,
 html.modern-ui-v3[data-theme="light"] .selector-content::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, #00d4ff) !important;
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) !important;
 }
 
 /* ==========================================================================

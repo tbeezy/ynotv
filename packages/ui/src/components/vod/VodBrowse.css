@@ -71,8 +71,16 @@
   background: var(--vs-scrollbar-thumb-hover-bg, rgba(255, 255, 255, 0.2));
 }
 
+/* Light up the scrollbar when hovering anywhere over the page (matches the
+   Nuvio homepage / VOD detail pages) instead of only when hovering the thumb */
+.vod-browse:hover::-webkit-scrollbar-thumb,
+.vod-browse:hover *::-webkit-scrollbar-thumb {
+  background: var(--vs-scrollbar-thumb-hover-bg, rgba(255, 255, 255, 0.2));
+}
+
 /* Firefox */
-.vod-browse {
+.vod-browse:hover {
+  scrollbar-color: var(--vs-scrollbar-thumb-hover-bg, rgba(255, 255, 255, 0.2)) transparent;
 }
 
 /* Virtuoso Grid */

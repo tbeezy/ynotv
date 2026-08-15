@@ -524,7 +524,7 @@
 
 .channel-list-container:hover,
 .selector-content:hover {
-    scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+    scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .channel-list-container::-webkit-scrollbar,
@@ -545,5 +545,5 @@
 
 .channel-list-container::-webkit-scrollbar-thumb:hover,
 .selector-content::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+    background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }

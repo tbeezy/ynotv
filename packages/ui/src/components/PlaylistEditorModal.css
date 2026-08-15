@@ -228,7 +228,7 @@
 }
 
 .ple-panel-content:hover {
-    scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+    scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .ple-panel-content::-webkit-scrollbar {
@@ -251,7 +251,7 @@
 }
 
 .ple-panel-content::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary, #00d4ff) !important;
+    background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) !important;
 }
 
 /* ── Left Side Browsing ── */
@@ -383,7 +383,7 @@
 }
 
 .ple-cat-channels:hover {
-    scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+    scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .ple-cat-channels::-webkit-scrollbar {
@@ -405,7 +405,7 @@
 }
 
 .ple-cat-channels::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary, #00d4ff) !important;
+    background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) !important;
 }
 
 .ple-cat-channel-row {
@@ -813,7 +813,7 @@
 }
 
 .ple-nested-channels-list.read-only:hover {
-    scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+    scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .ple-nested-channels-list.read-only::-webkit-scrollbar {
@@ -835,7 +835,7 @@
 }
 
 .ple-nested-channels-list.read-only::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary, #00d4ff) !important;
+    background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) !important;
 }
 
 .ple-nested-channel-row {

@@ -59,7 +59,7 @@
 }
 
 .playlist-list-content:hover {
-    scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+    scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .playlist-list-content::-webkit-scrollbar {
@@ -82,7 +82,7 @@
 }
 
 .playlist-list-content::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary, #00d4ff) !important;
+    background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) !important;
 }
 
 /* ── Toolbar ── */

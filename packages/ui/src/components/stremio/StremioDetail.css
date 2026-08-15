@@ -60,7 +60,7 @@
 }
 
 .stremio-detail-left:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .stremio-detail-left::-webkit-scrollbar {
@@ -77,7 +77,7 @@
 }
 
 .stremio-detail-left::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .stremio-detail-back-btn {
@@ -488,7 +488,7 @@
 }
 
 .stremio-detail-video-list:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .stremio-detail-video-list::-webkit-scrollbar {
@@ -505,7 +505,7 @@
 }
 
 .stremio-detail-video-list::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .stremio-detail-no-episodes {
@@ -646,7 +646,7 @@
 }
 
 .stremio-detail-streams-list:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .stremio-detail-streams-list::-webkit-scrollbar {
@@ -663,7 +663,7 @@
 }
 
 .stremio-detail-streams-list::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .stremio-detail-streams-loading {
@@ -985,7 +985,7 @@
 }
 
 .stremio-detail-recs-row:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .stremio-detail-recs-row::-webkit-scrollbar {
@@ -1002,7 +1002,7 @@
 }
 
 .stremio-detail-recs-row::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .stremio-detail-rec-card {

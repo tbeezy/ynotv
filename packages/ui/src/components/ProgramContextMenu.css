@@ -222,10 +222,8 @@ select.datetime-input option {
 .context-menu-scrollable-container::-webkit-scrollbar-thumb {
     background: var(--border-color, rgba(255, 255, 255, 0.15));
     border-radius: 3px;
-}
-
-.context-menu-scrollable-container::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary, #00d4ff);
+}.context-menu-scrollable-container::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
 }
 
 /* Custom duration inputs for Quick Record */

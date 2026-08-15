@@ -284,7 +284,7 @@
 }
 
 .strem-catalogs-modal-body:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .strem-catalogs-modal-body::-webkit-scrollbar {
@@ -302,5 +302,5 @@
 
 .strem-catalogs-modal-body:hover::-webkit-scrollbar-thumb,
 .strem-catalogs-modal-body::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }

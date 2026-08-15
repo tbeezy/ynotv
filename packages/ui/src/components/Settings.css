@@ -925,7 +925,7 @@
 }
 
 .settings-tab-panel::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .settings-tab-content {
@@ -939,7 +939,7 @@
 }
 
 .settings-tab-content:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .settings-tab-content::-webkit-scrollbar {
@@ -956,7 +956,7 @@
 }
 
 .settings-tab-content::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 @keyframes fadeIn {
@@ -992,7 +992,7 @@
 }
 
 .genre-grid-container:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .genre-grid-container::-webkit-scrollbar {
@@ -1009,7 +1009,7 @@
 }
 
 .genre-grid-container::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .genre-grid {
@@ -1734,7 +1734,7 @@
 }
 
 .shortcuts-scroll-container:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .shortcuts-scroll-container::-webkit-scrollbar {
@@ -1747,7 +1747,7 @@
 }
 
 .shortcuts-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .shortcuts-scroll-container::-webkit-scrollbar-track {

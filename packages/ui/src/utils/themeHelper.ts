@@ -1,5 +1,51 @@
 import type { CustomThemeConfig } from '../types/app';
 
+/**
+ * Relative luminance (WCAG) of a hex color, 0 (black) → 1 (white).
+ * Returns null for non-hex values so callers can fall back gracefully
+ * (e.g. rgba() accent values from themes that don't use hex).
+ */
+export function relativeLuminance(hex: string): number | null {
+  let h = hex.trim();
+  if (!/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(h)) return null;
+  h = h.replace('#', '');
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Keeps the scrollbar hover color readable no matter what accent the user
+ * picked. Themes allow any accent — including pure black — which becomes
+ * invisible when used to "light up" a scrollbar on a dark background.
+ *
+ * This reads the active `--accent-primary` and `--text-primary`, and if the
+ * accent doesn't reach ~3:1 contrast against the theme background it replaces
+ * it with white (dark themes) or black (light themes) via the
+ * `--scrollbar-hover-color` variable. All scrollbar hover rules reference that
+ * variable, so a single theme change updates every scrollbar.
+ */
+export function updateScrollbarHoverColor(): void {
+  const root = document.documentElement;
+  if (!root) return;
+  const style = getComputedStyle(root);
+  const accent = style.getPropertyValue('--accent-primary').trim() || '#00d4ff';
+  const text = style.getPropertyValue('--text-primary').trim() || '#ffffff';
+  const accentLum = relativeLuminance(accent);
+  const textLum = relativeLuminance(text);
+  if (accentLum === null || textLum === null) return;
+  // Light text ⇒ dark theme (and vice versa). Use text polarity as the
+  // background proxy so gradient backgrounds don't need special parsing.
+  const darkTheme = textLum >= 0.5;
+  const bgLum = darkTheme ? 0.02 : 0.98;
+  const ratio = (Math.max(accentLum, bgLum) + 0.05) / (Math.min(accentLum, bgLum) + 0.05);
+  const visible = darkTheme ? '#ffffff' : '#000000';
+  root.style.setProperty('--scrollbar-hover-color', ratio >= 3 ? accent : visible);
+}
+
 export const hexToRgba = (hex: string, alpha: number): string => {
   let c = hex.substring(1);
   if (c.length === 3) {

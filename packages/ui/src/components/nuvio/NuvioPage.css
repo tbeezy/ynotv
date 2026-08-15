@@ -67,7 +67,7 @@
 }
 
 .nuvio-main:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .nuvio-main::-webkit-scrollbar {
@@ -84,7 +84,7 @@
 }
 
 .nuvio-main::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 /* Profiles Badge & Dropdown switcher */

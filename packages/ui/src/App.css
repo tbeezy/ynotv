@@ -1118,7 +1118,7 @@ html[data-custom-scrollbar="true"] .modern-ui ::-webkit-scrollbar-thumb:hover,
 html[data-custom-scrollbar="true"] .modern-ui-v3 ::-webkit-scrollbar-thumb:hover,
 html[data-custom-scrollbar="true"] .series-detail::-webkit-scrollbar-thumb:hover,
 html[data-custom-scrollbar="true"] .movie-detail::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, #00d4ff) !important;
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) !important;
 }
 
 

@@ -282,7 +282,7 @@
 }
 
 .logo-editor-content:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .logo-editor-content::-webkit-scrollbar {
@@ -303,7 +303,7 @@
 }
 
 .logo-editor-content::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.6));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.6)));
 }
 
 .logo-editor-loading,

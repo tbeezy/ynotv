@@ -121,7 +121,7 @@
 }
 
 .category-list:hover {
-    scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+    scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 .category-list::-webkit-scrollbar {
@@ -679,7 +679,7 @@
 .cm-bulk-scroll-list::-webkit-scrollbar-thumb:hover,
 .cm-bulk-col::-webkit-scrollbar-thumb:hover,
 .cm-bulk-modal *::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.6));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.6)));
 }
 
 .cm-bulk-inside-item {

@@ -270,12 +270,12 @@
 .game-detail-modal:hover ::-webkit-scrollbar-thumb,
 .game-detail-content:hover::-webkit-scrollbar-thumb,
 .ufc-detail-content:hover::-webkit-scrollbar-thumb {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
 }
 
 .game-detail-content::-webkit-scrollbar-thumb:hover,
 .ufc-detail-content::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary, rgba(0, 212, 255, 0.5));
+  background: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5)));
   filter: brightness(1.2);
 }
 
@@ -292,7 +292,7 @@
 
 .game-detail-content:hover,
 .ufc-detail-content:hover {
-  scrollbar-color: var(--accent-primary, rgba(0, 212, 255, 0.5)) transparent;
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
 }
 
 /* Content */

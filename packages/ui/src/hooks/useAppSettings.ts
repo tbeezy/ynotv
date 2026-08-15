@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { SavedLayoutState } from './useLayoutPersistence';
 import type { ThemeId, CustomThemeConfig, ShortcutsMap } from '../types/app';
-import { applyCustomTheme } from '../utils/themeHelper';
+import { applyCustomTheme, updateScrollbarHoverColor } from '../utils/themeHelper';
 import i18n, { isSupportedLocale } from '../i18n';
 import { useEpgView, useSetEpgView } from '../stores/uiStore';
 
@@ -606,6 +606,10 @@ export function useAppSettings(): AppSettings {
         document.documentElement.style.removeProperty(key);
       });
     }
+    // Keep the scrollbar hover color readable: if the theme's accent is too
+    // dark against the background (e.g. a black accent on a dark theme) it
+    // would make hover-highlighted scrollbars invisible. See themeHelper.
+    updateScrollbarHoverColor();
   }, [theme, customThemeConfig]);
 
   // Apply optimization settings
