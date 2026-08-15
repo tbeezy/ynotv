@@ -512,7 +512,19 @@ async fn connect_ipc<R: Runtime>(
                                     // Parse fallback errors if stderr didn't catch them
                                     let reason = data.clone().and_then(|d| d.get("reason").and_then(|r| r.as_str().map(|s| s.to_string())));
                                     let file_error = data.and_then(|d| d.get("file_error").and_then(|e| e.as_str().map(|s| s.to_string())));
-                                    
+
+                                    // Surface every end-file event with its reason so the frontend can
+                                    // distinguish a natural EOF (playback finished) from errors/stop.
+                                    // Also carry the position/duration observed at end-file time: after
+                                    // EOF mpv unloads the file and resets time-pos to 0, so the
+                                    // frontend can't rely on live state to know the episode finished.
+                                    let _ = app_handle.emit("mpv-end-file", json!({
+                                        "reason": reason.as_deref().unwrap_or(""),
+                                        "fileError": file_error.as_deref().unwrap_or(""),
+                                        "position": status.position,
+                                        "duration": status.duration,
+                                    }));
+
                                     if reason.as_deref() == Some("error") {
                                         let error_msg = match file_error.as_deref() {
                                             Some(e) if e.to_lowercase().contains("403") || e.to_lowercase().contains("forbidden") =>

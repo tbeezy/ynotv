@@ -213,11 +213,16 @@ fn start_status_monitor<R: Runtime>(app: AppHandle<R>) {
             core_idle: true,
         };
 
+        // Track the previous eof-reached value so we emit mpv-end-file exactly
+        // once per file that finishes playing (macOS has no unsolicited event
+        // reader, so we detect natural end via property polling).
+        let mut last_eof_reached = false;
+
         loop {
             tokio::time::sleep(Duration::from_millis(500)).await;
 
             // Poll properties
-            let properties = ["pause", "volume", "mute", "time-pos", "duration", "paused-for-cache", "core-idle"];
+            let properties = ["pause", "volume", "mute", "time-pos", "duration", "paused-for-cache", "core-idle", "eof-reached"];
             for prop in &properties {
                 let result = get_property_internal(&app, prop).await;
                 match (*prop, result) {
@@ -228,6 +233,21 @@ fn start_status_monitor<R: Runtime>(app: AppHandle<R>) {
                     ("duration", Ok(Value::Number(d))) => last_status.duration = d.as_f64().unwrap_or(0.0),
                     ("paused-for-cache", Ok(Value::Bool(p))) => last_status.paused_for_cache = p,
                     ("core-idle", Ok(Value::Bool(i))) => last_status.core_idle = i,
+                    ("eof-reached", Ok(Value::Bool(e))) => {
+                        if e && !last_eof_reached {
+                            // Natural end of file — surface to the frontend so
+                            // series auto-play can advance without relying on
+                            // position/percentage heuristics. Carry the polled
+                            // position/duration too (may be ~0 if the file was
+                            // already unloaded by this tick).
+                            let _ = app.emit("mpv-end-file", json!({
+                                "reason": "eof",
+                                "position": last_status.position,
+                                "duration": last_status.duration,
+                            }));
+                        }
+                        last_eof_reached = e;
+                    }
                     _ => {}
                 }
             }

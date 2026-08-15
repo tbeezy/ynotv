@@ -184,6 +184,7 @@
 }
 
 .channel-item {
+    position: relative;
     display: flex;
     align-items: center;
     padding: 12px;
@@ -193,6 +194,12 @@
     background: var(--channel-item-bg, transparent);
     border: var(--channel-item-border, none);
     margin-bottom: var(--channel-item-margin-bottom, 0);
+    cursor: grab;
+    user-select: none;
+}
+
+.channel-item:active {
+    cursor: grabbing;
 }
 
 .channel-item:hover {
@@ -215,6 +222,28 @@
     background: var(--sm-item-drag-bg, transparent);
     border-color: var(--sm-item-drag-border, transparent);
     box-shadow: var(--sm-item-drag-shadow, none);
+    cursor: grabbing;
+}
+
+.channel-item.drop-above::before,
+.channel-item.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+.channel-item.drop-above::before {
+    top: -1px;
+}
+
+.channel-item.drop-below::after {
+    bottom: -1px;
 }
 
 .channel-item.drag-over {
@@ -222,28 +251,11 @@
     background: var(--sm-item-dragover-bg, none);
 }
 
-/* Drag handle in ChannelManager (same design as CategoryManager) */
-.channel-item .drag-handle {
-    color: var(--sm-drag-handle-color, var(--text-muted, rgba(255, 255, 255, 0.2)));
-    cursor: grab;
-    font-size: 1rem;
-    letter-spacing: -2px;
-    flex-shrink: 0;
-    padding: 0 4px 0 0;
-    user-select: none;
-}
-
-.channel-item:hover .drag-handle {
-    color: var(--sm-drag-handle-hover-color, var(--text-muted, rgba(255, 255, 255, 0.5)));
-}
-
-
-
 .channel-checkbox {
     display: flex;
     align-items: center;
     gap: 12px;
-    cursor: pointer;
+    cursor: inherit;
     flex: 1;
 }
 

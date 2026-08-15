@@ -628,10 +628,27 @@ function App() {
   // ==========================================================================
   // MPV Listeners (must be before useLayoutPersistence for mpvReady)
   // ==========================================================================
+  // Carries mpv's end-file event (with reason) into React state so the series
+  // auto-play effect can trigger on a genuine EOF instead of a playing->paused
+  // transition (which also happens on user pause). The position/duration are
+  // snapshotted at end-of-file time on the Rust side, because mpv resets
+  // time-pos to 0 after unloading an ended file.
+  const [vodEndFileSignal, setVodEndFileSignal] = useState<{
+    reason?: string;
+    ts: number;
+    positionAtEnd: number;
+    durationAtEnd: number;
+  } | null>(null);
   const mpv = useMpvListeners({
     timeshiftEnabled,
     timeshiftCacheBytes,
     settingsLoaded: layoutSettingsLoaded,
+    onEndFile: (payload) => setVodEndFileSignal({
+      reason: payload.reason,
+      ts: Date.now(),
+      positionAtEnd: payload.position ?? 0,
+      durationAtEnd: payload.duration ?? 0,
+    }),
   });
 
   const {
@@ -774,6 +791,7 @@ function App() {
     handleToggleStats,
     handleToggleFullscreen,
     autoSelectSubtitle,
+    userPausedRef,
   } = playback;
 
   // Keep handlePlayChannel ref updated for onLoadMainChannel callback
@@ -2952,15 +2970,64 @@ function useTmdbPresencePoster(
     return () => clearInterval(interval);
   }, [vodInfo, playing, duration]);
 
+  // Drop any pending end-of-stream signal when switching to a different stream,
+  // so a stale EOF from a previous file can't auto-play the next episode. Must
+  // be declared before the auto-play effect below so it runs first on stream
+  // changes.
+  useEffect(() => {
+    setVodEndFileSignal(null);
+  }, [vodInfo?.url]);
+
   // ==========================================================================
   // VOD Series Auto-Play Next Episode
   // ==========================================================================
+  // Dedup: the playing->paused transition and the mpv end-file event can both
+  // fire for the same EOF within milliseconds, which would double-run auto-play.
+  const lastAutoAdvanceRef = useRef<{ key: string; ts: number } | null>(null);
   const prevPlayingRef = useRef(playing);
   useEffect(() => {
     const prevPlaying = prevPlayingRef.current;
     prevPlayingRef.current = playing;
 
-    if (prevPlaying && !playing && vodInfo && duration > 0 && (position >= duration - 5 || position / duration >= 0.90)) {
+    if (!vodInfo) return;
+
+    // Natural-end signals:
+    // 1) mpv end-file reason "eof" — position/duration are snapshotted at
+    //    end-file time on the Rust side (live position resets to 0 once mpv
+    //    unloads an ended file).
+    // 2) playing flipped true -> false while at/after the end of the file
+    //    (mpv pauses at EOF). A user pause ALSO flips playing, so both paths
+    //    are gated on !userPausedRef below — that gate is the actual fix for
+    //    the pause-near-the-end skipping bug.
+    const endDur = vodEndFileSignal ? vodEndFileSignal.durationAtEnd : duration;
+    const endPos = vodEndFileSignal ? vodEndFileSignal.positionAtEnd : position;
+    const eofSignal =
+      !!vodEndFileSignal &&
+      vodEndFileSignal.reason === 'eof' &&
+      endDur > 0 &&
+      (endPos >= endDur - 5 || endPos / endDur >= 0.90 || endPos <= 1);
+    const playStopEnd =
+      prevPlaying && !playing && duration > 0 && (position >= duration - 5 || position / duration >= 0.90);
+
+    if (!eofSignal && !playStopEnd) return;
+
+    // A user-initiated pause must never be treated as the episode ending.
+    if (userPausedRef.current) return;
+
+    // Consume the signal so a re-render can't re-trigger auto-play.
+    if (vodEndFileSignal) setVodEndFileSignal(null);
+
+    // Only advance once per stream within a short window (see dedup comment).
+    const streamKey = vodInfo.mediaId || vodInfo.url || '';
+    const now = Date.now();
+    if (lastAutoAdvanceRef.current && lastAutoAdvanceRef.current.key === streamKey && now - lastAutoAdvanceRef.current.ts < 10_000) {
+      return;
+    }
+    lastAutoAdvanceRef.current = { key: streamKey, ts: now };
+
+    console.log('[AutoPlay] Natural end detected:', { eofSignal, playStopEnd, endPos, endDur });
+
+    {
       const activeState = useActivePlaylistStore.getState();
       if (activeState.activePlaylistId && activeState.currentIndex >= 0 && activeState.items.length > 0) {
         const { activePlaylistId, currentIndex, items } = activeState;
@@ -2972,7 +3039,7 @@ function useTmdbPresencePoster(
         if (currentItem && isActivePlaylistItem(vodInfo, currentItem)) {
           // Freeze the finished item's progress into the localStorage snapshot
           // so playlists keep "last watched" and resume info after a cache clear.
-          snapshotPlaylistProgress(vodInfo, position, duration);
+          snapshotPlaylistProgress(vodInfo, endPos > 1 ? endPos : endDur, endDur);
 
           const plStore = useVodPlaylistStore.getState();
           const playlist = plStore.playlists.find((p) => p.id === activePlaylistId);
@@ -2989,8 +3056,8 @@ function useTmdbPresencePoster(
                 currentItem.seasonNum ?? 0,
                 currentItem.episodeNum ?? 0,
                 '',
-                Math.floor(duration),
-                Math.floor(duration)
+                Math.floor(endDur),
+                Math.floor(endDur)
               );
             }
           }
@@ -3038,7 +3105,7 @@ function useTmdbPresencePoster(
       }
     }
 
-    if (prevPlaying && !playing && vodInfo?.type === 'series' && duration > 0 && (position >= duration - 5 || position / duration >= 0.90)) {
+    if (vodInfo?.type === 'series') {
       const { seriesId, seasonNum, episodeNum, episodeId, title, source_id, year, plot, backdropUrl, logoUrl, mediaId, tmdbId, imdbId } = vodInfo;
       
       // Always mark the ended episode as completed (100% watched)
@@ -3052,8 +3119,8 @@ function useTmdbPresencePoster(
           seasonNum ?? 0,
           episodeNum ?? 0,
           '',
-          Math.floor(duration),
-          Math.floor(duration)
+          Math.floor(endDur),
+          Math.floor(endDur)
         );
       }
 
@@ -3141,7 +3208,7 @@ function useTmdbPresencePoster(
         })();
       }
     }
-  }, [playing, vodInfo, duration, position, vodAutoPlayNextEpisode, handlePlayVod]);
+  }, [playing, vodEndFileSignal, vodInfo, duration, position, vodAutoPlayNextEpisode, handlePlayVod, userPausedRef]);
 
   // ==========================================================================
   // Active playlist queue controls (indicator click + prev/next buttons)

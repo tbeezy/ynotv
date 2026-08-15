@@ -143,6 +143,7 @@
 
 
 .category-manager-overlay .category-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -160,27 +161,35 @@
     border-color: var(--accent-primary, rgba(255, 255, 255, 0.1));
 }
 
-.drag-handle {
-    color: var(--sm-drag-handle-color, var(--text-muted, rgba(255, 255, 255, 0.3)));
-    font-size: 1.2rem;
+/* Full-surface drag affordance for @dnd-kit sortable rows */
+.category-manager-overlay .category-item.draggable {
     cursor: grab;
     user-select: none;
-    line-height: 1;
-    padding: 4px;
-    display: inline-block;
-    -webkit-app-region: no-drag;
 }
 
-.drag-handle:hover {
-    color: var(--sm-drag-handle-hover-color, var(--text-secondary, rgba(255, 255, 255, 0.6)));
-}
-
-.drag-handle[draggable="true"] {
-    cursor: grab;
-}
-
-.drag-handle[draggable="true"]:active {
+.category-manager-overlay .category-item.draggable:active {
     cursor: grabbing;
+}
+
+.category-manager-overlay .category-item.drop-above::before,
+.category-manager-overlay .category-item.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+.category-manager-overlay .category-item.drop-above::before {
+    top: -3px;
+}
+
+.category-manager-overlay .category-item.drop-below::after {
+    bottom: -3px;
 }
 
 .category-manager-overlay .category-item.dragging {
@@ -203,7 +212,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    cursor: pointer;
+    cursor: inherit;
     user-select: none;
     min-width: 0;
 }
@@ -449,9 +458,12 @@
   border-color: var(--accent-primary, #00d4ff);
 }
 
-.cm-folder-card.drag-over {
-  border: 2px dashed var(--accent-primary, #00d4ff);
-  background: rgba(0, 212, 255, 0.12);
+.cm-folder-card.drop-above {
+  box-shadow: 0 -2px 0 0 var(--accent-primary, #00d4ff);
+}
+
+.cm-folder-card.drop-below {
+  box-shadow: 0 2px 0 0 var(--accent-primary, #00d4ff);
 }
 
 .cm-folder-card-header {

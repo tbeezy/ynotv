@@ -28,6 +28,10 @@ export interface MpvState {
 
 interface UseMpvListenersOptions {
     onReady?: () => void;
+    /** Fired when mpv reports a file ended (mpv-end-file event with its reason).
+     *  `position`/`duration` are the values observed at end-of-file time (mpv
+     *  resets time-pos to 0 after unloading an ended file). */
+    onEndFile?: (payload: { reason?: string; fileError?: string; position?: number; duration?: number }) => void;
     timeshiftEnabled?: boolean;
     timeshiftCacheBytes?: number;
     settingsLoaded?: boolean; // Wait for settings before initializing MPV
@@ -91,6 +95,11 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
         suppressStatusUntilRef.current = Date.now() + durationMs;
         setIsAudioOnly(false);
     }, []);
+
+    // Keep the latest onEndFile callback in a ref so the one-shot listener
+    // registered below never captures a stale closure.
+    const onEndFileRef = useRef(options.onEndFile);
+    useEffect(() => { onEndFileRef.current = options.onEndFile; }, [options.onEndFile]);
     const timeshiftSettingsRef = useRef({
         enabled: options.timeshiftEnabled,
         cacheBytes: options.timeshiftCacheBytes,
@@ -221,9 +230,15 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
                 setError(prev => prev ? prev : (translateNativeError(e.payload) || e.payload));
             });
 
+            // Natural end of file (reason "eof") — lets the UI advance to the
+            // next episode without misreading a user pause as an episode end.
+            const unlistenEndFile = await listen('mpv-end-file', (e: any) => {
+                onEndFileRef.current?.(e.payload as { reason?: string; fileError?: string; position?: number; duration?: number });
+            });
+
             unlistenFns = [
                 unlistenReady, unlistenStatus, unlistenError,
-                unlistenHttpError, unlistenEndFileError,
+                unlistenHttpError, unlistenEndFileError, unlistenEndFile,
             ];
 
             if (disposed) {

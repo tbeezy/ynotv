@@ -63,6 +63,7 @@
 }
 
 .fav-manager-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -74,6 +75,27 @@
     transition: background 0.12s;
     user-select: none;
     cursor: grab;
+}
+
+.fav-manager-item.drop-above::before,
+.fav-manager-item.drop-below::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent-primary, #00d4ff);
+    border-radius: 1px;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+.fav-manager-item.drop-above::before {
+    top: -2px;
+}
+
+.fav-manager-item.drop-below::after {
+    bottom: -2px;
 }
 
 .fav-manager-item:active {

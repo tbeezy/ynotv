@@ -1225,7 +1225,8 @@
 }
 
 .category-item.nested.folder-nested {
-  padding-left: 36px !important;
+  /* Match the indent of regular nested categories instead of the extra folder indent */
+  padding-left: var(--cat-item-nested-padding-left, 28px) !important;
 }
 
 

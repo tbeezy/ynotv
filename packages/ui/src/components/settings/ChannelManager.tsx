@@ -6,6 +6,25 @@ import { normalizeBoolean } from '../../utils/db-helpers';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import './ChannelManager.css';
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface ChannelManagerProps {
     categoryId: string;
@@ -14,6 +33,28 @@ interface ChannelManagerProps {
     onClose: () => void;
     onChange?: () => void;
     sortOrder?: 'alphabetical' | 'number' | 'provider';
+}
+
+function SortableChannelRow({ id, className, children, dropIndicator = null }: { id: string; className: string; children: React.ReactNode; dropIndicator?: 'above' | 'below' | null }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 99 : 1,
+        touchAction: 'none',
+    };
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`${className}${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
+            {...attributes}
+            {...listeners}
+        >
+            {children}
+        </div>
+    );
 }
 
 
@@ -27,25 +68,15 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
     const [newFilterWord, setNewFilterWord] = useState('');
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const isSavingRef = useRef(false);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [overId, setOverId] = useState<string | null>(null);
 
 
 
-    // Container-level pointer drag for reorder (same pattern as CategoryManager)
-    const dragFromIdx = useRef<number | null>(null);
-    const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-    const listRef = useRef<HTMLDivElement>(null);
-
-
-
-    const getIndexFromClientY = (clientY: number): number => {
-        if (!listRef.current) return 0;
-        const children = Array.from(listRef.current.children) as HTMLElement[];
-        for (let i = 0; i < children.length; i++) {
-            const rect = children[i].getBoundingClientRect();
-            if (clientY < rect.top + rect.height / 2) return i;
-        }
-        return Math.max(0, children.length - 1);
-    };
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
 
     // Ensure font size CSS variable is set when modal opens
     useEffect(() => {
@@ -197,46 +228,36 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
         setIsDirty(true);
     }, []);
 
-    // Pointer drag handlers — on container
-    const handleHandlePointerDown = useCallback((e: React.PointerEvent, index: number) => {
-        if (e.button !== 0) return;
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        dragFromIdx.current = index;
-        setDragOverIdx(index);
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        setActiveId(String(event.active.id));
     }, []);
 
-    const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
-        if (dragFromIdx.current === null) return;
-        e.preventDefault();
-        setDragOverIdx(getIndexFromClientY(e.clientY));
+    const handleDragOver = useCallback((event: DragOverEvent) => {
+        if (event.over && event.active.id !== event.over.id) {
+            setOverId(String(event.over.id));
+        } else {
+            setOverId(null);
+        }
     }, []);
 
-    const handleContainerPointerUp = useCallback((e: React.PointerEvent) => {
-        if (dragFromIdx.current === null) return;
-        const from = dragFromIdx.current;
-        const to = getIndexFromClientY(e.clientY);
-        dragFromIdx.current = null;
-        setDragOverIdx(null);
-        if (from === to) return;
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveId(null);
+        setOverId(null);
+        if (!over || active.id === over.id) return;
         setChannels(chs => {
-            const visible = chs.filter((_, i) => !hideDisabled || chs[i].enabled !== false);
-            // Remap: find actual indices in full array
-            const fromStreamId = visible[from]?.stream_id;
-            const toStreamId = visible[to]?.stream_id;
-            if (!fromStreamId || !toStreamId) return chs;
-            const fromActual = chs.findIndex(c => c.stream_id === fromStreamId);
-            const toActual = chs.findIndex(c => c.stream_id === toStreamId);
-            const next = [...chs];
-            const [moved] = next.splice(fromActual, 1);
-            next.splice(toActual, 0, moved);
-            return next.map((ch, idx) => ({ ...ch, display_order: idx }));
+            const oldIndex = chs.findIndex(c => c.stream_id === active.id);
+            const newIndex = chs.findIndex(c => c.stream_id === over.id);
+            if (oldIndex === -1 || newIndex === -1) return chs;
+            const reordered = arrayMove(chs, oldIndex, newIndex);
+            return reordered.map((c, idx) => ({ ...c, display_order: idx }));
         });
         setIsDirty(true);
-    }, [hideDisabled]);
+    }, []);
 
-    const handleContainerPointerCancel = useCallback(() => {
-        dragFromIdx.current = null;
-        setDragOverIdx(null);
+    const handleDragCancel = useCallback(() => {
+        setActiveId(null);
+        setOverId(null);
     }, []);
 
     // Select all
@@ -500,84 +521,91 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
                     />
                 </div>
 
-                <div
-                    className="channel-list"
-                    ref={listRef}
-                    onPointerMove={handleContainerPointerMove}
-                    onPointerUp={handleContainerPointerUp}
-                    onPointerCancel={handleContainerPointerCancel}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    onDragCancel={handleDragCancel}
                 >
-                    {visibleChannels.length === 0 ? (
-                        <div className="channel-empty">
-                            {searchQuery ? i18n.t('settings:channelManager.noSearchResults') : i18n.t('settings:channelManager.noChannels')}
-                        </div>
-                    ) : (
-                        visibleChannels.map((ch, visibleIndex) => {
-                            const displayName = ch.alias || ch.name;
-                            const filteredName = applyFilterWords(displayName);
-                            const isDragging = dragFromIdx.current === visibleIndex;
-                            const isDragOver = dragOverIdx === visibleIndex && dragFromIdx.current !== null && dragFromIdx.current !== visibleIndex;
-                            return (
-                                <div
-                                    key={ch.stream_id}
-                                    className={`channel-item ${ch.enabled === false ? 'disabled' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
-                                >
-                                    <span
-                                        className="drag-handle"
-                                        style={{ touchAction: 'none' }}
-                                        onPointerDown={e => handleHandlePointerDown(e, visibleIndex)}
-                                    >⋮⋮</span>
-                                    <label className="channel-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            checked={ch.enabled !== false}
-                                            onChange={() => toggleChannel(ch.stream_id)}
-                                        />
-                                        <span className="channel-name">
-                                            <span className="channel-display-name">{filteredName}</span>
-                                            {ch.alias && (
-                                                <span className="channel-original-name" title={ch.name}>
-                                                    ({ch.name})
-                                                </span>
-                                            )}
-                                            {!ch.alias && filteredName !== ch.name && (
-                                                <span className="channel-original-name" title={ch.name}>
-                                                    ({ch.name})
-                                                </span>
-                                            )}
-                                        </span>
-                                    </label>
-                                    <div className="channel-reorder">
-                                        <button
-                                            className="order-btn"
-                                            onClick={() => moveToTop(visibleIndex)}
-                                            disabled={visibleIndex === 0}
-                                            title={i18n.t('common:moveToTop')}
-                                        >
-                                            ↑↑
-                                        </button>
-                                        <button
-                                            className="order-btn"
-                                            onClick={() => moveUp(visibleIndex)}
-                                            disabled={visibleIndex === 0}
-                                            title={i18n.t('common:moveUp')}
-                                        >
-                                            ↑
-                                        </button>
-                                        <button
-                                            className="order-btn"
-                                            onClick={() => moveDown(visibleIndex)}
-                                            disabled={visibleIndex === visibleChannels.length - 1}
-                                            title={i18n.t('common:moveDown')}
-                                        >
-                                            ↓
-                                        </button>
-                                    </div>
+                    <SortableContext items={visibleChannels.map(ch => ch.stream_id)} strategy={verticalListSortingStrategy}>
+                        <div className="channel-list">
+                            {visibleChannels.length === 0 ? (
+                                <div className="channel-empty">
+                                    {searchQuery ? i18n.t('settings:channelManager.noSearchResults') : i18n.t('settings:channelManager.noChannels')}
                                 </div>
-                            );
-                        })
-                    )}
-                </div>
+                            ) : (
+                                visibleChannels.map((ch, visibleIndex) => {
+                                    const displayName = ch.alias || ch.name;
+                                    const filteredName = applyFilterWords(displayName);
+                                    const activeChannelIndex = activeId ? visibleChannels.findIndex(c => c.stream_id === activeId) : -1;
+                                    const isOver = overId === ch.stream_id && activeId !== overId;
+                                    const dropIndicator = isOver ? (activeChannelIndex < visibleIndex ? 'below' : 'above') : null;
+                                    return (
+                                        <SortableChannelRow
+                                            key={ch.stream_id}
+                                            id={ch.stream_id}
+                                            className={`channel-item ${ch.enabled === false ? 'disabled' : ''}`}
+                                            dropIndicator={dropIndicator}
+                                        >
+                                            <label className="channel-checkbox">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={ch.enabled !== false}
+                                                    onChange={() => toggleChannel(ch.stream_id)}
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                />
+                                                <span className="channel-name">
+                                                    <span className="channel-display-name">{filteredName}</span>
+                                                    {ch.alias && (
+                                                        <span className="channel-original-name" title={ch.name}>
+                                                            ({ch.name})
+                                                        </span>
+                                                    )}
+                                                    {!ch.alias && filteredName !== ch.name && (
+                                                        <span className="channel-original-name" title={ch.name}>
+                                                            ({ch.name})
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </label>
+                                            <div className="channel-reorder">
+                                                <button
+                                                    className="order-btn"
+                                                    onClick={() => moveToTop(visibleIndex)}
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                    disabled={visibleIndex === 0}
+                                                    title={i18n.t('common:moveToTop')}
+                                                >
+                                                    ↑↑
+                                                </button>
+                                                <button
+                                                    className="order-btn"
+                                                    onClick={() => moveUp(visibleIndex)}
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                    disabled={visibleIndex === 0}
+                                                    title={i18n.t('common:moveUp')}
+                                                >
+                                                    ↑
+                                                </button>
+                                                <button
+                                                    className="order-btn"
+                                                    onClick={() => moveDown(visibleIndex)}
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                    disabled={visibleIndex === visibleChannels.length - 1}
+                                                    title={i18n.t('common:moveDown')}
+                                                >
+                                                    ↓
+                                                </button>
+                                            </div>
+                                        </SortableChannelRow>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </SortableContext>
+                </DndContext>
 
 
 

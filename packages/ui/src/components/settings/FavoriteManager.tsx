@@ -11,6 +11,8 @@ import {
   useSensors,
   closestCenter,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -31,11 +33,12 @@ interface FavoriteManagerProps {
 interface SortableFavoriteItemProps {
     channel: StoredChannel;
     onRemove: (streamId: string) => void;
+    dropIndicator?: 'above' | 'below' | null;
 }
 
 // Whole card is the drag surface — no handle. Interactive controls inside stop
 // pointer propagation so they never start a drag.
-function SortableFavoriteItem({ channel, onRemove }: SortableFavoriteItemProps) {
+function SortableFavoriteItem({ channel, onRemove, dropIndicator = null }: SortableFavoriteItemProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: channel.stream_id });
 
     const style: React.CSSProperties = {
@@ -50,7 +53,7 @@ function SortableFavoriteItem({ channel, onRemove }: SortableFavoriteItemProps) 
         <div
             ref={setNodeRef}
             style={style}
-            className={`fav-manager-item${isDragging ? ' dragging' : ''}`}
+            className={`fav-manager-item${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
             {...attributes}
             {...listeners}
         >
@@ -75,6 +78,8 @@ export function FavoriteManager({ onClose, onChange, sourceId = null }: Favorite
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [overId, setOverId] = useState<string | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -129,8 +134,22 @@ export function FavoriteManager({ onClose, onChange, sourceId = null }: Favorite
         return () => { isMounted = false; };
     }, [sourceId]);
 
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        setActiveId(String(event.active.id));
+    }, []);
+
+    const handleDragOver = useCallback((event: DragOverEvent) => {
+        if (event.over && event.active.id !== event.over.id) {
+            setOverId(String(event.over.id));
+        } else {
+            setOverId(null);
+        }
+    }, []);
+
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         const { active, over } = event;
+        setActiveId(null);
+        setOverId(null);
         if (!over || active.id === over.id) return;
         setFavorites(prev => {
             const oldIndex = prev.findIndex(c => c.stream_id === active.id);
@@ -139,6 +158,11 @@ export function FavoriteManager({ onClose, onChange, sourceId = null }: Favorite
             return arrayMove(prev, oldIndex, newIndex);
         });
         setIsDirty(true);
+    }, []);
+
+    const handleDragCancel = useCallback(() => {
+        setActiveId(null);
+        setOverId(null);
     }, []);
 
     const handleRemoveFavorite = useCallback(async (streamId: string) => {
@@ -225,20 +249,30 @@ export function FavoriteManager({ onClose, onChange, sourceId = null }: Favorite
                             <DndContext
                                 sensors={sensors}
                                 collisionDetection={closestCenter}
+                                onDragStart={handleDragStart}
+                                onDragOver={handleDragOver}
                                 onDragEnd={handleDragEnd}
+                                onDragCancel={handleDragCancel}
                             >
                                 <SortableContext
                                     items={favorites.map(ch => ch.stream_id)}
                                     strategy={verticalListSortingStrategy}
                                 >
                                     <div className="fav-manager-list">
-                                        {favorites.map(ch => (
-                                            <SortableFavoriteItem
-                                                key={ch.stream_id}
-                                                channel={ch}
-                                                onRemove={handleRemoveFavorite}
-                                            />
-                                        ))}
+                                        {favorites.map(ch => {
+                                            const activeIndex = activeId ? favorites.findIndex(c => c.stream_id === activeId) : -1;
+                                            const overIndex = overId ? favorites.findIndex(c => c.stream_id === overId) : -1;
+                                            const isOver = overId === ch.stream_id && activeId !== overId;
+                                            const dropIndicator = isOver ? (activeIndex < overIndex ? 'below' : 'above') : null;
+                                            return (
+                                                <SortableFavoriteItem
+                                                    key={ch.stream_id}
+                                                    channel={ch}
+                                                    onRemove={handleRemoveFavorite}
+                                                    dropIndicator={dropIndicator}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 </SortableContext>
                             </DndContext>

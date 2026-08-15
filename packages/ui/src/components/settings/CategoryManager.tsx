@@ -17,6 +17,9 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+  type CollisionDetection,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -26,6 +29,15 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+// Folders and categories share a DndContext but must only drop onto their own
+// kind; filter droppables by the data type tag registered in useSortable.
+const categoryListCollisionDetection: CollisionDetection = (args) => {
+    const type = args.active.data.current?.type;
+    if (!type) return closestCenter(args);
+    const filtered = args.droppableContainers.filter(c => c.data.current?.type === type);
+    return closestCenter({ ...args, droppableContainers: filtered });
+};
 
 type ManagedCategory = 
     | { type: 'native'; id: string; name: string; enabled: boolean; displayOrder: number; folderId?: string | null; category: StoredCategory }
@@ -84,6 +96,36 @@ function SortableInsideFolderCategory(props: {
     );
 }
 
+function SortableCategoryRow({ id, disabled, className, onClick, children, dropIndicator = null }: {
+    id: string;
+    disabled: boolean;
+    className: string;
+    onClick?: (e: React.MouseEvent) => void;
+    children: React.ReactNode;
+    dropIndicator?: 'above' | 'below' | null;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled, data: { type: 'category' } });
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 99 : 1,
+        touchAction: 'none',
+    };
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`${className}${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
+            onClick={onClick}
+            {...attributes}
+            {...listeners}
+        >
+            {children}
+        </div>
+    );
+}
+
 const FolderIcon = ({ size = 16 }: { size?: number }) => (
     <svg 
         width={size} 
@@ -115,6 +157,108 @@ const PencilIcon = ({ size = 14 }: { size?: number }) => (
         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
     </svg>
 );
+
+function SortableFolderCard(props: {
+    folder: CategoryFolder;
+    folderCategoriesCount: number;
+    isCollapsed: boolean;
+    folderIndex: number;
+    totalFolders: number;
+    dropIndicator: 'above' | 'below' | null;
+    children: React.ReactNode;
+    onToggleCollapse: () => void;
+    onMoveUp: () => void;
+    onMoveDown: () => void;
+    onBulk: () => void;
+    onRename: () => void;
+    onDelete: () => void;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.folder.folder_id, data: { type: 'folder' } });
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 99 : 1,
+    };
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`cm-folder-card${isDragging ? ' dragging' : ''}${props.dropIndicator ? ` drop-${props.dropIndicator}` : ''}`}
+        >
+            <div
+                className="cm-folder-card-header"
+                onClick={props.onToggleCollapse}
+                style={{ cursor: 'grab', touchAction: 'none' }}
+                {...attributes}
+                {...listeners}
+            >
+                <div className="cm-folder-header-left">
+                    <FolderIcon size={16} />
+                    <span style={{ fontWeight: 600 }}>{props.folder.name}</span>
+                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', fontWeight: 'normal' }}>
+                        ({i18n.t('settings:categoryManager.folderCategoriesCount', { count: props.folderCategoriesCount })})
+                    </span>
+                </div>
+
+                <div className="cm-folder-header-actions" onClick={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
+                    <button
+                        className="order-btn"
+                        disabled={props.folderIndex === 0}
+                        onClick={props.onMoveUp}
+                        title={i18n.t('settings:categoryManager.moveFolderUp')}
+                    >
+                        ↑
+                    </button>
+                    <button
+                        className="order-btn"
+                        disabled={props.folderIndex === props.totalFolders - 1}
+                        onClick={props.onMoveDown}
+                        title={i18n.t('settings:categoryManager.moveFolderDown')}
+                    >
+                        ↓
+                    </button>
+                    <button
+                        className="cm-folder-bulk-btn"
+                        onClick={props.onBulk}
+                        title={i18n.t('settings:categoryManager.bulkAddRemoveHint')}
+                        style={{
+                            background: 'rgba(0, 212, 255, 0.12)',
+                            border: '1px solid rgba(0, 212, 255, 0.3)',
+                            borderRadius: '4px',
+                            color: '#00d4ff',
+                            fontSize: '0.75rem',
+                            padding: '3px 8px',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            marginRight: '6px'
+                        }}
+                    >
+                        ⇄ {i18n.t('settings:categoryManager.bulkAddRemove')}
+                    </button>
+                    <button
+                        className="cm-folder-icon-btn"
+                        onClick={props.onRename}
+                        title={i18n.t('settings:categoryManager.renameFolderHint')}
+                    >
+                        <PencilIcon size={14} />
+                    </button>
+                    <button
+                        className="cm-folder-icon-btn delete"
+                        onClick={props.onDelete}
+                        title={i18n.t('settings:categoryManager.deleteFolderHint')}
+                    >
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            {!props.isCollapsed && (
+                <div className="cm-folder-card-body">{props.children}</div>
+            )}
+        </div>
+    );
+}
 
 interface CategoryManagerProps {
     sourceId: string;
@@ -159,6 +303,8 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
     const [renameInput, setRenameInput] = useState('');
     const [deletingFolderTarget, setDeletingFolderTarget] = useState<CategoryFolder | null>(null);
     const isSavingRef = useRef(false);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [overId, setOverId] = useState<string | null>(null);
     const [selectToMoveMode, setSelectToMoveMode] = useState<'inactive' | 'selecting' | 'ready'>('inactive');
     const [selectedForMove, setSelectedForMove] = useState<Set<string>>(new Set());
     const categorySortOrder = useCategorySortOrder();
@@ -179,21 +325,10 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
         setIsCustomized(false);
     }, [targetPlaylistId]);
 
-    // Pointer-event drag state
-    const dragFromIdx = useRef<number | null>(null);
-    const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-    const listRef = useRef<HTMLDivElement>(null);
-
-    // Compute which list-item index a clientY falls into
-    const getIndexFromClientY = (clientY: number): number => {
-        if (!listRef.current) return 0;
-        const children = Array.from(listRef.current.children) as HTMLElement[];
-        for (let i = 0; i < children.length; i++) {
-            const rect = children[i].getBoundingClientRect();
-            if (clientY < rect.top + rect.height / 2) return i;
-        }
-        return Math.max(0, children.length - 1);
-    };
+    const categorySensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
 
 
     // Load categories for this source
@@ -393,40 +528,71 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
         if (onChange) onChange();
     }, [onChange]);
 
-    // Pointer-event drag handlers — attached to the CONTAINER
-    const handleHandlePointerDown = useCallback((e: React.PointerEvent, index: number) => {
-        if (e.button !== 0) return;
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        dragFromIdx.current = index;
-        setDragOverIdx(index);
-    }, []);
-
-    const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
-        if (dragFromIdx.current === null) return;
-        e.preventDefault();
-        const idx = getIndexFromClientY(e.clientY);
-        setDragOverIdx(idx);
-    }, []);
-
-    const handleContainerPointerUp = useCallback((e: React.PointerEvent) => {
-        if (dragFromIdx.current === null) return;
-        const from = dragFromIdx.current;
-        const to = getIndexFromClientY(e.clientY);
-        dragFromIdx.current = null;
-        setDragOverIdx(null);
-        if (from === to) return;
+    const handleCategoryDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
         setCategories(cats => {
-            const newCats = [...cats];
-            const [removed] = newCats.splice(from, 1);
-            newCats.splice(to, 0, removed);
-            return newCats.map((cat, idx) => ({ ...cat, displayOrder: idx }));
+            const oldIndex = cats.findIndex(c => c.id === active.id);
+            const newIndex = cats.findIndex(c => c.id === over.id);
+            if (oldIndex === -1 || newIndex === -1) return cats;
+            const reordered = arrayMove(cats, oldIndex, newIndex);
+            return reordered.map((cat, idx) => ({ ...cat, displayOrder: idx }));
         });
         setIsDirty(true);
     }, []);
 
-    const handleContainerPointerCancel = useCallback(() => {
-        dragFromIdx.current = null;
-        setDragOverIdx(null);
+    const handleFolderDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        if (!categoryFolders || categoryFolders.length === 0) return;
+        const folders = [...categoryFolders].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        const oldIndex = folders.findIndex(f => f.folder_id === active.id);
+        const newIndex = folders.findIndex(f => f.folder_id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+        const reordered = arrayMove(folders, oldIndex, newIndex);
+        reorderCategoryFolders(reordered.map((f, idx) => ({ folderId: f.folder_id, displayOrder: idx })))
+            .catch(err => console.error('[CategoryManager] Failed to reorder folders:', err));
+    }, [categoryFolders]);
+
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        setActiveId(String(event.active.id));
+    }, []);
+
+    const handleDragOver = useCallback((event: DragOverEvent) => {
+        if (event.over && event.active.id !== event.over.id) {
+            setOverId(String(event.over.id));
+        } else {
+            setOverId(null);
+        }
+    }, []);
+
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        setActiveId(null);
+        setOverId(null);
+        if (event.active.data.current?.type === 'folder') {
+            handleFolderDragEnd(event);
+        } else {
+            handleCategoryDragEnd(event);
+        }
+    }, [handleFolderDragEnd, handleCategoryDragEnd]);
+
+    const handleDragCancel = useCallback(() => {
+        setActiveId(null);
+        setOverId(null);
+    }, []);
+
+    const handleFolderMoveUp = useCallback(async (folderIndex: number, sorted: CategoryFolder[]) => {
+        if (folderIndex === 0) return;
+        const newFolders = [...sorted];
+        [newFolders[folderIndex - 1], newFolders[folderIndex]] = [newFolders[folderIndex], newFolders[folderIndex - 1]];
+        await reorderCategoryFolders(newFolders.map((f, idx) => ({ folderId: f.folder_id, displayOrder: idx })));
+    }, []);
+
+    const handleFolderMoveDown = useCallback(async (folderIndex: number, sorted: CategoryFolder[]) => {
+        if (folderIndex === sorted.length - 1) return;
+        const newFolders = [...sorted];
+        [newFolders[folderIndex], newFolders[folderIndex + 1]] = [newFolders[folderIndex + 1], newFolders[folderIndex]];
+        await reorderCategoryFolders(newFolders.map((f, idx) => ({ folderId: f.folder_id, displayOrder: idx })));
     }, []);
 
     // @dnd-kit sensors for Bulk Edit Categories in Folder
@@ -440,58 +606,6 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
-
-    // Folder Pointer Drag Handlers
-    const folderDragFromIdx = useRef<number | null>(null);
-    const [folderDragOverIdx, setFolderDragOverIdx] = useState<number | null>(null);
-
-    const handleFolderPointerDown = useCallback((e: React.PointerEvent, index: number) => {
-        if (e.button !== 0) return;
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        folderDragFromIdx.current = index;
-        setFolderDragOverIdx(index);
-    }, []);
-
-    const handleFolderPointerMove = useCallback((e: React.PointerEvent) => {
-        if (folderDragFromIdx.current === null) return;
-        e.preventDefault();
-        const container = listRef.current;
-        if (!container) return;
-        const folderCards = Array.from(container.querySelectorAll('.cm-folder-card')) as HTMLElement[];
-        if (folderCards.length === 0) return;
-
-        let closestIdx = 0;
-        let minDistance = Infinity;
-
-        folderCards.forEach((card: HTMLElement, idx: number) => {
-            const rect = card.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            const dist = Math.abs(e.clientY - midY);
-            if (dist < minDistance) {
-                minDistance = dist;
-                closestIdx = idx;
-            }
-        });
-
-        setFolderDragOverIdx(closestIdx);
-    }, []);
-
-    const handleFolderPointerUp = useCallback(async (e: React.PointerEvent, sortedFolders: CategoryFolder[]) => {
-        if (folderDragFromIdx.current === null) return;
-        const from = folderDragFromIdx.current;
-        const to = folderDragOverIdx;
-        folderDragFromIdx.current = null;
-        setFolderDragOverIdx(null);
-
-        if (to === null || from === to) return;
-
-        const newFolders = [...sortedFolders];
-        const [moved] = newFolders.splice(from, 1);
-        newFolders.splice(to, 0, moved);
-
-        const updates = newFolders.map((f, idx) => ({ folderId: f.folder_id, displayOrder: idx }));
-        await reorderCategoryFolders(updates);
-    }, [folderDragOverIdx]);
 
     // Get visible categories based on filter and search
     const visibleCategories = useMemo(() => {
@@ -789,35 +903,51 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                     />
                 </div>
 
-                <div
-                    className="category-list"
-                    ref={listRef}
-                    onPointerMove={handleContainerPointerMove}
-                    onPointerUp={handleContainerPointerUp}
-                    onPointerCancel={handleContainerPointerCancel}
+                <DndContext
+                    sensors={categorySensors}
+                    collisionDetection={categoryListCollisionDetection}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    onDragCancel={handleDragCancel}
                 >
+                    <div className="category-list">
                     {(() => {
+                        const sortedCategoryFolders = categoryFolders && categoryFolders.length > 0
+                            ? [...categoryFolders].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+                            : [];
+                        const rootCategories = visibleCategories.filter(c => !c.folderId || !sortedCategoryFolders.some((f: CategoryFolder) => f.folder_id === c.folderId));
+                        const categoryRenderOrder = new Map<string, number>();
+                        let renderIdx = 0;
+                        for (const folder of sortedCategoryFolders) {
+                            for (const c of visibleCategories.filter(cc => cc.folderId === folder.folder_id)) {
+                                categoryRenderOrder.set(c.id, renderIdx++);
+                            }
+                        }
+                        for (const c of rootCategories) {
+                            categoryRenderOrder.set(c.id, renderIdx++);
+                        }
+
                         const renderCategoryItem = (cat: any) => {
-                            const index = categories.findIndex(c => c.id === cat.id);
-                            const isDragging = dragFromIdx.current === index;
-                            const isDragOver = dragOverIdx === index && dragFromIdx.current !== null && dragFromIdx.current !== index;
                             const isAlphabetical = categorySortOrder === 'alphabetical' && !isCustomized;
+                            const canDrag = !isAlphabetical && selectToMoveMode === 'inactive';
+                            const index = categories.findIndex(c => c.id === cat.id);
+                            const isOver = overId === cat.id && activeId !== overId;
+                            const activeIdx = activeId != null ? categoryRenderOrder.get(activeId) : undefined;
+                            const myIdx = categoryRenderOrder.get(cat.id);
+                            const dropIndicator = isOver && activeIdx !== undefined && myIdx !== undefined
+                                ? (activeIdx < myIdx ? 'below' : 'above')
+                                : null;
 
                             return (
-                                <div
+                                <SortableCategoryRow
                                     key={cat.id}
-                                    className={`category-item ${!isAlphabetical && isDragging ? 'dragging' : ''} ${!isAlphabetical && isDragOver ? 'drag-over' : ''} ${selectToMoveMode !== 'inactive' && selectedForMove.has(cat.id) ? 'selected-for-move' : ''} ${selectToMoveMode !== 'inactive' ? 'selection-mode-item' : ''}`}
+                                    id={cat.id}
+                                    disabled={!canDrag}
+                                    className={`category-item ${canDrag ? 'draggable' : ''} ${selectToMoveMode !== 'inactive' && selectedForMove.has(cat.id) ? 'selected-for-move' : ''} ${selectToMoveMode !== 'inactive' ? 'selection-mode-item' : ''}`}
                                     onClick={selectToMoveMode !== 'inactive' ? () => toggleSelectForMove(cat.id) : undefined}
+                                    dropIndicator={dropIndicator}
                                 >
-                                    {!isAlphabetical && (
-                                        <span
-                                            className="drag-handle"
-                                            style={{ touchAction: 'none', opacity: selectToMoveMode !== 'inactive' ? 0.3 : 1 }}
-                                            onPointerDown={selectToMoveMode !== 'inactive' ? undefined : (e) => handleHandlePointerDown(e, index)}
-                                        >
-                                            ⋮⋮
-                                        </span>
-                                    )}
 
                                     {cat.type === 'native' ? (
                                         <label 
@@ -828,6 +958,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                                 type="checkbox"
                                                 checked={cat.enabled}
                                                 onChange={selectToMoveMode !== 'inactive' ? () => {} : () => toggleCategory(cat.id)}
+                                                onPointerDown={(e) => e.stopPropagation()}
                                                 disabled={selectToMoveMode !== 'inactive'}
                                             />
                                             <span className="category-name">{cat.name}</span>
@@ -850,6 +981,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                                     handleAssignFolderSingle(cat.id, val);
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
+                                                onPointerDown={(e) => e.stopPropagation()}
                                                 title={i18n.t('settings:categoryManager.assignFolderHint')}
                                             >
                                                 <option value="">📁 {i18n.t('settings:categoryManager.rootLevel')}</option>
@@ -862,6 +994,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                         <button
                                             className="manage-channels-btn"
                                             onClick={selectToMoveMode !== 'inactive' ? (e) => e.stopPropagation() : () => setManagingCategory({ id: cat.id, name: cat.name })}
+                                            onPointerDown={(e) => e.stopPropagation()}
                                             disabled={selectToMoveMode !== 'inactive'}
                                             title={i18n.t('settings:categoryManager.manageChannelsHint')}
                                         >
@@ -871,6 +1004,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                             <button
                                                 className="category-delete-btn"
                                                 onClick={selectToMoveMode !== 'inactive' ? (e) => e.stopPropagation() : () => handleDeleteLink(cat.linkId)}
+                                                onPointerDown={(e) => e.stopPropagation()}
                                                 disabled={selectToMoveMode !== 'inactive'}
                                                 title={i18n.t('settings:categoryManager.removeLinkHint')}
                                                 style={{
@@ -894,6 +1028,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                             <button
                                                 className="order-btn"
                                                 onClick={selectToMoveMode !== 'inactive' ? (e) => e.stopPropagation() : () => moveToTop(index)}
+                                                onPointerDown={(e) => e.stopPropagation()}
                                                 disabled={index === 0 || selectToMoveMode !== 'inactive'}
                                                 title={i18n.t('common:moveToTop')}
                                             >
@@ -902,6 +1037,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                             <button
                                                 className="order-btn"
                                                 onClick={selectToMoveMode !== 'inactive' ? (e) => e.stopPropagation() : () => moveUp(index)}
+                                                onPointerDown={(e) => e.stopPropagation()}
                                                 disabled={index === 0 || selectToMoveMode !== 'inactive'}
                                                 title={i18n.t('common:moveUp')}
                                             >
@@ -910,6 +1046,7 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                             <button
                                                 className="order-btn"
                                                 onClick={selectToMoveMode !== 'inactive' ? (e) => e.stopPropagation() : () => moveDown(index)}
+                                                onPointerDown={(e) => e.stopPropagation()}
                                                 disabled={index === categories.length - 1 || selectToMoveMode !== 'inactive'}
                                                 title={i18n.t('common:moveDown')}
                                             >
@@ -917,147 +1054,82 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                                             </button>
                                         </div>
                                     )}
-                                </div>
+                                </SortableCategoryRow>
                             );
                         };
 
-                        if (categoryFolders && categoryFolders.length > 0) {
-                            const sortedCategoryFolders = [...categoryFolders].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
-                            const rootCategories = visibleCategories.filter(c => !c.folderId || !categoryFolders.some((f: CategoryFolder) => f.folder_id === c.folderId));
+                        if (sortedCategoryFolders.length > 0) {
+                            const folderActiveIdx = activeId != null
+                                ? sortedCategoryFolders.findIndex(f => f.folder_id === activeId)
+                                : -1;
 
                             return (
                                 <>
-                                    {sortedCategoryFolders.map((folder: CategoryFolder, folderIndex: number) => {
-                                        const folderCategories = visibleCategories.filter(c => c.folderId === folder.folder_id);
-                                        const isCollapsed = !!collapsedFolders[folder.folder_id];
-                                        const isFolderDragging = folderDragFromIdx.current === folderIndex;
-                                        const isFolderDragOver = folderDragOverIdx === folderIndex && folderDragFromIdx.current !== null && folderDragFromIdx.current !== folderIndex;
+                                    <SortableContext items={sortedCategoryFolders.map(f => f.folder_id)} strategy={verticalListSortingStrategy}>
+                                        {sortedCategoryFolders.map((folder: CategoryFolder, folderIndex: number) => {
+                                            const folderCategories = visibleCategories.filter(c => c.folderId === folder.folder_id);
+                                            const isCollapsed = !!collapsedFolders[folder.folder_id];
+                                            const isFolderOver = overId === folder.folder_id && activeId !== overId;
+                                            const folderOverIdx = overId === folder.folder_id ? sortedCategoryFolders.findIndex(f => f.folder_id === overId) : -1;
+                                            const folderDropIndicator = isFolderOver && folderActiveIdx !== -1
+                                                ? (folderActiveIdx < folderOverIdx ? 'below' : 'above')
+                                                : null;
 
-                                        return (
-                                            <div key={folder.folder_id} className={`cm-folder-card ${isFolderDragging ? 'dragging' : ''} ${isFolderDragOver ? 'drag-over' : ''}`}>
-                                                <div
-                                                    className="cm-folder-card-header"
-                                                    onClick={() => setCollapsedFolders(prev => ({ ...prev, [folder.folder_id]: !prev[folder.folder_id] }))}
-                                                    style={{ cursor: 'pointer' }}
+                                            return (
+                                                <SortableFolderCard
+                                                    key={folder.folder_id}
+                                                    folder={folder}
+                                                    folderCategoriesCount={folderCategories.length}
+                                                    isCollapsed={isCollapsed}
+                                                    folderIndex={folderIndex}
+                                                    totalFolders={sortedCategoryFolders.length}
+                                                    dropIndicator={folderDropIndicator}
+                                                    onToggleCollapse={() => setCollapsedFolders(prev => ({ ...prev, [folder.folder_id]: !prev[folder.folder_id] }))}
+                                                    onMoveUp={() => handleFolderMoveUp(folderIndex, sortedCategoryFolders)}
+                                                    onMoveDown={() => handleFolderMoveDown(folderIndex, sortedCategoryFolders)}
+                                                    onBulk={() => {
+                                                        setBulkLeftSearch('');
+                                                        setBulkRightSearch('');
+                                                        setBulkFolderTarget(folder);
+                                                    }}
+                                                    onRename={() => {
+                                                        setRenamingFolder(folder);
+                                                        setRenameInput(folder.name);
+                                                    }}
+                                                    onDelete={() => setDeletingFolderTarget(folder)}
                                                 >
-                                                    <div className="cm-folder-header-left">
-                                                        <span
-                                                            className="drag-handle"
-                                                            title={i18n.t('settings:categoryManager.dragFolderHint')}
-                                                            style={{ cursor: 'grab', opacity: 0.6, fontSize: '0.9rem', padding: '0 4px', userSelect: 'none', touchAction: 'none' }}
-                                                            onPointerDown={(e) => {
-                                                                e.stopPropagation();
-                                                                handleFolderPointerDown(e, folderIndex);
-                                                            }}
-                                                            onPointerMove={(e) => handleFolderPointerMove(e)}
-                                                            onPointerUp={(e) => handleFolderPointerUp(e, sortedCategoryFolders)}
-                                                        >
-                                                            ⠿
-                                                        </span>
-                                                        <FolderIcon size={16} />
-                                                        <span style={{ fontWeight: 600 }}>{folder.name}</span>
-                                                        <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', fontWeight: 'normal' }}>({i18n.t('settings:categoryManager.folderCategoriesCount', { count: folderCategories.length })})</span>
-                                                    </div>
-
-                                                    <div className="cm-folder-header-actions" onClick={e => e.stopPropagation()}>
-                                                        <button
-                                                            className="order-btn"
-                                                            disabled={folderIndex === 0}
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                if (folderIndex === 0) return;
-                                                                const newFolders = [...sortedCategoryFolders];
-                                                                [newFolders[folderIndex - 1], newFolders[folderIndex]] = [newFolders[folderIndex], newFolders[folderIndex - 1]];
-                                                                const updates = newFolders.map((f, idx) => ({ folderId: f.folder_id, displayOrder: idx }));
-                                                                await reorderCategoryFolders(updates);
-                                                            }}
-                                                            title={i18n.t('settings:categoryManager.moveFolderUp')}
-                                                        >
-                                                            ↑
-                                                        </button>
-                                                        <button
-                                                            className="order-btn"
-                                                            disabled={folderIndex === sortedCategoryFolders.length - 1}
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                if (folderIndex === sortedCategoryFolders.length - 1) return;
-                                                                const newFolders = [...sortedCategoryFolders];
-                                                                [newFolders[folderIndex], newFolders[folderIndex + 1]] = [newFolders[folderIndex + 1], newFolders[folderIndex]];
-                                                                const updates = newFolders.map((f, idx) => ({ folderId: f.folder_id, displayOrder: idx }));
-                                                                await reorderCategoryFolders(updates);
-                                                            }}
-                                                            title={i18n.t('settings:categoryManager.moveFolderDown')}
-                                                        >
-                                                            ↓
-                                                        </button>
-                                                        <button
-                                                            className="cm-folder-bulk-btn"
-                                                            onClick={() => {
-                                                                setBulkLeftSearch('');
-                                                                setBulkRightSearch('');
-                                                                setBulkFolderTarget(folder);
-                                                            }}
-                                                            title={i18n.t('settings:categoryManager.bulkAddRemoveHint')}
-                                                            style={{
-                                                                background: 'rgba(0, 212, 255, 0.12)',
-                                                                border: '1px solid rgba(0, 212, 255, 0.3)',
-                                                                borderRadius: '4px',
-                                                                color: '#00d4ff',
-                                                                fontSize: '0.75rem',
-                                                                padding: '3px 8px',
-                                                                cursor: 'pointer',
-                                                                fontWeight: 500,
-                                                                marginRight: '6px'
-                                                            }}
-                                                        >
-                                                            ⇄ {i18n.t('settings:categoryManager.bulkAddRemove')}
-                                                        </button>
-                                                        <button
-                                                            className="cm-folder-icon-btn"
-                                                            onClick={() => {
-                                                                setRenamingFolder(folder);
-                                                                setRenameInput(folder.name);
-                                                            }}
-                                                            title={i18n.t('settings:categoryManager.renameFolderHint')}
-                                                        >
-                                                            <PencilIcon size={14} />
-                                                        </button>
-                                                        <button
-                                                            className="cm-folder-icon-btn delete"
-                                                            onClick={() => setDeletingFolderTarget(folder)}
-                                                            title={i18n.t('settings:categoryManager.deleteFolderHint')}
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {!isCollapsed && (
-                                                    <div className="cm-folder-card-body">
+                                                    <SortableContext items={folderCategories.map(c => c.id)} strategy={verticalListSortingStrategy}>
                                                         {folderCategories.length === 0 ? (
                                                             <div className="cm-folder-empty-hint">{i18n.t('settings:categoryManager.folderEmpty')}</div>
                                                         ) : (
                                                             folderCategories.map(cat => renderCategoryItem(cat))
                                                         )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                                    </SortableContext>
+                                                </SortableFolderCard>
+                                            );
+                                        })}
+                                    </SortableContext>
 
                                     {rootCategories.length > 0 && (
                                         <div className="cm-root-categories">
-                                            {categoryFolders.length > 0 && <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', margin: '12px 0 6px' }}>{i18n.t('settings:categoryManager.rootCategories')}</div>}
-                                            {rootCategories.map(cat => renderCategoryItem(cat))}
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', margin: '12px 0 6px' }}>{i18n.t('settings:categoryManager.rootCategories')}</div>
+                                            <SortableContext items={rootCategories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                                                {rootCategories.map(cat => renderCategoryItem(cat))}
+                                            </SortableContext>
                                         </div>
                                     )}
                                 </>
                             );
                         }
 
-                        return visibleCategories.map(cat => renderCategoryItem(cat));
+                        return (
+                            <SortableContext items={visibleCategories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                                {visibleCategories.map(cat => renderCategoryItem(cat))}
+                            </SortableContext>
+                        );
                     })()}
-                </div>
+                    </div>
+                </DndContext>
 
                 <div className="category-manager-footer">
                     <button className="cancel-btn" onClick={onClose}>{i18n.t('common:cancel')}</button>

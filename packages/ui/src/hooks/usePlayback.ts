@@ -300,6 +300,8 @@ export interface PlaybackState {
   // Refs
   volumeDraggingRef: React.MutableRefObject<boolean>;
   seekingRef: React.MutableRefObject<boolean>;
+  /** True while the current pause was initiated by the user (not an EOF/stop). */
+  userPausedRef: React.MutableRefObject<boolean>;
 
   // Derived
   isCatchup: boolean;
@@ -2150,6 +2152,16 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     setVodLoadingInfo(info);
     isPlayLoadingRef.current = true;
 
+    // Reset playback state immediately so the new stream never inherits stale
+    // position/duration from the previously loaded file. Otherwise a brief
+    // window exists where position/duration still reflect the old episode
+    // (e.g. >= 90%) while the new stream is loading.
+    setPosition(0);
+    setDuration(0);
+    // A fresh stream is never user-paused; clear the flag so auto-play isn't
+    // blocked for this episode by a pause on a previous one.
+    userPausedRef.current = false;
+
     let resolved;
     let sourceData: { type?: string } | undefined;
     try {
@@ -2337,7 +2349,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       // Close the VOD page when playing
       onCloseView?.();
     }
-  }, [setIgnoreHttpErrors, setPosition, clearPendingSeeks]);
+  }, [setIgnoreHttpErrors, setPosition, setDuration, clearPendingSeeks]);
 
   const handlePlayRecording = useCallback(async (recording: import('../db').DvrRecording, onCloseView?: () => void) => {
     setError(null);
@@ -2613,6 +2625,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     catchupInfo,
     volumeDraggingRef,
     seekingRef,
+    userPausedRef,
     isCatchup,
     retryState,
     failoverState,
