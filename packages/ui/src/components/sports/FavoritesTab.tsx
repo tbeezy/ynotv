@@ -20,8 +20,8 @@ import {
   isEventLiveOrPastStart,
   type TeamDetails
 } from '../../services/sports';
-import { db, type StoredChannel } from '../../db';
-import { buildSearchQueryClauses } from '../../utils/searchNormalization';
+import type { StoredChannel } from '../../db';
+import { searchGameStreams } from '../../services/sports/gameStreamSearcher';
 import { TeamDetail } from './TeamDetail';
 import { GameDetail } from './GameDetail';
 
@@ -127,54 +127,7 @@ function buildTeamSearchQuery(homeTeam: string, awayTeam?: string): string {
   return `${stripCityPrefix(homeTeam)} ${stripCityPrefix(awayTeam)}`;
 }
 
-/**
- * Searches local channels database and EPG programs for matching query.
- */
-async function searchLocalStreams(query: string): Promise<StoredChannel[]> {
-  const queryWords = query.trim().toLowerCase().split(/\s+/).filter((w) => w.length > 0);
-  if (queryWords.length === 0) return [];
 
-  try {
-    const dbInstance = await (db as any).dbPromise;
-    const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
-    const enabledSources = sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || [];
-
-    if (enabledSources.length === 0) return [];
-
-    const sourcePlaceholders = enabledSources.map(() => '?').join(',');
-    const enabledCategoryRows = await dbInstance.select(
-      `SELECT category_id FROM categories WHERE source_id IN (${sourcePlaceholders}) AND (enabled IS NULL OR enabled != 0)`,
-      enabledSources
-    );
-    const enabledCategoryIds = enabledCategoryRows.map((r: any) => r.category_id);
-
-    if (enabledCategoryIds.length === 0) return [];
-
-    const categoryPlaceholders = enabledCategoryIds.map(() => '?').join(',');
-    const { sql: wordLikeClauses, params: wordParams } = buildSearchQueryClauses('c.name', query);
-    const { sql: progLikeClauses, params: progParams } = buildSearchQueryClauses('p.title', query);
-    const nowIso = new Date().toISOString();
-
-    const channelMatches = await dbInstance.select(
-      `SELECT DISTINCT c.* FROM channels c CROSS JOIN json_each(c.category_ids) AS cat WHERE (${wordLikeClauses}) AND c.source_id IN (${sourcePlaceholders}) AND (c.enabled IS NULL OR c.enabled != 0) AND cat.value IN (${categoryPlaceholders}) LIMIT 15`,
-      [...wordParams, ...enabledSources, ...enabledCategoryIds]
-    );
-
-    const programMatches = await dbInstance.select(
-      `SELECT DISTINCT c.* FROM channels c INNER JOIN programs p ON p.stream_id = c.stream_id CROSS JOIN json_each(c.category_ids) AS cat WHERE (${progLikeClauses}) AND p.end > ? AND c.source_id IN (${sourcePlaceholders}) AND (c.enabled IS NULL OR c.enabled != 0) AND cat.value IN (${categoryPlaceholders}) LIMIT 15`,
-      [...progParams, nowIso, ...enabledSources, ...enabledCategoryIds]
-    );
-
-    const mergedMap = new Map<string, StoredChannel>();
-    for (const ch of channelMatches) mergedMap.set(ch.stream_id, ch as StoredChannel);
-    for (const ch of programMatches) mergedMap.set(ch.stream_id, ch as StoredChannel);
-
-    return Array.from(mergedMap.values()).slice(0, 15);
-  } catch (err) {
-    console.error('[FavoritesTab] Inline stream search error:', err);
-    return [];
-  }
-}
 
 /**
  * Single team fetch worker with promise deduplication
@@ -234,7 +187,7 @@ interface SortableFavoriteCardProps {
   onTogglePin: (teamId: string) => void;
   onRemove: (teamId: string) => void;
   onSearchClick: (query: string) => void;
-  onToggleInlineStreams: (cardKey: string, query: string) => void;
+  onToggleInlineStreams: (cardKey: string, query: string, leagueId?: string) => void;
   onStreamClick: (channel: StoredChannel) => void;
   dropIndicator?: 'above' | 'below' | null;
 }
@@ -433,7 +386,7 @@ function SortableFavoriteCard(props: SortableFavoriteCardProps) {
           className={`favorite-action-text-btn list-btn ${streamsList && streamsList.length > 0 ? 'active' : ''}`}            title={streamsList ? i18n.t('sports:hideStreams') : i18n.t('sports:findMatchingLiveStreams')}
           onClick={(e) => {
             e.stopPropagation();
-            onToggleInlineStreams(cardKey, searchQuery);
+            onToggleInlineStreams(cardKey, searchQuery, team.leagueId || liveEvent?.league?.id || nextEvent?.league?.id);
           }}
         >
           {isSearching ? (
@@ -649,7 +602,7 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
     }
   };
 
-  const toggleInlineStreams = useCallback(async (cardKey: string, searchQuery: string) => {
+  const toggleInlineStreams = useCallback(async (cardKey: string, searchQuery: string, leagueId?: string) => {
     if (inlineStreams[cardKey] !== undefined && inlineStreams[cardKey] !== null) {
       // Toggle hide
       setInlineStreams((prev) => ({ ...prev, [cardKey]: null }));
@@ -658,7 +611,7 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
 
     setSearchingKeys((prev) => ({ ...prev, [cardKey]: true }));
     try {
-      const results = await searchLocalStreams(searchQuery);
+      const results = await searchGameStreams(searchQuery, leagueId, 15);
       setInlineStreams((prev) => ({ ...prev, [cardKey]: results }));
     } finally {
       setSearchingKeys((prev) => ({ ...prev, [cardKey]: false }));
@@ -877,7 +830,7 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
                       title={streamsList ? i18n.t('sports:hideStreams') : i18n.t('sports:listStreamsForGame')}
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleInlineStreams(cardKey, searchQuery);
+                        toggleInlineStreams(cardKey, searchQuery, event.league.id);
                       }}
                     >
                       {isSearching ? (

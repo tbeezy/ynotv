@@ -977,6 +977,13 @@ export class SqliteDatabase {
         await db.execute(sql, params);
     }
 
+    // Run a raw SELECT and return the rows, without reaching into the
+    // protected dbPromise from services. Accepts `?`-style placeholders.
+    async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+        const db = await this.dbPromise;
+        return (await db.select(sql, params)) as T[];
+    }
+
     // Checkpoint WAL - call after bulk operations to reclaim space
     // mode: 'PASSIVE' (default, no wait), 'FULL' (wait for all writers), 'RESTART' (full reset), 'TRUNCATE' (reset + truncate)
     async checkpoint(mode: 'PASSIVE' | 'FULL' | 'RESTART' | 'TRUNCATE' = 'PASSIVE'): Promise<void> {

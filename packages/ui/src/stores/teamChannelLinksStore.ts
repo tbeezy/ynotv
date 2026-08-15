@@ -25,6 +25,8 @@ export interface TeamLinkInput {
 
 interface TeamChannelLinksState {
   links: TeamChannelLink[];
+  /** Index of `links` keyed by `${league_id}:${team_id}` → sorted by priority, for O(1) lookups. */
+  teamIndex: Map<string, TeamChannelLink[]>;
   loaded: boolean;
   loading: boolean;
   ensureLoaded: () => Promise<void>;
@@ -36,8 +38,10 @@ interface TeamChannelLinksState {
   setPrimaryChannel: (leagueId: string, teamId: string, streamId: string) => Promise<void>;
   reorderTeamLinks: (leagueId: string, teamId: string, orderedStreamIds: string[]) => Promise<void>;
   bulkLink: (links: TeamChannelLink[]) => Promise<void>;
-  autoLinkLeague: (leagueId: string) => Promise<{ suggestions: TeamLinkSuggestion[]; autoLinked: number; teamCount: number }>;
-  acceptSuggestion: (suggestion: TeamLinkSuggestion, candidateIndex?: number) => Promise<void>;
+  autoLinkLeague: (
+    leagueId: string,
+    customConfig?: import('./leagueAutoLinkConfigStore').LeagueAutoLinkConfig
+  ) => Promise<{ suggestions: TeamLinkSuggestion[]; autoLinked: number; teamCount: number }>;
 }
 
 let loadPromise: Promise<void> | null = null;
@@ -47,6 +51,43 @@ export function linkId(leagueId: string, teamId: string, streamId?: string): str
     return `${leagueId}:${teamId}:${streamId}`;
   }
   return `${leagueId}:${teamId}`;
+}
+
+/** Stable empty array so selectors for teams without links keep a constant reference. */
+const EMPTY_TEAM_LINKS: TeamChannelLink[] = [];
+
+export function teamIndexKey(leagueId: string, teamId: string): string {
+  return `${leagueId}:${teamId}`;
+}
+
+/**
+ * Groups and sorts `links` into a per-team map. Entries whose team didn't
+ * change keep their previous array reference, so per-team selectors only
+ * re-render when that team's links actually change.
+ */
+function buildTeamIndex(
+  links: TeamChannelLink[],
+  prev?: Map<string, TeamChannelLink[]>
+): Map<string, TeamChannelLink[]> {
+  const byTeam = new Map<string, TeamChannelLink[]>();
+  for (const l of links) {
+    const key = teamIndexKey(l.league_id, l.team_id);
+    const arr = byTeam.get(key);
+    if (arr) arr.push(l);
+    else byTeam.set(key, [l]);
+  }
+
+  const index = new Map<string, TeamChannelLink[]>();
+  for (const [key, arr] of byTeam) {
+    const sorted = [...arr].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+    const prevArr = prev?.get(key);
+    if (prevArr && prevArr.length === sorted.length && prevArr.every((l, i) => l === sorted[i])) {
+      index.set(key, prevArr);
+    } else {
+      index.set(key, sorted);
+    }
+  }
+  return index;
 }
 
 /**
@@ -68,6 +109,7 @@ export function getTeamLink(links: TeamChannelLink[], leagueId: string, teamId: 
 
 export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get) => ({
   links: [],
+  teamIndex: new Map(),
   loaded: false,
   loading: false,
 
@@ -93,7 +135,12 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
           }
         }
 
-        set({ links: migrated, loaded: true, loading: false });
+        set((s) => ({
+          links: migrated,
+          teamIndex: buildTeamIndex(migrated, s.teamIndex),
+          loaded: true,
+          loading: false,
+        }));
       } catch (err) {
         console.error('[TeamChannelLinks] Failed to load links:', err);
         set({ loaded: true, loading: false });
@@ -107,7 +154,12 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
   reload: async () => {
     const rawLinks = await db.teamChannelLinks.toArray();
     const normalized = rawLinks.map((l) => ({ ...l, priority: l.priority ?? 0 }));
-    set({ links: normalized, loaded: true, loading: false });
+    set((s) => ({
+      links: normalized,
+      teamIndex: buildTeamIndex(normalized, s.teamIndex),
+      loaded: true,
+      loading: false,
+    }));
   },
 
   linkTeam: async (input) => {
@@ -152,12 +204,13 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
 
     await db.teamChannelLinks.bulkPut(normalized);
 
-    set((s) => ({
-      links: [
+    set((s) => {
+      const next = [
         ...s.links.filter((l) => !(l.league_id === input.league_id && l.team_id === input.team_id)),
         ...normalized,
-      ],
-    }));
+      ];
+      return { links: next, teamIndex: buildTeamIndex(next, s.teamIndex) };
+    });
   },
 
   unlinkTeamChannel: async (leagueId, teamId, streamId) => {
@@ -176,14 +229,13 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
       await db.teamChannelLinks.bulkPut(remainingForTeam).catch(() => {});
     }
 
-    set((s) => ({
-      links: [
-        ...s.links.filter(
-          (l) => !(l.league_id === leagueId && l.team_id === teamId)
-        ),
+    set((s) => {
+      const next = [
+        ...s.links.filter((l) => !(l.league_id === leagueId && l.team_id === teamId)),
         ...remainingForTeam,
-      ],
-    }));
+      ];
+      return { links: next, teamIndex: buildTeamIndex(next, s.teamIndex) };
+    });
   },
 
   unlinkTeam: async (leagueId, teamId) => {
@@ -192,9 +244,10 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
       await db.teamChannelLinks.delete(l.id).catch(() => {});
     }
     await db.teamChannelLinks.delete(`${leagueId}:${teamId}`).catch(() => {});
-    set((s) => ({
-      links: s.links.filter((l) => !(l.league_id === leagueId && l.team_id === teamId)),
-    }));
+    set((s) => {
+      const next = s.links.filter((l) => !(l.league_id === leagueId && l.team_id === teamId));
+      return { links: next, teamIndex: buildTeamIndex(next, s.teamIndex) };
+    });
   },
 
   unlinkLeague: async (leagueId) => {
@@ -202,7 +255,10 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
     for (const l of toDelete) {
       await db.teamChannelLinks.delete(l.id).catch(() => {});
     }
-    set((s) => ({ links: s.links.filter((l) => l.league_id !== leagueId) }));
+    set((s) => {
+      const next = s.links.filter((l) => l.league_id !== leagueId);
+      return { links: next, teamIndex: buildTeamIndex(next, s.teamIndex) };
+    });
   },
 
   setPrimaryChannel: async (leagueId, teamId, streamId) => {
@@ -220,12 +276,13 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
 
     await db.teamChannelLinks.bulkPut(reordered);
 
-    set((s) => ({
-      links: [
+    set((s) => {
+      const next = [
         ...s.links.filter((l) => !(l.league_id === leagueId && l.team_id === teamId)),
         ...reordered,
-      ],
-    }));
+      ];
+      return { links: next, teamIndex: buildTeamIndex(next, s.teamIndex) };
+    });
   },
 
   reorderTeamLinks: async (leagueId, teamId, orderedStreamIds) => {
@@ -250,12 +307,13 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
       await db.teamChannelLinks.bulkPut(reordered);
     }
 
-    set((s) => ({
-      links: [
+    set((s) => {
+      const next = [
         ...s.links.filter((l) => !(l.league_id === leagueId && l.team_id === teamId)),
         ...reordered,
-      ],
-    }));
+      ];
+      return { links: next, teamIndex: buildTeamIndex(next, s.teamIndex) };
+    });
   },
 
   bulkLink: async (links) => {
@@ -264,11 +322,12 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
     set((s) => {
       const byId = new Map(s.links.map((l) => [l.id, l] as const));
       for (const l of links) byId.set(l.id, l);
-      return { links: Array.from(byId.values()) };
+      const next = Array.from(byId.values());
+      return { links: next, teamIndex: buildTeamIndex(next, s.teamIndex) };
     });
   },
 
-  autoLinkLeague: async (leagueId) => {
+  autoLinkLeague: async (leagueId, customConfig) => {
     await get().ensureLoaded();
     const teams = await getLeagueTeams(leagueId);
     if (teams.length === 0) {
@@ -282,39 +341,56 @@ export const useTeamChannelLinksStore = create<TeamChannelLinksState>((set, get)
     );
     const unlinkedTeams = teams.filter((t) => !alreadyLinked.has(t.id));
 
-    const result = await matchTeamsToChannels(leagueId, unlinkedTeams);
-    const autoLinks: TeamChannelLink[] = result.autoLinked
-      .filter((s) => s.best)
-      .map((s) => ({
-        id: linkId(leagueId, s.team.id, s.best!.channel.stream_id),
-        league_id: leagueId,
-        team_id: s.team.id,
-        stream_id: s.best!.channel.stream_id,
-        channel_name: s.best!.channel.alias || s.best!.channel.name,
-        source_id: s.best!.channel.source_id,
-        priority: 0,
-        auto: 1,
-        confidence: s.best!.score,
-        updated_at: Date.now(),
-      }));
-    if (autoLinks.length > 0) {
-      await get().bulkLink(autoLinks);
+    const { useLeagueAutoLinkConfigStore } = await import('./leagueAutoLinkConfigStore');
+    let config = customConfig;
+    if (!config) {
+      await useLeagueAutoLinkConfigStore.getState().ensureLoaded();
+      config = useLeagueAutoLinkConfigStore.getState().getConfig(leagueId);
     }
-    return { suggestions: result.reviewable, autoLinked: autoLinks.length, teamCount: teams.length };
-  },
 
-  acceptSuggestion: async (suggestion, candidateIndex = 0) => {
-    const candidate = suggestion.candidates[candidateIndex];
-    if (!candidate) return;
-    await get().linkTeam({
-      league_id: suggestion.leagueId,
-      team_id: suggestion.team.id,
-      stream_id: candidate.channel.stream_id,
-      channel_name: candidate.channel.alias || candidate.channel.name,
-      source_id: candidate.channel.source_id,
-      auto: 0,
-      confidence: candidate.score,
-    });
+    const result = await matchTeamsToChannels(leagueId, unlinkedTeams, config);
+
+    if (config.autoApply) {
+      // Auto-apply honors the league's confidence floor and per-team candidate
+      // count (primary + backups), not just the single best match.
+      const minConfidence = config.minConfidence ?? 0;
+      const maxCandidates = config.maxCandidatesPerTeam ?? 1;
+      const autoLinkedTeams = result.autoLinked
+        .map((s) => ({
+          s,
+          eligible: s.candidates
+            .filter((c) => c.score >= minConfidence)
+            .slice(0, maxCandidates),
+        }))
+        .filter(({ eligible }) => eligible.length > 0);
+
+      const autoLinks: TeamChannelLink[] = autoLinkedTeams.flatMap(({ s, eligible }) =>
+        eligible.map((cand, idx) => ({
+          id: linkId(leagueId, s.team.id, cand.channel.stream_id),
+          league_id: leagueId,
+          team_id: s.team.id,
+          stream_id: cand.channel.stream_id,
+          channel_name: cand.channel.alias || cand.channel.name,
+          source_id: cand.channel.source_id,
+          priority: idx,
+          auto: 1,
+          confidence: cand.score,
+          updated_at: Date.now(),
+        }))
+      );
+      if (autoLinks.length > 0) {
+        await get().bulkLink(autoLinks);
+      }
+      return { suggestions: result.reviewable, autoLinked: autoLinkedTeams.length, teamCount: teams.length };
+    }
+
+    // Return all suggestions that found candidate channels so users can review and pick
+    const matchingSuggestions = result.suggestions.filter((s) => s.candidates.length > 0);
+    return {
+      suggestions: matchingSuggestions,
+      autoLinked: 0,
+      teamCount: teams.length,
+    };
   },
 }));
 
@@ -324,3 +400,11 @@ export const useTeamChannelLinks = () => {
   const ensureLoaded = useTeamChannelLinksStore((s) => s.ensureLoaded);
   return { links, loaded, ensureLoaded };
 };
+
+/**
+ * O(1) indexed lookup of a team's links (sorted by priority) for the hot path
+ * (match cards). Returns a stable array reference that only changes when that
+ * team's links actually change, so a card re-renders only when its own links do.
+ */
+export const useTeamLinks = (leagueId: string, teamId: string): TeamChannelLink[] =>
+  useTeamChannelLinksStore((s) => s.teamIndex.get(teamIndexKey(leagueId, teamId)) ?? EMPTY_TEAM_LINKS);

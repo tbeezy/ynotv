@@ -15,6 +15,7 @@ import { GameCard } from './GameCard';
 import { GameDetail } from './GameDetail';
 import { GameCardSkeleton } from './LoadingSkeleton';
 import { TeamChannelSettingsModal } from './TeamChannelSettings';
+import { SportsSearchSettingsModal } from './SportsSearchSettingsModal';
 import './LoadingSkeleton.css';
 
 interface LiveScoresTabProps {
@@ -33,6 +34,7 @@ export function LiveScoresTab({
   const [selectedEvent, setSelectedEvent] = useState<SportsEvent | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [teamChannelsOpen, setTeamChannelsOpen] = useState(false);
+  const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
   const setSelectedTab = useSetSportsSelectedTab();
   const epgClockFormat = useEpgClockFormat();
   useTranslation();
@@ -224,6 +226,18 @@ export function LiveScoresTab({
           </svg>
           {i18n.t('sports:manageTeamChannels')}
         </button>
+        <button
+          className="live-header-settings-reminder"
+          style={{ marginLeft: 0 }}
+          onClick={() => setSearchSettingsOpen(true)}
+          title={i18n.t('sports:searchSettingsDesc', { defaultValue: 'Configure search sources and categories per league' })}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          {i18n.t('sports:searchSettings', { defaultValue: 'Search Settings' })}
+        </button>
       </div>
 
       {loading && events.length === 0 ? (
@@ -288,6 +302,11 @@ export function LiveScoresTab({
       <TeamChannelSettingsModal
         isOpen={teamChannelsOpen}
         onClose={() => setTeamChannelsOpen(false)}
+      />
+
+      <SportsSearchSettingsModal
+        isOpen={searchSettingsOpen}
+        onClose={() => setSearchSettingsOpen(false)}
       />
     </div>
   );

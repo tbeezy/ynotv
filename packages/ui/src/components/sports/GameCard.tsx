@@ -4,9 +4,9 @@ import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
 import { db } from '../../db';
 import type { StoredChannel, TeamChannelLink } from '../../db';
-import { buildSearchQueryClauses } from '../../utils/searchNormalization';
-import { stripCityPrefix, splitTeamName, buildTeamSearchQuery } from '../../services/sports/teamChannelMatcher';
-import { useTeamChannelLinks, getTeamLinks } from '../../stores/teamChannelLinksStore';
+import { splitTeamName, buildTeamSearchQuery } from '../../services/sports/teamChannelMatcher';
+import { searchGameStreams } from '../../services/sports/gameStreamSearcher';
+import { useTeamChannelLinks, useTeamLinks } from '../../stores/teamChannelLinksStore';
 import { useSportsSelectedChannels, useSetSportsSelectedChannel, useEpgClockFormat } from '../../stores/uiStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -95,7 +95,7 @@ function TeamPlayButton({
       const group = groupRef.current;
       if (!group) return;
       const rect = group.getBoundingClientRect();
-      const menuW = menuRef.current?.offsetWidth ?? 190;
+      const menuW = menuRef.current?.offsetWidth ?? 200;
       const menuH = menuRef.current?.offsetHeight ?? 0;
       const gap = 6;
       let top = rect.bottom + gap;
@@ -108,7 +108,6 @@ function TeamPlayButton({
       setMenuPos({ top, left });
     };
     update();
-    // Re-measure once the menu has actually mounted so we get its real size.
     const raf = requestAnimationFrame(update);
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
@@ -127,7 +126,7 @@ function TeamPlayButton({
   if (backups.length === 0) {
     return (
       <button
-        className="gc-team-play"
+        className="gc-team-play-btn"
         title={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
         aria-label={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
         onClick={(e) => {
@@ -136,7 +135,6 @@ function TeamPlayButton({
         }}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-        <span>{primary.channel_name}</span>
       </button>
     );
   }
@@ -145,7 +143,7 @@ function TeamPlayButton({
     <>
       <div className="gc-team-play-group" ref={groupRef} onClick={(e) => e.stopPropagation()}>
         <button
-          className="gc-team-play main"
+          className="gc-team-play-btn main"
           title={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
           aria-label={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
           onClick={(e) => {
@@ -154,19 +152,17 @@ function TeamPlayButton({
           }}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-          <span>{primary.channel_name}</span>
         </button>
         <button
-          className={`gc-team-play-backup-btn ${menuOpen ? 'active' : ''}`}
-          title={`+${backups.length} ${i18n.t('sports:backupChannels')}`}
+          className={`gc-team-play-dropdown-btn ${menuOpen ? 'active' : ''}`}
+          title={`${primary.channel_name} (+${backups.length} ${i18n.t('sports:backupChannels')})`}
           aria-label={`+${backups.length} ${i18n.t('sports:backupChannels')}`}
           onClick={(e) => {
             e.stopPropagation();
             setMenuOpen(!menuOpen);
           }}
         >
-          <span>+{backups.length}</span>
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
@@ -198,7 +194,7 @@ function TeamPlayButton({
                   <span className={`gc-menu-priority-badge ${isPrimary ? 'primary' : 'backup'}`}>
                     {isPrimary ? i18n.t('sports:primaryChannel') : i18n.t('sports:backupChannel', { num: idx })}
                   </span>
-                  <span className="gc-menu-channel-name">{l.channel_name}</span>
+                  <span className="gc-menu-channel-name" title={l.channel_name}>{l.channel_name}</span>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 </button>
               );
@@ -237,10 +233,11 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
   const selectedChannelKey = sportsSelectedChannels[event.id] || null;
 
   // Team → channel links (configured in Sports settings or auto-linked).
-  const { links: teamLinks, ensureLoaded: ensureTeamLinksLoaded } = useTeamChannelLinks();
+  // Indexed lookups: O(1) per team, stable references, no per-render filter/sort.
+  const { ensureLoaded: ensureTeamLinksLoaded } = useTeamChannelLinks();
   useEffect(() => { ensureTeamLinksLoaded(); }, [ensureTeamLinksLoaded]);
-  const homeLinks = getTeamLinks(teamLinks, event.league.id, event.homeTeam.id);
-  const awayLinks = getTeamLinks(teamLinks, event.league.id, event.awayTeam.id);
+  const homeLinks = useTeamLinks(event.league.id, event.homeTeam.id);
+  const awayLinks = useTeamLinks(event.league.id, event.awayTeam.id);
 
   const handlePlayLinked = useCallback(async (link: TeamChannelLink) => {
     try {
@@ -276,53 +273,7 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
     setIsSearching(true);
     try {
       const query = buildTeamSearchQuery(event.homeTeam.name, event.awayTeam.name, event.league.id);
-      const queryWords = query.trim().toLowerCase().split(/\s+/).filter((w) => w.length > 0);
-      if (queryWords.length === 0) {
-        setLocalSearchChannels([]);
-        return;
-      }
-
-      const dbInstance = await (db as any).dbPromise;
-      const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
-      const enabledSources = sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || [];
-
-      if (enabledSources.length === 0) {
-        setLocalSearchChannels([]);
-        return;
-      }
-
-      const sourcePlaceholders = enabledSources.map(() => '?').join(',');
-      const enabledCategoryRows = await dbInstance.select(
-        `SELECT category_id FROM categories WHERE source_id IN (${sourcePlaceholders}) AND (enabled IS NULL OR enabled != 0)`,
-        enabledSources
-      );
-      const enabledCategoryIds = enabledCategoryRows.map((r: any) => r.category_id);
-
-      if (enabledCategoryIds.length === 0) {
-        setLocalSearchChannels([]);
-        return;
-      }
-
-      const categoryPlaceholders = enabledCategoryIds.map(() => '?').join(',');
-      const { sql: wordLikeClauses, params: wordParams } = buildSearchQueryClauses('c.name', query);
-      const { sql: progLikeClauses, params: progParams } = buildSearchQueryClauses('p.title', query);
-      const nowIso = new Date().toISOString();
-
-      const channelMatches = await dbInstance.select(
-        `SELECT DISTINCT c.* FROM channels c CROSS JOIN json_each(c.category_ids) AS cat WHERE (${wordLikeClauses}) AND c.source_id IN (${sourcePlaceholders}) AND (c.enabled IS NULL OR c.enabled != 0) AND cat.value IN (${categoryPlaceholders}) LIMIT 15`,
-        [...wordParams, ...enabledSources, ...enabledCategoryIds]
-      );
-
-      const programMatches = await dbInstance.select(
-        `SELECT DISTINCT c.* FROM channels c INNER JOIN programs p ON p.stream_id = c.stream_id CROSS JOIN json_each(c.category_ids) AS cat WHERE (${progLikeClauses}) AND p.end > ? AND c.source_id IN (${sourcePlaceholders}) AND (c.enabled IS NULL OR c.enabled != 0) AND cat.value IN (${categoryPlaceholders}) LIMIT 15`,
-        [...progParams, nowIso, ...enabledSources, ...enabledCategoryIds]
-      );
-
-      const mergedMap = new Map<string, StoredChannel>();
-      for (const ch of channelMatches) mergedMap.set(ch.stream_id, ch as StoredChannel);
-      for (const ch of programMatches) mergedMap.set(ch.stream_id, ch as StoredChannel);
-
-      const results = Array.from(mergedMap.values()).slice(0, 15);
+      const results = await searchGameStreams(query, event.league.id, 15);
       inlineSearchCache.set(event.id, results);
       setLocalSearchChannels(results);
     } catch (err) {
@@ -332,7 +283,7 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
     } finally {
       setIsSearching(false);
     }
-  }, [event, localSearchChannels]);
+  }, [event.id, event.homeTeam.name, event.awayTeam.name, event.league.id, localSearchChannels]);
 
   const getStatusBelow = (): string => {
     if (isScheduled) return '';

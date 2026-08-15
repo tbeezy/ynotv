@@ -2,51 +2,52 @@
  * Team → Channel matcher.
  *
  * Maps sports teams to provider channels so a game can be watched with one tap.
- * Reuses (and now owns) the team-name heuristics that GameCard used to search
- * the EPG, plus a confidence-scoring pass that ranks candidate channels so the
- * auto-link flow can either auto-assign or hand results to the review UI.
+ * Supports configurable matching strategy (Full City + Team, Smart Match, Nicknames)
+ * and source / category scoping per league.
  */
 
 import { db } from '../../db';
 import type { StoredChannel } from '../../db';
 import type { SportsTeam } from '@ynotv/core';
-import { buildSearchQueryClauses, normalizeText } from '../../utils/searchNormalization';
+import { buildSearchQueryClauses, getSearchVariants, normalizeText } from '../../utils/searchNormalization';
+import type { LeagueAutoLinkConfig } from '../../stores/leagueAutoLinkConfigStore';
+
+export function parseCategoryIds(raw: string | string[] | number[] | undefined): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(String);
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map(String);
+    if (typeof parsed === 'string' || typeof parsed === 'number') return [String(parsed)];
+  } catch {
+    if (typeof raw === 'string') return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  return [String(raw)];
+}
+
+export { normalizeText };
 
 /**
  * Known city/location prefixes used in major sports team names.
  * Multi-word prefixes must be listed before single-word ones so they match greedily.
  */
 export const TEAM_CITY_PREFIXES: string[] = [
-  'St. Louis', 'St Louis', 'New York', 'Los Angeles', 'San Francisco', 'San Diego',
-  'San Jose', 'Kansas City', 'Oklahoma City', 'Salt Lake', 'New Orleans',
-  'Las Vegas', 'Green Bay', 'Tampa Bay', 'Bay Area', 'Golden State',
-  'New England', 'Carolina', 'Rhode Island',
-  'Fort Worth', 'Fort Lauderdale', 'El Paso', 'San Antonio', 'Little Rock',
-  'Baton Rouge', 'West Ham', 'Crystal Palace', 'Brighton', 'Sheffield',
-  'Nottingham', 'Wolverhampton', 'Aston', 'Porto Alegre',
-  'Porto', 'Real Madrid', 'Real Sociedad', 'Real Betis', 'Real Valladolid',
-  'Atletico', 'Athletic',
-  'Atlanta', 'Baltimore', 'Boston', 'Buffalo', 'Charlotte', 'Chicago',
-  'Cincinnati', 'Cleveland', 'Colorado', 'Columbus', 'Dallas', 'Denver',
-  'Detroit', 'Edmonton', 'Florida', 'Houston', 'Indiana', 'Jacksonville',
-  'Louisville', 'Memphis', 'Miami', 'Milwaukee', 'Minnesota', 'Montreal',
-  'Nashville', 'Newark', 'Oakland', 'Orlando', 'Ottawa', 'Philadelphia',
-  'Phoenix', 'Pittsburgh', 'Portland', 'Sacramento', 'Seattle', 'Toronto',
-  'Utah', 'Vancouver', 'Washington', 'Winnipeg', 'Arizona', 'Cincinnati',
-  'Jacksonville', 'Tennessee', 'Mississippi', 'Alabama', 'Georgia', 'Oregon',
-  'Arsenal', 'Chelsea', 'Everton', 'Leicester', 'Liverpool', 'Fulham',
-  'Brentford', 'Bournemouth', 'Burnley', 'Watford', 'Sunderland', 'Middlesbrough',
-  'Bayern', 'Dortmund', 'Leverkusen', 'Leipzig', 'Frankfurt', 'Stuttgart',
-  'Bremen', 'Hamburg', 'Freiburg', 'Augsburg', 'Wolfsburg', 'Mainz', 'Bochum',
-  'Barcelona', 'Sevilla', 'Valencia', 'Villarreal', 'Bilbao', 'Getafe',
-  'Girona', 'Alaves', 'Mallorca', 'Celta', 'Rayo', 'Osasuna', 'Cadiz',
-  'Juventus', 'Napoli', 'Milan', 'Roma', 'Lazio', 'Atalanta', 'Fiorentina',
-  'Torino', 'Udine', 'Monza', 'Bologna', 'Genoa', 'Lecce', 'Frosinone',
-  'Paris', 'Lyon', 'Marseille', 'Lens', 'Lille', 'Monaco', 'Montpellier',
-  'Toulouse', 'Nantes', 'Strasbourg', 'Reims', 'Rennes', 'Brest', 'Clermont',
-  'Ajax', 'Feyenoord', 'Eindhoven', 'Bruges', 'Anderlecht', 'Lisbon', 'Benfica',
-  'Sporting', 'Porto', 'Amsterdam', 'Galatasaray', 'Fenerbahce', 'Besiktas',
-  'Flamengo', 'Palmeiras', 'Santos', 'Corinthians', 'Botafogo', 'Fluminense',
+  'San Francisco', 'Golden State', 'New England', 'Tampa Bay', 'Green Bay',
+  'Kansas City', 'Oklahoma City', 'New York', 'New Orleans', 'Los Angeles',
+  'San Antonio', 'San Diego', 'San Jose', 'North Carolina', 'South Carolina',
+  'West Virginia', 'Saint Louis', 'St. Louis', 'St Louis',
+  'Real Madrid', 'Atletico Madrid', 'Paris Saint-Germain', 'Bayern Munich',
+  'Borussia Dortmund', 'Inter Milan', 'AC Milan', 'Aston Villa', 'West Ham',
+  'Crystal Palace', 'Wolverhampton Wanderers',
+  'Arizona', 'Atlanta', 'Baltimore', 'Boston', 'Buffalo', 'Carolina',
+  'Charlotte', 'Chicago', 'Cincinnati', 'Cleveland', 'Dallas', 'Denver',
+  'Detroit', 'Houston', 'Indianapolis', 'Indiana', 'Jacksonville', 'Miami',
+  'Milwaukee', 'Minnesota', 'Memphis', 'Nashville', 'Oakland', 'Orlando',
+  'Philadelphia', 'Phoenix', 'Pittsburgh', 'Portland', 'Sacramento',
+  'Seattle', 'Tennessee', 'Texas', 'Toronto', 'Utah', 'Vancouver',
+  'Washington', 'Montreal', 'Calgary', 'Edmonton', 'Ottawa', 'Winnipeg',
+  'Vegas', 'Columbus', 'Anaheim', 'Colorado', 'Florida',
+  'Flamengo', 'Palmeiras', 'Corinthians', 'Santos', 'Sao Paulo',
   'Gremio', 'Internacional',
   'Inter', 'Internazionale', 'Manchester', 'Tottenham', 'Blackburn', 'Blackpool',
   'Newcastle', 'Swindon', 'Coventry', 'Luton', 'Cambridge',
@@ -68,14 +69,12 @@ export function stripCityPrefix(name: string): string {
 
 export function splitTeamName(name: string): { city: string; nickname: string } {
   const trimmed = name.trim();
-  // 1. Try known city prefixes first
   for (const city of TEAM_CITY_PREFIXES) {
     if (trimmed.toLowerCase().startsWith(city.toLowerCase() + ' ')) {
       const nickname = trimmed.slice(city.length).trim();
       if (nickname.length > 0) return { city, nickname };
     }
   }
-  // 2. Fall back: split on last space
   const lastSpace = trimmed.lastIndexOf(' ');
   if (lastSpace > 0) {
     return {
@@ -83,7 +82,6 @@ export function splitTeamName(name: string): { city: string; nickname: string } 
       nickname: trimmed.slice(lastSpace + 1),
     };
   }
-  // 3. Single word — treat as nickname with no city
   return { city: '', nickname: trimmed };
 }
 
@@ -102,8 +100,7 @@ function stripMascotForCollege(name: string): string {
   return words.slice(0, -1).join(' ');
 }
 
-// Individual sports where team names don't make sense for search — use event title instead
-const INDIVIDUAL_SPORT_LEAGUES = new Set(['ufc', 'f1', 'nascar', 'indycar', 'pga', 'lpga', 'atp', 'wta']);
+export const INDIVIDUAL_SPORT_LEAGUES = new Set(['ufc', 'f1', 'nascar', 'indycar', 'pga', 'lpga', 'atp', 'wta']);
 
 export function buildTeamSearchQuery(homeTeam: string, awayTeam: string, leagueId?: string, eventTitle?: string): string {
   if (leagueId && INDIVIDUAL_SPORT_LEAGUES.has(leagueId) && eventTitle) {
@@ -127,7 +124,7 @@ export interface TeamChannelCandidate {
 export interface TeamLinkSuggestion {
   leagueId: string;
   team: SportsTeam;
-  candidates: TeamChannelCandidate[]; // ranked, best first
+  candidates: TeamChannelCandidate[];
   best: TeamChannelCandidate | null;
   autoAssign: boolean;
 }
@@ -161,16 +158,17 @@ function nicknameTokens(team: SportsTeam): string[] {
   return tokens;
 }
 
-// Format/feed noise words that don't make a channel less "dedicated" to a team.
+function cityTokens(team: SportsTeam): string[] {
+  const { city } = splitTeamName(team.name);
+  if (!city) return [];
+  return normalizeText(city).split(/\s+/).filter((t) => t.length >= 2);
+}
+
 const GENERIC_CHANNEL_WORDS = new Set([
   'hd', 'fhd', 'uhd', '4k', '8k', 'sd', 'tv', 'ch', 'channel', 'net', 'network',
-  'us', 'usa', 'uk', 'live', 'premium', 'feed', 'stream',
+  'us', 'usa', 'uk', 'live', 'premium', 'feed', 'stream', 'sports', 'sport',
 ]);
 
-/**
- * How many words in the channel name are NOT the team's own tokens and NOT
- * generic feed noise. A dedicated team channel keeps this near zero.
- */
 function countExtraTokens(target: string, tokens: string[]): number {
   const tokenSet = new Set(tokens);
   let extra = 0;
@@ -184,60 +182,116 @@ function countExtraTokens(target: string, tokens: string[]): number {
   return extra;
 }
 
-/**
- * Score a channel against a team using ONLY the channel's name/alias. EPG
- * program titles are deliberately ignored — a matchup listing ("Lakers at
- * Celtics") proves the channel broadcasts the game, not that it's a channel
- * dedicated to the team.
- */
-export function scoreChannelForTeam(channel: StoredChannel, team: SportsTeam): TeamChannelCandidate | null {
+function hasConflictingCity(target: string, ownCityTokens: string[]): boolean {
+  const ownCityJoined = ownCityTokens.join(' ').toLowerCase();
+  for (const city of TEAM_CITY_PREFIXES) {
+    const cityNorm = normalizeText(city);
+    if (cityNorm === ownCityJoined || ownCityJoined.includes(cityNorm)) continue;
+    const cityWords = cityNorm.split(/\s+/);
+    if (cityWords.length > 0 && tokensMatch(target, cityWords)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function scoreChannelForTeam(
+  channel: StoredChannel,
+  team: SportsTeam,
+  config?: LeagueAutoLinkConfig
+): TeamChannelCandidate | null {
+  const mode = config?.matchMode || 'both';
   const full = normalizeText(team.name);
-  const short = normalizeText(team.shortName);
+  const short = normalizeText(team.shortName || '');
   const name = normalizeText(channel.name);
   const alias = normalizeText(channel.alias);
-  const tokens = nicknameTokens(team);
+  const nTokens = nicknameTokens(team);
+  const cTokens = cityTokens(team);
+  const allTokens = [...cTokens, ...nTokens];
 
   // Exact name matches are near-certain.
   if (full && name === full) return { channel, score: 1, reason: 'name', matchedTerm: team.name };
-  if (full && alias && alias === full) return { channel, score: 0.97, reason: 'alias', matchedTerm: team.name };
+  if (full && alias && alias === full) return { channel, score: 0.98, reason: 'alias', matchedTerm: team.name };
   if (short && (name === short || (alias && alias === short))) {
     return { channel, score: 0.95, reason: 'name', matchedTerm: team.shortName || '' };
   }
 
-  // Whole-word nickname tokens must appear in the channel name or alias.
   let target: string | null = null;
-  if (tokens.length > 0 && tokensMatch(name, tokens)) target = name;
-  else if (tokens.length > 0 && alias && tokensMatch(alias, tokens)) target = alias;
+  let isFullMatch = false;
+
+  // 1. Check for full City + Nickname match
+  if (allTokens.length > 0 && tokensMatch(name, allTokens)) {
+    target = name;
+    isFullMatch = true;
+  } else if (allTokens.length > 0 && alias && tokensMatch(alias, allTokens)) {
+    target = alias;
+    isFullMatch = true;
+  }
+
+  // 2. Strict Full-Name Mode ('full'): MUST contain both city and nickname tokens (if city exists)
+  if (mode === 'full') {
+    if (cTokens.length > 0 && !isFullMatch) {
+      return null;
+    }
+    if (!target) {
+      if (nTokens.length > 0 && tokensMatch(name, nTokens)) target = name;
+      else if (nTokens.length > 0 && alias && tokensMatch(alias, nTokens)) target = alias;
+    }
+    if (!target) return null;
+
+    if (hasConflictingCity(target, cTokens)) return null;
+
+    const extra = countExtraTokens(target, allTokens);
+    let score = isFullMatch ? 0.95 : 0.88;
+    if (extra <= 1) score = Math.min(0.98, score + 0.03);
+    else if (extra === 2) score = Math.max(0.75, score - 0.1);
+    else score = Math.max(0.55, score - 0.25);
+
+    return { channel, score, reason: isFullMatch ? 'name' : 'nickname', matchedTerm: team.name };
+  }
+
+  // 3. Smart Match ('both'): Prioritizes full name, allows distinct nicknames if no city conflict
+  if (isFullMatch && target) {
+    if (hasConflictingCity(target, cTokens)) return null;
+    const extra = countExtraTokens(target, allTokens);
+    let score = 0.94;
+    if (extra <= 1) score = 0.98;
+    else if (extra === 2) score = 0.88;
+    else score = 0.75;
+    return { channel, score, reason: 'name', matchedTerm: team.name };
+  }
+
+  // Fallback to Nickname match
+  if (nTokens.length > 0 && tokensMatch(name, nTokens)) target = name;
+  else if (nTokens.length > 0 && alias && tokensMatch(alias, nTokens)) target = alias;
   if (!target) return null;
 
-  const distinct = tokens.length === 1 && tokens[0].length >= 4;
-  let score = distinct ? 0.88 : 0.78;
+  if (mode === 'both' && cTokens.length > 0 && hasConflictingCity(target, cTokens)) {
+    return null;
+  }
+
+  const distinct = nTokens.length === 1 && nTokens[0].length >= 4;
+  let score = distinct ? 0.85 : 0.72;
 
   const lowered = target.toLowerCase();
-  // Matchup channels list both teams or use "vs"/"@" — never a dedicated feed.
   if (/\bvs\b|\bversus\b|@|\bat\b/.test(lowered)) {
     score = 0.3;
   } else {
-    const extra = countExtraTokens(target, tokens);
-    if (extra <= 1) score = Math.min(0.94, score + 0.05);
-    else if (extra === 2) score = Math.max(0.6, score - 0.15);
-    else score = Math.max(0.45, score - 0.32);
+    const extra = countExtraTokens(target, nTokens);
+    if (extra <= 1) score = Math.min(0.92, score + 0.04);
+    else if (extra === 2) score = Math.max(0.58, score - 0.16);
+    else score = Math.max(0.4, score - 0.32);
   }
 
-  return { channel, score, reason: 'nickname', matchedTerm: tokens.join(' ') };
+  return { channel, score, reason: 'nickname', matchedTerm: nTokens.join(' ') };
 }
 
-/**
- * Decide whether a candidate is strong enough to link without review.
- * - Near-exact matches are always safe.
- * - Confident nickname matches need a comfortable margin over the runner-up.
- */
 export function shouldAutoAssign(candidates: TeamChannelCandidate[]): boolean {
   const best = candidates[0];
   if (!best) return false;
   if (best.score >= 0.95) return true;
   const second = candidates[1];
-  return best.score >= 0.8 && (!second || best.score - second.score >= 0.25);
+  return best.score >= 0.82 && (!second || best.score - second.score >= 0.2);
 }
 
 async function getEnabledSourceIds(): Promise<string[]> {
@@ -249,14 +303,12 @@ async function getEnabledSourceIds(): Promise<string[]> {
   }
 }
 
-/** Search channels (name or alias or stream_id) for the manual "link a channel" picker. */
 export async function searchChannelsForLink(query: string, limit = 50): Promise<StoredChannel[]> {
   const term = query.trim();
   if (!term) return [];
   const enabledSourceIds = await getEnabledSourceIds();
   if (enabledSourceIds.length === 0) return [];
 
-  const dbInstance = await (db as any).dbPromise;
   const sourcePlaceholders = enabledSourceIds.map(() => '?').join(',');
   const nameClause = buildSearchQueryClauses('c.name', term);
   const aliasClause = buildSearchQueryClauses('c.alias', term);
@@ -264,48 +316,189 @@ export async function searchChannelsForLink(query: string, limit = 50): Promise<
   const streamIdParams = /^\d+$/.test(term) ? [term] : [];
 
   const sql = `SELECT c.* FROM channels c WHERE (c.enabled IS NULL OR c.enabled != 0) AND c.source_id IN (${sourcePlaceholders}) AND (( ${nameClause.sql} ) OR ( ${aliasClause.sql} )${streamIdClause}) LIMIT ${limit}`;
-  const rows = await dbInstance.select(sql, [...enabledSourceIds, ...nameClause.params, ...aliasClause.params, ...streamIdParams]);
-  return rows as StoredChannel[];
+  return db.query<StoredChannel>(sql, [...enabledSourceIds, ...nameClause.params, ...aliasClause.params, ...streamIdParams]);
 }
 
-/** Get top candidate channel matches for a specific team. */
-export async function getTeamChannelSuggestions(team: SportsTeam): Promise<TeamChannelCandidate[]> {
+export async function getTeamChannelSuggestions(
+  team: SportsTeam,
+  config?: LeagueAutoLinkConfig
+): Promise<TeamChannelCandidate[]> {
   const enabledSourceIds = await getEnabledSourceIds();
   if (enabledSourceIds.length === 0) return [];
-  return findCandidatesForTeam(team, enabledSourceIds);
+  return findCandidatesForTeam(team, enabledSourceIds, config);
 }
 
-async function findCandidatesForTeam(team: SportsTeam, enabledSourceIds: string[]): Promise<TeamChannelCandidate[]> {
-  const dbInstance = await (db as any).dbPromise;
-  const term = normalizeText(stripCityPrefix(team.name)) || normalizeText(team.name);
-  const words = term.split(/\s+/).filter((w) => w.length >= 2);
+/** The normalized term used to pre-filter channels for a team. */
+function teamSearchTerm(team: SportsTeam, config?: LeagueAutoLinkConfig): string {
+  const mode = config?.matchMode || 'both';
+  if (mode === 'full') return normalizeText(team.name);
+  return normalizeText(stripCityPrefix(team.name)) || normalizeText(team.name);
+}
+
+async function findCandidatesForTeam(
+  team: SportsTeam,
+  enabledSourceIds: string[],
+  config?: LeagueAutoLinkConfig
+): Promise<TeamChannelCandidate[]> {
+  let targetSourceIds = enabledSourceIds;
+  if (config?.sourceIds && config.sourceIds.length > 0) {
+    targetSourceIds = enabledSourceIds.filter((id) => config.sourceIds!.includes(id));
+    if (targetSourceIds.length === 0) return [];
+  }
+
+  const words = teamSearchTerm(team, config).split(/\s+/).filter((w) => w.length >= 2);
   if (words.length === 0) return [];
 
-  const sourcePlaceholders = enabledSourceIds.map(() => '?').join(',');
+  const sourcePlaceholders = targetSourceIds.map(() => '?').join(',');
   const nameClause = buildSearchQueryClauses('c.name', words.join(' '));
   const aliasClause = buildSearchQueryClauses('c.alias', words.join(' '));
-  const sql = `SELECT c.* FROM channels c WHERE (c.enabled IS NULL OR c.enabled != 0) AND c.source_id IN (${sourcePlaceholders}) AND (( ${nameClause.sql} ) OR ( ${aliasClause.sql} )) LIMIT 40`;
-  const rows = (await dbInstance.select(sql, [...enabledSourceIds, ...nameClause.params, ...aliasClause.params])) as StoredChannel[];
+
+  let rows: StoredChannel[] = [];
+
+  if (config?.categoryIds && config.categoryIds.length > 0) {
+    const catPlaceholders = config.categoryIds.map(() => '?').join(',');
+    const sql = `SELECT DISTINCT c.* FROM channels c CROSS JOIN json_each(c.category_ids) AS cat
+                 WHERE (c.enabled IS NULL OR c.enabled != 0)
+                   AND c.source_id IN (${sourcePlaceholders})
+                   AND cat.value IN (${catPlaceholders})
+                   AND (( ${nameClause.sql} ) OR ( ${aliasClause.sql} ))
+                 LIMIT 50`;
+    rows = await db.query<StoredChannel>(sql, [
+      ...targetSourceIds,
+      ...config.categoryIds,
+      ...nameClause.params,
+      ...aliasClause.params,
+    ]);
+  } else {
+    const sql = `SELECT c.* FROM channels c
+                 WHERE (c.enabled IS NULL OR c.enabled != 0)
+                   AND c.source_id IN (${sourcePlaceholders})
+                   AND (( ${nameClause.sql} ) OR ( ${aliasClause.sql} ))
+                 LIMIT 50`;
+    rows = await db.query<StoredChannel>(sql, [
+      ...targetSourceIds,
+      ...nameClause.params,
+      ...aliasClause.params,
+    ]);
+  }
+
   if (rows.length === 0) return [];
 
-  // Score channel names/aliases only — see scoreChannelForTeam for why EPG
-  // program titles are intentionally not used for linking.
   const candidates: TeamChannelCandidate[] = [];
   for (const ch of rows) {
-    const c = scoreChannelForTeam(ch, team);
+    if (config?.categoryIds && config.categoryIds.length > 0) {
+      const chCatIds = parseCategoryIds(ch.category_ids);
+      if (!chCatIds.some((id: string) => config.categoryIds!.includes(id))) {
+        continue;
+      }
+    }
+
+    const c = scoreChannelForTeam(ch, team, config);
     if (c) candidates.push(c);
   }
+
   candidates.sort((a, b) => b.score - a.score);
   return candidates.slice(0, 8);
 }
 
-/**
- * Match every team in a league to its best channel candidates. Does not write
- * anything — the store/UI decides what to auto-link and what to surface for review.
- */
-export async function matchTeamsToChannels(leagueId: string, teams: SportsTeam[]): Promise<LeagueMatchResult> {
+/** Build one OR-of-all-teams LIKE clause so a whole league can be matched in a single query. */
+function buildUnionMatchClause(
+  teams: SportsTeam[],
+  config?: LeagueAutoLinkConfig
+): { sql: string; params: string[] } {
+  const uniqueWords = new Set<string>();
+  for (const team of teams) {
+    for (const w of teamSearchTerm(team, config).split(/\s+/)) {
+      if (w.length >= 2) uniqueWords.add(w);
+    }
+  }
+
+  const clauses: string[] = [];
+  const params: string[] = [];
+  for (const word of uniqueWords) {
+    const variants = getSearchVariants(word);
+    clauses.push(`(${variants.map(() => 'c.name LIKE ?').join(' OR ')})`);
+    for (const v of variants) params.push(`%${v}%`);
+    clauses.push(`(${variants.map(() => 'c.alias LIKE ?').join(' OR ')})`);
+    for (const v of variants) params.push(`%${v}%`);
+  }
+
+  if (clauses.length === 0) return { sql: '0', params: [] };
+  return { sql: clauses.join(' OR '), params };
+}
+
+/** Fetch candidate channels for an entire league in a single query, then score per team in JS. */
+async function findCandidatesForTeams(
+  teams: SportsTeam[],
+  enabledSourceIds: string[],
+  config?: LeagueAutoLinkConfig
+): Promise<Map<string, TeamChannelCandidate[]>> {
+  const result = new Map<string, TeamChannelCandidate[]>();
+
+  let targetSourceIds = enabledSourceIds;
+  if (config?.sourceIds && config.sourceIds.length > 0) {
+    targetSourceIds = enabledSourceIds.filter((id) => config.sourceIds!.includes(id));
+  }
+  if (targetSourceIds.length === 0) {
+    for (const t of teams) result.set(t.id, []);
+    return result;
+  }
+
+  const union = buildUnionMatchClause(teams, config);
+  if (union.sql === '0') {
+    for (const t of teams) result.set(t.id, []);
+    return result;
+  }
+
+  const sourcePlaceholders = targetSourceIds.map(() => '?').join(',');
+  let rows: StoredChannel[];
+  if (config?.categoryIds && config.categoryIds.length > 0) {
+    const catPlaceholders = config.categoryIds.map(() => '?').join(',');
+    rows = await db.query<StoredChannel>(
+      `SELECT DISTINCT c.* FROM channels c CROSS JOIN json_each(c.category_ids) AS cat
+       WHERE (c.enabled IS NULL OR c.enabled != 0)
+         AND c.source_id IN (${sourcePlaceholders})
+         AND cat.value IN (${catPlaceholders})
+         AND (${union.sql})
+       LIMIT 1000`,
+      [...targetSourceIds, ...config.categoryIds, ...union.params]
+    );
+  } else {
+    rows = await db.query<StoredChannel>(
+      `SELECT c.* FROM channels c
+       WHERE (c.enabled IS NULL OR c.enabled != 0)
+         AND c.source_id IN (${sourcePlaceholders})
+         AND (${union.sql})
+       LIMIT 1000`,
+      [...targetSourceIds, ...union.params]
+    );
+  }
+
+  for (const team of teams) {
+    const candidates: TeamChannelCandidate[] = [];
+    for (const ch of rows) {
+      if (config?.categoryIds && config.categoryIds.length > 0) {
+        const chCatIds = parseCategoryIds(ch.category_ids);
+        if (!chCatIds.some((id: string) => config.categoryIds!.includes(id))) continue;
+      }
+      const c = scoreChannelForTeam(ch, team, config);
+      if (c) candidates.push(c);
+    }
+    candidates.sort((a, b) => b.score - a.score);
+    result.set(team.id, candidates.slice(0, 8));
+  }
+
+  return result;
+}
+
+export async function matchTeamsToChannels(
+  leagueId: string,
+  teams: SportsTeam[],
+  config?: LeagueAutoLinkConfig
+): Promise<LeagueMatchResult> {
   const enabledSourceIds = await getEnabledSourceIds();
   const suggestions: TeamLinkSuggestion[] = [];
+
   if (enabledSourceIds.length === 0) {
     for (const team of teams) {
       suggestions.push({ leagueId, team, candidates: [], best: null, autoAssign: false });
@@ -313,8 +506,11 @@ export async function matchTeamsToChannels(leagueId: string, teams: SportsTeam[]
     return { leagueId, suggestions, autoLinked: [], reviewable: suggestions };
   }
 
+  // One batched query for the whole league instead of N per-team queries.
+  const candidatesByTeam = await findCandidatesForTeams(teams, enabledSourceIds, config);
+
   for (const team of teams) {
-    const candidates = await findCandidatesForTeam(team, enabledSourceIds);
+    const candidates = candidatesByTeam.get(team.id) || [];
     suggestions.push({
       leagueId,
       team,

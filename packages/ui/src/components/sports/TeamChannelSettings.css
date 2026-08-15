@@ -61,7 +61,7 @@
 .tcs-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: 1000000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,32 +313,75 @@
   align-self: flex-end;
 }
 
+.tcs-autolink-btn-group {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
 .tcs-btn-autolink {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  border-radius: 10px;
+  border-radius: 10px 0 0 10px;
   border: 1px solid rgba(74, 125, 255, 0.35);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #ffffff;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
   transition: all 0.15s ease;
 }
 
 .tcs-btn-autolink:hover:not(:disabled) {
   background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
 }
 
 .tcs-btn-autolink:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
+}
+
+.tcs-btn-autolink-cfg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 0 10px 10px 0;
+  border: 1px solid rgba(74, 125, 255, 0.35);
+  border-left: none;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tcs-btn-autolink-cfg:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+}
+
+.tcs-btn-autolink-cfg.custom-active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #ffffff;
+}
+
+.tcs-cfg-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
 }
 
 .tcs-btn-reset-league {
@@ -1040,6 +1083,7 @@
 }
 
 .tcs-team-channel-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1048,6 +1092,37 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: grab;
+  user-select: none;
+}
+
+.tcs-team-channel-row:active {
+  cursor: grabbing;
+}
+
+.tcs-team-channel-row.dragging {
+  cursor: grabbing;
+}
+
+.tcs-team-channel-row.drop-above::before,
+.tcs-team-channel-row.drop-below::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--accent-primary, #00d4ff);
+  border-radius: 1px;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+.tcs-team-channel-row.drop-above::before {
+  top: -3px;
+}
+
+.tcs-team-channel-row.drop-below::after {
+  bottom: -3px;
 }
 
 .tcs-team-channel-row.primary {
@@ -1213,7 +1288,7 @@
 .tcs-picker-dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: 1000001;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -9,6 +9,7 @@ import {
   searchChannelsForLink,
   getTeamChannelSuggestions,
   splitTeamName,
+  INDIVIDUAL_SPORT_LEAGUES,
   type TeamLinkSuggestion,
   type TeamChannelCandidate,
 } from '../../services/sports/teamChannelMatcher';
@@ -16,12 +17,36 @@ import { ALL_LEAGUES, useSportsSettingsStore } from '../../stores/sportsSettings
 import {
   useTeamChannelLinksStore,
   getTeamLinks,
-  getTeamLink,
 } from '../../stores/teamChannelLinksStore';
+import {
+  AutoLinkSettingsModal,
+  type SourceOption,
+  type CategoryOption,
+} from './AutoLinkSettingsModal';
+import {
+  useLeagueAutoLinkConfigStore,
+  type LeagueAutoLinkConfig,
+} from '../../stores/leagueAutoLinkConfigStore';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import './TeamChannelSettings.css';
-
-// Leagues that aren't team-vs-team don't map cleanly to a team channel.
-const INDIVIDUAL_LEAGUE_IDS = new Set(['ufc', 'f1', 'nascar', 'indycar', 'pga', 'lpga', 'atp', 'wta']);
 
 function parseCategoryIds(raw: string | string[] | number[] | undefined): string[] {
   if (!raw) return [];
@@ -173,10 +198,15 @@ function ChannelPickerDialog({
       searchInputRef.current?.focus();
     }, 50);
 
-    // Load candidate suggestions for this specific team
+    // Load candidate suggestions for this specific team, honoring the league's
+    // configured match strategy and source/category scope.
     let cancelled = false;
     setLoadingSuggestions(true);
-    getTeamChannelSuggestions(team)
+    (async () => {
+      await useLeagueAutoLinkConfigStore.getState().ensureLoaded();
+      if (cancelled) return [];
+      return getTeamChannelSuggestions(team, useLeagueAutoLinkConfigStore.getState().getConfig(leagueId));
+    })()
       .then((candidates) => {
         if (!cancelled) setSuggestions(candidates);
       })
@@ -190,7 +220,7 @@ function ChannelPickerDialog({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, team]);
+  }, [isOpen, team, leagueId]);
 
   // Debounced search
   useEffect(() => {
@@ -246,8 +276,8 @@ function ChannelPickerDialog({
                 {existingTeamLinks.length > 0 && (
                   <span className="tcs-picker-dialog-count-badge">
                     {existingTeamLinks.length === 1
-                      ? '1 Channel Linked'
-                      : `${existingTeamLinks.length} Channels (1 Primary, ${existingTeamLinks.length - 1} Backups)`}
+                      ? t('oneChannelLinked')
+                      : t('channelsLinkedSummary', { count: existingTeamLinks.length, backups: existingTeamLinks.length - 1 })}
                   </span>
                 )}
               </div>
@@ -272,7 +302,7 @@ function ChannelPickerDialog({
                 <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
                 <polyline points="17 2 12 7 7 2" />
               </svg>
-              <span>Current Channels ({existingTeamLinks.length})</span>
+              <span>{t('currentChannels', { count: existingTeamLinks.length })}</span>
             </div>
             <div className="tcs-picker-linked-list">
               {existingTeamLinks.map((l, idx) => {
@@ -365,11 +395,11 @@ function ChannelPickerDialog({
               {loadingSuggestions ? (
                 <div className="tcs-picker-loading-state">
                   <span className="tcs-spinner-small" />
-                  <span>Loading match suggestions…</span>
+                  <span>{t('loadingMatchSuggestions')}</span>
                 </div>
               ) : suggestions.length === 0 ? (
                 <div className="tcs-picker-no-suggestions">
-                  <span>No automated matches found for this team. Search for a channel above.</span>
+                  <span>{t('noAutomatedMatches')}</span>
                 </div>
               ) : (
                 <div className="tcs-picker-channels-list">
@@ -436,7 +466,7 @@ function ChannelPickerDialog({
               {isSearching ? (
                 <div className="tcs-picker-loading-state">
                   <span className="tcs-spinner-small" />
-                  <span>Searching channels…</span>
+                  <span>{t('searchingChannels')}</span>
                 </div>
               ) : searchResults.length === 0 ? (
                 <div className="tcs-picker-empty-results">
@@ -527,6 +557,189 @@ function ChannelPickerDialog({
   );
 }
 
+// ─── Drag-to-Reorder Linked Channel List (per team) ──────────────────────────
+
+function SortableTeamChannelRow({
+  link,
+  num,
+  isPrimary,
+  sourceName,
+  dropIndicator,
+  onMakePrimary,
+  onRemove,
+}: {
+  link: TeamChannelLink;
+  num: number;
+  isPrimary: boolean;
+  sourceName?: string;
+  dropIndicator: 'above' | 'below' | null;
+  onMakePrimary: () => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation('sports');
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: link.stream_id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 99 : 1,
+    touchAction: 'none',
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`tcs-team-channel-row ${isPrimary ? 'primary' : 'backup'}${isDragging ? ' dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
+    >
+      <div className="tcs-team-channel-main">
+        <span className={`tcs-priority-tag ${isPrimary ? 'primary' : 'backup'}`}>
+          {isPrimary ? t('primaryChannel') : t('backupChannel', { num })}
+        </span>
+        <span className="tcs-team-channel-title" title={link.channel_name}>
+          {link.channel_name}
+        </span>
+        {sourceName && <span className="tcs-source-badge">{sourceName}</span>}
+      </div>
+
+      <div className="tcs-team-channel-row-actions">
+        {!isPrimary && (
+          <button
+            className="tcs-btn-row-action"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onMakePrimary}
+            title={t('makePrimary')}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="18 15 12 9 6 15" />
+            </svg>
+          </button>
+        )}
+        <button
+          className="tcs-btn-row-action delete"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onRemove}
+          title={t('removeChannel')}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TeamChannelLinksSortable({
+  links,
+  leagueId,
+  team,
+  sourcesMap,
+  onSetPrimary,
+  onUnlinkChannel,
+  onReorder,
+}: {
+  links: TeamChannelLink[];
+  leagueId: string;
+  team: SportsTeam;
+  sourcesMap: Map<string, string>;
+  onSetPrimary: (team: SportsTeam, streamId: string) => void;
+  onUnlinkChannel: (team: SportsTeam, streamId: string) => void;
+  onReorder: (leagueId: string, teamId: string, orderedStreamIds: string[]) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  const ids = useMemo(() => links.map((l) => l.stream_id), [links]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      setOverId(String(event.over.id));
+    } else {
+      setOverId(null);
+    }
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveId(null);
+      setOverId(null);
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = ids.findIndex((id) => id === active.id);
+      const newIndex = ids.findIndex((id) => id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      onReorder(leagueId, team.id, arrayMove(ids, oldIndex, newIndex));
+    },
+    [ids, leagueId, team.id, onReorder]
+  );
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+    setOverId(null);
+  }, []);
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <div className="tcs-team-channels-list">
+          {links.map((l, idx) => {
+            const isPrimary = idx === 0;
+            const sourceName = l.source_id ? sourcesMap.get(l.source_id) : undefined;
+            const activeIdx = activeId != null ? ids.findIndex((id) => id === activeId) : -1;
+            const myIdx = ids.findIndex((id) => id === l.stream_id);
+            const isOver = overId === l.stream_id && activeId !== overId;
+            const dropIndicator =
+              isOver && activeIdx !== -1 && myIdx !== -1
+                ? activeIdx < myIdx
+                  ? 'below'
+                  : 'above'
+                : null;
+
+            return (
+              <SortableTeamChannelRow
+                key={l.stream_id}
+                link={l}
+                num={idx}
+                isPrimary={isPrimary}
+                sourceName={sourceName}
+                dropIndicator={dropIndicator}
+                onMakePrimary={() => onSetPrimary(team, l.stream_id)}
+                onRemove={() => onUnlinkChannel(team, l.stream_id)}
+              />
+            );
+          })}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 // ─── Team Channel Settings Main Component ─────────────────────────────────────
 
 export function TeamChannelSettings() {
@@ -539,18 +752,19 @@ export function TeamChannelSettings() {
   const unlinkLeague = useTeamChannelLinksStore((s) => s.unlinkLeague);
   const setPrimaryChannel = useTeamChannelLinksStore((s) => s.setPrimaryChannel);
   const autoLinkLeague = useTeamChannelLinksStore((s) => s.autoLinkLeague);
+  const reorderTeamLinks = useTeamChannelLinksStore((s) => s.reorderTeamLinks);
 
   const enabledLeagues = useSportsSettingsStore((s) => s.enabledLeagues);
 
   // Filter available leagues: only enabled team leagues!
   const enabledTeamLeagues = useMemo(() => {
     const valid = ALL_LEAGUES.filter(
-      (l) => !INDIVIDUAL_LEAGUE_IDS.has(l.id) && enabledLeagues.includes(l.id)
+      (l) => !INDIVIDUAL_SPORT_LEAGUES.has(l.id) && enabledLeagues.includes(l.id)
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     // Fallback: If user has 0 enabled team leagues, show all team leagues with a notification
     if (valid.length === 0) {
-      return ALL_LEAGUES.filter((l) => !INDIVIDUAL_LEAGUE_IDS.has(l.id)).sort((a, b) =>
+      return ALL_LEAGUES.filter((l) => !INDIVIDUAL_SPORT_LEAGUES.has(l.id)).sort((a, b) =>
         a.name.localeCompare(b.name)
       );
     }
@@ -575,6 +789,10 @@ export function TeamChannelSettings() {
   const [pickerTeam, setPickerTeam] = useState<SportsTeam | null>(null);
   const [sourcesMap, setSourcesMap] = useState<Map<string, string>>(new Map());
   const [categoriesMap, setCategoriesMap] = useState<Map<string, string>>(new Map());
+  const [sourceOptions, setSourceOptions] = useState<SourceOption[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+  const [autoLinkConfigOpen, setAutoLinkConfigOpen] = useState(false);
+  const hasCustomConfig = useLeagueAutoLinkConfigStore((s) => s.hasCustomConfig);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [confirmUnlinkOpen, setConfirmUnlinkOpen] = useState(false);
 
@@ -583,19 +801,34 @@ export function TeamChannelSettings() {
     ensureLoaded();
     async function loadSourcesAndCategories() {
       try {
+        const sOpts: SourceOption[] = [];
+        const map = new Map<string, string>();
         if (window.storage) {
           const res = await window.storage.getSources();
           if (res?.data) {
-            const map = new Map<string, string>();
             for (const s of res.data) {
+              if (s.enabled !== false) {
+                sOpts.push({ id: s.id, name: s.name || s.id });
+              }
               map.set(s.id, s.name || s.id);
             }
             setSourcesMap(map);
+            setSourceOptions(sOpts);
           }
         }
         const cats = await db.categories.toArray();
         const catMap = new Map<string, string>();
+        const catOpts: CategoryOption[] = [];
+        const enabledSourceIdSet = new Set(sOpts.map((s) => s.id));
+
         for (const c of cats) {
+          const isCatEnabled = c.enabled !== false;
+          if (!isCatEnabled) continue;
+
+          if (c.source_id && sOpts.length > 0 && !enabledSourceIdSet.has(c.source_id)) {
+            continue;
+          }
+
           const name = c.alias || c.category_name;
           if (c.source_id && c.category_id) {
             catMap.set(`${c.source_id}:${c.category_id}`, name);
@@ -603,7 +836,15 @@ export function TeamChannelSettings() {
           if (c.category_id) {
             catMap.set(String(c.category_id), name);
           }
+          catOpts.push({
+            id: String(c.category_id),
+            name,
+            source_id: c.source_id,
+            source_name: c.source_id ? map.get(c.source_id) : undefined,
+            channel_count: c.channel_count,
+          });
         }
+        setCategoryOptions(catOpts);
         setCategoriesMap(catMap);
       } catch (e) {
         console.error('[TeamChannelSettings] Failed to load sources/categories:', e);
@@ -619,6 +860,22 @@ export function TeamChannelSettings() {
       setSelectedLeagueId(enabledTeamLeagues[0].id);
     }
   }, [enabledTeamLeagues, selectedLeagueId]);
+
+  // Sync filters with league config when league changes
+  useEffect(() => {
+    if (!selectedLeagueId) return;
+    let cancelled = false;
+    (async () => {
+      await useLeagueAutoLinkConfigStore.getState().ensureLoaded();
+      if (cancelled) return;
+      const cfg = useLeagueAutoLinkConfigStore.getState().getConfig(selectedLeagueId);
+      setMinConfidence(cfg.minConfidence ?? 0.7);
+      setMaxCandidatesPerTeam(cfg.maxCandidatesPerTeam ?? 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLeagueId]);
 
   // Load teams when selected league changes
   useEffect(() => {
@@ -650,26 +907,44 @@ export function TeamChannelSettings() {
     }, 4000);
   }, []);
 
-  const handleAutoLink = useCallback(async () => {
-    if (!selectedLeagueId || autoLinking) return;
-    setAutoLinking(true);
-    setSuggestions([]);
-    setAcceptedCandidates(new Set());
-    try {
-      const result = await autoLinkLeague(selectedLeagueId);
-      setSuggestions(result.suggestions);
-      setSuggestionsOpen(true);
-      showToast(
-        t('autoLinkedCount', { count: result.autoLinked, total: result.teamCount }),
-        'success'
-      );
-    } catch (err) {
-      console.error('[TeamChannelSettings] Auto-link failed:', err);
-      showToast('Auto-link failed', 'error');
-    } finally {
-      setAutoLinking(false);
-    }
-  }, [selectedLeagueId, autoLinking, autoLinkLeague, showToast, t]);
+  const handleAutoLink = useCallback(
+    async (customConfig?: LeagueAutoLinkConfig) => {
+      if (!selectedLeagueId || autoLinking) return;
+      if (customConfig?.minConfidence !== undefined) {
+        setMinConfidence(customConfig.minConfidence);
+      }
+      if (customConfig?.maxCandidatesPerTeam !== undefined) {
+        setMaxCandidatesPerTeam(customConfig.maxCandidatesPerTeam);
+      }
+      setAutoLinking(true);
+      setSuggestions([]);
+      setAcceptedCandidates(new Set());
+      try {
+        const result = await autoLinkLeague(selectedLeagueId, customConfig);
+        setSuggestions(result.suggestions);
+        setSuggestionsOpen(true);
+        if (result.autoLinked > 0) {
+          showToast(
+            t('autoLinkedCount', { count: result.autoLinked, total: result.teamCount }),
+            'success'
+          );
+        } else if (result.suggestions.length > 0) {
+          showToast(
+            t('foundMatchesForTeams', { count: result.suggestions.length }),
+            'success'
+          );
+        } else {
+          showToast(t('noChannelsFound'), 'info');
+        }
+      } catch (err) {
+        console.error('[TeamChannelSettings] Auto-link failed:', err);
+        showToast(t('autoLinkFailed'), 'error');
+      } finally {
+        setAutoLinking(false);
+      }
+    },
+    [selectedLeagueId, autoLinking, autoLinkLeague, showToast, t]
+  );
 
   // Filtered suggestions based on confidence and channels per team
   const filteredSuggestions = useMemo(() => {
@@ -710,11 +985,11 @@ export function TeamChannelSettings() {
       });
 
       showToast(
-        `Linked ${s.team.name} to ${candidate.channel.alias || candidate.channel.name}`,
+        t('linkedTeamToChannel', { team: s.team.name, channel: candidate.channel.alias || candidate.channel.name }),
         'success'
       );
     },
-    [linkTeam, showToast]
+    [linkTeam, showToast, t]
   );
 
   // Batch Accept Handler for filtered suggestions
@@ -726,6 +1001,7 @@ export function TeamChannelSettings() {
       for (let idx = 0; idx < s.candidates.length; idx++) {
         const candidate = s.candidates[idx];
         const key = `${s.team.id}:${candidate.channel.stream_id}`;
+        if (newlyAccepted.has(key)) continue;
         newlyAccepted.add(key);
         await linkTeam({
           league_id: s.leagueId,
@@ -741,8 +1017,11 @@ export function TeamChannelSettings() {
     }
 
     setAcceptedCandidates(newlyAccepted);
-    showToast(`Linked ${linkedCount} channels across ${filteredSuggestions.length} teams`, 'success');
-  }, [filteredSuggestions, acceptedCandidates, linkTeam, showToast]);
+    showToast(
+      t('linkedChannelsAcrossTeams', { count: linkedCount, teams: filteredSuggestions.length }),
+      'success'
+    );
+  }, [filteredSuggestions, acceptedCandidates, linkTeam, showToast, t]);
 
   const handleLink = useCallback(
     (team: SportsTeam, channel: StoredChannel, confidence = 1) => {
@@ -757,40 +1036,40 @@ export function TeamChannelSettings() {
       });
       // Remove from suggestions if present
       setSuggestions((prev) => prev.filter((s) => s.team.id !== team.id));
-      showToast(`Linked ${team.name} to ${channel.alias || channel.name}`, 'success');
+      showToast(t('linkedTeamToChannel', { team: team.name, channel: channel.alias || channel.name }), 'success');
     },
-    [selectedLeagueId, linkTeam, showToast]
+    [selectedLeagueId, linkTeam, showToast, t]
   );
 
   const handleUnlinkChannel = useCallback(
     (team: SportsTeam, streamId: string) => {
       unlinkTeamChannel(selectedLeagueId, team.id, streamId);
-      showToast(`Removed channel from ${team.name}`, 'info');
+      showToast(t('removedChannelFromTeam', { team: team.name }), 'info');
     },
-    [selectedLeagueId, unlinkTeamChannel, showToast]
+    [selectedLeagueId, unlinkTeamChannel, showToast, t]
   );
 
   const handleSetPrimary = useCallback(
     (team: SportsTeam, streamId: string) => {
       setPrimaryChannel(selectedLeagueId, team.id, streamId);
-      showToast(`Set primary channel for ${team.name}`, 'success');
+      showToast(t('setPrimaryForTeam', { team: team.name }), 'success');
     },
-    [selectedLeagueId, setPrimaryChannel, showToast]
+    [selectedLeagueId, setPrimaryChannel, showToast, t]
   );
 
   const handleUnlinkTeamAll = useCallback(
     (team: SportsTeam) => {
       unlinkTeam(selectedLeagueId, team.id);
-      showToast(`Unlinked all channels from ${team.name}`, 'info');
+      showToast(t('unlinkedAllFromTeam', { team: team.name }), 'info');
     },
-    [selectedLeagueId, unlinkTeam, showToast]
+    [selectedLeagueId, unlinkTeam, showToast, t]
   );
 
   const handleUnlinkAllInLeague = useCallback(async () => {
     await unlinkLeague(selectedLeagueId);
     setConfirmUnlinkOpen(false);
-    showToast(`Unlinked all teams for league`, 'info');
-  }, [selectedLeagueId, unlinkLeague, showToast]);
+    showToast(t('unlinkedAllTeamsForLeague'), 'info');
+  }, [selectedLeagueId, unlinkLeague, showToast, t]);
 
   // Categories for sports filter
   const categories = useMemo(() => {
@@ -903,7 +1182,7 @@ export function TeamChannelSettings() {
                 className={`tcs-category-pill ${selectedCategory === 'all' ? 'active' : ''}`}
                 onClick={() => setSelectedCategory('all')}
               >
-                All
+                {t('all')}
               </button>
               {categories.map(({ cat }) => (
                 <button
@@ -923,26 +1202,39 @@ export function TeamChannelSettings() {
         </div>
 
         <div className="tcs-header-actions">
-          <button
-            className="tcs-btn-autolink"
-            onClick={handleAutoLink}
-            disabled={autoLinking || teamsLoading || teams.length === 0}
-            title={t('autoLinkTeams')}
-          >
-            {autoLinking ? (
-              <>
-                <span className="tcs-spinner-small" />
-                <span>{t('autoLinking')}</span>
-              </>
-            ) : (
-              <>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
-                </svg>
-                <span>{t('autoLinkTeams')}</span>
-              </>
-            )}
-          </button>
+          <div className="tcs-autolink-btn-group">
+            <button
+              className="tcs-btn-autolink"
+              onClick={() => handleAutoLink()}
+              disabled={autoLinking || teamsLoading || teams.length === 0}
+              title={t('autoLinkTeams')}
+            >
+              {autoLinking ? (
+                <>
+                  <span className="tcs-spinner-small" />
+                  <span>{t('autoLinking')}</span>
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+                  </svg>
+                  <span>{t('autoLinkTeams')}</span>
+                </>
+              )}
+            </button>
+            <button
+              className={`tcs-btn-autolink-cfg ${hasCustomConfig(selectedLeagueId) ? 'custom-active' : ''}`}
+              onClick={() => setAutoLinkConfigOpen(true)}
+              title={t('autoLinkSettings')}
+              aria-label={t('autoLinkSettings')}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+              </svg>
+              {hasCustomConfig(selectedLeagueId) && <span className="tcs-cfg-dot" />}
+            </button>
+          </div>
 
           {leagueStats.linked > 0 && (
             <button
@@ -962,7 +1254,7 @@ export function TeamChannelSettings() {
       <div className="tcs-stats-card">
         <div className="tcs-stats-row">
           <div className="tcs-stats-summary">
-            <span className="tcs-stats-league-name">{selectedLeagueObj?.name || 'League'}</span>
+            <span className="tcs-stats-league-name">{selectedLeagueObj?.name || t('league')}</span>
             <span className="tcs-stats-progress-text">
               {t('teamsLinkedProgress', { linked: leagueStats.linked, total: leagueStats.total })}
             </span>
@@ -1069,7 +1361,7 @@ export function TeamChannelSettings() {
                         <TeamLogo team={s.team} />
                         <span className="tcs-suggestion-team-name">{s.team.name}</span>
                         <span className="tcs-suggestion-team-count-tag">
-                          {s.candidates.length} {s.candidates.length === 1 ? 'match' : 'matches'}
+                          {s.candidates.length === 1 ? t('matchesCountOne') : t('matchesCount', { count: s.candidates.length })}
                         </span>
                       </div>
 
@@ -1193,7 +1485,7 @@ export function TeamChannelSettings() {
         {teamsLoading ? (
           <div className="tcs-empty-state">
             <span className="tcs-spinner-large" />
-            <p>Loading teams for {selectedLeagueObj?.name || 'league'}…</p>
+            <p>{t('loadingTeamsFor', { league: selectedLeagueObj?.name || t('league') })}</p>
           </div>
         ) : teams.length === 0 ? (
           <div className="tcs-empty-state">
@@ -1268,57 +1560,20 @@ export function TeamChannelSettings() {
                   {/* Multi-Channel List Area */}
                   <div className="tcs-team-channels-block">
                     {hasLinks ? (
-                      <div className="tcs-team-channels-list">
-                        {teamLinks.map((l, idx) => {
-                          const isPrimary = idx === 0;
-                          const sourceName = l.source_id ? sourcesMap.get(l.source_id) : undefined;
-
-                          return (
-                            <div
-                              key={l.stream_id}
-                              className={`tcs-team-channel-row ${isPrimary ? 'primary' : 'backup'}`}
-                            >
-                              <div className="tcs-team-channel-main">
-                                <span className={`tcs-priority-tag ${isPrimary ? 'primary' : 'backup'}`}>
-                                  {isPrimary ? t('primaryChannel') : t('backupChannel', { num: idx })}
-                                </span>
-                                <span className="tcs-team-channel-title" title={l.channel_name}>
-                                  {l.channel_name}
-                                </span>
-                                {sourceName && <span className="tcs-source-badge">{sourceName}</span>}
-                              </div>
-
-                              <div className="tcs-team-channel-row-actions">
-                                {!isPrimary && (
-                                  <button
-                                    className="tcs-btn-row-action"
-                                    onClick={() => handleSetPrimary(team, l.stream_id)}
-                                    title={t('makePrimary')}
-                                  >
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="18 15 12 9 6 15" />
-                                    </svg>
-                                  </button>
-                                )}
-                                <button
-                                  className="tcs-btn-row-action delete"
-                                  onClick={() => handleUnlinkChannel(team, l.stream_id)}
-                                  title={t('removeChannel')}
-                                >
-                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                                    <path d="M18 6 6 18M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <TeamChannelLinksSortable
+                        links={teamLinks}
+                        leagueId={selectedLeagueId}
+                        team={team}
+                        sourcesMap={sourcesMap}
+                        onSetPrimary={handleSetPrimary}
+                        onUnlinkChannel={handleUnlinkChannel}
+                        onReorder={reorderTeamLinks}
+                      />
                     ) : suggestion?.best ? (
                       <button
                         className="tcs-quick-link-btn"
                         onClick={() => handleLink(team, suggestion.best!.channel, suggestion.best!.score)}
-                        title={`Quick link to ${suggestion.best.channel.alias || suggestion.best.channel.name}`}
+                        title={t('quickLinkTo', { channel: suggestion.best.channel.alias || suggestion.best.channel.name })}
                       >
                         <span className="tcs-quick-link-tag">
                           ⚡ {t('quickLink')}: {suggestion.best.channel.alias || suggestion.best.channel.name}
@@ -1352,6 +1607,18 @@ export function TeamChannelSettings() {
         onUnlinkAll={(team) => handleUnlinkTeamAll(team)}
         onClose={() => setPickerTeam(null)}
       />
+
+      {/* Auto-Link Settings Modal */}
+      {selectedLeagueObj && (
+        <AutoLinkSettingsModal
+          league={selectedLeagueObj}
+          isOpen={autoLinkConfigOpen}
+          onClose={() => setAutoLinkConfigOpen(false)}
+          onSaveAndRun={(cfg) => handleAutoLink(cfg)}
+          sources={sourceOptions}
+          categories={categoryOptions}
+        />
+      )}
 
       {/* Confirm Unlink All in League Dialog */}
       {confirmUnlinkOpen && (

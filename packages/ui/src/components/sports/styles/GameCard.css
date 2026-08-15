@@ -138,78 +138,86 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
 }
 
-.gc-team-play {
+.gc-team-play-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  max-width: 100%;
-  padding: 3px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary, #fff);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #ffffff);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
 }
 
-.gc-team-play:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.3);
+.gc-team-play-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #38bdf8;
+  transform: scale(1.06);
 }
 
-.gc-team-play svg {
+.gc-team-play-btn svg {
   flex-shrink: 0;
-}
-
-.gc-team-play span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 96px;
+  margin-left: 1px; /* Optical center for play triangle */
 }
 
 .gc-team-play-group {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  max-width: 100%;
+  height: 24px;
+  box-sizing: border-box;
 }
 
-.gc-team-play.main {
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
+.gc-team-play-btn.main {
+  width: 26px;
+  height: 24px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
 }
 
-.gc-team-play-backup-btn {
+.gc-team-play-btn.main:hover {
+  transform: none;
+}
+
+.gc-team-play-dropdown-btn {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px 6px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   border-top-right-radius: 999px;
   border-bottom-right-radius: 999px;
-  background: rgba(59, 130, 246, 0.14);
+  background: rgba(59, 130, 246, 0.18);
   color: #93c5fd;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
   cursor: pointer;
+  box-sizing: border-box;
   transition: all 0.15s ease;
 }
 
-.gc-team-play-backup-btn:hover,
-.gc-team-play-backup-btn.active {
-  background: rgba(59, 130, 246, 0.28);
-  border-color: rgba(59, 130, 246, 0.6);
-  color: #fff;
+.gc-team-play-dropdown-btn:hover,
+.gc-team-play-dropdown-btn.active {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, 0.75);
+  color: #ffffff;
+}
+
+.gc-team-play-group:hover .gc-team-play-btn.main {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .gc-team-play-menu {
