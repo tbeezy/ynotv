@@ -300,6 +300,21 @@ export interface CategoryFolder {
   created_at: number;    // Unix timestamp ms
 }
 
+// Team Channel Link — maps a sports team to a provider channel so a game can be
+// watched with one tap without searching. A team can have multiple links (priority 0 = primary, 1+ = backups).
+export interface TeamChannelLink {
+  id: string;            // `${league_id}:${team_id}:${stream_id}` (or `${league_id}:${team_id}` legacy) primary key
+  league_id: string;     // e.g. 'nfl', 'soccer-eng.1'
+  team_id: string;       // ESPN team id
+  stream_id: string;     // FK → channels.stream_id (soft reference)
+  channel_name: string;  // Snapshot of the channel name for display
+  source_id?: string;    // Source the channel belongs to
+  priority?: number;     // 0 = primary, 1+ = backups
+  auto: number;          // 0/1 — was this auto-linked by the matcher
+  confidence: number;    // 0..1 match confidence at link time
+  updated_at: number;    // Unix timestamp ms
+}
+
 // Playlist Individual Channel — a single channel added to the playlist's "Individual Channels" section
 export interface PlaylistIndividualChannel {
   id?: number;           // Auto-increment PK
@@ -395,6 +410,8 @@ class YnotvDatabase extends SqliteDatabase {
   categoryFolders: SqliteTable<CategoryFolder, string>;
   /** Generic key/value store for UI state (Stremio library/watch-history). */
   appKv: SqliteTable<{ key: string; value: string }, string>;
+  /** Sports team → channel links (one-tap playback from match cards). */
+  teamChannelLinks: SqliteTable<TeamChannelLink, string>;
 
 
   constructor() {
@@ -430,6 +447,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.playlistIndividualChannels = new SqliteTable('playlist_individual_channels', 'id', this.dbPromise);
     this.categoryFolders = new SqliteTable('category_folders', 'folder_id', this.dbPromise);
     this.appKv = new SqliteTable('app_kv', 'key', this.dbPromise);
+    this.teamChannelLinks = new SqliteTable('team_channel_links', 'id', this.dbPromise);
 
     // Initialize Schema (Async) - Chain to DB promise to ensure tables exist before usage
     const rawPromise = this.dbPromise;
@@ -467,6 +485,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.playlistIndividualChannels.updateDbPromise(this.dbPromise);
     this.categoryFolders.updateDbPromise(this.dbPromise);
     this.appKv.updateDbPromise(this.dbPromise);
+    this.teamChannelLinks.updateDbPromise(this.dbPromise);
   }
 
   async initSchema(dbInstance?: Database) {
@@ -982,6 +1001,22 @@ class YnotvDatabase extends SqliteDatabase {
         value TEXT
       )`);
 
+    // Team channel links — maps a sports team to a provider channel so games
+    // can be watched with one tap without searching.
+    await db.execute(`CREATE TABLE IF NOT EXISTS team_channel_links (
+        id TEXT PRIMARY KEY,
+        league_id TEXT,
+        team_id TEXT,
+        stream_id TEXT,
+        channel_name TEXT,
+        source_id TEXT,
+        auto INTEGER,
+        confidence REAL,
+        updated_at INTEGER
+      )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_team_channel_links_league ON team_channel_links(league_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_team_channel_links_stream ON team_channel_links(stream_id)`);
+
     // Programs (EPG)
     await db.execute(`CREATE TABLE IF NOT EXISTS programs (
         id TEXT PRIMARY KEY,
@@ -1329,6 +1364,7 @@ class YnotvDatabase extends SqliteDatabase {
     try { await db.execute(`ALTER TABLE channels ADD COLUMN xtream_stream_id TEXT`); } catch (e) {}
     try { await db.execute(`ALTER TABLE programs ADD COLUMN subtitle TEXT`); } catch (e) {}
     try { await db.execute(`ALTER TABLE epg_program_overrides ADD COLUMN subtitle TEXT`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE team_channel_links ADD COLUMN priority INTEGER DEFAULT 0`); } catch (e) {}
 
     // ── EPG Editor: Override Tables ───────────────────────────────────────────
 

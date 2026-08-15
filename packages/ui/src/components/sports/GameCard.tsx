@@ -1,116 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
 import { db } from '../../db';
-import type { StoredChannel } from '../../db';
+import type { StoredChannel, TeamChannelLink } from '../../db';
 import { buildSearchQueryClauses } from '../../utils/searchNormalization';
+import { stripCityPrefix, splitTeamName, buildTeamSearchQuery } from '../../services/sports/teamChannelMatcher';
+import { useTeamChannelLinks, getTeamLinks } from '../../stores/teamChannelLinksStore';
 import { useSportsSelectedChannels, useSetSportsSelectedChannel, useEpgClockFormat } from '../../stores/uiStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import './styles/GameCard.css';
-
-/**
- * Known city/location prefixes used in major sports team names.
- * Multi-word prefixes must be listed before single-word ones so they match greedily.
- */
-const TEAM_CITY_PREFIXES: string[] = [
-  'St. Louis', 'St Louis', 'New York', 'Los Angeles', 'San Francisco', 'San Diego',
-  'San Jose', 'Kansas City', 'Oklahoma City', 'Salt Lake', 'New Orleans',
-  'Las Vegas', 'Green Bay', 'Tampa Bay', 'Bay Area', 'Golden State',
-  'New England', 'Carolina', 'Rhode Island',
-  'Fort Worth', 'Fort Lauderdale', 'El Paso', 'San Antonio', 'Little Rock',
-  'Baton Rouge', 'West Ham', 'Crystal Palace', 'Brighton', 'Sheffield',
-  'Nottingham', 'Wolverhampton', 'Aston', 'Porto Alegre',
-  'Porto', 'Real Madrid', 'Real Sociedad', 'Real Betis', 'Real Valladolid',
-  'Atletico', 'Athletic',
-  'Atlanta', 'Baltimore', 'Boston', 'Buffalo', 'Charlotte', 'Chicago',
-  'Cincinnati', 'Cleveland', 'Colorado', 'Columbus', 'Dallas', 'Denver',
-  'Detroit', 'Edmonton', 'Florida', 'Houston', 'Indiana', 'Jacksonville',
-  'Louisville', 'Memphis', 'Miami', 'Milwaukee', 'Minnesota', 'Montreal',
-  'Nashville', 'Newark', 'Oakland', 'Orlando', 'Ottawa', 'Philadelphia',
-  'Phoenix', 'Pittsburgh', 'Portland', 'Sacramento', 'Seattle', 'Toronto',
-  'Utah', 'Vancouver', 'Washington', 'Winnipeg', 'Arizona', 'Cincinnati',
-  'Jacksonville', 'Tennessee', 'Mississippi', 'Alabama', 'Georgia', 'Oregon',
-  'Arsenal', 'Chelsea', 'Everton', 'Leicester', 'Liverpool', 'Fulham',
-  'Brentford', 'Bournemouth', 'Burnley', 'Watford', 'Sunderland', 'Middlesbrough',
-  'Bayern', 'Dortmund', 'Leverkusen', 'Leipzig', 'Frankfurt', 'Stuttgart',
-  'Bremen', 'Hamburg', 'Freiburg', 'Augsburg', 'Wolfsburg', 'Mainz', 'Bochum',
-  'Barcelona', 'Sevilla', 'Valencia', 'Villarreal', 'Bilbao', 'Getafe',
-  'Girona', 'Alaves', 'Mallorca', 'Celta', 'Rayo', 'Osasuna', 'Cadiz',
-  'Juventus', 'Napoli', 'Milan', 'Roma', 'Lazio', 'Atalanta', 'Fiorentina',
-  'Torino', 'Udine', 'Monza', 'Bologna', 'Genoa', 'Lecce', 'Frosinone',
-  'Paris', 'Lyon', 'Marseille', 'Lens', 'Lille', 'Monaco', 'Montpellier',
-  'Toulouse', 'Nantes', 'Strasbourg', 'Reims', 'Rennes', 'Brest', 'Clermont',
-  'Ajax', 'Feyenoord', 'Eindhoven', 'Bruges', 'Anderlecht', 'Lisbon', 'Benfica',
-  'Sporting', 'Porto', 'Amsterdam', 'Galatasaray', 'Fenerbahce', 'Besiktas',
-  'Flamengo', 'Palmeiras', 'Santos', 'Corinthians', 'Botafogo', 'Fluminense',
-  'Gremio', 'Internacional',
-  'Inter', 'Internazionale', 'Manchester', 'Tottenham', 'Blackburn', 'Blackpool',
-  'Newcastle', 'Swindon', 'Coventry', 'Luton', 'Cambridge',
-  'Rangers', 'Celtic', 'Aberdeen', 'Hibernian', 'Hearts',
-];
-
-TEAM_CITY_PREFIXES.sort((a, b) => b.length - a.length);
-
-function stripCityPrefix(name: string): string {
-  const trimmed = name.trim();
-  for (const city of TEAM_CITY_PREFIXES) {
-    if (trimmed.toLowerCase().startsWith(city.toLowerCase() + ' ')) {
-      const nickname = trimmed.slice(city.length).trim();
-      if (nickname.length > 0) return nickname;
-    }
-  }
-  return trimmed;
-}
-
-function splitTeamName(name: string): { city: string; nickname: string } {
-  const trimmed = name.trim();
-  // 1. Try known city prefixes first
-  for (const city of TEAM_CITY_PREFIXES) {
-    if (trimmed.toLowerCase().startsWith(city.toLowerCase() + ' ')) {
-      const nickname = trimmed.slice(city.length).trim();
-      if (nickname.length > 0) return { city, nickname };
-    }
-  }
-  // 2. Fall back: split on last space
-  const lastSpace = trimmed.lastIndexOf(' ');
-  if (lastSpace > 0) {
-    return {
-      city: trimmed.slice(0, lastSpace),
-      nickname: trimmed.slice(lastSpace + 1),
-    };
-  }
-  // 3. Single word — treat as nickname with no city
-  return { city: '', nickname: trimmed };
-}
-
-const NCAA_LEAGUE_IDS = new Set([
-  'mens-college-basketball',
-  'womens-college-basketball',
-  'college-football',
-  'college-baseball',
-  'college-softball',
-]);
-
-function stripMascotForCollege(name: string): string {
-  let cleaned = name.replace(/\([^)]*\)/g, '').replace(/\s{2,}/g, ' ').trim();
-  const words = cleaned.split(/\s+/);
-  if (words.length <= 1) return cleaned;
-  return words.slice(0, -1).join(' ');
-}
-
-// Individual sports where team names don't make sense for search — use event title instead
-const INDIVIDUAL_SPORT_LEAGUES = new Set(['ufc', 'f1', 'nascar', 'indycar', 'pga', 'lpga', 'atp', 'wta']);
-
-function buildTeamSearchQuery(homeTeam: string, awayTeam: string, leagueId?: string, eventTitle?: string): string {
-  if (leagueId && INDIVIDUAL_SPORT_LEAGUES.has(leagueId) && eventTitle) {
-    return eventTitle;
-  }
-  if (leagueId && NCAA_LEAGUE_IDS.has(leagueId)) {
-    return `${stripMascotForCollege(homeTeam)} ${stripMascotForCollege(awayTeam)}`;
-  }
-  return `${stripCityPrefix(homeTeam)} ${stripCityPrefix(awayTeam)}`;
-}
 
 function getInitials(name: string): string {
   return name
@@ -162,6 +62,154 @@ function TeamLogo({ name, logo, size = 'md' }: { name: string; logo?: string; si
   );
 }
 
+function TeamPlayButton({
+  links,
+  onPlay,
+}: {
+  links: TeamChannelLink[];
+  onPlay: (link: TeamChannelLink) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside the button group or the (portaled) menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (groupRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
+  // Position the portaled menu under the button, flipping above when there isn't
+  // enough room below the viewport. Re-measures on resize/scroll.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const update = () => {
+      const group = groupRef.current;
+      if (!group) return;
+      const rect = group.getBoundingClientRect();
+      const menuW = menuRef.current?.offsetWidth ?? 190;
+      const menuH = menuRef.current?.offsetHeight ?? 0;
+      const gap = 6;
+      let top = rect.bottom + gap;
+      if (menuH > 0 && top + menuH > window.innerHeight - 8) {
+        top = rect.top - menuH - gap;
+      }
+      if (top < 8) top = 8;
+      let left = rect.left + rect.width / 2;
+      left = Math.min(Math.max(left, menuW / 2 + 8), window.innerWidth - menuW / 2 - 8);
+      setMenuPos({ top, left });
+    };
+    update();
+    // Re-measure once the menu has actually mounted so we get its real size.
+    const raf = requestAnimationFrame(update);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [menuOpen]);
+
+  if (links.length === 0) return null;
+
+  const primary = links[0];
+  const backups = links.slice(1);
+
+  if (backups.length === 0) {
+    return (
+      <button
+        className="gc-team-play"
+        title={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
+        aria-label={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onPlay(primary);
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+        <span>{primary.channel_name}</span>
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <div className="gc-team-play-group" ref={groupRef} onClick={(e) => e.stopPropagation()}>
+        <button
+          className="gc-team-play main"
+          title={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
+          aria-label={`${i18n.t('sports:watchOn')}: ${primary.channel_name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay(primary);
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          <span>{primary.channel_name}</span>
+        </button>
+        <button
+          className={`gc-team-play-backup-btn ${menuOpen ? 'active' : ''}`}
+          title={`+${backups.length} ${i18n.t('sports:backupChannels')}`}
+          aria-label={`+${backups.length} ${i18n.t('sports:backupChannels')}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen(!menuOpen);
+          }}
+        >
+          <span>+{backups.length}</span>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </div>
+
+      {menuOpen &&
+        menuPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="gc-team-play-menu"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <div className="gc-team-play-menu-header">
+              {i18n.t('sports:backupStreams')} ({links.length})
+            </div>
+            {links.map((l, idx) => {
+              const isPrimary = idx === 0;
+              return (
+                <button
+                  key={l.stream_id}
+                  className={`gc-team-play-menu-item ${isPrimary ? 'primary' : 'backup'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    onPlay(l);
+                  }}
+                >
+                  <span className={`gc-menu-priority-badge ${isPrimary ? 'primary' : 'backup'}`}>
+                    {isPrimary ? i18n.t('sports:primaryChannel') : i18n.t('sports:backupChannel', { num: idx })}
+                  </span>
+                  <span className="gc-menu-channel-name">{l.channel_name}</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 interface GameCardProps {
   event: SportsEvent;
   onClick?: () => void;
@@ -187,6 +235,26 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
   const sportsSelectedChannels = useSportsSelectedChannels();
   const setSportsSelectedChannel = useSetSportsSelectedChannel();
   const selectedChannelKey = sportsSelectedChannels[event.id] || null;
+
+  // Team → channel links (configured in Sports settings or auto-linked).
+  const { links: teamLinks, ensureLoaded: ensureTeamLinksLoaded } = useTeamChannelLinks();
+  useEffect(() => { ensureTeamLinksLoaded(); }, [ensureTeamLinksLoaded]);
+  const homeLinks = getTeamLinks(teamLinks, event.league.id, event.homeTeam.id);
+  const awayLinks = getTeamLinks(teamLinks, event.league.id, event.awayTeam.id);
+
+  const handlePlayLinked = useCallback(async (link: TeamChannelLink) => {
+    try {
+      const channel = await db.channels.get(link.stream_id);
+      if (channel) {
+        onPlayChannel?.(channel);
+      } else {
+        // Channel no longer in the database — fall back to a guide search by name.
+        onChannelClick?.(link.channel_name);
+      }
+    } catch (err) {
+      console.error('[GameCard] Failed to resolve linked channel:', err);
+    }
+  }, [onPlayChannel, onChannelClick]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -531,6 +599,9 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
             <div className="gc-team-col away">
               <TeamLogo name={event.awayTeam.name} logo={event.awayTeam.logo} size="lg" />
               <TeamNameLabel name={event.awayTeam.name} />
+              {onPlayChannel && (
+                <TeamPlayButton links={awayLinks} onPlay={handlePlayLinked} />
+              )}
             </div>
 
             {/* Center Scores */}
@@ -556,6 +627,9 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
             <div className="gc-team-col home">
               <TeamLogo name={event.homeTeam.name} logo={event.homeTeam.logo} size="lg" />
               <TeamNameLabel name={event.homeTeam.name} />
+              {onPlayChannel && (
+                <TeamPlayButton links={homeLinks} onPlay={handlePlayLinked} />
+              )}
             </div>
           </div>
         </>

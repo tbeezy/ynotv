@@ -14,6 +14,7 @@ import i18n from '../../i18n';
 import { GameCard } from './GameCard';
 import { GameDetail } from './GameDetail';
 import { GameCardSkeleton } from './LoadingSkeleton';
+import { TeamChannelSettingsModal } from './TeamChannelSettings';
 import './LoadingSkeleton.css';
 
 interface LiveScoresTabProps {
@@ -31,6 +32,7 @@ export function LiveScoresTab({
 }: LiveScoresTabProps) {
   const [selectedEvent, setSelectedEvent] = useState<SportsEvent | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [teamChannelsOpen, setTeamChannelsOpen] = useState(false);
   const setSelectedTab = useSetSportsSelectedTab();
   const epgClockFormat = useEpgClockFormat();
   useTranslation();
@@ -210,6 +212,18 @@ export function LiveScoresTab({
           </svg>
           {i18n.t('sports:configureLeagues')}
         </button>
+        <button
+          className="live-header-settings-reminder"
+          style={{ marginLeft: 0 }}
+          onClick={() => setTeamChannelsOpen(true)}
+          title={i18n.t('sports:teamChannelsDesc')}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="20" height="15" x="2" y="7" rx="2" ry="2" />
+            <polyline points="17 2 12 7 7 2" />
+          </svg>
+          {i18n.t('sports:manageTeamChannels')}
+        </button>
       </div>
 
       {loading && events.length === 0 ? (
@@ -270,6 +284,11 @@ export function LiveScoresTab({
           onChannelClick={handleChannelClick}
         />
       )}
+
+      <TeamChannelSettingsModal
+        isOpen={teamChannelsOpen}
+        onClose={() => setTeamChannelsOpen(false)}
+      />
     </div>
   );
 }

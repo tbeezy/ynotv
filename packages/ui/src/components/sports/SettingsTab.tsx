@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { useSportsSettingsStore, getLeaguesByCategory } from '../../stores/sportsSettingsStore';
 import { clearLeagueLogosCache } from '../../services/sports/utils';
+import { TeamChannelSettingsModal } from './TeamChannelSettings';
 
 interface SettingsTabProps {}
 
 export function SettingsTab({}: SettingsTabProps) {
   const { t } = useTranslation('sports');
   const [clearedLogosMessage, setClearedLogosMessage] = useState(false);
+  const [teamChannelsOpen, setTeamChannelsOpen] = useState(false);
   const {
     enabledLeagues,
     toggleLeagueAll,
@@ -99,6 +101,22 @@ export function SettingsTab({}: SettingsTabProps) {
                 {clearedLogosMessage ? t('cacheCleared') : t('clearLogoCache')}
               </button>
             </div>
+
+            <div className="sports-settings-league-item" style={{ paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+              <div>
+                <span className="sports-settings-league-name">{t('teamChannels')}</span>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.775rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                  {t('teamChannelsDesc')}
+                </p>
+              </div>
+              <button
+                className="sports-settings-reset"
+                style={{ padding: '6px 12px', fontSize: '0.8rem', flexShrink: 0 }}
+                onClick={() => setTeamChannelsOpen(true)}
+              >
+                {t('manageTeamChannels')}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -145,6 +163,8 @@ export function SettingsTab({}: SettingsTabProps) {
           );
         })}
       </div>
+
+      <TeamChannelSettingsModal isOpen={teamChannelsOpen} onClose={() => setTeamChannelsOpen(false)} />
     </div>
   );
 }
