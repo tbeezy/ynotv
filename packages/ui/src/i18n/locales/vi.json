@@ -3553,6 +3553,8 @@
     "deselectAllEpisodes": "Bỏ Chọn Tất Cả Tập",
     "selectAllSeasons": "Chọn Tất Cả Mùa",
     "deselectAllSeasons": "Bỏ Chọn Tất Cả Mùa",
+    "episodesSelected_one": "Đã chọn {{count}} tập",
+    "episodesSelected_other": "Đã chọn {{count}} tập",
     "addSelectedToPlaylist": "Thêm Đã Chọn ({{count}})",
     "addedToPlaylist": "Đã thêm vào {{name}}",
     "noEpisodesSelected": "Chưa chọn tập nào",

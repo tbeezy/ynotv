@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Poništi izbor svih epizoda",
     "selectAllSeasons": "Izaberi sve sezone",
     "deselectAllSeasons": "Poništi izbor svih sezona",
+    "episodesSelected_one": "Izabrana {{count}} epizoda",
+    "episodesSelected_other": "Izabrano {{count}} epizoda",
     "addSelectedToPlaylist": "Dodaj izabrane ({{count}})",
     "addedToPlaylist": "Dodato u {{name}}",
     "noEpisodesSelected": "Nema izabranih epizoda",

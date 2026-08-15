@@ -33,6 +33,24 @@ export function AddToPlaylistModal({
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [addedToast, setAddedToast] = useState<string | null>(null);
 
+  // Brief highlight on the Select/Deselect-all button that was just clicked,
+  // so the user gets clear visual confirmation of which action fired — plus a
+  // temporary chip showing how many episodes ended up selected.
+  const [flashedBtn, setFlashedBtn] = useState<{ key: string; count: number } | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashButton = (key: string, count: number) => {
+    setFlashedBtn({ key, count });
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlashedBtn(null), 500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
+
   // Available season numbers
   const seasonNumbers = useMemo(() => {
     const numbers = Object.keys(seasons).map(Number).sort((a, b) => a - b);
@@ -77,20 +95,21 @@ export function AddToPlaylistModal({
     });
   };
 
+  // The bulk actions return how many episodes are selected afterwards, so the
+  // click flash can show a live count. Each is a discrete click, so the closure
+  // `selectedEpisodeIds` is always the current selection.
   const selectAllCurrentSeason = () => {
-    setSelectedEpisodeIds((prev) => {
-      const next = new Set(prev);
-      currentSeasonEpisodes.forEach((ep) => next.add(ep.id));
-      return next;
-    });
+    const next = new Set(selectedEpisodeIds);
+    currentSeasonEpisodes.forEach((ep) => next.add(ep.id));
+    setSelectedEpisodeIds(next);
+    return next.size;
   };
 
   const deselectAllCurrentSeason = () => {
-    setSelectedEpisodeIds((prev) => {
-      const next = new Set(prev);
-      currentSeasonEpisodes.forEach((ep) => next.delete(ep.id));
-      return next;
-    });
+    const next = new Set(selectedEpisodeIds);
+    currentSeasonEpisodes.forEach((ep) => next.delete(ep.id));
+    setSelectedEpisodeIds(next);
+    return next.size;
   };
 
   // Bulk actions across ALL seasons (multi-season series only).
@@ -98,10 +117,12 @@ export function AddToPlaylistModal({
     const allIds = new Set<string>();
     Object.values(seasons).forEach((epList) => epList.forEach((ep) => allIds.add(ep.id)));
     setSelectedEpisodeIds(allIds);
+    return allIds.size;
   };
 
   const deselectAllSeasons = () => {
     setSelectedEpisodeIds(new Set());
+    return 0;
   };
 
   const doAddMovie = (playlistId: string, playlistName: string) => {
@@ -254,20 +275,37 @@ export function AddToPlaylistModal({
               <div className="add-to-playlist-episodes-actions">
                 {seasonNumbers.length > 1 && (
                   <>
-                    <button className="add-to-playlist-select-btn" onClick={selectAllSeasons}>
+                    <button
+                      className={`add-to-playlist-select-btn${flashedBtn?.key === 'selectAllSeasons' ? ' add-to-playlist-select-btn--flashed' : ''}`}
+                      onClick={() => flashButton('selectAllSeasons', selectAllSeasons())}
+                    >
                       {i18n.t('vod:selectAllSeasons')}
                     </button>
-                    <button className="add-to-playlist-select-btn" onClick={deselectAllSeasons}>
+                    <button
+                      className={`add-to-playlist-select-btn${flashedBtn?.key === 'deselectAllSeasons' ? ' add-to-playlist-select-btn--flashed' : ''}`}
+                      onClick={() => flashButton('deselectAllSeasons', deselectAllSeasons())}
+                    >
                       {i18n.t('vod:deselectAllSeasons')}
                     </button>
                   </>
                 )}
-                <button className="add-to-playlist-select-btn" onClick={selectAllCurrentSeason}>
+                <button
+                  className={`add-to-playlist-select-btn${flashedBtn?.key === 'selectAllEpisodes' ? ' add-to-playlist-select-btn--flashed' : ''}`}
+                  onClick={() => flashButton('selectAllEpisodes', selectAllCurrentSeason())}
+                >
                   {i18n.t('vod:selectAllEpisodes')}
                 </button>
-                <button className="add-to-playlist-select-btn" onClick={deselectAllCurrentSeason}>
+                <button
+                  className={`add-to-playlist-select-btn${flashedBtn?.key === 'deselectAllEpisodes' ? ' add-to-playlist-select-btn--flashed' : ''}`}
+                  onClick={() => flashButton('deselectAllEpisodes', deselectAllCurrentSeason())}
+                >
                   {i18n.t('vod:deselectAllEpisodes')}
                 </button>
+                {flashedBtn && (
+                  <div className="add-to-playlist-select-chip" key={flashedBtn.key}>
+                    ✓ {i18n.t('vod:episodesSelected', { count: flashedBtn.count })}
+                  </div>
+                )}
               </div>
 
               <div className="add-to-playlist-episodes-list">

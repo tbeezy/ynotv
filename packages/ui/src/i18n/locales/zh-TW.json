@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "取消全選劇集",
     "selectAllSeasons": "全選季度",
     "deselectAllSeasons": "取消全選季度",
+    "episodesSelected_one": "已選擇 {{count}} 集",
+    "episodesSelected_other": "已選擇 {{count}} 集",
     "addSelectedToPlaylist": "新增所選（{{count}}）",
     "addedToPlaylist": "已新增到 {{name}}",
     "noEpisodesSelected": "未選擇劇集",

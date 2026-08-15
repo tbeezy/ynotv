@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Αποεπιλογή Όλων των Επεισοδίων",
     "selectAllSeasons": "Επιλογή Όλων των Σεζόν",
     "deselectAllSeasons": "Αποεπιλογή Όλων των Σεζόν",
+    "episodesSelected_one": "{{count}} επεισόδιο επιλέχθηκε",
+    "episodesSelected_other": "{{count}} επεισόδια επιλέχθηκαν",
     "addSelectedToPlaylist": "Προσθήκη Επιλεγμένων ({{count}})",
     "addedToPlaylist": "Προστέθηκε σε {{name}}",
     "noEpisodesSelected": "Δεν επιλέχθηκαν επεισόδια",

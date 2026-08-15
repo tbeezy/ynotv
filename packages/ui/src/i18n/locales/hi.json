@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "सभी एपिसोड अचयनित करें",
     "selectAllSeasons": "सभी सीज़न चुनें",
     "deselectAllSeasons": "सभी सीज़न अचयनित करें",
+    "episodesSelected_one": "{{count}} एपिसोड चुना गया",
+    "episodesSelected_other": "{{count}} एपिसोड चुने गए",
     "addSelectedToPlaylist": "चयनित जोड़ें ({{count}})",
     "addedToPlaylist": "{{name}} में जोड़ा गया",
     "noEpisodesSelected": "कोई एपिसोड चयनित नहीं",

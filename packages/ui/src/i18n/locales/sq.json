@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Çzgjidh të gjithë episodet",
     "selectAllSeasons": "Zgjidh të gjithë sezonet",
     "deselectAllSeasons": "Çzgjidh të gjithë sezonet",
+    "episodesSelected_one": "{{count}} episod i zgjedhur",
+    "episodesSelected_other": "{{count}} episode të zgjedhura",
     "addSelectedToPlaylist": "Shto të zgjedhurat ({{count}})",
     "addedToPlaylist": "U shtua në {{name}}",
     "noEpisodesSelected": "Asnjë episod i zgjedhur",

@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "تمام ایپیسوڈز غیر منتخب کریں",
     "selectAllSeasons": "تمام سیزنز منتخب کریں",
     "deselectAllSeasons": "تمام سیزنز غیر منتخب کریں",
+    "episodesSelected_one": "{{count}} ایپیسوڈ منتخب کیا گیا",
+    "episodesSelected_other": "{{count}} ایپیسوڈز منتخب کیے گئے",
     "addSelectedToPlaylist": "منتخب شامل کریں ({{count}})",
     "addedToPlaylist": "{{name}} میں شامل ہوا",
     "noEpisodesSelected": "کوئی ایپیسوڈ منتخب نہیں",

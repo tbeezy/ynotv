@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Снять выбор всех эпизодов",
     "selectAllSeasons": "Выбрать все сезоны",
     "deselectAllSeasons": "Снять выбор всех сезонов",
+    "episodesSelected_one": "Выбран {{count}} эпизод",
+    "episodesSelected_other": "Выбрано {{count}} эпизодов",
     "addSelectedToPlaylist": "Добавить выбранные ({{count}})",
     "addedToPlaylist": "Добавлено в {{name}}",
     "noEpisodesSelected": "Эпизоды не выбраны",

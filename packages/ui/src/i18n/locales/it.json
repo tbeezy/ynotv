@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Deseleziona tutti gli episodi",
     "selectAllSeasons": "Seleziona tutte le stagioni",
     "deselectAllSeasons": "Deseleziona tutte le stagioni",
+    "episodesSelected_one": "{{count}} episodio selezionato",
+    "episodesSelected_other": "{{count}} episodi selezionati",
     "addSelectedToPlaylist": "Aggiungi selezionati ({{count}})",
     "addedToPlaylist": "Aggiunto a {{name}}",
     "noEpisodesSelected": "Nessun episodio selezionato",

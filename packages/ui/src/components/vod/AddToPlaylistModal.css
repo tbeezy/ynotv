@@ -161,6 +161,7 @@
   align-items: center;
   justify-content: space-between;
   margin-top: 4px;
+  position: relative;
 }
 
 .add-to-playlist-select-btn {
@@ -170,11 +171,68 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: background 150ms ease, color 150ms ease, transform 100ms ease;
 }
 
 .add-to-playlist-select-btn:hover {
-  text-decoration: underline;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.add-to-playlist-select-btn:active {
+  transform: scale(0.94);
+}
+
+/* Brief accent flash confirming which Select/Deselect-all button was clicked */
+.add-to-playlist-select-btn--flashed {
+  background: var(--accent-color, #3b82f6);
+  color: #fff;
+  animation: add-to-playlist-select-flash 500ms ease forwards;
+}
+
+@keyframes add-to-playlist-select-flash {
+  0% {
+    background: var(--accent-color, #3b82f6);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+  }
+  100% {
+    background: transparent;
+    color: #3b82f6;
+    box-shadow: none;
+  }
+}
+
+/* Temporary chip under the actions row showing how many episodes ended up
+   selected after a bulk Select/Deselect-all click (same lifetime as the flash) */
+.add-to-playlist-select-chip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-color, #3b82f6);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  animation: add-to-playlist-chip-pop 500ms ease forwards;
+}
+
+@keyframes add-to-playlist-chip-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px) scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 
 .add-to-playlist-episodes-list {

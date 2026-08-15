@@ -11,7 +11,7 @@ New user-facing UI strings must be added to `packages/ui/src/i18n/locales/en.jso
 
 Translation corrections are welcome — native speakers are the best reviewers of their own language.
 
-**The 22 supported locales** (all at `packages/ui/src/i18n/locales/`): `en`, `fr`, `ar`, `tr`, `es`, `pt-BR`, `it`, `de`, `pl`, `sr`, `hr`, `bs`, `sq`, `ru`, `el`, `nl`, `fa`, `hi`, `ur`, `zh-CN`, `zh-TW`, `vi`.
+**The 23 supported locales** (all at `packages/ui/src/i18n/locales/`): `en`, `fr`, `ar`, `tr`, `es`, `pt-BR`, `it`, `de`, `pl`, `sr`, `hr`, `bs`, `sq`, `ru`, `el`, `nl`, `fa`, `hi`, `ur`, `zh-CN`, `zh-TW`, `vi`, `hu`.
 
 To fix a string:
 

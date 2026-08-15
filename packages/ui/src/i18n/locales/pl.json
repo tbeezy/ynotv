@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Odznacz wszystkie odcinki",
     "selectAllSeasons": "Zaznacz wszystkie sezony",
     "deselectAllSeasons": "Odznacz wszystkie sezony",
+    "episodesSelected_one": "Wybrano {{count}} odcinek",
+    "episodesSelected_other": "Wybrano {{count}} odcinków",
     "addSelectedToPlaylist": "Dodaj zaznaczone ({{count}})",
     "addedToPlaylist": "Dodano do {{name}}",
     "noEpisodesSelected": "Nie zaznaczono żadnych odcinków",

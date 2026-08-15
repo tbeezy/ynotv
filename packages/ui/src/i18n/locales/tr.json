@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Tüm Bölümlerin Seçimini Kaldır",
     "selectAllSeasons": "Tüm Sezonları Seç",
     "deselectAllSeasons": "Tüm Sezonların Seçimini Kaldır",
+    "episodesSelected_one": "{{count}} bölüm seçildi",
+    "episodesSelected_other": "{{count}} bölüm seçildi",
     "addSelectedToPlaylist": "Seçilenleri Ekle ({{count}})",
     "addedToPlaylist": "{{name}} listesine eklendi",
     "noEpisodesSelected": "Bölüm seçilmedi",

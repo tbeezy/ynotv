@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "إلغاء تحديد كل الحلقات",
     "selectAllSeasons": "تحديد كل المواسم",
     "deselectAllSeasons": "إلغاء تحديد كل المواسم",
+    "episodesSelected_one": "تم تحديد {{count}} حلقة",
+    "episodesSelected_other": "تم تحديد {{count}} حلقات",
     "addSelectedToPlaylist": "إضافة المحدد ({{count}})",
     "addedToPlaylist": "أُضيف إلى {{name}}",
     "noEpisodesSelected": "لم تُحدد حلقات",

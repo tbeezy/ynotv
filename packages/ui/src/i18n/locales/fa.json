@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "عدم انتخاب همه قسمت‌ها",
     "selectAllSeasons": "انتخاب همه فصل‌ها",
     "deselectAllSeasons": "عدم انتخاب همه فصل‌ها",
+    "episodesSelected_one": "{{count}} قسمت انتخاب شد",
+    "episodesSelected_other": "{{count}} قسمت انتخاب شد",
     "addSelectedToPlaylist": "افزودن انتخاب‌شده ({{count}})",
     "addedToPlaylist": "به {{name}} اضافه شد",
     "noEpisodesSelected": "قسمتی انتخاب نشده است",

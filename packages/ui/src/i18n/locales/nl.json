@@ -2220,6 +2220,8 @@
     "deselectAllEpisodes": "Alle afleveringen deselecteren",
     "selectAllSeasons": "Alle seizoenen selecteren",
     "deselectAllSeasons": "Alle seizoenen deselecteren",
+    "episodesSelected_one": "{{count}} aflevering geselecteerd",
+    "episodesSelected_other": "{{count}} afleveringen geselecteerd",
     "addSelectedToPlaylist": "Geselecteerde toevoegen ({{count}})",
     "addedToPlaylist": "Toegevoegd aan {{name}}",
     "noEpisodesSelected": "Geen afleveringen geselecteerd",
