@@ -1517,20 +1517,24 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
     document.documentElement.style.setProperty('--category-strip-content-width', '240px');
   }, []);
 
+  // One-shot per session: collapse all source categories once the
+  // (authoritative, hydrated) setting is known. Reactive on the setting so the
+  // collapse isn't lost to the boot race — CategoryStrip mounts at boot and
+  // this effect used to consume isFirstLoad with the store's hardcoded default
+  // before ensureSettingsHydration() reconciled the real value.
+  const collapseOnStartup = useSettingsStore((s) => s.collapseSourceCategoriesOnStartup);
+  useEffect(() => {
+    if (collapseOnStartup && isFirstLoad.current) {
+      setExpandedPlaylists({});
+      setExpandedSources({});
+      isFirstLoad.current = false;
+    }
+  }, [collapseOnStartup]);
+
   // Fetch source names to resolve IDs
   useEffect(() => {
     async function fetchSources() {
       if (window.storage) {
-        // Settings live in the store (selectors above); only the startup-collapse
-        // flag is needed here as a one-shot read.
-        const collapseOnStartup = useSettingsStore.getState().collapseSourceCategoriesOnStartup;
-
-        if (collapseOnStartup && isFirstLoad.current) {
-          setExpandedPlaylists({});
-          setExpandedSources({});
-        }
-        isFirstLoad.current = false;
-        
         const result = await window.storage.getSources();
         if (result.data) {
           const sourceMap = result.data.reduce((acc: Record<string, string>, s: Source) => {
@@ -1540,6 +1544,10 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
           setSources(sourceMap);
 
           const sourcesData = result.data;
+
+          // Read the value AFTER the await so hydration has had a chance to
+          // land — new sources initialize collapsed/expanded per the setting.
+          const collapseOnStartup = useSettingsStore.getState().collapseSourceCategoriesOnStartup;
 
           // Initialize new sources as expanded or collapsed based on setting
           setExpandedSources(prev => {

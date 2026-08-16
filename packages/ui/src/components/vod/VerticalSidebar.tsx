@@ -115,13 +115,22 @@ export function VerticalSidebar({
         setIsV3(document.documentElement.classList.contains('modern-ui-v3'));
     }, []);
 
+    // One-shot per session: collapse all source categories once the
+    // (authoritative, hydrated) setting is known — reactive on the setting so
+    // the boot race (store still at its hardcoded default while hydration
+    // reconciles the real value) can't burn the flag with a stale read.
+    const collapseOnStartup = useSettingsStore((s) => s.collapseSourceCategoriesOnStartup);
+    useEffect(() => {
+        if (collapseOnStartup && isFirstLoad.current) {
+            setExpandedSources({});
+            isFirstLoad.current = false;
+        }
+    }, [collapseOnStartup]);
+
     // Fetch sources to resolve names and initialize expanded state according to user setting
     useEffect(() => {
         async function fetchSources() {
             if (window.storage) {
-                // Settings live in the store (single source of truth)
-                const collapseOnStartup = useSettingsStore.getState().collapseSourceCategoriesOnStartup;
-
                 const result = await window.storage.getSources();
                 if (result.data) {
                     const data = result.data;
@@ -131,10 +140,9 @@ export function VerticalSidebar({
                     }, {});
                     setSources(sourceMap);
 
-                    if (collapseOnStartup && isFirstLoad.current) {
-                        setExpandedSources({});
-                    }
-                    isFirstLoad.current = false;
+                    // Read the value AFTER the await so hydration has had a
+                    // chance to land — new sources init per the real setting.
+                    const collapseOnStartup = useSettingsStore.getState().collapseSourceCategoriesOnStartup;
 
                     // Initialize expanded state for sources (collapsed if collapseOnStartup is true)
                     setExpandedSources(prev => {

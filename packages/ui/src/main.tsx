@@ -18,6 +18,11 @@ import { ensureSettingsHydration } from './stores/settingsStoreHydration';
 // import deadlock that a store-side import would cause (the applier reads
 // useSettingsStore at module scope).
 import './stores/settingsDomApplier';
+// Side-effect import AFTER the settings store + applier: self-initializes the
+// scroll listener that toggles the `scroll-turbo` class (drops backdrop blur
+// and blob blending while scrolling, restores on idle). Reads the
+// reduceEffectsWhileScrolling setting from the store at event time.
+import './utils/scrollTurbo';
 
 // Must run before any component mounts: a localStorage write that exceeds the
 // WebView2 quota must never crash the (transparent) window.

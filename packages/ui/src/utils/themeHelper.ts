@@ -140,6 +140,12 @@ export const applyCustomTheme = (config: CustomThemeConfig) => {
   root.style.setProperty('--status-recording', '#e74c3c');
   root.style.setProperty('--status-new', '#2ecc71');
 
+  // 6b. Modal overlay opacity — the scrim behind settings/modals. Kept
+  // readable even when the backdrop blur is disabled via the optimization
+  // toggle (the v3 overlay token was dropped to 0.4 and relied on blur).
+  const overlayOpacity = typeof config.glassOverlayOpacity === 'number' ? config.glassOverlayOpacity : 0.85;
+  root.style.setProperty('--glass-overlay-bg', hexToRgba('#08080c', overlayOpacity));
+
   // 7. Custom background glow bulbs (for v3 liquid glass look)
   const cb1 = getHex(config.customBlob1 || '', '#00bbf5');
   const cb2 = getHex(config.customBlob2 || '', '#ff1493');
@@ -164,6 +170,48 @@ export const applyCustomTheme = (config: CustomThemeConfig) => {
   root.style.setProperty('--glass-blob-visibility', blobHidden ? 'hidden' : 'visible');
   // De-promote GPU layer when hidden so compositor doesn't render it independently
   root.style.setProperty('--glass-blob-will-change', blobHidden ? 'auto' : 'transform');
+
+  // 9. OLED true-black — replicates the built-in OLED mode (which only applies
+  // to the dark-* preset themes via [data-theme^="dark"] in CSS) for custom
+  // themes, so a dark custom theme can match the OLED look. Pure-black
+  // surfaces, flattened gradients, no backdrop-blur boosts, neutral borders.
+  // Runs last so it overrides the surface/glass tokens set above. The
+  // --custom-oled-black marker lets extractCurrentThemeVariables round-trip
+  // the checkbox, and all touched vars are in settingsDomApplier's
+  // CUSTOM_THEME_KEYS so they're cleaned up when leaving the custom theme.
+  if (config.oledBlack === true) {
+    root.style.setProperty('--bg-primary', '#000000');
+    root.style.setProperty('--bg-secondary', '#000000');
+    root.style.setProperty('--bg-tertiary', '#050505');
+    root.style.setProperty('--bg-overlay', '#000000');
+    root.style.setProperty('--bg-gradient-1', '#000000');
+    root.style.setProperty('--bg-gradient-2', '#000000');
+    root.style.setProperty('--bg-gradient-3', '#000000');
+    root.style.setProperty('--surface-color', '#000000');
+    root.style.setProperty('--surface-hover', '#0d0d0d');
+    root.style.setProperty('--surface-active', '#141414');
+    root.style.setProperty('--surface-border', 'rgba(255, 255, 255, 0.08)');
+    root.style.setProperty('--surface-glow', 'none');
+    root.style.setProperty('--glass-surface-bg', '#000000');
+    root.style.setProperty('--glass-settings-bg', '#080808');
+    root.style.setProperty('--glass-overlay-bg', 'rgba(0, 0, 0, 0.75)');
+    root.style.setProperty('--glass-blur', '0px');
+    root.style.setProperty('--glass-saturation', '100%');
+    root.style.setProperty('--glass-surface-filter', 'none');
+    root.style.setProperty('--glass-modal-filter', 'none');
+    root.style.setProperty('--glass-overlay-filter', 'none');
+    root.style.setProperty('--glass-settings-filter', 'none');
+    root.style.setProperty('--strip-filter', 'none');
+    root.style.setProperty('--vs-scrollbar-thumb-bg', 'rgba(255, 255, 255, 0.12)');
+    root.style.setProperty('--guide-scroll-strip-thumb-bg', 'rgba(255, 255, 255, 0.12)');
+    root.style.setProperty('--custom-oled-black', '1');
+  } else {
+    // Unchecking OLED: drop the OLED-only overrides so the stylesheet tokens
+    // (or the base custom-theme values) win again. Tokens the base sections
+    // always write (--bg-*, --surface-*, --glass-blur, --glass-saturation,
+    // --glass-overlay-bg) are refreshed by the sections above automatically.
+    ['--glass-surface-bg', '--glass-settings-bg', '--glass-surface-filter', '--glass-modal-filter', '--glass-overlay-filter', '--glass-settings-filter', '--strip-filter', '--vs-scrollbar-thumb-bg', '--guide-scroll-strip-thumb-bg', '--custom-oled-black'].forEach((k) => root.style.removeProperty(k));
+  }
 };
 
 export const extractCurrentThemeVariables = (): CustomThemeConfig => {
@@ -441,6 +489,8 @@ export const extractCurrentThemeVariables = (): CustomThemeConfig => {
     showGlassBlobs = getComputedStyle(b1El).display !== 'none';
   }
 
+  const overlayParsed = parseColorAndOpacity(getVar('--glass-overlay-bg', 'rgba(8, 8, 12, 0.85)'));
+
   return {
     backgroundType,
     backgroundColor,
@@ -458,6 +508,8 @@ export const extractCurrentThemeVariables = (): CustomThemeConfig => {
     surfaceBorderOpacity: borderInfo.opacity,
     glassBlur,
     glassSaturation,
+    glassOverlayOpacity: overlayParsed.opacity,
+    oledBlack: rootStyle.getPropertyValue('--custom-oled-black').trim() === '1',
     customBlob1: b1Parsed.color,
     customBlob1Opacity: b1Parsed.opacity,
     customBlob2: b2Parsed.color,

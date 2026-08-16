@@ -469,6 +469,8 @@ export function ThemeTab({
         surfaceBorderOpacity: 0.1,
         glassBlur: 20,
         glassSaturation: 150,
+        glassOverlayOpacity: 0.85,
+        oledBlack: false,
         customBlob1: '#00bbf5',
         customBlob2: '#ff1493',
         customBlob3: '#ffd700',
@@ -1448,6 +1450,17 @@ export function ThemeTab({
                       displayValue={`${customThemeConfig.glassSaturation ?? 150}%`}
                       onChange={(val) => onCustomThemeConfigChange({ glassSaturation: val })}
                     />
+
+                    {/* Modal Overlay Opacity Slider */}
+                    <SliderInput
+                      label={i18n.t('settings:theme.overlayOpacity')}
+                      min={0.1}
+                      max={1.0}
+                      step={0.05}
+                      value={customThemeConfig.glassOverlayOpacity ?? 0.85}
+                      displayValue={`${Math.round((customThemeConfig.glassOverlayOpacity ?? 0.85) * 100)}%`}
+                      onChange={(val) => onCustomThemeConfigChange({ glassOverlayOpacity: val })}
+                    />
                   </div>
 
                   {/* V3 UI Bulb Glows card */}
@@ -1562,6 +1575,35 @@ export function ThemeTab({
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* OLED Black card (custom themes only) — matches the built-in
+                      OLED mode so a dark custom theme can use true-black surfaces. */}
+                  <div style={{
+                    background: 'var(--surface-color)',
+                    border: '1px solid var(--surface-border)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    marginTop: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 500, cursor: 'pointer' }} htmlFor="toggle-custom-oled-black">
+                        {i18n.t('settings:theme.oledBlack')}
+                      </label>
+                      <input
+                        id="toggle-custom-oled-black"
+                        type="checkbox"
+                        checked={customThemeConfig.oledBlack ?? false}
+                        onChange={(e) => onCustomThemeConfigChange({ oledBlack: e.target.checked })}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary, #00d4ff)', cursor: 'pointer' }}
+                      />
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.3 }}>
+                      {i18n.t('settings:theme.oledBlackDesc')}
+                    </p>
                   </div>
                 </div>
               </div>

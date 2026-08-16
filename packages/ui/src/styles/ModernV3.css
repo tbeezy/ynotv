@@ -33,8 +33,10 @@ html.modern-ui-v3 {
   --glass-modal-width: 720px;      /* source picker */
   --glass-modal-color: #fff;       /* track/subtitle modal text */
   --glass-modal-overflow: hidden;  /* track/subtitle modal clipping */
-  /* Overlays behind modals (source picker, stremio, nuvio, track, subtitle, settings) */
-  --glass-overlay-bg: rgba(8, 8, 12, 0.4);
+  /* Overlays behind modals (source picker, stremio, nuvio, track, subtitle, settings).
+     Kept near-opaque (matches the base --bg-overlay) so settings stay readable even
+     when the backdrop blur is disabled via the optimization toggle. */
+  --glass-overlay-bg: rgba(8, 8, 12, 0.85);
   --glass-overlay-filter: blur(10px);
   --glass-overlay-bg-noblur: rgba(0, 0, 0, 0.15);
   --glass-overlay-filter-noblur: none;
@@ -1560,9 +1562,9 @@ html.modern-ui-v3[data-theme="light"] {
   --glass-modal-border: 1px solid rgba(0, 0, 0, 0.08);
   --glass-modal-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.02);
   --glass-modal-color: #000;
-  --glass-overlay-bg: rgba(0, 0, 0, 0.3);
+  --glass-overlay-bg: rgba(0, 0, 0, 0.6);
   --glass-overlay-filter-noblur: blur(10px);
-  --glass-overlay-bg-noblur: rgba(0, 0, 0, 0.3);
+  --glass-overlay-bg-noblur: rgba(0, 0, 0, 0.6);
   --glass-settings-bg: rgba(255, 255, 255, 0.94);
   --glass-settings-border: 1px solid rgba(0, 0, 0, 0.12);
   --glass-settings-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 20px 50px rgba(0, 0, 0, 0.15), 0 2px 8px color-mix(in srgb, var(--accent-primary, #0066cc) 10%, transparent);
@@ -4146,3 +4148,94 @@ html[data-oled="true"][data-theme^="dark"] .series-detail__poster-placeholder,
   background: var(--oled-shell-bg, #000000);
 }
 
+
+/* ==========================================================================
+   FLAT CHROME MODE (html.flat-chrome — Settings → Optimization)
+   Opt-in "flat" rendering that strips the v3-only GPU surface so GPU usage
+   approaches v1's: replaces the liquid-glass background (gradient + blobs)
+   with a flat solid theme color, removes decorative box-shadows from the
+   always-visible chrome, and drops the drop-shadow filters on title-bar/
+   segmented buttons. Modals, popovers, focus rings and the EPG program blocks
+   are intentionally NOT touched (those are transient or already covered by
+   disable-epg-transitions).
+
+   IMPORTANT: the .livetv-liquid-glass-bg container must stay rendered — it is
+   v3's ONLY full-viewport opaque background (.app is transparent so the mpv
+   video shows through). display:none on it made the whole app transparent the
+   moment a channel started playing. Keep it, paint it solid, hide only the
+   decorative parts (blobs + ambient glow pseudo-elements).
+   ========================================================================== */
+
+html.flat-chrome .livetv-liquid-glass-bg {
+  display: block !important;
+  background: var(--bg-primary, #1a1a1a) !important;
+}
+
+html.flat-chrome .livetv-liquid-glass-bg::before,
+html.flat-chrome .livetv-liquid-glass-bg::after,
+html.flat-chrome .livetv-liquid-glass-bg .glass-blob {
+  display: none !important;
+}
+
+html.flat-chrome .title-bar-unified,
+html.flat-chrome .npb-btn,
+html.flat-chrome .npb-volume-btn,
+html.flat-chrome .npb-volume-slider,
+html.flat-chrome .npb-fullscreen-btn,
+html.flat-chrome .category-strip,
+html.flat-chrome .category-search-input-wrapper,
+html.flat-chrome .category-item,
+html.flat-chrome .category-list-bar,
+html.flat-chrome .category-icon,
+html.flat-chrome .category-count,
+html.flat-chrome .sortable-sidebar-item.category-source-header,
+html.flat-chrome .guide-preview-pane,
+html.flat-chrome .resizer-dot,
+html.flat-chrome .guide-preview-video,
+html.flat-chrome .video-glass-border,
+html.flat-chrome .guide-preview-placeholder,
+html.flat-chrome .guide-info-pane,
+html.flat-chrome .guide-grid-section,
+html.flat-chrome .guide-current-time-indicator {
+  box-shadow: none !important;
+}
+
+html.flat-chrome .segmented-btn,
+html.flat-chrome .title-bar-settings-btn,
+html.flat-chrome .layout-picker-btn,
+html.flat-chrome .title-bar-calendar-btn {
+  filter: none !important;
+}
+
+/* Per-row EPG effects — strip the per-row layers so large-playlist scrolling
+   repaints nothing decorative per row: program-block shadows (all state
+   variants), the channel-name fade mask (one GPU layer per row), and the
+   gradient divider under every row. State colors (live/recording/current)
+   and the current-time line are intentionally kept. */
+html.flat-chrome .program-block {
+  box-shadow: none !important;
+}
+
+html.flat-chrome .guide-channel-name-container {
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+
+html.flat-chrome .guide-channel-row::after {
+  content: none !important;
+}
+
+/* Neutralize every program-block shadow token (incl. the !important
+   currently-playing glow at ModernV3.css:2904) by overriding the custom
+   properties at the flat-chrome scope — the accent border/background that
+   marks the playing row is kept, only the glow is dropped. */
+html.flat-chrome {
+  --prog-shadow: none !important;
+  --prog-hover-shadow: none !important;
+  --prog-current-shadow: none !important;
+  --prog-current-hover-shadow: none !important;
+  --prog-current-playing-shadow: none !important;
+  --prog-current-playing-hover-shadow: none !important;
+  --prog-rec-shadow: none !important;
+  --prog-rec-hover-shadow: none !important;
+}

@@ -736,6 +736,21 @@ html.disable-theme-backdrop-blur * {
   -webkit-backdrop-filter: none !important;
 }
 
+/* 2. Scroll Turbo — active only while scrolling (see utils/scrollTurbo.ts).
+   Backdrop blur on glass surfaces re-samples the moving EPG content on every
+   scroll frame; disabling it during motion removes that per-frame GPU work
+   while the compositor stays on (scrolling stays smooth). The blobs' screen
+   blend is also dropped so the big blended layers composite cheaply. Both are
+   restored ~120ms after scrolling stops. */
+html.scroll-turbo * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.scroll-turbo .livetv-liquid-glass-bg .glass-blob {
+  mix-blend-mode: normal !important;
+}
+
 /* 3. Disable EPG Card Shadows & Transitions */
 html.disable-epg-transitions .program-block {
   transition: none !important;

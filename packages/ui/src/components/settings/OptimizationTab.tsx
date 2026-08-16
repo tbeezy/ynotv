@@ -10,6 +10,10 @@ export function OptimizationTab() {
   const setHardwareAcceleration = useSettingsStore((s) => s.setHardwareAcceleration);
   const disableThemeBackdropBlur = useSettingsStore((s) => s.disableThemeBackdropBlur);
   const setDisableThemeBackdropBlur = useSettingsStore((s) => s.setDisableThemeBackdropBlur);
+  const reduceEffectsWhileScrolling = useSettingsStore((s) => s.reduceEffectsWhileScrolling);
+  const setReduceEffectsWhileScrolling = useSettingsStore((s) => s.setReduceEffectsWhileScrolling);
+  const flatChrome = useSettingsStore((s) => s.flatChrome);
+  const setFlatChrome = useSettingsStore((s) => s.setFlatChrome);
   const epgLazyLoadingEnabled = useSettingsStore((s) => s.epgLazyLoadingEnabled);
   const setEpgLazyLoadingEnabled = useSettingsStore((s) => s.setEpgLazyLoadingEnabled);
   const disableEpgTransitions = useSettingsStore((s) => s.disableEpgTransitions);
@@ -97,6 +101,34 @@ export function OptimizationTab() {
             </label>
             <p className="form-hint" style={{ marginTop: '0.4rem', marginLeft: '26px', opacity: 0.8, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
               {i18n.t('settings:optimization.disableBlurHint')}
+            </p>
+          </div>
+
+          <div>
+            <label className="genre-checkbox" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', maxWidth: '450px' }}>
+              <input
+                type="checkbox"
+                checked={reduceEffectsWhileScrolling}
+                onChange={(e) => setReduceEffectsWhileScrolling(e.target.checked)}
+              />
+              <span className="genre-name" style={{ fontWeight: 600, fontSize: '0.95rem' }}>{i18n.t('settings:optimization.reduceWhileScrolling')}</span>
+            </label>
+            <p className="form-hint" style={{ marginTop: '0.4rem', marginLeft: '26px', opacity: 0.8, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+              {i18n.t('settings:optimization.reduceWhileScrollingHint')}
+            </p>
+          </div>
+
+          <div>
+            <label className="genre-checkbox" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', maxWidth: '450px' }}>
+              <input
+                type="checkbox"
+                checked={flatChrome}
+                onChange={(e) => setFlatChrome(e.target.checked)}
+              />
+              <span className="genre-name" style={{ fontWeight: 600, fontSize: '0.95rem' }}>{i18n.t('settings:optimization.flatChrome')}</span>
+            </label>
+            <p className="form-hint" style={{ marginTop: '0.4rem', marginLeft: '26px', opacity: 0.8, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+              {i18n.t('settings:optimization.flatChromeHint')}
             </p>
           </div>
         </div>

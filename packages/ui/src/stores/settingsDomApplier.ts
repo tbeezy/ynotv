@@ -57,6 +57,18 @@ const CUSTOM_THEME_KEYS = [
   '--glass-blob-opacity',
   '--glass-blob-visibility',
   '--glass-blob-will-change',
+  '--bg-overlay',
+  '--glass-overlay-bg',
+  '--glass-surface-bg',
+  '--glass-settings-bg',
+  '--glass-surface-filter',
+  '--glass-modal-filter',
+  '--glass-overlay-filter',
+  '--glass-settings-filter',
+  '--strip-filter',
+  '--vs-scrollbar-thumb-bg',
+  '--guide-scroll-strip-thumb-bg',
+  '--custom-oled-black',
 ];
 
 /** Last-applied signature per section — a store change only touches DOM whose inputs changed. */
@@ -196,6 +208,9 @@ export function applySettingsDom(state: SettingsState): void {
   }
   if (sectionChanged('epgChannelFade', { v: state.epgDisableChannelFade })) {
     toggleClass('epg-disable-channel-fade', !!state.epgDisableChannelFade);
+  }
+  if (sectionChanged('flatChrome', { v: state.flatChrome })) {
+    toggleClass('flat-chrome', !!state.flatChrome);
   }
 
   // OLED true-black — absorbed from the old module-global. One writer, one

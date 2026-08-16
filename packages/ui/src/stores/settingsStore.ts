@@ -423,6 +423,10 @@ export interface SettingsState {
   setHardwareAcceleration: (enabled: boolean) => void;
   disableThemeBackdropBlur: boolean;
   setDisableThemeBackdropBlur: (disabled: boolean) => void;
+  reduceEffectsWhileScrolling: boolean;
+  setReduceEffectsWhileScrolling: (enabled: boolean) => void;
+  flatChrome: boolean;
+  setFlatChrome: (enabled: boolean) => void;
   oledBlack: boolean;
   setOledBlack: (enabled: boolean) => void;
   epgLazyLoadingEnabled: boolean;
@@ -519,6 +523,8 @@ const DEFAULT_CUSTOM_THEME_CONFIG: CustomThemeConfig = {
   surfaceBorderOpacity: 0.1,
   glassBlur: 20,
   glassSaturation: 150,
+  glassOverlayOpacity: 0.85,
+  oledBlack: false,
   customBlob1: '#00bbf5',
   customBlob2: '#ff1493',
   customBlob3: '#ffd700',
@@ -1014,6 +1020,16 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setDisableThemeBackdropBlur: (disabled) => {
     set({ disableThemeBackdropBlur: disabled });
     persistSettings({ disableThemeBackdropBlur: disabled });
+  },
+  reduceEffectsWhileScrolling: false,
+  setReduceEffectsWhileScrolling: (enabled) => {
+    set({ reduceEffectsWhileScrolling: enabled });
+    persistSettings({ reduceEffectsWhileScrolling: enabled });
+  },
+  flatChrome: false,
+  setFlatChrome: (enabled) => {
+    set({ flatChrome: enabled });
+    persistSettings({ flatChrome: enabled });
   },
   oledBlack: Boolean(cachedSettings?.oledBlack),
   setOledBlack: (enabled) => {

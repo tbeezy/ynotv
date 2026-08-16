@@ -26,6 +26,8 @@ export interface CustomThemeConfig {
     customBlob3Opacity?: number;
     customBlob4Opacity?: number;
     showGlassBlobs?: boolean;
+    glassOverlayOpacity?: number;
+    oledBlack?: boolean;
     fontFamily?: string;
     customFontBase64?: string;
     customFontFormat?: string;
