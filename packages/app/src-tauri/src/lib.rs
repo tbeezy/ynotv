@@ -1104,6 +1104,34 @@ async fn mpv_toggle_fullscreen<R: Runtime>(
                 window.unmaximize().map_err(|e| e.to_string())?;
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
+            // Capture the true windowed geometry BEFORE the OS resizes the window
+            // to the screen. Relying on Resized/Moved events for this is racy: the
+            // fullscreen resize event can arrive while is_fullscreen() still reports
+            // false, which would poison last_unmaximized with the fullscreen size
+            // and make exit-fullscreen restore the wrong window size.
+            let tracker = app.state::<WindowStateTracker>();
+            if let Ok(mut guard) = tracker.last_non_fullscreen_maximized.lock() {
+                *guard = is_maximized;
+            }
+            if let (Ok(physical_size), Ok(pos)) = (window.inner_size(), window.outer_position()) {
+                let scale_factor = window.scale_factor().unwrap_or(1.0);
+                let logical_size = physical_size.to_logical::<f64>(scale_factor);
+                if physical_size.width >= 400
+                    && physical_size.height >= 300
+                    && is_valid_saved_window_position(pos.x, pos.y)
+                {
+                    if let Ok(mut guard) = tracker.last_unmaximized.lock() {
+                        *guard = Some(WindowState {
+                            width: logical_size.width.round() as u32,
+                            height: logical_size.height.round() as u32,
+                            x: pos.x,
+                            y: pos.y,
+                            maximized: false,
+                            fullscreen: false,
+                        });
+                    }
+                }
+            }
         }
 
         #[cfg(target_os = "windows")]
@@ -1113,6 +1141,24 @@ async fn mpv_toggle_fullscreen<R: Runtime>(
         }
 
         window.set_fullscreen(!is_fullscreen).map_err(|e| e.to_string())?;
+
+        // Windows: exiting fullscreen from a windowed (non-maximized) state.
+        // Explicitly re-apply the last known windowed geometry instead of trusting
+        // the OS restore bounds, which can be stale/corrupt when the app reopened
+        // directly into fullscreen from a saved state (would otherwise collapse to
+        // the minimum window size).
+        #[cfg(target_os = "windows")]
+        if is_fullscreen && !should_restore_maximized {
+            tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+            if let Some(geo) = last_windowed_geometry(&app) {
+                let _ = window.set_size(tauri::Size::Logical(
+                    tauri::LogicalSize { width: geo.width as f64, height: geo.height as f64 }
+                ));
+                let _ = window.set_position(tauri::Position::Physical(
+                    tauri::PhysicalPosition { x: geo.x, y: geo.y }
+                ));
+            }
+        }
 
         #[cfg(target_os = "windows")]
         if should_restore_maximized {
@@ -4061,14 +4107,14 @@ fn is_valid_saved_window_position(x: i32, y: i32) -> bool {
     x > -10_000 && y > -10_000
 }
 
-fn window_state_path(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+fn window_state_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<std::path::PathBuf> {
     app.path()
         .app_data_dir()
         .ok()
         .map(|d| d.join("window_state.json"))
 }
 
-fn save_window_state(app: &tauri::AppHandle) {
+pub(crate) fn save_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
         let is_fullscreen = window.is_fullscreen().unwrap_or(false);
         let is_maximized = if is_fullscreen {
@@ -4185,7 +4231,7 @@ fn save_window_state(app: &tauri::AppHandle) {
 }
 
 /// Check if the user has disabled saving window size on close
-fn should_skip_saving_window_size(app: &tauri::AppHandle) -> bool {
+fn should_skip_saving_window_size<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> bool {
     use tauri_plugin_store::StoreExt;
 
     match app.store(".settings.dat") {
@@ -4210,7 +4256,7 @@ fn should_skip_saving_window_size(app: &tauri::AppHandle) -> bool {
 /// Update the startupWidth and startupHeight in the tauri-plugin-store
 /// so the Settings UI reflects the last closed window size
 /// Uses the proper tauri-plugin-store API to ensure cache consistency
-fn update_startup_size_in_store(app: &tauri::AppHandle, width: u32, height: u32) {
+fn update_startup_size_in_store<R: tauri::Runtime>(app: &tauri::AppHandle<R>, width: u32, height: u32) {
     use tauri_plugin_store::StoreExt;
 
     // Load the store using the proper API
@@ -4249,7 +4295,7 @@ fn update_startup_size_in_store(app: &tauri::AppHandle, width: u32, height: u32)
 }
 
 /// Fallback method using direct file manipulation if the store API fails
-fn fallback_update_store_file(app: &tauri::AppHandle, width: u32, height: u32) {
+fn fallback_update_store_file<R: tauri::Runtime>(app: &tauri::AppHandle<R>, width: u32, height: u32) {
     if let Ok(app_data_dir) = app.path().app_data_dir() {
         let store_path = app_data_dir.join(".settings.dat");
 
@@ -4324,19 +4370,37 @@ fn restore_window_position(app: &tauri::AppHandle) {
                         state.width, state.height, state.x, state.y, state.maximized, state.fullscreen, monitor_str, scale_factor, valid_position && valid_size
                     );
 
-                    if !valid_position || !valid_size {
+                    // Position and size are restored independently: a state saved with
+                    // dontSaveWindowSizeOnClose has width/height 0 but still carries a
+                    // valid position and fullscreen/maximized flags, and those must
+                    // not be discarded together.
+                    if !valid_position {
                         // Recover from a state captured while Windows had the window
-                        // minimized (or otherwise invalid) instead of replaying the
-                        // bad geometry/fullscreen state on every launch.
+                        // minimized (sentinel -32000,-32000) instead of replaying the
+                        // bad position on every launch. Base the replacement on the
+                        // current (already visible) window geometry and never write a
+                        // hardcoded 0,0 — a zeroed position makes the restore below
+                        // permanently skip position restoration.
                         warn!(
-                            "[WindowState] Discarding invalid saved state: {}x{} at ({}, {})",
-                            state.width, state.height, state.x, state.y
+                            "[WindowState] Discarding invalid saved position: ({}, {})",
+                            state.x, state.y
                         );
+                        let (cur_width, cur_height, cur_x, cur_y) = match (
+                            window.inner_size(),
+                            window.outer_position(),
+                        ) {
+                            (Ok(physical_size), Ok(pos)) => {
+                                let sf = window.scale_factor().unwrap_or(1.0);
+                                let logical = physical_size.to_logical::<f64>(sf);
+                                (logical.width.round() as u32, logical.height.round() as u32, pos.x, pos.y)
+                            }
+                            _ => (state.width.max(400), state.height.max(300), state.x, state.y),
+                        };
                         let recovered = WindowState {
-                            width: state.width.max(400),
-                            height: state.height.max(300),
-                            x: 0,
-                            y: 0,
+                            width: cur_width.max(400),
+                            height: cur_height.max(300),
+                            x: if is_valid_saved_window_position(cur_x, cur_y) { cur_x } else { 0 },
+                            y: if is_valid_saved_window_position(cur_x, cur_y) { cur_y } else { 0 },
                             maximized: false,
                             fullscreen: false,
                         };
@@ -4349,19 +4413,22 @@ fn restore_window_position(app: &tauri::AppHandle) {
                         return;
                     }
 
-                    // Apply size first if available and if we are going to maximize or go fullscreen,
-                    // so that the OS knows the correct restored (unmaximized) geometry.
-                    if (state.maximized || state.fullscreen) && state.width != 0 && state.height != 0 {
-                        let _ = window.set_size(tauri::Size::Logical(
-                            tauri::LogicalSize { width: state.width as f64, height: state.height as f64 }
-                        ));
-                    }
-                    // Apply position only (only if non-zero — avoids placing off-screen on first run)
+                    // Apply position whenever a valid one was saved (0,0 is skipped so
+                    // first-run windows keep the OS default placement).
                     if state.x != 0 || state.y != 0 {
                         let _ = window.set_position(tauri::Position::Physical(
                             tauri::PhysicalPosition { x: state.x, y: state.y }
                         ));
                         debug!("[WindowState] Restored position: ({}, {})", state.x, state.y);
+                    }
+                    // Apply the saved size only when we actually have one (0x0 when
+                    // dontSaveWindowSizeOnClose is on) and only when we are going to
+                    // maximize/fullscreen, so the OS records the correct restored
+                    // (unmaximized) geometry before the mode switch.
+                    if valid_size && (state.maximized || state.fullscreen) && state.width != 0 && state.height != 0 {
+                        let _ = window.set_size(tauri::Size::Logical(
+                            tauri::LogicalSize { width: state.width as f64, height: state.height as f64 }
+                        ));
                     }
                     if state.maximized {
                         let _ = window.maximize();
@@ -4377,6 +4444,36 @@ fn restore_window_position(app: &tauri::AppHandle) {
             }
         }
     }
+}
+
+/// Last known windowed (non-fullscreen, non-maximized) geometry to restore after
+/// exiting fullscreen: the tracker capture first, falling back to the persisted
+/// state (the geometry restore_window_position applied at startup).
+fn last_windowed_geometry<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<WindowState> {
+    let tracker = app.state::<WindowStateTracker>();
+    if let Ok(guard) = tracker.last_unmaximized.lock() {
+        if let Some(state) = guard.clone() {
+            if state.width >= 400
+                && state.height >= 300
+                && is_valid_saved_window_position(state.x, state.y)
+            {
+                return Some(state);
+            }
+        }
+    }
+    if let Some(path) = window_state_path(app) {
+        if let Ok(json) = std::fs::read_to_string(&path) {
+            if let Ok(state) = serde_json::from_str::<WindowState>(&json) {
+                if state.width >= 400
+                    && state.height >= 300
+                    && is_valid_saved_window_position(state.x, state.y)
+                {
+                    return Some(state);
+                }
+            }
+        }
+    }
+    None
 }
 
 // =============================================================================
@@ -4991,7 +5088,12 @@ fn handle_exit_requested(app_handle: &tauri::AppHandle, api: tauri::ExitRequestA
                     tauri::async_runtime::block_on(dvr.stop());
                 }
                 let a = app.clone();
-                let _ = a.run_on_main_thread(move || app.exit(0));
+                let _ = a.run_on_main_thread(move || {
+                    // app.exit(0) bypasses CloseRequested, so persist the window
+                    // geometry here explicitly (same reason as the tray Quit path).
+                    save_window_state(&app);
+                    app.exit(0);
+                });
             }
         });
 }

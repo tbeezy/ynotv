@@ -51,7 +51,14 @@ pub fn setup<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
             // Do NOT touch `minimize_to_tray` here. The exit can be cancelled by the
             // DVR exit-guard dialog ("Keep open"), which would leave the flag cleared
             // against the user's setting. The flag is only mutated via set_minimize_to_tray.
-            "quit" => app_handle.exit(0),
+            "quit" => {
+                // Persist the window geometry before exiting: app.exit(0) destroys the
+                // windows without firing CloseRequested, so save_window_state (which
+                // normally runs on close) would otherwise never run and the app would
+                // reopen at a stale position/size.
+                crate::save_window_state(app_handle);
+                app_handle.exit(0);
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
