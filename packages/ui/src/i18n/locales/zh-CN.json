@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "预设主题",
-"oledBlack": "纯黑 (OLED)",
-"oledBlackSub": "将\"{{theme}}\"的表面渲染为纯黑，同时保留其强调色。适用于V3界面中的深色主题。",
+      "oledBlack": "纯黑 (OLED)",
+      "oledBlackSub": "将\"{{theme}}\"的表面渲染为纯黑，同时保留其强调色。适用于V3界面中的深色主题。",
       "customTheme": "自定义主题",
       "selectTheme": "选择主题",
       "editCustomColors": "编辑自定义主题颜色",
@@ -532,7 +532,9 @@
       "errParseJson": "解析 JSON 字符串失败",
       "importSuccess": "主题导入成功！",
       "importSuccessFile": "主题文件导入成功！",
-      "importFailed": "导入失败：{{message}}"
+      "importFailed": "导入失败：{{message}}",
+      "overlayOpacity": "弹窗遮罩不透明度",
+      "oledBlackDesc": "强制使用纯黑表面，不添加背景模糊，并压平渐变——与内置的深色主题 OLED 模式一致。非常适合带强调色的深色自定义主题。"
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "要使硬件加速设置在应用引擎中生效，应用需要重启。",
       "restartQuestion": "是否现在重启？",
       "saveOnly": "不，仅保存",
-      "restartNow": "是，立即重启"
+      "restartNow": "是，立即重启",
+      "reduceWhileScrolling": "滚动时减少视觉效果",
+      "reduceWhileScrollingHint": "仅在滚动时临时禁用玻璃背景模糊和光晕混合，停止后自动恢复。在 GPU 上保持滚动流畅，同时压平滚动期间的 GPU 使用峰值。",
+      "flatChrome": "扁平 Chrome（v3）",
+      "flatChromeHint": "将液态玻璃背景替换为纯色主题色，并移除装饰性盒阴影和按钮投影滤镜，使 v3 的 GPU 占用接近 v1。视觉取舍：v3 外观更朴素、扁平。"
     },
     "cache": {
       "title": "缓存时移",

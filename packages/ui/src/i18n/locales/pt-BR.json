@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Temas predefinidos",
-"oledBlack": "Preto puro (OLED)",
-"oledBlackSub": "Exibe as superfícies de \"{{theme}}\" como preto puro, mantendo a cor de destaque. Aplica-se aos temas escuros na interface V3.",
+      "oledBlack": "Preto puro (OLED)",
+      "oledBlackSub": "Exibe as superfícies de \"{{theme}}\" como preto puro, mantendo a cor de destaque. Aplica-se aos temas escuros na interface V3.",
       "customTheme": "Tema personalizado",
       "selectTheme": "Selecionar tema",
       "editCustomColors": "Editar cores do tema personalizado",
@@ -532,7 +532,9 @@
       "errParseJson": "Falha ao analisar a string JSON",
       "importSuccess": "Tema importado com sucesso!",
       "importSuccessFile": "Arquivo de tema importado com sucesso!",
-      "importFailed": "Falha na importação: {{message}}"
+      "importFailed": "Falha na importação: {{message}}",
+      "overlayOpacity": "Opacidade da sobreposição de modais",
+      "oledBlackDesc": "Força superfícies em preto puro, sem desfoque de fundo e com gradientes achatados, igual ao modo OLED integrado para temas escuros. Ótimo para um tema escuro personalizado com cores de destaque."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Para que as configurações de aceleração por hardware tenham efeito no motor do aplicativo, o aplicativo precisa ser reiniciado.",
       "restartQuestion": "Deseja reiniciar agora?",
       "saveOnly": "Não, apenas salvar",
-      "restartNow": "Sim, reiniciar agora"
+      "restartNow": "Sim, reiniciar agora",
+      "reduceWhileScrolling": "Reduzir efeitos visuais ao rolar",
+      "reduceWhileScrollingHint": "Desativa temporariamente o desfoque de fundo de vidro e a mistura de brilho apenas enquanto você rola, e os restaura quando para. Mantém a rolagem suave na GPU e achata o pico de uso da GPU durante a rolagem.",
+      "flatChrome": "Chrome plano (v3)",
+      "flatChromeHint": "Substitui o fundo de vidro líquido por uma cor de tema sólida e remove as sombras decorativas e os filtros de sombra dos botões, para que a v3 use quase a mesma GPU que a v1. Compromisso visual: uma aparência mais plana e simples na v3."
     },
     "cache": {
       "title": "Deslocamento de tempo do cache",

@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Vooraf ingestelde thema's",
-"oledBlack": "Echt zwart (OLED)",
-"oledBlackSub": "Toont de oppervlakken van \"{{theme}}\" als puur zwart terwijl de accentkleur behouden blijft. Geldt voor donkere thema's in de V3-interface.",
+      "oledBlack": "Echt zwart (OLED)",
+      "oledBlackSub": "Toont de oppervlakken van \"{{theme}}\" als puur zwart terwijl de accentkleur behouden blijft. Geldt voor donkere thema's in de V3-interface.",
       "customTheme": "Aangepast thema",
       "selectTheme": "Thema selecteren",
       "editCustomColors": "Kleuren van aangepast thema bewerken",
@@ -532,7 +532,9 @@
       "errParseJson": "JSON-string parseren mislukt",
       "importSuccess": "Thema succesvol geïmporteerd!",
       "importSuccessFile": "Themabestand succesvol geïmporteerd!",
-      "importFailed": "Importeren mislukt: {{message}}"
+      "importFailed": "Importeren mislukt: {{message}}",
+      "overlayOpacity": "Dekking van de overlay van modale vensters",
+      "oledBlackDesc": "Dwingt puur zwarte oppervlakken af, zonder achtergrondvervaging en met afgeplatte verlopen — passend bij de ingebouwde OLED-modus voor donkere thema's. Geweldig voor een donker aangepast thema met accentkleuren."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Om hardwareversnellingsinstellingen in de app-engine te laten werken, moet de app opnieuw worden gestart.",
       "restartQuestion": "Wil je nu opnieuw starten?",
       "saveOnly": "Nee, alleen opslaan",
-      "restartNow": "Ja, nu opnieuw starten"
+      "restartNow": "Ja, nu opnieuw starten",
+      "reduceWhileScrolling": "Visuele effecten verminderen tijdens het scrollen",
+      "reduceWhileScrollingHint": "Schakelt glasachtergrondvervaging en gloedmenging tijdelijk uit, alleen tijdens het scrollen, en herstelt ze wanneer je stopt. Houdt het scrollen soepel op de GPU en vlakt de piek in GPU-gebruik tijdens het scrollen af.",
+      "flatChrome": "Plat Chrome (v3)",
+      "flatChromeHint": "Vervangt de vloeibare glasachtergrond door een effen themakleur en verwijdert decoratieve box-shadows en drop-shadow-filters van knoppen, zodat v3 bijna evenveel GPU gebruikt als v1. Visueel compromis: een platter, soberder uiterlijk in v3."
     },
     "cache": {
       "title": "Tijdverschuiving van cache",

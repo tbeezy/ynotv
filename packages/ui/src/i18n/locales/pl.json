@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Motywy gotowe",
-"oledBlack": "Prawdziwa czerń (OLED)",
-"oledBlackSub": "Wyświetla powierzchnie \"{{theme}}\" jako czystą czerń, zachowując kolor akcentu. Dotyczy ciemnych motywów w interfejsie V3.",
+      "oledBlack": "Prawdziwa czerń (OLED)",
+      "oledBlackSub": "Wyświetla powierzchnie \"{{theme}}\" jako czystą czerń, zachowując kolor akcentu. Dotyczy ciemnych motywów w interfejsie V3.",
       "customTheme": "Motyw niestandardowy",
       "selectTheme": "Wybierz motyw",
       "editCustomColors": "Edytuj kolory motywu niestandardowego",
@@ -532,7 +532,9 @@
       "errParseJson": "Nie udało się przeanalizować ciągu JSON",
       "importSuccess": "Motyw zaimportowany pomyślnie!",
       "importSuccessFile": "Plik motywu zaimportowany pomyślnie!",
-      "importFailed": "Import nie powiódł się: {{message}}"
+      "importFailed": "Import nie powiódł się: {{message}}",
+      "overlayOpacity": "Nieprzezroczystość nakładki modali",
+      "oledBlackDesc": "Wymusza powierzchnie w czystej czerni, bez rozmycia tła i ze spłaszczonymi gradientami — zgodnie z wbudowanym trybem OLED dla ciemnych motywów. Świetnie sprawdzi się w ciemnym niestandardowym motywie z kolorami akcentu."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Aby ustawienia przyspieszania sprzętowego miały wpływ na silnik aplikacji, aplikacja musi zostać uruchomiona ponownie.",
       "restartQuestion": "Czy chcesz teraz zrestartować?",
       "saveOnly": "Nie, tylko zapisz",
-      "restartNow": "Tak, zrestartuj teraz"
+      "restartNow": "Tak, zrestartuj teraz",
+      "reduceWhileScrolling": "Zmniejsz efekty wizualne podczas przewijania",
+      "reduceWhileScrollingHint": "Tymczasowo wyłącza rozmycie tła szkła i mieszanie poświaty tylko podczas przewijania, a po zatrzymaniu je przywraca. Utrzymuje płynne przewijanie na GPU i spłaszcza skok użycia GPU podczas przewijania.",
+      "flatChrome": "Płaski Chrome (v3)",
+      "flatChromeHint": "Zastępuje tło ze szkła płynnego jednolitym kolorem motywu i usuwa ozdobne cienie oraz filtry cieni przycisków, dzięki czemu v3 zużywa prawie tyle samo GPU co v1. Kompromis wizualny: prostszy, płaski wygląd w v3."
     },
     "cache": {
       "title": "Przesunięcie w czasie pamięci podręcznej",

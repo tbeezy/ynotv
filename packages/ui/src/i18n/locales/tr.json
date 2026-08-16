@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Hazır Temalar",
-"oledBlack": "Gerçek Siyah (OLED)",
-"oledBlackSub": "\"{{theme}}\" yüzeylerini vurgu rengini koruyarak saf siyah olarak gösterir. V3 arayüzündeki koyu temalar için geçerlidir.",
+      "oledBlack": "Gerçek Siyah (OLED)",
+      "oledBlackSub": "\"{{theme}}\" yüzeylerini vurgu rengini koruyarak saf siyah olarak gösterir. V3 arayüzündeki koyu temalar için geçerlidir.",
       "customTheme": "Özel Tema",
       "selectTheme": "Tema Seç",
       "editCustomColors": "Özel Tema Renklerini Düzenle",
@@ -532,7 +532,9 @@
       "errParseJson": "JSON dizesi ayrıştırılamadı",
       "importSuccess": "Tema başarıyla içe aktarıldı!",
       "importSuccessFile": "Tema dosyası başarıyla içe aktarıldı!",
-      "importFailed": "İçe aktarma başarısız: {{message}}"
+      "importFailed": "İçe aktarma başarısız: {{message}}",
+      "overlayOpacity": "Modal kaplama opaklığı",
+      "oledBlackDesc": "Saf siyah yüzeyleri zorlar, arka plan bulanıklığı olmadan ve düzleştirilmiş gradyanlarla — koyu temalar için yerleşik OLED moduyla aynı. Vurgu renkli koyu bir özel tema için harika."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Donanım hızlandırma ayarlarının uygulama motorunda etkili olması için uygulamanın yeniden başlatılması gerekir.",
       "restartQuestion": "Şimdi yeniden başlatmak ister misiniz?",
       "saveOnly": "Hayır, Yalnızca Kaydet",
-      "restartNow": "Evet, Şimdi Yeniden Başlat"
+      "restartNow": "Evet, Şimdi Yeniden Başlat",
+      "reduceWhileScrolling": "Kaydırma sırasında görsel efektleri azalt",
+      "reduceWhileScrollingHint": "Cam arka plan bulanıklığını ve parlama karışımını yalnızca kaydırma sırasında geçici olarak devre dışı bırakır, durduğunuzda geri getirir. Kaydırmayı GPU'da akıcı tutar ve kaydırma sırasındaki GPU kullanım artışını düzleştirir.",
+      "flatChrome": "Düz Chrome (v3)",
+      "flatChromeHint": "Sıvı cam arka planı düz bir tema rengiyle değiştirir ve dekoratif kutu gölgelerini ve düğme gölge filtrelerini kaldırır, böylece v3 neredeyse v1 kadar GPU kullanır. Görsel ödün: v3'te daha sade, düz bir görünüm."
     },
     "cache": {
       "title": "Önbellek Zaman Kaydırması",

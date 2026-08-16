@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Vordefinierte Designs",
-"oledBlack": "Echtes Schwarz (OLED)",
-"oledBlackSub": "Stellt die Oberflächen von \"{{theme}}\" als reines Schwarz dar und behält die Akzentfarbe. Gilt für Dark- und Dark-Color-Designs in der V3-Oberfläche.",
+      "oledBlack": "Echtes Schwarz (OLED)",
+      "oledBlackSub": "Stellt die Oberflächen von \"{{theme}}\" als reines Schwarz dar und behält die Akzentfarbe. Gilt für Dark- und Dark-Color-Designs in der V3-Oberfläche.",
       "customTheme": "Benutzerdefiniertes Design",
       "selectTheme": "Design auswählen",
       "editCustomColors": "Farben des benutzerdefinierten Designs bearbeiten",
@@ -532,7 +532,9 @@
       "errParseJson": "JSON-String konnte nicht analysiert werden",
       "importSuccess": "Design erfolgreich importiert!",
       "importSuccessFile": "Design-Datei erfolgreich importiert!",
-      "importFailed": "Import fehlgeschlagen: {{message}}"
+      "importFailed": "Import fehlgeschlagen: {{message}}",
+      "overlayOpacity": "Opazität der Modal-Überlagerung",
+      "oledBlackDesc": "Erzwingt rein schwarze Oberflächen, ohne Hintergrundunschärfe und mit abgeflachten Verläufen — passend zum integrierten OLED-Modus für dunkle Themes. Ideal für ein dunkles individuelles Theme mit Akzentfarben."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Damit die Hardwarebeschleunigungseinstellungen auf die App-Engine wirken, muss die App neu gestartet werden.",
       "restartQuestion": "Jetzt neu starten?",
       "saveOnly": "Nein, nur speichern",
-      "restartNow": "Ja, jetzt neu starten"
+      "restartNow": "Ja, jetzt neu starten",
+      "reduceWhileScrolling": "Visuelle Effekte beim Scrollen reduzieren",
+      "reduceWhileScrollingHint": "Deaktiviert die Glas-Hintergrundunschärfe und die Glow-Mischung vorübergehend nur während des Scrollens und stellt sie beim Anhalten wieder her. Hält das Scrollen auf der GPU flüssig und glättet den GPU-Auslastungsspike während des Scrollens.",
+      "flatChrome": "Flaches Chrome (v3)",
+      "flatChromeHint": "Ersetzt den Liquid-Glass-Hintergrund durch eine einfarbige Theme-Farbe und entfernt dekorative Box-Schatten und Drop-Shadow-Filter der Schaltflächen, sodass v3 fast so viel GPU wie v1 benötigt. Visueller Kompromiss: ein schlichterer, flacherer Look auf v3."
     },
     "cache": {
       "title": "Cache-Time-Shift",

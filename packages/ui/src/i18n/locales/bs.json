@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Gotove teme",
-"oledBlack": "Pravo crna (OLED)",
-"oledBlackSub": "Prikazuje površine \"{{theme}}\" kao čistu crnu, zadržavajući akcentnu boju. Primjenjuje se na tamne teme u V3 UI.",
+      "oledBlack": "Pravo crna (OLED)",
+      "oledBlackSub": "Prikazuje površine \"{{theme}}\" kao čistu crnu, zadržavajući akcentnu boju. Primjenjuje se na tamne teme u V3 UI.",
       "customTheme": "Prilagođena tema",
       "selectTheme": "Izaberi temu",
       "editCustomColors": "Izmijeni boje prilagođene teme",
@@ -532,7 +532,9 @@
       "errParseJson": "Parsiranje JSON niza nije uspjelo",
       "importSuccess": "Tema je uspješno uvezena!",
       "importSuccessFile": "Fajl teme je uspješno uvezen!",
-      "importFailed": "Uvoz nije uspio: {{message}}"
+      "importFailed": "Uvoz nije uspio: {{message}}",
+      "overlayOpacity": "Neprozirnost preklopa modala",
+      "oledBlackDesc": "Nameće čisto crne površine, bez zamućenja pozadine i sa poravnatim gradijentima — u skladu sa ugrađenim OLED režimom za tamne teme. Odlično za tamnu prilagođenu temu sa akcentnim bojama."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Da bi podešavanja hardverskog ubrzanja stupila na snagu u motoru aplikacije, aplikacija mora biti ponovo pokrenuta.",
       "restartQuestion": "Da li želite da sada ponovo pokrenete?",
       "saveOnly": "Ne, samo sačuvaj",
-      "restartNow": "Da, ponovo pokreni sada"
+      "restartNow": "Da, ponovo pokreni sada",
+      "reduceWhileScrolling": "Smanji vizuelne efekte tokom skrolovanja",
+      "reduceWhileScrollingHint": "Privremeno isključuje zamućenje staklene pozadine i miješanje sjaja samo dok skrolujete, a zatim ih vraća kada prestanete. Održava glatko skrolovanje na GPU-u i poravnava skok iskorištenosti GPU-a tokom skrolovanja.",
+      "flatChrome": "Ravni Chrome (v3)",
+      "flatChromeHint": "Zamjenjuje pozadinu od tečnog stakla jednobojnom bojom teme i uklanja dekorativne sjene i filtere sjenki dugmadi, tako da v3 koristi skoro isto GPU-a kao v1. Vizuelni kompromis: jednostavniji, ravniji izgled u v3."
     },
     "cache": {
       "title": "Vremensko pomjeranje keša",

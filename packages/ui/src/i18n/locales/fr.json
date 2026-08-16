@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Thèmes prédéfinis",
-"oledBlack": "Noir véritable (OLED)",
-"oledBlackSub": "Affiche les surfaces de \"{{theme}}\" en noir pur tout en conservant sa couleur d'accent. S'applique aux thèmes sombres de l'interface V3.",
+      "oledBlack": "Noir véritable (OLED)",
+      "oledBlackSub": "Affiche les surfaces de \"{{theme}}\" en noir pur tout en conservant sa couleur d'accent. S'applique aux thèmes sombres de l'interface V3.",
       "customTheme": "Thème personnalisé",
       "selectTheme": "Sélectionner le thème",
       "editCustomColors": "Modifier les couleurs du thème personnalisé",
@@ -532,7 +532,9 @@
       "errParseJson": "Échec de l’analyse de la chaîne JSON",
       "importSuccess": "Thème importé avec succès !",
       "importSuccessFile": "Fichier de thème importé avec succès !",
-      "importFailed": "Échec de l’importation : {{message}}"
+      "importFailed": "Échec de l’importation : {{message}}",
+      "overlayOpacity": "Opacité de la superposition des modales",
+      "oledBlackDesc": "Impose des surfaces noir pur, sans flou d'arrière-plan ni dégradés aplatis — comme le mode OLED intégré pour les thèmes sombres. Idéal pour un thème sombre personnalisé avec des couleurs d'accent."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Pour que les paramètres d’accélération matérielle prennent effet dans le moteur de l’application, l’application doit redémarrer.",
       "restartQuestion": "Voulez-vous redémarrer maintenant ?",
       "saveOnly": "Non, enregistrer seulement",
-      "restartNow": "Oui, redémarrer maintenant"
+      "restartNow": "Oui, redémarrer maintenant",
+      "reduceWhileScrolling": "Réduire les effets visuels pendant le défilement",
+      "reduceWhileScrollingHint": "Désactive temporairement le flou d'arrière-plan (effet verre) et le mélange de lueur uniquement pendant le défilement, puis les restaure à l'arrêt. Garde un défilement fluide sur le GPU tout en aplatissant le pic d'utilisation GPU pendant le défilement.",
+      "flatChrome": "Chrome plat (v3)",
+      "flatChromeHint": "Remplace l'arrière-plan en verre liquide par une couleur de thème unie et supprime les ombres décoratives et les filtres d'ombre des boutons, pour que la v3 utilise presque autant de GPU que la v1. Compromis visuel : un rendu plus sobre et plat sur la v3."
     },
     "cache": {
       "title": "Masquage temporel du cache (Time Shift)",

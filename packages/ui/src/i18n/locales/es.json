@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Temas preestablecidos",
-"oledBlack": "Negro puro (OLED)",
-"oledBlackSub": "Muestra las superficies de \"{{theme}}\" como negro puro manteniendo su color de acento. Aplica a los temas oscuros en la interfaz V3.",
+      "oledBlack": "Negro puro (OLED)",
+      "oledBlackSub": "Muestra las superficies de \"{{theme}}\" como negro puro manteniendo su color de acento. Aplica a los temas oscuros en la interfaz V3.",
       "customTheme": "Tema personalizado",
       "selectTheme": "Seleccionar tema",
       "editCustomColors": "Editar colores del tema personalizado",
@@ -532,7 +532,9 @@
       "errParseJson": "No se pudo analizar la cadena JSON",
       "importSuccess": "¡Tema importado correctamente!",
       "importSuccessFile": "¡Archivo de tema importado correctamente!",
-      "importFailed": "Error de importación: {{message}}"
+      "importFailed": "Error de importación: {{message}}",
+      "overlayOpacity": "Opacidad de la superposición de modales",
+      "oledBlackDesc": "Fuerza superficies en negro puro, sin desenfoque de fondo y con degradados aplanados, igual que el modo OLED integrado para temas oscuros. Ideal para un tema oscuro personalizado con colores de acento."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Para que los ajustes de aceleración por hardware surtan efecto en el motor de la aplicación, la aplicación debe reiniciarse.",
       "restartQuestion": "¿Quieres reiniciar ahora?",
       "saveOnly": "No, solo guardar",
-      "restartNow": "Sí, reiniciar ahora"
+      "restartNow": "Sí, reiniciar ahora",
+      "reduceWhileScrolling": "Reducir los efectos visuales al desplazarse",
+      "reduceWhileScrollingHint": "Desactiva temporalmente el desenfoque de fondo de vidrio y la mezcla de brillo solo mientras te desplazas, y los restaura al detenerte. Mantiene un desplazamiento fluido en la GPU y aplana el pico de uso de la GPU durante el desplazamiento.",
+      "flatChrome": "Chrome plano (v3)",
+      "flatChromeHint": "Sustituye el fondo de vidrio líquido por un color de tema sólido y elimina las sombras decorativas y los filtros de sombra de los botones, de modo que la v3 use casi la misma GPU que la v1. Compromiso visual: un aspecto más plano y sobrio en la v3."
     },
     "cache": {
       "title": "Cambio de tiempo de caché",

@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Temi preimpostati",
-"oledBlack": "Nero puro (OLED)",
-"oledBlackSub": "Mostra le superfici di \"{{theme}}\" come nero puro mantenendo il colore d'accento. Si applica ai temi scuri nell'interfaccia V3.",
+      "oledBlack": "Nero puro (OLED)",
+      "oledBlackSub": "Mostra le superfici di \"{{theme}}\" come nero puro mantenendo il colore d'accento. Si applica ai temi scuri nell'interfaccia V3.",
       "customTheme": "Tema personalizzato",
       "selectTheme": "Seleziona tema",
       "editCustomColors": "Modifica colori tema personalizzato",
@@ -532,7 +532,9 @@
       "errParseJson": "Impossibile analizzare la stringa JSON",
       "importSuccess": "Tema importato con successo!",
       "importSuccessFile": "File tema importato con successo!",
-      "importFailed": "Importazione non riuscita: {{message}}"
+      "importFailed": "Importazione non riuscita: {{message}}",
+      "overlayOpacity": "Opacità della sovrapposizione modale",
+      "oledBlackDesc": "Impone superfici di nero puro, senza sfocatura dello sfondo e con gradienti appiattiti, come la modalità OLED integrata per i temi scuri. Ottimo per un tema scuro personalizzato con colori d'accento."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Affinché le impostazioni di accelerazione hardware abbiano effetto sul motore dell'app, l'app deve essere riavviata.",
       "restartQuestion": "Vuoi riavviare ora?",
       "saveOnly": "No, salva soltanto",
-      "restartNow": "Sì, riavvia ora"
+      "restartNow": "Sì, riavvia ora",
+      "reduceWhileScrolling": "Ridurre gli effetti visivi durante lo scorrimento",
+      "reduceWhileScrollingHint": "Disattiva temporaneamente la sfocatura dello sfondo in vetro e la fusione del bagliore solo durante lo scorrimento, per poi ripristinarle quando ti fermi. Mantiene lo scorrimento fluido sulla GPU e appiattisce il picco di utilizzo della GPU durante lo scorrimento.",
+      "flatChrome": "Chrome piatto (v3)",
+      "flatChromeHint": "Sostituisce lo sfondo in vetro liquido con un colore del tema pieno e rimuove le ombre decorative e i filtri ombra dei pulsanti, così la v3 usa quasi la stessa GPU della v1. Compromesso visivo: un aspetto più piatto e sobrio nella v3."
     },
     "cache": {
       "title": "Time-shift della cache",

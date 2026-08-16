@@ -1447,8 +1447,8 @@
     },
     "theme": {
       "presetThemes": "Chủ Đề Có Sẵn",
-"oledBlack": "Đen thật (OLED)",
-"oledBlackSub": "Hiển thị bề mặt \"{{theme}}\" thành màu đen thuần, giữ nguyên màu nhấn. Áp dụng cho chủ đề tối trong giao diện V3.",
+      "oledBlack": "Đen thật (OLED)",
+      "oledBlackSub": "Hiển thị bề mặt \"{{theme}}\" thành màu đen thuần, giữ nguyên màu nhấn. Áp dụng cho chủ đề tối trong giao diện V3.",
       "customTheme": "Chủ Đề Tùy Chỉnh",
       "selectTheme": "Chọn Chủ Đề",
       "editCustomColors": "Chỉnh Màu Chủ Đề Tùy Chỉnh",
@@ -1523,7 +1523,9 @@
       "errParseJson": "Không phân tích được chuỗi JSON",
       "importSuccess": "Đã nhập chủ đề thành công!",
       "importSuccessFile": "Đã nhập tệp chủ đề thành công!",
-      "importFailed": "Nhập thất bại: {{message}}"
+      "importFailed": "Nhập thất bại: {{message}}",
+      "overlayOpacity": "Độ mờ lớp phủ cửa sổ",
+      "oledBlackDesc": "Ép các bề mặt thành màu đen thuần, không làm mờ nền và làm phẳng các gradient — khớp với chế độ OLED tích hợp cho chủ đề tối. Tuyệt vời cho chủ đề tối tùy chỉnh có màu nhấn."
     },
     "movies": {
       "genreCarousels": "Băng chuyền thể loại phim",
@@ -1904,7 +1906,11 @@
       "restartMessage": "Để cài đặt tăng tốc phần cứng có hiệu lực trong engine ứng dụng, ứng dụng cần khởi động lại.",
       "restartQuestion": "Bạn có muốn khởi động lại ngay bây giờ không?",
       "saveOnly": "Không, Chỉ Lưu",
-      "restartNow": "Có, Khởi Động Lại Ngay"
+      "restartNow": "Có, Khởi Động Lại Ngay",
+      "reduceWhileScrolling": "Giảm hiệu ứng hình ảnh khi cuộn",
+      "reduceWhileScrollingHint": "Tạm thời tắt làm mờ nền kính và hòa trộn ánh sáng chỉ khi bạn cuộn, sau đó khôi phục khi bạn dừng lại. Giữ cuộn mượt trên GPU đồng thời làm phẳng đỉnh sử dụng GPU trong khi cuộn.",
+      "flatChrome": "Chrome phẳng (v3)",
+      "flatChromeHint": "Thay nền kính lỏng bằng màu chủ đề đặc và loại bỏ các hộp đổ bóng trang trí cùng bộ lọc đổ bóng của nút, để v3 dùng gần bằng GPU của v1. Đánh đổi về thị giác: giao diện đơn giản, phẳng hơn trên v3."
     },
     "cache": {
       "title": "Bộ Nhớ Đệm Dịch Chuyển Thời Gian",

@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Előre beállított témák",
-"oledBlack": "Valódi fekete (OLED)",
-"oledBlackSub": "A(z) \"{{theme}}\" felületeit tiszta feketeként jeleníti meg, megtartva az akcentusszínt. A sötét témákra vonatkozik a V3 felületben.",
+      "oledBlack": "Valódi fekete (OLED)",
+      "oledBlackSub": "A(z) \"{{theme}}\" felületeit tiszta feketeként jeleníti meg, megtartva az akcentusszínt. A sötét témákra vonatkozik a V3 felületben.",
       "customTheme": "Egyéni téma",
       "selectTheme": "Téma kiválasztása",
       "editCustomColors": "Egyéni téma színeinek szerkesztése",
@@ -532,7 +532,9 @@
       "errParseJson": "Nem sikerült elemezni a JSON-szöveget",
       "importSuccess": "A téma sikeresen importálva!",
       "importSuccessFile": "A témafájl sikeresen importálva!",
-      "importFailed": "Az importálás sikertelen: {{message}}"
+      "importFailed": "Az importálás sikertelen: {{message}}",
+      "overlayOpacity": "Modális ablakok fedvényének átlátszatlansága",
+      "oledBlackDesc": "Tiszta fekete felületeket kényszerít ki, háttérelmosás nélkül és ellapított gradiensekkel — a sötét témák beépített OLED módjához hasonlóan. Remek választás sötét egyedi témához akcentusszínekkel."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "A hardveres gyorsítási beállítások érvénybe lépéséhez az alkalmazásmotornál az alkalmazást újra kell indítani.",
       "restartQuestion": "Szeretné most újraindítani?",
       "saveOnly": "Nem, csak mentés",
-      "restartNow": "Igen, újraindítás most"
+      "restartNow": "Igen, újraindítás most",
+      "reduceWhileScrolling": "Vizuális effektek csökkentése görgetés közben",
+      "reduceWhileScrollingHint": "Ideiglenesen, csak görgetés közben kikapcsolja az üveghátterű elmosást és a fénykeverést, majd megálláskor visszaállítja őket. Simává teszi a görgetést a GPU-n, miközben elsimítja a GPU-használat görgetés közbeni kiugrását.",
+      "flatChrome": "Lapos Chrome (v3)",
+      "flatChromeHint": "A folyékony üveghátteret egyszínű témaszínre cseréli, és eltávolítja a dekoratív dobozárnyékokat és a gombok vetettárnyék-szűrőit, így a v3 majdnem annyi GPU-t használ, mint a v1. Vizuális kompromisszum: egyszerűbb, laposabb megjelenés a v3-ban."
     },
     "cache": {
       "title": "Gyorsítótár timeshift",

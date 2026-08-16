@@ -456,8 +456,8 @@
     },
     "theme": {
       "presetThemes": "Tema të gatshme",
-"oledBlack": "E zezë e vërtetë (OLED)",
-"oledBlackSub": "Shfaq sipërfaqet e \"{{theme}}\" si të zeza të pastra, duke ruajtur ngjyrën e theksit. Vlen për temat e errëta në UI-në V3.",
+      "oledBlack": "E zezë e vërtetë (OLED)",
+      "oledBlackSub": "Shfaq sipërfaqet e \"{{theme}}\" si të zeza të pastra, duke ruajtur ngjyrën e theksit. Vlen për temat e errëta në UI-në V3.",
       "customTheme": "Temë e personalizuar",
       "selectTheme": "Zgjidh temën",
       "editCustomColors": "Ndrysho ngjyrat e temës së personalizuar",
@@ -532,7 +532,9 @@
       "errParseJson": "Dështoi analizimi i vargut JSON",
       "importSuccess": "Tema u importua me sukses!",
       "importSuccessFile": "Skedari i temës u importua me sukses!",
-      "importFailed": "Importi dështoi: {{message}}"
+      "importFailed": "Importi dështoi: {{message}}",
+      "overlayOpacity": "Opaciteti i mbivendosjes së modaleve",
+      "oledBlackDesc": "Detyron sipërfaqe të zeza të pastra, pa turbullim sfondi dhe me gradientë të rrafshuar — njësoj si modaliteti i integruar OLED për temat e errëta. Shkëlqyeshëm për një temë të errët të personalizuar me ngjyra theksuese."
     },
     "navigation": {
       "tabs": {
@@ -1469,7 +1471,11 @@
       "restartMessage": "Që cilësimet e përshpejtimit hardware të kenë efekt në motorin e aplikacionit, aplikacioni duhet të riniset.",
       "restartQuestion": "A dëshiron ta rinisësh tani?",
       "saveOnly": "Jo, vetëm ruaj",
-      "restartNow": "Po, rinis tani"
+      "restartNow": "Po, rinis tani",
+      "reduceWhileScrolling": "Zvogëlo efektet vizuale gjatë lëvizjes",
+      "reduceWhileScrollingHint": "Çaktivizon përkohësisht turbullimin e sfondit të qelqit dhe përzierjen e shkëlqimit vetëm ndërsa lëvizni, pastaj i rikthen kur ndaloni. Mban lëvizjen të qetë në GPU ndërsa rrafshon kulmin e përdorimit të GPU-së gjatë lëvizjes.",
+      "flatChrome": "Chrome i sheshtë (v3)",
+      "flatChromeHint": "Zëvendëson sfondin e qelqit të lëngshëm me një ngjyrë të fortë teme dhe heq hijet dekorative dhe filtrat e hijeve të butonave, në mënyrë që v3 të përdorë pothuajse të njëjtën GPU si v1. Kompromis vizual: një pamje më e thjeshtë dhe e sheshtë në v3."
     },
     "cache": {
       "title": "Zhvendosja në kohë e cache-së",
