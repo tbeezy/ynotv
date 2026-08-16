@@ -108,6 +108,68 @@ describe('settings store write path', () => {
     expect(JSON.parse(localStorage.getItem('app-settings')!).shortcuts).toEqual(shortcuts);
   });
 
+  it('setTraktSettings clears fields when logout passes undefined (in-check contract)', () => {
+    const store = useSettingsStore;
+    // Seed a logged-in state.
+    store.getState().setTraktSettings({
+      traktEnabled: true,
+      traktAccessToken: 'token-abc',
+      traktScrobbleEnabled: true,
+      traktSyncEnabled: true,
+      traktCatalogsEnabled: { netflix: true },
+      traktEnabledLists: [{ id: 'my-list', name: 'My List' }],
+    });
+    expect(store.getState().traktCatalogsEnabled).toEqual({ netflix: true });
+
+    // Mirrors scrobbler.ts logout: undefined wipes catalogs/lists, null wipes
+    // the token, false disables. The `in`-check must NOT skip these keys.
+    store.getState().setTraktSettings({
+      traktEnabled: false,
+      traktAccessToken: null,
+      traktRefreshToken: null,
+      traktTokenExpiresAt: null,
+      traktScrobbleEnabled: false,
+      traktSyncEnabled: false,
+      traktCatalogsEnabled: undefined,
+      traktCatalogOrder: undefined,
+      traktCatalogsBeforeAddon: undefined,
+      traktEnabledLists: undefined,
+      traktNuvioCatalogsEnabled: undefined,
+      traktNuvioCatalogOrder: undefined,
+      traktNuvioCatalogsBeforeAddon: undefined,
+      traktNuvioEnabledLists: undefined,
+    });
+
+    // State cleared to defaults.
+    expect(store.getState().traktEnabled).toBe(false);
+    expect(store.getState().traktAccessToken).toBeNull();
+    expect(store.getState().traktCatalogsEnabled).toEqual({});
+    expect(store.getState().traktCatalogOrder).toEqual([]);
+    expect(store.getState().traktEnabledLists).toEqual([]);
+    expect(store.getState().traktNuvioCatalogsEnabled).toEqual({});
+    expect(store.getState().traktNuvioEnabledLists).toEqual([]);
+
+    // Persisted through the queue with the same defaults.
+    expect(storageBackend.traktCatalogsEnabled).toEqual({});
+    expect(storageBackend.traktEnabledLists).toEqual([]);
+    expect(storageBackend.traktAccessToken).toBeNull();
+  });
+
+  it('setCategorySettings dispatches the legacy category-settings-changed event', () => {
+    const store = useSettingsStore;
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    store.getState().setCategorySettings({ favoritesMode: 'perSource', showFavorites: true });
+
+    expect(store.getState().favoritesMode).toBe('perSource');
+    expect(store.getState().showFavorites).toBe(true);
+    const dispatched = dispatchSpy.mock.calls.find((c) =>
+      (c[0] as CustomEvent).type === 'ynotv:category-settings-changed'
+    );
+    expect(dispatched).toBeTruthy();
+    const detail = (dispatched![0] as CustomEvent).detail;
+    expect(detail.favoritesMode).toBe('perSource');
+  });
+
   it('does not touch the DOM from a setter (applier owns all DOM writes)', () => {
     // Node has no document; a setter that wrote to the DOM would throw on
     // `document.documentElement`. Reaching this assertion means the setter

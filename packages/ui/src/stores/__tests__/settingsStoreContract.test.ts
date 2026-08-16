@@ -137,6 +137,37 @@ describe('useSettingsStore consumer contract', () => {
     }
   });
 
+  it('exposes trakt/simkl/tvCalendar and category-visibility fields (regression for the final Tier-2 pass)', () => {
+    for (const key of [
+      'traktEnabled', 'traktAccessToken', 'traktRefreshToken', 'traktTokenExpiresAt',
+      'traktScrobbleEnabled', 'traktSyncEnabled', 'traktCatalogsEnabled', 'traktCatalogOrder',
+      'traktCatalogsBeforeAddon', 'traktEnabledLists', 'traktNuvioCatalogsEnabled',
+      'traktNuvioCatalogOrder', 'traktNuvioCatalogsBeforeAddon', 'traktNuvioEnabledLists',
+      'setTraktSettings', 'simklEnabled', 'simklAccessToken', 'simklScrobbleEnabled',
+      'setSimklSettings', 'tvCalendarAutoSync', 'setTvCalendarAutoSync',
+      'showAllChannels', 'showFavorites', 'showWatchlist', 'showRecentlyViewed',
+      'favoritesMode', 'setCategorySettings', 'collapseSourceCategoriesOnStartup',
+      'setCollapseSourceCategoriesOnStartup',
+    ]) {
+      expect(storeKeys.has(key)).toBe(true);
+    }
+  });
+
+  it('exposes the final Tier-2 sweep fields (font sizes, uiScale, transparent guide, LAN gate, design)', () => {
+    for (const key of [
+      'channelFontSize', 'setChannelFontSize', 'categoryFontSize', 'setCategoryFontSize',
+      'sourceFontSize', 'setSourceFontSize', 'epgTitleFontSize', 'setEpgTitleFontSize',
+      'epgBodyFontSize', 'setEpgBodyFontSize', 'uiScale', 'setUiScale',
+      'transparentGuideHeight', 'setTransparentGuideHeight', 'transparentGuideHideHeader',
+      'setTransparentGuideHideHeader', 'transparentGuideOverlayOpacity',
+      'setTransparentGuideOverlayOpacity', 'transparentGuideSidebarOpacity',
+      'setTransparentGuideSidebarOpacity', 'allowLanSources', 'setAllowLanSources',
+      'modernUiEnabled', 'setModernUiEnabled', 'v3DefaultMigrated',
+    ]) {
+      expect(storeKeys.has(key)).toBe(true);
+    }
+  });
+
   const files = walkSourceFiles(SRC_DIR);
   const consumers = files.filter((f) => {
     const src = readFileSync(f, 'utf8');

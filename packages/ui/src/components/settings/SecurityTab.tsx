@@ -11,10 +11,11 @@ export function SecurityTab({
   onAllowLanSourcesChange,
 }: SecurityTabProps) {
   useTranslation();
-  async function handleAllowLanChange(enabled: boolean) {
-    if (!window.storage) return;
+  function handleAllowLanChange(enabled: boolean) {
+    // allowLanSources lives in the settings store — Settings.tsx routes this
+    // through the store setter (which persists); this tab only reports the
+    // change upward.
     onAllowLanSourcesChange(enabled);
-    await window.storage.updateSettings({ allowLanSources: enabled });
   }
 
   return (

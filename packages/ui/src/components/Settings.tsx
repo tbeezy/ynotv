@@ -30,7 +30,6 @@ import { useSettingsStore } from '../stores/settingsStore';
 import type { ShortcutsMap, ThemeId, CustomThemeConfig } from '../types/app';
 import type { StremioStreamPickerMode, BadgeSource, StreamAutoPlayMode, StreamAutoPlaySourceScope } from '../types/stremio';
 import { DEFAULT_BADGE_SOURCES, mergeDefaultBadgeSources } from '../utils/streamBadges';
-import { applyUiDesign } from '../utils/uiDesign';
 import { useTranslation } from 'react-i18next';
 import i18n, { SUPPORTED_LOCALES } from '../i18n';
 import './Settings.css';
@@ -122,7 +121,6 @@ interface SettingsProps {
   nuvioCacheFetchTimeout?: number;
   onNuvioCacheFetchTimeoutChange?: (timeout: number) => void;
   liveTvDesign?: 'v1' | 'v2' | 'v3';
-  onLiveTvDesignChange?: (design: 'v1' | 'v2' | 'v3') => void;
   epgMetadataBadgeResolution?: boolean;
   onEpgMetadataBadgeResolutionChange?: (enabled: boolean) => void;
   epgMetadataBadgeFps?: boolean;
@@ -235,7 +233,6 @@ export function Settings({
   nuvioCacheFetchTimeout: nuvioCacheFetchTimeoutProp,
   onNuvioCacheFetchTimeoutChange,
   liveTvDesign,
-  onLiveTvDesignChange,
   epgMetadataBadgeResolution: epgMetadataBadgeResolutionProp,
   onEpgMetadataBadgeResolutionChange,
   epgMetadataBadgeFps: epgMetadataBadgeFpsProp,
@@ -1045,16 +1042,8 @@ export function Settings({
       setChannelFontSize(loadedChannelFontSize);
       setCategoryFontSize(loadedCategoryFontSize);
       setSourceFontSize(loadedSourceFontSize);
-      document.documentElement.style.setProperty('--channel-font-size', `${loadedChannelFontSize}px`);
-      document.documentElement.style.setProperty('--category-font-size', `${loadedCategoryFontSize}px`);
-      document.documentElement.style.setProperty('--source-font-size', `${loadedSourceFontSize}px`);
-
-      // Apply modern UI class on load
-      const design = loadedModernUi === 'v3' ? 'v3' : (loadedModernUi === false || loadedModernUi === 'v1' ? 'v1' : 'v2');
-      applyUiDesign(design);
-      if (onLiveTvDesignChange) {
-        onLiveTvDesignChange(design);
-      }
+      // Font-size CSS vars + design classes are owned by the DOM applier
+      // (settings store), which already applied them at boot/hydration.
 
       // Load startup settings
       setRememberLastChannels(settings.rememberLastChannels ?? false);
@@ -1190,19 +1179,12 @@ export function Settings({
       setEpgShowDateState(loadedShowDate);
       setEpgShowDate(loadedShowDate);
 
-      // Load transparent guide overlay settings
-      const loadedGuideHeight = settings.transparentGuideHeight ?? 40;
-      setTransparentGuideHeight(loadedGuideHeight);
-      document.documentElement.style.setProperty('--transparent-guide-height', `${loadedGuideHeight}%`);
-      const loadedHideHeader = settings.transparentGuideHideHeader ?? false;
-      setTransparentGuideHideHeader(loadedHideHeader);
-      document.documentElement.classList.toggle('transparent-guide-hide-header', loadedHideHeader);
-      const loadedOverlayOpacity = settings.transparentGuideOverlayOpacity ?? 55;
-      setTransparentGuideOverlayOpacity(loadedOverlayOpacity);
-      document.documentElement.style.setProperty('--transparent-guide-overlay-opacity', String(loadedOverlayOpacity / 100));
-      const loadedSidebarOpacity = settings.transparentGuideSidebarOpacity ?? 55;
-      setTransparentGuideSidebarOpacity(loadedSidebarOpacity);
-      document.documentElement.style.setProperty('--transparent-guide-sidebar-opacity', String(loadedSidebarOpacity / 100));
+      // Load transparent guide overlay settings (CSS vars owned by the DOM
+      // applier — already applied at boot/hydration).
+      setTransparentGuideHeight(settings.transparentGuideHeight ?? 40);
+      setTransparentGuideHideHeader(settings.transparentGuideHideHeader ?? false);
+      setTransparentGuideOverlayOpacity(settings.transparentGuideOverlayOpacity ?? 55);
+      setTransparentGuideSidebarOpacity(settings.transparentGuideSidebarOpacity ?? 55);
 
       // Load include all channels to playlist setting
       const loadedIncludeAllChannels = settings.includeAllChannelsToPlaylist ?? false;
@@ -1212,10 +1194,10 @@ export function Settings({
       // Load EPG font size settings
       const loadedEpgTitleFontSize = settings.epgTitleFontSize ?? 32;
       const loadedEpgBodyFontSize = settings.epgBodyFontSize ?? 16;
+      // EPG font-size CSS vars are owned by the DOM applier — already applied
+      // at boot/hydration.
       setEpgTitleFontSize(loadedEpgTitleFontSize);
       setEpgBodyFontSize(loadedEpgBodyFontSize);
-      document.documentElement.style.setProperty('--epg-title-font-size', `${loadedEpgTitleFontSize}px`);
-      document.documentElement.style.setProperty('--epg-body-font-size', `${loadedEpgBodyFontSize}px`);
 
       // Load Live View settings
       setChannelInfoOverlayEnabled(settings.channelInfoOverlayEnabled ?? false);
@@ -1732,52 +1714,29 @@ export function Settings({
 
   const handleShowAllChannelsChange = async (enabled: boolean) => {
     setShowAllChannels(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ showAllChannels: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
-      detail: { showAllChannels: enabled }
-    }));
+    // The store setter persists + dispatches the legacy event (Settings.tsx's
+    // own listener below keeps this component's local state in sync).
+    useSettingsStore.getState().setCategorySettings({ showAllChannels: enabled });
   };
 
   const handleShowFavoritesChange = async (enabled: boolean) => {
     setShowFavorites(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ showFavorites: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
-      detail: { showFavorites: enabled }
-    }));
+    useSettingsStore.getState().setCategorySettings({ showFavorites: enabled });
   };
 
   const handleFavoritesModeChange = async (mode: 'global' | 'perSource' | 'both') => {
     setFavoritesMode(mode);
-    if (window.storage) {
-      await window.storage.updateSettings({ favoritesMode: mode });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
-      detail: { favoritesMode: mode }
-    }));
+    useSettingsStore.getState().setCategorySettings({ favoritesMode: mode });
   };
 
   const handleShowWatchlistChange = async (enabled: boolean) => {
     setShowWatchlist(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ showWatchlist: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
-      detail: { showWatchlist: enabled }
-    }));
+    useSettingsStore.getState().setCategorySettings({ showWatchlist: enabled });
   };
 
   const handleShowRecentlyViewedChange = async (enabled: boolean) => {
     setShowRecentlyViewed(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ showRecentlyViewed: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
-      detail: { showRecentlyViewed: enabled }
-    }));
+    useSettingsStore.getState().setCategorySettings({ showRecentlyViewed: enabled });
   };
 
   const handleEpgDarkenCurrentChange = async (enabled: boolean) => {
@@ -1933,18 +1892,14 @@ export function Settings({
 
   const handleEpgTitleFontSizeChange = (size: number) => {
     setEpgTitleFontSize(size);
-    document.documentElement.style.setProperty('--epg-title-font-size', `${size}px`);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ epgTitleFontSize: size });
-    }
+    // epgTitleFontSize lives in the settings store — the DOM applier owns
+    // --epg-title-font-size and the setter persists (debounced).
+    useSettingsStore.getState().setEpgTitleFontSize(size);
   };
 
   const handleEpgBodyFontSizeChange = (size: number) => {
     setEpgBodyFontSize(size);
-    document.documentElement.style.setProperty('--epg-body-font-size', `${size}px`);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ epgBodyFontSize: size });
-    }
+    useSettingsStore.getState().setEpgBodyFontSize(size);
   };
 
   const handleIncludeAllChannelsToPlaylistChange = async (enabled: boolean) => {
@@ -1958,36 +1913,26 @@ export function Settings({
   const handleTransparentGuideHeightChange = async (height: number) => {
     const clamped = Math.max(25, Math.min(100, height));
     setTransparentGuideHeight(clamped);
-    document.documentElement.style.setProperty('--transparent-guide-height', `${clamped}%`);
-    if (window.storage) {
-      await window.storage.updateSettings({ transparentGuideHeight: clamped });
-    }
+    // Transparent-guide values live in the settings store — the DOM applier
+    // owns the CSS vars/class and the setter persists.
+    useSettingsStore.getState().setTransparentGuideHeight(clamped);
   };
 
   const handleTransparentGuideHideHeaderChange = async (hide: boolean) => {
     setTransparentGuideHideHeader(hide);
-    document.documentElement.classList.toggle('transparent-guide-hide-header', hide);
-    if (window.storage) {
-      await window.storage.updateSettings({ transparentGuideHideHeader: hide });
-    }
+    useSettingsStore.getState().setTransparentGuideHideHeader(hide);
   };
 
   const handleTransparentGuideOverlayOpacityChange = async (opacity: number) => {
     const clamped = Math.max(0, Math.min(100, opacity));
     setTransparentGuideOverlayOpacity(clamped);
-    document.documentElement.style.setProperty('--transparent-guide-overlay-opacity', String(clamped / 100));
-    if (window.storage) {
-      await window.storage.updateSettings({ transparentGuideOverlayOpacity: clamped });
-    }
+    useSettingsStore.getState().setTransparentGuideOverlayOpacity(clamped);
   };
 
   const handleTransparentGuideSidebarOpacityChange = async (opacity: number) => {
     const clamped = Math.max(0, Math.min(100, opacity));
     setTransparentGuideSidebarOpacity(clamped);
-    document.documentElement.style.setProperty('--transparent-guide-sidebar-opacity', String(clamped / 100));
-    if (window.storage) {
-      await window.storage.updateSettings({ transparentGuideSidebarOpacity: clamped });
-    }
+    useSettingsStore.getState().setTransparentGuideSidebarOpacity(clamped);
   };
 
   const handleChannelInfoOverlayChange = async (enabled: boolean) => {
@@ -2249,6 +2194,13 @@ export function Settings({
     const updated = { ...uiSettings, ...newSettings };
     setUiSettings(updated);
 
+    // collapseSourceCategoriesOnStartup lives in the settings store (CategoryStrip
+    // and VerticalSidebar read it via getState) — route the write through the
+    // setter so the store never goes stale.
+    if (newSettings.collapseSourceCategoriesOnStartup !== undefined) {
+      useSettingsStore.getState().setCollapseSourceCategoriesOnStartup(newSettings.collapseSourceCategoriesOnStartup);
+    }
+
     if (newSettings.channelInfoOverlayEnabled !== undefined) {
       setChannelInfoOverlayEnabled(newSettings.channelInfoOverlayEnabled);
       onChannelInfoOverlayChange?.(newSettings.channelInfoOverlayEnabled);
@@ -2296,20 +2248,19 @@ export function Settings({
       onShowVolumePercentChange?.(newSettings.showVolumePercent);
     }
 
-    // Apply/remove the modern-ui class when modernUiEnabled changes
+    // modernUiEnabled lives in the settings store — the DOM applier owns the
+    // design classes/stylesheet application and App derives liveTvDesign from
+    // the store, so just route the write through the setter.
     if (newSettings.modernUiEnabled !== undefined) {
-      const design = newSettings.modernUiEnabled === 'v3' ? 'v3' : (newSettings.modernUiEnabled === false || newSettings.modernUiEnabled === 'v1' ? 'v1' : 'v2');
-      applyUiDesign(design);
-      if (onLiveTvDesignChange) {
-        onLiveTvDesignChange(design);
-      }
+      useSettingsStore.getState().setModernUiEnabled(newSettings.modernUiEnabled === 'v3' || newSettings.modernUiEnabled === 'v2'
+        ? newSettings.modernUiEnabled
+        : (newSettings.modernUiEnabled === false || newSettings.modernUiEnabled === 'v1' ? false : 'v3'));
     }
 
     if (newSettings.uiScale !== undefined) {
-      document.documentElement.style.setProperty('--app-zoom', String(newSettings.uiScale / 100));
-      // Dispatch a resize event so the EPG grid re-measures availableWidth using
-      // the updated zoom factor (getBoundingClientRect results change with zoom).
-      window.dispatchEvent(new Event('resize'));
+      // uiScale lives in the settings store — the DOM applier owns --app-zoom
+      // and dispatches the EPG re-measure resize.
+      useSettingsStore.getState().setUiScale(newSettings.uiScale);
     }
 
     if (newSettings.overlayAutohideTimer !== undefined && onOverlayAutohideTimerChange) {
@@ -2337,26 +2288,28 @@ export function Settings({
 
   const handleChannelFontSizeChange = (size: number) => {
     setChannelFontSize(size);
-    document.documentElement.style.setProperty('--channel-font-size', `${size}px`);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ channelFontSize: size });
-    }
+    // channelFontSize lives in the settings store — the DOM applier owns
+    // --channel-font-size and the setter persists (debounced).
+    useSettingsStore.getState().setChannelFontSize(size);
   };
 
   const handleCategoryFontSizeChange = (size: number) => {
     setCategoryFontSize(size);
-    document.documentElement.style.setProperty('--category-font-size', `${size}px`);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ categoryFontSize: size });
-    }
+    useSettingsStore.getState().setCategoryFontSize(size);
   };
 
   const handleSourceFontSizeChange = (size: number) => {
     setSourceFontSize(size);
-    document.documentElement.style.setProperty('--source-font-size', `${size}px`);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ sourceFontSize: size });
-    }
+    // sourceFontSize lives in the settings store (already migrated) — keep the
+    // write routed through the setter so the store never goes stale.
+    useSettingsStore.getState().setSourceFontSize(size);
+  };
+
+  const handleAllowLanSourcesChange = (enabled: boolean) => {
+    setAllowLanSources(enabled);
+    // allowLanSources lives in the settings store (SourcesTab reads it via
+    // getState on the save path) — route the write through the setter.
+    useSettingsStore.getState().setAllowLanSources(enabled);
   };
 
   const handleRememberLastChannelsChange = async (value: boolean) => {
@@ -2537,7 +2490,7 @@ export function Settings({
         return (
           <SecurityTab
             allowLanSources={allowLanSources}
-            onAllowLanSourcesChange={setAllowLanSources}
+            onAllowLanSourcesChange={handleAllowLanSourcesChange}
           />
         );
       case 'proxy':

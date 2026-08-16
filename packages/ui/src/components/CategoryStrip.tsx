@@ -11,6 +11,7 @@ import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { normalizeBoolean } from '../utils/db-helpers';
 import { matchesSearch } from '../utils/searchNormalization';
 import { useModal } from './Modal';
+import { useSettingsStore, type CategorySettings } from '../stores/settingsStore';
 import { createCustomGroup, deleteCustomGroup } from '../services/custom-groups';
 import { CustomGroupManager } from './CustomGroupManager';
 import { CreateCustomOptionModal } from './CreateCustomOptionModal';
@@ -609,40 +610,13 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
   }, [expandedSources]);
   const { version } = useSourceVersion(); // Listen for source changes
 
-  // Category visibility settings
-  const [showAllChannels, setShowAllChannels] = useState(true);
-  const [showFavorites, setShowFavorites] = useState(true);
-  const [showWatchlist, setShowWatchlist] = useState(true);
-  const [showRecentlyViewed, setShowRecentlyViewed] = useState(true);
-  const [favoritesMode, setFavoritesMode] = useState<'global' | 'perSource' | 'both'>('global');
-
-  // Listen for setting changes to immediately reflect them
-  useEffect(() => {
-    const handleCategorySettingsChange = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail) {
-        if (customEvent.detail.showAllChannels !== undefined) {
-          setShowAllChannels(customEvent.detail.showAllChannels);
-        }
-        if (customEvent.detail.showFavorites !== undefined) {
-          setShowFavorites(customEvent.detail.showFavorites);
-        }
-        if (customEvent.detail.showWatchlist !== undefined) {
-          setShowWatchlist(customEvent.detail.showWatchlist);
-        }
-        if (customEvent.detail.showRecentlyViewed !== undefined) {
-          setShowRecentlyViewed(customEvent.detail.showRecentlyViewed);
-        }
-        if (customEvent.detail.favoritesMode !== undefined) {
-          setFavoritesMode(customEvent.detail.favoritesMode);
-        }
-      }
-    };
-    window.addEventListener('ynotv:category-settings-changed', handleCategorySettingsChange);
-    return () => {
-      window.removeEventListener('ynotv:category-settings-changed', handleCategorySettingsChange);
-    };
-  }, []);
+  // Category visibility settings — reactive store selectors (the setters
+  // dispatch the legacy event for any remaining listener; no IPC round-trip).
+  const showAllChannels = useSettingsStore((s) => s.showAllChannels);
+  const showFavorites = useSettingsStore((s) => s.showFavorites);
+  const showWatchlist = useSettingsStore((s) => s.showWatchlist);
+  const showRecentlyViewed = useSettingsStore((s) => s.showRecentlyViewed);
+  const favoritesMode = useSettingsStore((s) => s.favoritesMode);
 
   // Resizable category sidebar width
   const [categoryWidth, setCategoryWidth] = useState(() => {
@@ -778,27 +752,19 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
   const [genericSidebarContextMenu, setGenericSidebarContextMenu] = useState<{ x: number, y: number, type: 'all' | 'watchlist', title: string } | null>(null);
 
   const handleSidebarItemHide = async (type: 'all' | 'watchlist' | 'favorites' | 'recent') => {
-    let settingKey: string;
+    // Write through the store setter (persists + dispatches the legacy event
+    // so Settings.tsx's local-state listener stays in sync).
+    const patch: Partial<CategorySettings> = {};
     if (type === 'all') {
-      settingKey = 'showAllChannels';
-      setShowAllChannels(false);
+      patch.showAllChannels = false;
     } else if (type === 'watchlist') {
-      settingKey = 'showWatchlist';
-      setShowWatchlist(false);
+      patch.showWatchlist = false;
     } else if (type === 'favorites') {
-      settingKey = 'showFavorites';
-      setShowFavorites(false);
+      patch.showFavorites = false;
     } else {
-      settingKey = 'showRecentlyViewed';
-      setShowRecentlyViewed(false);
+      patch.showRecentlyViewed = false;
     }
-
-    if (window.storage) {
-      await window.storage.updateSettings({ [settingKey]: false });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:category-settings-changed', {
-      detail: { [settingKey]: false }
-    }));
+    useSettingsStore.getState().setCategorySettings(patch);
   };
 
   // Category Context Menu additions
@@ -1555,15 +1521,9 @@ export function CategoryStrip({ selectedCategoryId, onSelectCategory, visible, o
   useEffect(() => {
     async function fetchSources() {
       if (window.storage) {
-        // Get settings to check if sources should be collapsed on startup
-        const settingsResult = await window.storage.getSettings();
-        const collapseOnStartup = settingsResult.data?.collapseSourceCategoriesOnStartup ?? false;
-        setShowAllChannels(settingsResult.data?.showAllChannels ?? true);
-        setShowFavorites(settingsResult.data?.showFavorites ?? true);
-        setShowWatchlist(settingsResult.data?.showWatchlist ?? true);
-        setShowRecentlyViewed(settingsResult.data?.showRecentlyViewed ?? true);
-        const favMode = settingsResult.data?.favoritesMode;
-        setFavoritesMode(favMode === 'perSource' || favMode === 'both' || favMode === 'global' ? favMode : 'global');
+        // Settings live in the store (selectors above); only the startup-collapse
+        // flag is needed here as a one-shot read.
+        const collapseOnStartup = useSettingsStore.getState().collapseSourceCategoriesOnStartup;
 
         if (collapseOnStartup && isFirstLoad.current) {
           setExpandedPlaylists({});

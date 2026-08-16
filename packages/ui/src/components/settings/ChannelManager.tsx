@@ -78,19 +78,6 @@ export function ChannelManager({ categoryId, categoryName, sourceId, onClose, on
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    // Ensure font size CSS variable is set when modal opens
-    useEffect(() => {
-        async function applyFontSize() {
-            if (window.storage) {
-                const settings = await window.storage.getSettings();
-                if (settings.data?.channelFontSize) {
-                    document.documentElement.style.setProperty('--channel-font-size', `${settings.data.channelFontSize}px`);
-                }
-            }
-        }
-        applyFontSize();
-    }, []);
-
     const targetPlaylistId = sourceId.startsWith('playlist:') ? sourceId.replace('playlist:', '') : sourceId;
     const isLink = categoryId.startsWith('link:');
     const linkId = isLink ? parseInt(categoryId.replace('link:', ''), 10) : null;

@@ -5,6 +5,7 @@ import type { StremioMetaPreview } from '../../types/stremio';
 import { scrobbler, TRAKT_CATALOG_DEFINITIONS, type TraktCatalogType } from '../../services/scrobbler';
 import { useStremioHover } from '../../contexts/StremioHoverContext';
 import { useStremioAddonStore } from '../../stores/stremioAddonStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import {
   useSetStremioSelectedAddonId,
   useSetStremioSelectedCatalogId,
@@ -102,35 +103,30 @@ export function CloudCatalogDetailView({ cloudCatalogKey, onItemClick, onBack }:
     return availableCatalogs.filter((c) => c.key.startsWith(currentType));
   }, [availableCatalogs, currentType]);
 
-  // Load available cloud catalogs from settings
+  // Load available cloud catalogs from the settings store (single source of
+  // truth — hydrated at boot, kept current by the setters).
   useEffect(() => {
     let active = true;
-    const loadCatalogs = async () => {
-      if (!window.storage) return;
-      try {
-        const res = await window.storage.getSettings();
-        const s = res.data || {};
-        const entries: CloudCatalogEntry[] = [];
+    const loadCatalogs = () => {
+      const s = useSettingsStore.getState();
+      const entries: CloudCatalogEntry[] = [];
 
-        if (s.traktEnabled && s.traktAccessToken) {
-          const enabledCatalogs: Record<string, boolean> = s.traktCatalogsEnabled || {};
-          for (const def of TRAKT_CATALOG_DEFINITIONS) {
-            if (enabledCatalogs[def.type] === true) {
-              entries.push({ key: `trakt-${def.type}`, title: `Trakt ${def.label}` });
-            }
-          }
-
-          const enabledLists: { id: string; name: string }[] = s.traktEnabledLists || [];
-          for (const list of enabledLists) {
-            entries.push({ key: `trakt-list-${list.id}`, title: `Trakt \u2014 ${list.name}` });
+      if (s.traktEnabled && s.traktAccessToken) {
+        const enabledCatalogs: Record<string, boolean> = s.traktCatalogsEnabled || {};
+        for (const def of TRAKT_CATALOG_DEFINITIONS) {
+          if (enabledCatalogs[def.type] === true) {
+            entries.push({ key: `trakt-${def.type}`, title: `Trakt ${def.label}` });
           }
         }
 
-        if (active) {
-          setAvailableCatalogs(entries);
+        const enabledLists: { id: string; name: string }[] = s.traktEnabledLists || [];
+        for (const list of enabledLists) {
+          entries.push({ key: `trakt-list-${list.id}`, title: `Trakt \u2014 ${list.name}` });
         }
-      } catch {
-        // Ignore
+      }
+
+      if (active) {
+        setAvailableCatalogs(entries);
       }
     };
     loadCatalogs();

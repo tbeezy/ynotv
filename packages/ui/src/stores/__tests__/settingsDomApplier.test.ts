@@ -43,6 +43,17 @@ function baseState() {
     channelLogoSize: 42,
     channelLogoRoundEdges: true,
     channelLogoPadding: 'none' as string,
+    channelFontSize: 12,
+    categoryFontSize: 13,
+    sourceFontSize: 12,
+    epgTitleFontSize: 32,
+    epgBodyFontSize: 16,
+    uiScale: 100,
+    transparentGuideHeight: 40,
+    transparentGuideHideHeader: false,
+    transparentGuideOverlayOpacity: 55,
+    transparentGuideSidebarOpacity: 55,
+    modernUiEnabled: 'v3' as 'v1' | 'v2' | 'v3' | false,
     enableCustomScrollbarWidth: false,
     customScrollbarWidth: 12,
     widgetScale: 1,
@@ -142,5 +153,114 @@ describe('settings DOM applier idempotency', () => {
     applySettingsDom(baseState() as any);
     expect(fake.properties.has('--accent-primary')).toBe(false);
     expect(fake.document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('applies font-size, uiScale and transparent-guide vars idempotently', () => {
+    applySettingsDom(baseState() as any);
+    const snapshot = { ...fake.writes };
+
+    // Font sizes land on the CSS vars.
+    expect(fake.properties.get('--channel-font-size')).toBe('12px');
+    expect(fake.properties.get('--category-font-size')).toBe('13px');
+    expect(fake.properties.get('--source-font-size')).toBe('12px');
+    expect(fake.properties.get('--epg-title-font-size')).toBe('32px');
+    expect(fake.properties.get('--epg-body-font-size')).toBe('16px');
+    expect(fake.properties.get('--app-zoom')).toBe('1');
+    expect(fake.properties.get('--transparent-guide-height')).toBe('40%');
+    expect(fake.properties.get('--transparent-guide-overlay-opacity')).toBe('0.55');
+    expect(fake.properties.get('--transparent-guide-sidebar-opacity')).toBe('0.55');
+    expect(fake.classes.has('transparent-guide-hide-header')).toBe(false);
+
+    // Change one font size → only that var changes.
+    applySettingsDom({ ...baseState(), categoryFontSize: 16 } as any);
+    expect(fake.properties.get('--category-font-size')).toBe('16px');
+    expect(fake.properties.get('--channel-font-size')).toBe('12px');
+
+    const after = { ...fake.writes };
+    applySettingsDom({ ...baseState(), categoryFontSize: 16 } as any);
+    expect(fake.writes).toEqual(after);
+  });
+
+  it('toggles the transparent-guide hide-header class and uiDesign classes', () => {
+    applySettingsDom({ ...baseState(), transparentGuideHideHeader: true } as any);
+    expect(fake.classes.has('transparent-guide-hide-header')).toBe(true);
+
+    // v3 design → modern-ui + modern-ui-v3 classes + data-ui-version attr.
+    applySettingsDom({ ...baseState(), modernUiEnabled: 'v3' } as any);
+    expect(fake.classes.has('modern-ui')).toBe(true);
+    expect(fake.classes.has('modern-ui-v3')).toBe(true);
+    expect(fake.document.documentElement.getAttribute('data-ui-version')).toBe('v3');
+
+    // Switch to v1 → drops modern-ui-v3, keeps modern-ui off entirely.
+    applySettingsDom({ ...baseState(), modernUiEnabled: false } as any);
+    expect(fake.classes.has('modern-ui-v3')).toBe(false);
+    expect(fake.classes.has('modern-ui')).toBe(false);
+    expect(fake.document.documentElement.getAttribute('data-ui-version')).toBe('v1');
+  });
+
+  it('applies channel-info-overlay vars idempotently', () => {
+    applySettingsDom(baseState() as any);
+    expect(fake.properties.get('--cio-font-size')).toBe('16px');
+    expect(fake.properties.get('--cio-logo-size')).toBe('42px');
+    expect(fake.properties.get('--cio-box-width')).toBe('380px');
+
+    const snapshot = { ...fake.writes };
+    applySettingsDom({ ...baseState(), channelInfoOverlayFontSize: 18 } as any);
+    expect(fake.properties.get('--cio-font-size')).toBe('18px');
+    expect(fake.properties.get('--cio-logo-size')).toBe('42px'); // untouched
+
+    const after = { ...fake.writes };
+    applySettingsDom({ ...baseState(), channelInfoOverlayFontSize: 18 } as any);
+    expect(fake.writes).toEqual(after);
+  });
+
+  it('applies widget-scale and widget-bg-opacity vars idempotently', () => {
+    applySettingsDom(baseState() as any);
+    expect(fake.properties.get('--widget-scale')).toBe('1');
+    expect(fake.properties.get('--widget-bg-opacity')).toBe('0.55');
+    // --cio-bg-opacity mirrors widget opacity (CSS fallback, old dead write dropped).
+    expect(fake.properties.get('--cio-bg-opacity')).toBe('0.55');
+
+    const snapshot = { ...fake.writes };
+    applySettingsDom({ ...baseState(), widgetScale: 1.2 } as any);
+    expect(fake.properties.get('--widget-scale')).toBe('1.2');
+    expect(fake.properties.get('--widget-bg-opacity')).toBe('0.55');
+
+    const after = { ...fake.writes };
+    applySettingsDom({ ...baseState(), widgetScale: 1.2 } as any);
+    expect(fake.writes).toEqual(after);
+  });
+
+  it('toggles the EPG cosmetic classes (load-time settings) idempotently', () => {
+    applySettingsDom(baseState() as any);
+    expect(fake.classes.has('epg-darken-current')).toBe(false);
+    expect(fake.classes.has('epg-highlight-border-current')).toBe(false);
+    expect(fake.classes.has('epg-bold-channel-names')).toBe(false);
+
+    const snapshot = { ...fake.writes };
+    applySettingsDom({
+      ...baseState(),
+      epgDarkenCurrent: true,
+      epgHighlightBorderCurrent: true,
+      epgBoldChannelNames: true,
+      epgBoldTopCategories: true,
+      epgBoldSourceCategories: true,
+    } as any);
+    expect(fake.classes.has('epg-darken-current')).toBe(true);
+    expect(fake.classes.has('epg-highlight-border-current')).toBe(true);
+    expect(fake.classes.has('epg-bold-channel-names')).toBe(true);
+    expect(fake.classes.has('epg-bold-top-categories')).toBe(true);
+    expect(fake.classes.has('epg-bold-source-categories')).toBe(true);
+
+    const after = { ...fake.writes };
+    applySettingsDom({
+      ...baseState(),
+      epgDarkenCurrent: true,
+      epgHighlightBorderCurrent: true,
+      epgBoldChannelNames: true,
+      epgBoldTopCategories: true,
+      epgBoldSourceCategories: true,
+    } as any);
+    expect(fake.writes).toEqual(after);
   });
 });

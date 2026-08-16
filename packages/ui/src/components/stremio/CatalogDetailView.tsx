@@ -13,6 +13,7 @@ import {
   useSetStremioSelectedCloudCatalogKey,
 } from '../../stores/uiStore';
 import { TRAKT_CATALOG_DEFINITIONS } from '../../services/scrobbler';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useStremioHover } from '../../contexts/StremioHoverContext';
 import './StremioHome.css';
 
@@ -37,17 +38,8 @@ export function CatalogDetailView({ addon, catalog, onItemClick }: CatalogDetail
   const addons = useStremioAddonStore((s) => s.enabledAddons);
 
   const [items, setItems] = useState<StremioMetaPreview[]>([]);
-  const [traktEnabled, setTraktEnabled] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    window.storage?.getSettings().then((res) => {
-      if (!active) return;
-      const s = res.data || {};
-      setTraktEnabled(!!(s.traktEnabled && s.traktAccessToken));
-    });
-    return () => { active = false; };
-  }, []);
+  // Trakt access is reactive — store selectors re-render when tokens change.
+  const traktEnabled = useSettingsStore((s) => !!s.traktEnabled && !!s.traktAccessToken);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -114,29 +106,27 @@ export function CatalogDetailView({ addon, catalog, onItemClick }: CatalogDetail
 
   const handleTypeChange = (newType: string) => {
     if (newType === 'trakt') {
-      window.storage?.getSettings().then((res) => {
-        const s = res.data || {};
-        let defaultKey = '';
-        if (s.traktEnabled && s.traktAccessToken) {
-          const enabledCatalogs: Record<string, boolean> = s.traktCatalogsEnabled || {};
-          const firstDef = TRAKT_CATALOG_DEFINITIONS.find((def) => enabledCatalogs[def.type] === true);
-          if (firstDef) {
-            defaultKey = `trakt-${firstDef.type}`;
-          } else {
-            const enabledLists = s.traktEnabledLists || [];
-            if (enabledLists.length > 0) {
-              defaultKey = `trakt-list-${enabledLists[0].id}`;
-            }
+      const s = useSettingsStore.getState();
+      let defaultKey = '';
+      if (s.traktEnabled && s.traktAccessToken) {
+        const enabledCatalogs: Record<string, boolean> = s.traktCatalogsEnabled || {};
+        const firstDef = TRAKT_CATALOG_DEFINITIONS.find((def) => enabledCatalogs[def.type] === true);
+        if (firstDef) {
+          defaultKey = `trakt-${firstDef.type}`;
+        } else {
+          const enabledLists = s.traktEnabledLists || [];
+          if (enabledLists.length > 0) {
+            defaultKey = `trakt-list-${enabledLists[0].id}`;
           }
         }
+      }
 
-        if (defaultKey) {
-          setSelectedAddonId(null);
-          setSelectedCatalogId(null);
-          setSelectedCatalogType(null);
-          setSelectedCloudCatalogKey(defaultKey);
-        }
-      });
+      if (defaultKey) {
+        setSelectedAddonId(null);
+        setSelectedCatalogId(null);
+        setSelectedCatalogType(null);
+        setSelectedCloudCatalogKey(defaultKey);
+      }
       return;
     }
 

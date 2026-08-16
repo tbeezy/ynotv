@@ -943,8 +943,8 @@ export function SourcesTab({
     // Security check for LAN sources
     const urlToCheck = importedM3U ? '' : formData.url.trim();
     if (urlToCheck && isLanUrl(urlToCheck)) {
-      const settingsReq = await window.storage.getSettings();
-      const allowLan = settingsReq.data?.allowLanSources === true;
+      // allowLanSources lives in the settings store — sync read, no IPC.
+      const allowLan = useSettingsStore.getState().allowLanSources === true;
       if (!allowLan) {
         setError(i18n.t('settings:sources.errLanSources'));
         return;

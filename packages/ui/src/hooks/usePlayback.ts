@@ -511,38 +511,34 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
   const catchupEndPaddingRef = useRef(0);
   const catchupContinuePlayingRef = useRef(false);
 
-  // Load retry & catchup settings from storage once on mount
+  // Load retry & catchup settings once on mount — all fields live in the
+  // settings store (hydrated at boot), so no IPC round-trip.
   useEffect(() => {
-    if (!window.storage) return;
-    window.storage.getSettings().then((result: any) => {
-      if (result?.data) {
-        const s = result.data;
-        if (typeof s.streamMaxRetries === 'number' && s.streamMaxRetries > 0) {
-          maxRetriesRef.current = s.streamMaxRetries;
-        }
-        if (typeof s.streamWatchdogSeconds === 'number' && s.streamWatchdogSeconds >= 3) {
-          stallThresholdMsRef.current = s.streamWatchdogSeconds * 1_000;
-        }
-        if (typeof s.useEventBasedReconnect === 'boolean') {
-          useEventBasedReconnectRef.current = s.useEventBasedReconnect;
-        }
-        if (typeof s.stallDetectionEnabled === 'boolean') {
-          stallDetectionEnabledRef.current = s.stallDetectionEnabled;
-        }
-        if (typeof s.showLoadingScreen === 'boolean') {
-          showLoadingScreenRef.current = s.showLoadingScreen;
-        }
-        if (typeof s.catchupStartPadding === 'number') {
-          catchupStartPaddingRef.current = s.catchupStartPadding;
-        }
-        if (typeof s.catchupEndPadding === 'number') {
-          catchupEndPaddingRef.current = s.catchupEndPadding;
-        }
-        if (typeof s.catchupContinuePlaying === 'boolean') {
-          catchupContinuePlayingRef.current = s.catchupContinuePlaying;
-        }
-      }
-    }).catch(() => {});
+    const s = useSettingsStore.getState();
+    if (typeof s.streamMaxRetries === 'number' && s.streamMaxRetries > 0) {
+      maxRetriesRef.current = s.streamMaxRetries;
+    }
+    if (typeof s.streamWatchdogSeconds === 'number' && s.streamWatchdogSeconds >= 3) {
+      stallThresholdMsRef.current = s.streamWatchdogSeconds * 1_000;
+    }
+    if (typeof s.useEventBasedReconnect === 'boolean') {
+      useEventBasedReconnectRef.current = s.useEventBasedReconnect;
+    }
+    if (typeof s.stallDetectionEnabled === 'boolean') {
+      stallDetectionEnabledRef.current = s.stallDetectionEnabled;
+    }
+    if (typeof s.showLoadingScreen === 'boolean') {
+      showLoadingScreenRef.current = s.showLoadingScreen;
+    }
+    if (typeof s.catchupStartPadding === 'number') {
+      catchupStartPaddingRef.current = s.catchupStartPadding;
+    }
+    if (typeof s.catchupEndPadding === 'number') {
+      catchupEndPaddingRef.current = s.catchupEndPadding;
+    }
+    if (typeof s.catchupContinuePlaying === 'boolean') {
+      catchupContinuePlayingRef.current = s.catchupContinuePlaying;
+    }
   }, []);
 
   // Listen for real-time changes dispatched by Settings.tsx — no restart required
@@ -1009,25 +1005,19 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
           Bridge.play().catch(e => console.warn('[usePlayback] play() after load failed:', e));
         }
         
-        // Restore saved audio delay if it exists
-        if (window.storage) {
-          try {
-            window.storage.getSettings().then((settingsResult: any) => {
-              const delays = settingsResult.data?.channelAudioDelays || {};
-              const key = `${channel.source_id}_${channel.stream_id}`;
-              const delayToApply = delays[key] ?? 0.0;
-              if (delayToApply !== 0.0) {
-                logInfo(`[Playback] Restoring saved audio delay of ${delayToApply}s for channel ${key}`);
-                Bridge.setProperty('audio-delay', delayToApply).catch((e: any) => {
-                  logWarn('Failed to restore audio-delay property:', e);
-                });
-              }
-            }).catch((settingsErr: any) => {
-              logWarn('Failed to fetch settings for audio-delay restoration:', settingsErr);
+        // Restore saved audio delay if it exists (store-backed — no IPC read)
+        try {
+          const delays = useSettingsStore.getState().channelAudioDelays || {};
+          const key = `${channel.source_id}_${channel.stream_id}`;
+          const delayToApply = delays[key] ?? 0.0;
+          if (delayToApply !== 0.0) {
+            logInfo(`[Playback] Restoring saved audio delay of ${delayToApply}s for channel ${key}`);
+            Bridge.setProperty('audio-delay', delayToApply).catch((e: any) => {
+              logWarn('Failed to restore audio-delay property:', e);
             });
-          } catch (e) {
-            console.warn('[Playback] Failed to load channel audio delay:', e);
           }
+        } catch (e) {
+          console.warn('[Playback] Failed to load channel audio delay:', e);
         }
 
         applySubtitleSettings();

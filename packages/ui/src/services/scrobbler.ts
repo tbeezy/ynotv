@@ -2,6 +2,7 @@ import { AppSettings } from '../types/app';
 import type { StremioMetaPreview } from '../types/stremio';
 import i18n from '../i18n';
 import { db, updateVodWatchProgress, recordEpisodeWatch } from '../db';
+import { useSettingsStore, type TraktSettings, type SimklSettings } from '../stores/settingsStore';
 
 // Unified logger helpers
 const logInfo = (...args: any[]) => console.log('[Scrobbler]', ...args);
@@ -195,17 +196,25 @@ class ScrobblerService {
   private catalogCache = new Map<string, { data: { items: StremioMetaPreview[]; hasMore: boolean }; timestamp: number }>();
   private listCatalogCache = new Map<string, { data: { items: StremioMetaPreview[]; hasMore: boolean }; timestamp: number }>();
 
-  // Retrieve app settings securely
+  // Retrieve app settings — the settings store is the single source of truth
+  // (hydrated at boot, written by the setters below), so no IPC round-trip.
   private async getSettings(): Promise<AppSettings> {
-    if (!window.storage) return {};
-    const res = await window.storage.getSettings();
-    return res.data || {};
+    return useSettingsStore.getState() as unknown as AppSettings;
   }
 
-  // Update app settings safely
+  // Update app settings — route through the store setters so the store stays
+  // current and the write-queue persistence is used. The scrobbler only ever
+  // writes trakt/simkl fields, so only those keys are forwarded.
   private async updateSettings(settings: Partial<AppSettings>): Promise<void> {
-    if (!window.storage) return;
-    await window.storage.updateSettings(settings);
+    const store = useSettingsStore.getState();
+    const traktPartial: Partial<TraktSettings> = {};
+    const simklPartial: Partial<SimklSettings> = {};
+    for (const [k, v] of Object.entries(settings)) {
+      if (k.startsWith('trakt')) (traktPartial as Record<string, any>)[k] = v;
+      if (k.startsWith('simkl')) (simklPartial as Record<string, any>)[k] = v;
+    }
+    if (Object.keys(traktPartial).length > 0) store.setTraktSettings(traktPartial);
+    if (Object.keys(simklPartial).length > 0) store.setSimklSettings(simklPartial);
   }
 
   // --------------------------------------------------------------------------

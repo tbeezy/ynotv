@@ -1200,12 +1200,11 @@ function NuvioPageContent({
   useEffect(() => {
     let active = true;
     const loadNuvioTraktCatalogs = async () => {
-      if (!window.storage) return;
-      try {
-        const res = await window.storage.getSettings();
-        const s = res.data || {};
-        if (!active) return;
+      // Trakt settings read from the store (single source of truth)
+      const s = useSettingsStore.getState();
+      if (!active) return;
 
+      try {
         const rows: TraktNuvioCatalogRow[] = [];
         if (s.traktEnabled && s.traktAccessToken) {
           const enabledCatalogs: Record<string, boolean> = s.traktNuvioCatalogsEnabled || {};

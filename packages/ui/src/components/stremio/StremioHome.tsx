@@ -150,13 +150,12 @@ export function StremioHome({ addons, onItemClick }: StremioHomeProps) {
   useEffect(() => {
     let active = true;
     const loadScrobblerCatalogs = async () => {
-      if (!window.storage) return;
+      // Trakt settings read from the store (single source of truth)
+      const s = useSettingsStore.getState();
+
+      if (!active) return;
+
       try {
-        const res = await window.storage.getSettings();
-        const s = res.data || {};
-        
-        if (!active) return;
-        
         // Load Trakt catalogs dynamically based on enabled settings
         const rows: CloudCatalogRow[] = [];
         if (s.traktEnabled && s.traktAccessToken) {

@@ -167,6 +167,52 @@ describe('settings store hydration', () => {
     expect(secondFlagWrites).toHaveLength(0);
   });
 
+  it('runs the v3-default migration once and persists its flag (moved from the autosync boot)', async () => {
+    // Storage without v3DefaultMigrated → force v3 + latch the flag exactly once.
+    storageBackend.modernUiEnabled = 'v2';
+    await ensureSettingsHydration();
+    await vi.waitFor(() => expect(useSettingsStore.getState().layoutSettingsLoaded).toBe(true));
+
+    expect(useSettingsStore.getState().modernUiEnabled).toBe('v3');
+    expect(useSettingsStore.getState().v3DefaultMigrated).toBe(true);
+
+    const migrationWrites = mockUpdate.mock.calls.filter(([patch]) =>
+      (patch as Record<string, unknown>).v3DefaultMigrated === true);
+    expect(migrationWrites).toHaveLength(1);
+
+    // A second boot with the flag present must not re-run the migration.
+    mockUpdate.mockClear();
+    storageBackend.v3DefaultMigrated = true;
+    storageBackend.modernUiEnabled = 'v2';
+    vi.resetModules();
+    ({ useSettingsStore } = await import('../settingsStore'));
+    ({ ensureSettingsHydration } = await import('../settingsStoreHydration'));
+    await ensureSettingsHydration();
+    await vi.waitFor(() => expect(useSettingsStore.getState().layoutSettingsLoaded).toBe(true));
+
+    expect(useSettingsStore.getState().modernUiEnabled).toBe('v2'); // untouched
+    const secondMigrationWrites = mockUpdate.mock.calls.filter(([patch]) =>
+      (patch as Record<string, unknown>).v3DefaultMigrated === true);
+    expect(secondMigrationWrites).toHaveLength(0);
+  });
+
+  it('hydrates the new CSS-var fields with defaults (no null leaks)', async () => {
+    await ensureSettingsHydration();
+    await vi.waitFor(() => expect(useSettingsStore.getState().layoutSettingsLoaded).toBe(true));
+
+    const s = useSettingsStore.getState();
+    expect(s.channelFontSize).toBe(12);
+    expect(s.categoryFontSize).toBe(13);
+    expect(s.epgTitleFontSize).toBe(32);
+    expect(s.epgBodyFontSize).toBe(16);
+    expect(s.uiScale).toBe(100);
+    expect(s.transparentGuideHeight).toBe(40);
+    expect(s.transparentGuideHideHeader).toBe(false);
+    expect(s.transparentGuideOverlayOpacity).toBe(55);
+    expect(s.transparentGuideSidebarOpacity).toBe(55);
+    expect(s.allowLanSources).toBe(false);
+  });
+
   it('is idempotent: calling ensureSettingsHydration twice performs one load', async () => {
     storageBackend.theme = 'dark';
     await ensureSettingsHydration();

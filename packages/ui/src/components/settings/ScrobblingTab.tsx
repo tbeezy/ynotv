@@ -3,13 +3,16 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { getScrobblerCredentialStatus, scrobbler } from '../../services/scrobbler';
 import { TraktCatalogsModal } from './TraktCatalogsModal';
+import { useSettingsStore } from '../../stores/settingsStore';
 import '../Modal.css';
 import './PlaybackTab.css';
 
 export function ScrobblingTab() {
   useTranslation();
-  const [traktScrobbleEnabled, setTraktScrobbleEnabled] = useState(false);
-  const [traktLinked, setTraktLinked] = useState(false);
+  const traktScrobbleEnabled = useSettingsStore((s) => s.traktScrobbleEnabled);
+  const traktAccessToken = useSettingsStore((s) => s.traktAccessToken);
+  const setTraktSettings = useSettingsStore((s) => s.setTraktSettings);
+  const traktLinked = !!traktAccessToken;
 
   const credentialStatus = getScrobblerCredentialStatus();
 
@@ -34,31 +37,9 @@ export function ScrobblingTab() {
     if (traktCountdownTimer.current) clearInterval(traktCountdownTimer.current);
   };
 
-  const loadSettings = async () => {
-    if (!window.storage) return;
-    try {
-      const res = await window.storage.getSettings();
-      const s = res.data || {};
-
-      setTraktScrobbleEnabled(s.traktScrobbleEnabled ?? false);
-      setTraktLinked(!!s.traktAccessToken);
-    } catch (e) {
-      console.error('Error loading scrobbler settings:', e);
-    }
-  };
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const handleSettingUpdate = async (update: any) => {
-    if (!window.storage) return;
-    try {
-      await window.storage.updateSettings(update);
-      await loadSettings();
-    } catch (e) {
-      console.error('Error updating scrobbler settings:', e);
-    }
+  const handleSettingUpdate = (update: any) => {
+    // Settings live in the store — the setter persists through the write queue.
+    setTraktSettings(update);
   };
 
   const startTraktLink = async () => {
@@ -90,7 +71,6 @@ export function ScrobblingTab() {
             setTraktAuthState('success');
             setTimeout(() => {
               setTraktAuthState('idle');
-              loadSettings();
             }, 2000);
           } else if (pollRes.error) {
             clearTraktTimers();
@@ -115,7 +95,7 @@ export function ScrobblingTab() {
   const handleTraktUnlink = async () => {
     if (confirm(i18n.t('settings:scrobbling.disconnectConfirm'))) {
       await scrobbler.logoutTrakt();
-      loadSettings();
+      // Store selectors re-render automatically on logout
     }
   };
 

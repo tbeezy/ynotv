@@ -2,13 +2,16 @@ import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { translateNativeError } from '../../i18n';
 import { scrobbler } from '../../services/scrobbler';
+import { useSettingsStore } from '../../stores/settingsStore';
 import '../Modal.css';
 import './PlaybackTab.css';
 
 export function SimklTab() {
   useTranslation();
-  const [simklScrobbleEnabled, setSimklScrobbleEnabled] = useState(false);
-  const [simklLinked, setSimklLinked] = useState(false);
+  const simklScrobbleEnabled = useSettingsStore((s) => s.simklScrobbleEnabled);
+  const simklAccessToken = useSettingsStore((s) => s.simklAccessToken);
+  const setSimklSettings = useSettingsStore((s) => s.setSimklSettings);
+  const simklLinked = Boolean(simklAccessToken);
 
   const [authState, setAuthState] = useState<'idle' | 'polling' | 'success' | 'error'>('idle');
   const [userCode, setUserCode] = useState('');
@@ -32,31 +35,9 @@ export function SimklTab() {
     };
   }, []);
 
-  const loadSettings = async () => {
-    if (!window.storage) return;
-    try {
-      const res = await window.storage.getSettings();
-      const s = res.data || {};
-
-      setSimklScrobbleEnabled(s.simklScrobbleEnabled ?? false);
-      setSimklLinked(Boolean(s.simklAccessToken));
-    } catch (e) {
-      console.error('Error loading Simkl settings:', e);
-    }
-  };
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const handleSettingUpdate = async (update: any) => {
-    if (!window.storage) return;
-    try {
-      await window.storage.updateSettings(update);
-      await loadSettings();
-    } catch (e) {
-      console.error('Error updating Simkl settings:', e);
-    }
+  const handleSettingUpdate = (update: any) => {
+    // Settings live in the store — the setter persists through the write queue.
+    setSimklSettings(update);
   };
 
   const startSimklPinAuth = async () => {
@@ -94,7 +75,6 @@ export function SimklTab() {
               setAuthState('idle');
               setUserCode('');
               setVerificationUrl('');
-              loadSettings();
             }, 2000);
           } else if (pollRes.error) {
             clearTimers();
@@ -123,7 +103,7 @@ export function SimklTab() {
   const handleSimklUnlink = async () => {
     if (confirm(i18n.t('settings:simkl.disconnectConfirm'))) {
       await scrobbler.logoutSimkl();
-      await loadSettings();
+      // Store selectors re-render automatically on logout
     }
   };
 

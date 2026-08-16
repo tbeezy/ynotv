@@ -26,10 +26,9 @@ interface TrackSelectionModalProps {
   type: 'audio' | 'subtitle';
   onClose: () => void;
   channel?: StoredChannel | null;
-  onAudioDelayChanged?: (hasDelay: boolean) => void;
 }
 
-export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDelayChanged }: TrackSelectionModalProps) {
+export function TrackSelectionModal({ isOpen, type, onClose, channel }: TrackSelectionModalProps) {
   const { t } = useTranslation('player');
   const [tracks, setTracks] = useState<Track[]>([]);
   const [ccTracks, setCcTracks] = useState<CCTrack[]>([]);
@@ -135,10 +134,11 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
       await Bridge.setProperty('audio-delay', newDelay);
       setAudioDelay(newDelay);
       
-      if (channel && window.storage) {
+      if (channel) {
         try {
-          const settingsResult = await window.storage.getSettings();
-          const delays = settingsResult.data?.channelAudioDelays || {};
+          // Per-channel audio delays live in the settings store — read the
+          // current map, patch the entry, and persist through the setter.
+          const delays = { ...(useSettingsStore.getState().channelAudioDelays || {}) };
           const key = `${channel.source_id}_${channel.stream_id}`;
           
           if (newDelay === 0.0) {
@@ -147,8 +147,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
             delays[key] = newDelay;
           }
           
-          await window.storage.updateSettings({ channelAudioDelays: delays });
-          onAudioDelayChanged?.(newDelay !== 0.0);
+          useSettingsStore.getState().setChannelAudioDelays(delays);
         } catch (saveErr) {
           console.error('Failed to save channel audio delay settings:', saveErr);
         }
@@ -163,16 +162,14 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
       await Bridge.setProperty('audio-delay', 0.0);
       setAudioDelay(0.0);
       
-      if (channel && window.storage) {
+      if (channel) {
         try {
-          const settingsResult = await window.storage.getSettings();
-          const delays = settingsResult.data?.channelAudioDelays || {};
+          const delays = { ...(useSettingsStore.getState().channelAudioDelays || {}) };
           const key = `${channel.source_id}_${channel.stream_id}`;
           
           delete delays[key];
           
-          await window.storage.updateSettings({ channelAudioDelays: delays });
-          onAudioDelayChanged?.(false);
+          useSettingsStore.getState().setChannelAudioDelays(delays);
         } catch (saveErr) {
           console.error('Failed to save channel audio delay settings:', saveErr);
         }

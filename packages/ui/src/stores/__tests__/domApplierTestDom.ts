@@ -29,17 +29,28 @@ interface TrackedStyle {
   getPropertyValue(prop: string): string;
 }
 
+export interface FakeHeadChild {
+  id: string;
+  innerHTML: string;
+  rel?: string;
+  href?: string;
+  dataset?: Record<string, string>;
+  isConnected?: boolean;
+  remove(): void;
+}
+
 export interface FakeDom {
   document: {
     documentElement: HTMLElement;
     head: {
-      children: Array<{ id: string; innerHTML: string }>;
-      appendChild(el: { id: string; innerHTML: string }): void;
-      contains(el: { id: string; innerHTML: string }): boolean;
-      removeChild(el: { id: string; innerHTML: string }): void;
+      children: Array<FakeHeadChild>;
+      appendChild(el: FakeHeadChild): void;
+      contains(el: FakeHeadChild): boolean;
+      removeChild(el: FakeHeadChild): void;
+      insertBefore(el: FakeHeadChild, anchor: FakeHeadChild | null): void;
     };
     getElementById(id: string): { id: string; innerHTML: string } | null;
-    createElement(tag: string): { id: string; innerHTML: string };
+    createElement(tag: string): FakeHeadChild;
     fonts: { load: () => Promise<unknown[]> };
   };
   writes: TrackedWrites;
@@ -104,14 +115,18 @@ export function makeTrackedDocument(): FakeDom {
   const documentElement = {
     style,
     classList: {
-      add(name: string) {
-        if (!classes.has(name)) {
-          classes.add(name);
-          writes.classes++;
+      add(...names: string[]) {
+        for (const name of names) {
+          if (!classes.has(name)) {
+            classes.add(name);
+            writes.classes++;
+          }
         }
       },
-      remove(name: string) {
-        if (classes.delete(name)) writes.classes++;
+      remove(...names: string[]) {
+        for (const name of names) {
+          if (classes.delete(name)) writes.classes++;
+        }
       },
     },
     dataset: dataset as unknown as DOMStringMap,
@@ -137,25 +152,58 @@ export function makeTrackedDocument(): FakeDom {
     },
   };
 
-  const document = {
-    documentElement,
-    head: {
-      children: [] as typeof styleEl[],
-      appendChild(el: typeof styleEl) {
-        if (!this.children.includes(el)) {
-          this.children.push(el);
+  // Generic head child for <link>/<style> — tracks isConnected so the
+  // applier's applyUiDesign (which checks link.isConnected before inserting)
+  // behaves like the real DOM.
+  function makeEl(): FakeHeadChild {
+    return {
+      id: '',
+      innerHTML: '',
+      dataset: {} as Record<string, string>,
+      isConnected: false,
+      remove() {
+        if (document.head.contains(this)) {
+          document.head.removeChild(this);
           writes.fontFace++;
         }
       },
-      contains(el: typeof styleEl) {
+    };
+  }
+
+  const document = {
+    documentElement,
+    head: {
+      children: [] as FakeHeadChild[],
+      appendChild(el: FakeHeadChild) {
+        if (!this.children.includes(el)) {
+          this.children.push(el);
+          el.isConnected = true;
+          writes.fontFace++;
+        }
+      },
+      contains(el: FakeHeadChild) {
         return this.children.includes(el);
       },
-      removeChild(el: typeof styleEl) {
+      removeChild(el: FakeHeadChild) {
         this.children = this.children.filter((c) => c !== el);
+        el.isConnected = false;
+      },
+      insertBefore(el: FakeHeadChild, anchor: FakeHeadChild | null) {
+        if (this.children.includes(el)) {
+          this.removeChild(el);
+        }
+        const idx = anchor ? this.children.indexOf(anchor) : -1;
+        if (idx >= 0) {
+          this.children.splice(idx, 0, el);
+        } else {
+          this.children.push(el);
+        }
+        el.isConnected = true;
+        writes.fontFace++;
       },
     },
     getElementById: (id: string) => (id === 'custom-theme-font-face' && document.head.children.length ? styleEl : null),
-    createElement: () => styleEl,
+    createElement: (tag: string) => (tag === 'style' ? styleEl : makeEl()),
     fonts: { load: () => Promise.resolve([]) },
   };
 

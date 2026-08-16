@@ -11,6 +11,7 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+import { useSettingsStore } from '../../stores/settingsStore';
 import './VerticalSidebar.css';
 
 // Chevron Icon for expand/collapse
@@ -118,8 +119,8 @@ export function VerticalSidebar({
     useEffect(() => {
         async function fetchSources() {
             if (window.storage) {
-                const settingsResult = await window.storage.getSettings();
-                const collapseOnStartup = settingsResult.data?.collapseSourceCategoriesOnStartup ?? false;
+                // Settings live in the store (single source of truth)
+                const collapseOnStartup = useSettingsStore.getState().collapseSourceCategoriesOnStartup;
 
                 const result = await window.storage.getSources();
                 if (result.data) {

@@ -1,33 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import './TVCalendarTab.css';
 import { db, addTvEpisodeToWatchlist, clearAutoAddedEpisodesForShow, type AutoAddEpisode } from '../../db';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 export function TVCalendarTab() {
   useTranslation();
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const autoSyncEnabled = useSettingsStore((s) => s.tvCalendarAutoSync);
+  const setTvCalendarAutoSync = useSettingsStore((s) => s.setTvCalendarAutoSync);
   const [syncStatus, setSyncStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  async function loadSettings() {
-    if (!window.storage) return;
-    const result = await window.storage.getSettings();
-    if (result.data) {
-      setAutoSyncEnabled(result.data.tvCalendarAutoSync ?? true);
-    }
-  }
-
-  async function handleToggleAutoSync(value: boolean) {
-    setAutoSyncEnabled(value);
-    if (window.storage) {
-      await window.storage.updateSettings({ tvCalendarAutoSync: value });
-    }
+  function handleToggleAutoSync(value: boolean) {
+    setTvCalendarAutoSync(value);
   }
 
   async function handleManualSync() {

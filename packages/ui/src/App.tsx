@@ -125,10 +125,11 @@ import { PlaybackDetailsModal } from './components/PlaybackDetailsModal';
 import { SourcePickerModal } from './components/SourcePickerModal';
 import type { RecommendationItem } from './hooks/useLazyStremioRecommendations';
 import { DEFAULT_BADGE_SOURCES, mergeDefaultBadgeSources, compileBadgeSources } from './utils/streamBadges';
-import { applyUiDesign, initUiDesign } from './utils/uiDesign';
+import { initUiDesign } from './utils/uiDesign';
 
-// Apply the persisted UI design (v1/v2/v3) before first paint — the sync effect
-// below re-applies it authoritatively once settings finish loading.
+// Apply the persisted UI design (v1/v2/v3) before first paint — best effort
+// from the settings cache. The DOM applier re-applies authoritatively once the
+// settings store hydrates (it owns applyUiDesign via modernUiEnabled).
 initUiDesign();
 
 // NEW: Extracted hooks
@@ -1969,6 +1970,13 @@ function useTmdbPresencePoster(
   const [guideTransparent, setGuideTransparent] = useState(false);
   const [isTransparentGuideZapActive, setIsTransparentGuideZapActive] = useState(false);
   const [liveTvDesign, setLiveTvDesign] = useState<'v1' | 'v2' | 'v3'>('v3');
+  // Design version comes from the settings store (hydration latches the
+  // v3-default migration; the DOM applier owns applyUiDesign). Derive the
+  // React state reactively so Settings changes and hydration both land here.
+  const modernUiEnabled = useSettingsStore((s) => s.modernUiEnabled);
+  useEffect(() => {
+    setLiveTvDesign(modernUiEnabled === 'v3' ? 'v3' : (modernUiEnabled === false || modernUiEnabled === 'v1' ? 'v1' : 'v2'));
+  }, [modernUiEnabled]);
   const [randomScheme, setRandomScheme] = useState<string>('scheme-apple');
   const [previewVideoRect, setPreviewVideoRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
 
@@ -2408,21 +2416,12 @@ function useTmdbPresencePoster(
   // ==========================================================================
   const [showSubtitleModal, setShowSubtitleModal] = useState(false);
   const [showAudioModal, setShowAudioModal] = useState(false);
-  const [hasAudioDelay, setHasAudioDelay] = useState(false);
-
-  useEffect(() => {
-    if (currentChannel && window.storage) {
-      window.storage.getSettings().then((result: any) => {
-        const delays = result.data?.channelAudioDelays || {};
-        const key = `${currentChannel.source_id}_${currentChannel.stream_id}`;
-        setHasAudioDelay(Boolean(delays[key]));
-      }).catch(() => {
-        setHasAudioDelay(false);
-      });
-    } else {
-      setHasAudioDelay(false);
-    }
-  }, [currentChannel]);
+  // Reactive store read — no IPC round-trip per channel change, and the
+  // indicator updates live when a delay is set in the audio modal.
+  const channelAudioDelays = useSettingsStore((s) => s.channelAudioDelays);
+  const hasAudioDelay = currentChannel
+    ? Boolean(channelAudioDelays?.[`${currentChannel.source_id}_${currentChannel.stream_id}`])
+    : false;
 
   const handleShowSubtitleModal = useCallback(() => {
     controlsHoveredRef.current = false;
@@ -3762,51 +3761,13 @@ function useTmdbPresencePoster(
         ]);
         
         if (!isPeriodic && settingsResult.data) {
-          // Apply font sizes (only on initial sync)
-          const loadedModernUi = settingsResult.data.modernUiEnabled ?? 'v3';
-          const chSize = settingsResult.data.channelFontSize ?? (loadedModernUi === 'v3' ? 12 : 14);
-          const catSize = settingsResult.data.categoryFontSize ?? 13;
-          const srcSize = settingsResult.data.sourceFontSize ?? 12;
-          document.documentElement.style.setProperty('--channel-font-size', `${chSize}px`);
-          document.documentElement.style.setProperty('--category-font-size', `${catSize}px`);
-          document.documentElement.style.setProperty('--source-font-size', `${srcSize}px`);
-          if (settingsResult.data.epgTitleFontSize) {
-            document.documentElement.style.setProperty('--epg-title-font-size', `${settingsResult.data.epgTitleFontSize}px`);
-          }
-          if (settingsResult.data.epgBodyFontSize) {
-            document.documentElement.style.setProperty('--epg-body-font-size', `${settingsResult.data.epgBodyFontSize}px`);
-          }
-          const loadedAppLogoSize = settingsResult.data.channelLogoSize ?? 42;
-          document.documentElement.style.setProperty('--channel-logo-size', `${loadedAppLogoSize}px`);
-          if (settingsResult.data.channelLogoRoundEdges === false) {
-            document.documentElement.style.setProperty('--channel-logo-radius', '0px');
-            document.documentElement.classList.add('logo-sharp-edges');
-          } else {
-            document.documentElement.style.removeProperty('--channel-logo-radius');
-            document.documentElement.classList.remove('logo-sharp-edges');
-          }
-          if (settingsResult.data.channelLogoPadding === 'padded') {
-            document.documentElement.classList.add('logo-padded-tiles');
-          } else {
-            document.documentElement.classList.remove('logo-padded-tiles');
-          }
-          if (settingsResult.data.uiScale) {
-            document.documentElement.style.setProperty('--app-zoom', String(settingsResult.data.uiScale / 100));
-            // Trigger EPG to re-measure availableWidth now that zoom is set.
-            // ChannelPanel's useEffect runs before this settings load completes,
-            // so it initially measures at zoom=1. This corrects it.
-            window.dispatchEvent(new Event('resize'));
-          }
-          // Load transparent guide overlay settings
-          const loadedGuideHeight = settingsResult.data.transparentGuideHeight ?? 40;
-          document.documentElement.style.setProperty('--transparent-guide-height', `${loadedGuideHeight}%`);
-          const loadedHideHeader = settingsResult.data.transparentGuideHideHeader ?? false;
-          document.documentElement.classList.toggle('transparent-guide-hide-header', loadedHideHeader);
-          const loadedOverlayOpacity = settingsResult.data.transparentGuideOverlayOpacity ?? 55;
-          document.documentElement.style.setProperty('--transparent-guide-overlay-opacity', String(loadedOverlayOpacity / 100));
-          const loadedSidebarOpacity = settingsResult.data.transparentGuideSidebarOpacity ?? 55;
-          document.documentElement.style.setProperty('--transparent-guide-sidebar-opacity', String(loadedSidebarOpacity / 100));
-          // Apply other settings
+          // CSS-var application (font sizes, logo, uiScale, transparent guide)
+          // and the v3-default migration now live in the settings store: the
+          // DOM applier owns the vars/classes and hydration latches the
+          // migration. App derives liveTvDesign from store.modernUiEnabled.
+          //
+          // What stays here: seeding the uiStore runtime copies of the EPG
+          // display settings (kept out of the settings store by design).
           if (settingsResult.data.channelSortOrder) {
             setChannelSortOrder(settingsResult.data.channelSortOrder as 'alphabetical' | 'number' | 'provider');
           } else if (!channelSortOrderMigrated) {
@@ -3834,25 +3795,6 @@ function useTmdbPresencePoster(
           if (settingsResult.data.includeAllChannelsToPlaylist !== undefined) {
             setIncludeAllChannelsToPlaylist(settingsResult.data.includeAllChannelsToPlaylist);
           }
-          // Apply modern UI setting (default to v3 if never set or migrating to v3 default)
-          let modernUiVal = settingsResult.data.modernUiEnabled;
-          let design: 'v1' | 'v2' | 'v3' = 'v3';
-
-          if (!settingsResult.data.v3DefaultMigrated) {
-            // First time running with V3 as default. Migrate new and old users.
-            modernUiVal = 'v3';
-            design = 'v3';
-            setLiveTvDesign('v3');
-            await window.storage.updateSettings({
-              modernUiEnabled: 'v3',
-              v3DefaultMigrated: true
-            });
-          } else {
-            design = modernUiVal === 'v3' ? 'v3' : (modernUiVal === false || modernUiVal === 'v1' ? 'v1' : 'v2');
-            setLiveTvDesign(design);
-          }
-
-          applyUiDesign(design);
         }
 
         const epgRefreshHours = settingsResult.data?.epgRefreshHours ?? 6;
@@ -5063,7 +5005,6 @@ function useTmdbPresencePoster(
         isOpen={showAudioModal}
         type="audio"
         channel={currentChannel}
-        onAudioDelayChanged={setHasAudioDelay}
         onClose={() => {
           controlsHoveredRef.current = false;
           setShowAudioModal(false);
@@ -5421,7 +5362,6 @@ function useTmdbPresencePoster(
           overlayOnClickOnly={overlayOnClickOnly}
           onOverlayOnClickOnlyChange={setOverlayOnClickOnly}
           liveTvDesign={liveTvDesign}
-          onLiveTvDesignChange={setLiveTvDesign}
           epgMetadataBadgeResolution={epgMetadataBadgeResolution}
           onEpgMetadataBadgeResolutionChange={setEpgMetadataBadgeResolution}
           epgMetadataBadgeFps={epgMetadataBadgeFps}

@@ -252,13 +252,76 @@ files into three tiers. All three tiers have been worked through:
   the Settings editor blob, the autosync v3 migration, and `CategoryStrip`'s
   nav/category flags.
 
-The count dropped from ~100 to **42 direct calls in 23 files**. Remaining
-Tier-2 work (fields not yet in the store): `trakt*`/`simkl*`/
-`tvCalendarAutoSync` (ScrobblingTab, SimklTab, NuvioTab, TVCalendarTab,
-TraktCatalogsModal, scrobbler service), `collapseSourceCategoriesOnStartup` +
-nav/category flags (CategoryStrip), and `streamMaxRetries` /
-`streamWatchdogSeconds` / `channelAudioDelays` (playback hot paths — keep
-direct until those fields land in the store).
+The count dropped from ~100 to **6 direct calls in 5 files** (plus the two
+infrastructure reads — the bridge definition and the hydration load — and the
+settings-cache helper, which wraps `getSettings` by design).
+
+- **Trakt/Simkl/TV-calendar migrated**: all `trakt*` / `simkl*` /
+  `tvCalendarAutoSync` fields live in the store with service-shaped setters
+  (`setTraktSettings`, `setSimklSettings`, `setTvCalendarAutoSync`). The
+  scrobbler service's private get/update wrappers now read/write the store
+  (all ~16 call sites at once); `ScrobblingTab`, `SimklTab`, `NuvioTab`,
+  `TVCalendarTab`, `TraktCatalogsModal`, `StremioHome`, `CatalogDetailView`,
+  `CloudCatalogDetailView`, and `NuvioPage` read selectors/`getState()`. The
+  legacy `traktWatchlistEnabled` → `traktCatalogsEnabled` migration moved into
+  hydration.
+- **Category-sidebar flags migrated**: `showAllChannels` / `showFavorites` /
+  `showWatchlist` / `showRecentlyViewed` / `favoritesMode` /
+  `collapseSourceCategoriesOnStartup` in the store. `CategoryStrip` and
+  `VerticalSidebar` read selectors/`getState()`; Settings.tsx and CategoryStrip
+  write through `setCategorySettings` (which persists + dispatches the legacy
+  `ynotv:category-settings-changed` event so Settings' local-state listener
+  stays in sync). `Settings`/`LiveTVTab` keep their editor-local copies for the
+  form UI per the Tier-3 editor rule.
+
+Final Tier-2 sweep converted the last store-backed fields:
+- **Per-channel audio delays** (`channelAudioDelays`) live in the store —
+  `TrackSelectionModal` does read-modify-write via `setChannelAudioDelays`,
+  `usePlayback` restores the delay from the store, and App.tsx's audio-delay
+  indicator is now a reactive selector (the `onAudioDelayChanged` callback was
+  removed as redundant).
+- **Playback retry/stream knobs** (`streamMaxRetries`, `streamWatchdogSeconds`,
+  `useEventBasedReconnect`, `stallDetectionEnabled`, `showLoadingScreen`)
+  live in the store via `setRetrySettings`; `usePlayback` reads them at mount
+  and still gets live updates through the legacy `retry-settings-changed`
+  event the setter dispatches.
+
+**Remaining direct reads (4 calls / 3 files), each deliberately kept direct:**
+- `App.tsx` autosync boot — seeds the `uiStore` runtime copies of the EPG
+  display settings (`channelSortOrder`, `epgView`, `epgVisibleHours`,
+  `epgClockFormat`, `epgShowDate`, `categorySortOrder`,
+  `includeAllChannelsToPlaylist` — kept in uiStore by design) and reads the
+  sync-config fields (`epgRefreshHours`/`vodRefreshHours`/`epgSyncConcurrency`).
+- `App.tsx` window init — reads `minimizeToTray`/`startupWidth`/`startupHeight`
+  to seed Rust-side window flags (not store-owned; one-shot at launch).
+- `Settings.tsx` editor blob — seeds the whole settings form from one read.
+- `utils/exportImport.ts` — the export/backup must capture the full settings
+  blob, store and non-store fields alike.
+
+Final sweep (this pass) moved the remaining CSS-var fields into the store with
+applier-owned DOM writes and the v3-default migration into hydration:
+- **Store + setters**: `channelFontSize`, `categoryFontSize`,
+  `epgTitleFontSize`, `epgBodyFontSize`, `uiScale`, `transparentGuideHeight` /
+  `transparentGuideHideHeader` / `transparentGuideOverlayOpacity` /
+  `transparentGuideSidebarOpacity`, `allowLanSources`, `modernUiEnabled`,
+  `v3DefaultMigrated` (and a missing `setSourceFontSize` added alongside the
+  already-migrated `sourceFontSize`).
+- **DOM applier**: new sections own `--channel/--category/--source/--epg-title/
+  --epg-body-font-size`, `--app-zoom` (+ EPG re-measure resize), the four
+  transparent-guide vars/class, and the design application (`applyUiDesign`
+  driven by `modernUiEnabled`).
+- **Hydration**: the v3-default migration now latches here — a missing
+  `v3DefaultMigrated` forces `modernUiEnabled = 'v3'` and persists the flag
+  exactly once (tested). The `channelFontSize` default stays design-dependent
+  (14 on v1/v2, 12 on v3).
+- **Converted call sites**: `Settings.tsx` font/transparent-guide/uiScale/
+  design handlers now route through store setters (editor keeps local form
+  state); `SourcesTab`'s `allowLanSources` gate is a sync store read;
+  `SecurityTab`'s LAN toggle writes through `setAllowLanSources` (no direct
+  storage write); `ChannelManager`'s one-shot font-size effect was deleted
+  (applier owns the var); App derives `liveTvDesign` from
+  `store.modernUiEnabled` and the autosync boot no longer writes CSS vars or
+  runs the migration.
 
 ## Risks & mitigations
 

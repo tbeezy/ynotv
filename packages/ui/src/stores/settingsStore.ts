@@ -70,6 +70,49 @@ export function dispatchAppEvent(name: string, detail: Record<string, any>) {
 }
 
 /* ---------------------------------------------------------------------------
+   Trakt / Simkl / category-visibility settings (service-shaped partials).
+   --------------------------------------------------------------------------- */
+
+export interface TraktSettings {
+  traktEnabled: boolean;
+  traktAccessToken: string | null;
+  traktRefreshToken: string | null;
+  traktTokenExpiresAt: number | null;
+  traktScrobbleEnabled: boolean;
+  traktSyncEnabled: boolean;
+  traktCatalogsEnabled: Record<string, boolean>;
+  traktCatalogOrder: string[];
+  traktCatalogsBeforeAddon: boolean;
+  traktEnabledLists: { id: string; name: string }[];
+  traktNuvioCatalogsEnabled: Record<string, boolean>;
+  traktNuvioCatalogOrder: string[];
+  traktNuvioCatalogsBeforeAddon: boolean;
+  traktNuvioEnabledLists: { id: string; name: string }[];
+}
+
+export interface SimklSettings {
+  simklEnabled: boolean;
+  simklAccessToken: string | null;
+  simklScrobbleEnabled: boolean;
+}
+
+export interface CategorySettings {
+  showAllChannels: boolean;
+  showFavorites: boolean;
+  showWatchlist: boolean;
+  showRecentlyViewed: boolean;
+  favoritesMode: 'global' | 'perSource' | 'both';
+}
+
+export interface RetrySettings {
+  streamMaxRetries: number;
+  streamWatchdogSeconds: number;
+  useEventBasedReconnect: boolean;
+  stallDetectionEnabled: boolean;
+  showLoadingScreen: boolean;
+}
+
+/* ---------------------------------------------------------------------------
    State shape.
    --------------------------------------------------------------------------- */
 
@@ -95,6 +138,40 @@ export interface SettingsState {
   maxSearchResults: number;
   searchResultsOrder: 'default' | 'alphabetical';
   sourceFontSize: number;
+  setSourceFontSize: (size: number) => void;
+
+  // UI font sizes (CSS vars owned by the DOM applier)
+  channelFontSize: number;
+  setChannelFontSize: (size: number) => void;
+  categoryFontSize: number;
+  setCategoryFontSize: (size: number) => void;
+  epgTitleFontSize: number;
+  setEpgTitleFontSize: (size: number) => void;
+  epgBodyFontSize: number;
+  setEpgBodyFontSize: (size: number) => void;
+
+  // UI scale (--app-zoom)
+  uiScale: number;
+  setUiScale: (scale: number) => void;
+
+  // Transparent guide overlay (CSS vars owned by the DOM applier)
+  transparentGuideHeight: number;
+  setTransparentGuideHeight: (height: number) => void;
+  transparentGuideHideHeader: boolean;
+  setTransparentGuideHideHeader: (hide: boolean) => void;
+  transparentGuideOverlayOpacity: number;
+  setTransparentGuideOverlayOpacity: (opacity: number) => void;
+  transparentGuideSidebarOpacity: number;
+  setTransparentGuideSidebarOpacity: (opacity: number) => void;
+
+  // LAN source security gate (SourcesTab save-time check)
+  allowLanSources: boolean;
+  setAllowLanSources: (allowed: boolean) => void;
+
+  // UI design version — the v3-default migration latches in hydration
+  modernUiEnabled: 'v1' | 'v2' | 'v3' | false;
+  setModernUiEnabled: (value: 'v1' | 'v2' | 'v3' | false) => void;
+  v3DefaultMigrated: boolean;
 
   // Category display
   categorySortOrder: 'default' | 'alphabetical';
@@ -219,6 +296,55 @@ export interface SettingsState {
   setMovieGenresEnabled: (genres: number[]) => void;
   seriesGenresEnabled: number[];
   setSeriesGenresEnabled: (genres: number[]) => void;
+
+  // Trakt integration (flat storage keys for backward compat with exports)
+  traktEnabled: boolean;
+  traktAccessToken: string | null;
+  traktRefreshToken: string | null;
+  traktTokenExpiresAt: number | null;
+  traktScrobbleEnabled: boolean;
+  traktSyncEnabled: boolean;
+  traktCatalogsEnabled: Record<string, boolean>;
+  traktCatalogOrder: string[];
+  traktCatalogsBeforeAddon: boolean;
+  traktEnabledLists: { id: string; name: string }[];
+  traktNuvioCatalogsEnabled: Record<string, boolean>;
+  traktNuvioCatalogOrder: string[];
+  traktNuvioCatalogsBeforeAddon: boolean;
+  traktNuvioEnabledLists: { id: string; name: string }[];
+  setTraktSettings: (partial: Partial<TraktSettings>) => void;
+
+  // Simkl integration
+  simklEnabled: boolean;
+  simklAccessToken: string | null;
+  simklScrobbleEnabled: boolean;
+  setSimklSettings: (partial: Partial<SimklSettings>) => void;
+
+  // TV calendar auto-sync
+  tvCalendarAutoSync: boolean;
+  setTvCalendarAutoSync: (enabled: boolean) => void;
+
+  // Category sidebar visibility (LiveTV sidebar top rows + folders)
+  showAllChannels: boolean;
+  showFavorites: boolean;
+  showWatchlist: boolean;
+  showRecentlyViewed: boolean;
+  favoritesMode: 'global' | 'perSource' | 'both';
+  collapseSourceCategoriesOnStartup: boolean;
+  setCategorySettings: (partial: Partial<CategorySettings>) => void;
+  setCollapseSourceCategoriesOnStartup: (enabled: boolean) => void;
+
+  // Playback retry / stream-tuning knobs (read once at usePlayback mount)
+  streamMaxRetries: number;
+  streamWatchdogSeconds: number;
+  useEventBasedReconnect: boolean;
+  stallDetectionEnabled: boolean;
+  showLoadingScreen: boolean;
+  setRetrySettings: (partial: Partial<RetrySettings>) => void;
+
+  // Per-channel audio delay map (key: `${source_id}_${stream_id}`)
+  channelAudioDelays: Record<string, number>;
+  setChannelAudioDelays: (delays: Record<string, number>) => void;
 
   // Navigation tab visibility
   navHiddenTabs: string[];
@@ -482,6 +608,76 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   maxSearchResults: 200,
   searchResultsOrder: 'default',
   sourceFontSize: 12,
+  setSourceFontSize: (size) => {
+    set({ sourceFontSize: size });
+    persistSettings({ sourceFontSize: size }, true);
+  },
+
+  // UI font sizes (CSS vars owned by the DOM applier)
+  channelFontSize: (cachedSettings?.channelFontSize as number) ?? 12,
+  setChannelFontSize: (size) => {
+    set({ channelFontSize: size });
+    persistSettings({ channelFontSize: size }, true);
+  },
+  categoryFontSize: (cachedSettings?.categoryFontSize as number) ?? 13,
+  setCategoryFontSize: (size) => {
+    set({ categoryFontSize: size });
+    persistSettings({ categoryFontSize: size }, true);
+  },
+  epgTitleFontSize: (cachedSettings?.epgTitleFontSize as number) ?? 32,
+  setEpgTitleFontSize: (size) => {
+    set({ epgTitleFontSize: size });
+    persistSettings({ epgTitleFontSize: size }, true);
+  },
+  epgBodyFontSize: (cachedSettings?.epgBodyFontSize as number) ?? 16,
+  setEpgBodyFontSize: (size) => {
+    set({ epgBodyFontSize: size });
+    persistSettings({ epgBodyFontSize: size }, true);
+  },
+
+  // UI scale (--app-zoom)
+  uiScale: (cachedSettings?.uiScale as number) ?? 100,
+  setUiScale: (scale) => {
+    set({ uiScale: scale });
+    persistSettings({ uiScale: scale }, true);
+  },
+
+  // Transparent guide overlay (CSS vars owned by the DOM applier)
+  transparentGuideHeight: (cachedSettings?.transparentGuideHeight as number) ?? 40,
+  setTransparentGuideHeight: (height) => {
+    set({ transparentGuideHeight: height });
+    persistSettings({ transparentGuideHeight: height });
+  },
+  transparentGuideHideHeader: (cachedSettings?.transparentGuideHideHeader as boolean) ?? false,
+  setTransparentGuideHideHeader: (hide) => {
+    set({ transparentGuideHideHeader: hide });
+    persistSettings({ transparentGuideHideHeader: hide });
+  },
+  transparentGuideOverlayOpacity: (cachedSettings?.transparentGuideOverlayOpacity as number) ?? 55,
+  setTransparentGuideOverlayOpacity: (opacity) => {
+    set({ transparentGuideOverlayOpacity: opacity });
+    persistSettings({ transparentGuideOverlayOpacity: opacity });
+  },
+  transparentGuideSidebarOpacity: (cachedSettings?.transparentGuideSidebarOpacity as number) ?? 55,
+  setTransparentGuideSidebarOpacity: (opacity) => {
+    set({ transparentGuideSidebarOpacity: opacity });
+    persistSettings({ transparentGuideSidebarOpacity: opacity });
+  },
+
+  // LAN source security gate
+  allowLanSources: (cachedSettings?.allowLanSources as boolean) ?? false,
+  setAllowLanSources: (allowed) => {
+    set({ allowLanSources: allowed });
+    persistSettings({ allowLanSources: allowed });
+  },
+
+  // UI design version — the v3-default migration latches in hydration
+  modernUiEnabled: (cachedSettings?.modernUiEnabled as 'v1' | 'v2' | 'v3' | false | undefined) ?? 'v3',
+  setModernUiEnabled: (value) => {
+    set({ modernUiEnabled: value });
+    persistSettings({ modernUiEnabled: value });
+  },
+  v3DefaultMigrated: (cachedSettings?.v3DefaultMigrated as boolean) ?? false,
 
   // Category display
   categorySortOrder: 'default',
@@ -1058,6 +1254,118 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setSeriesGenresEnabled: (genres) => {
     set({ seriesGenresEnabled: genres });
     persistSettings({ seriesGenresEnabled: genres });
+  },
+
+  // Trakt integration — the setter accepts a service-shaped partial and maps it
+  // to the flat storage keys (backward compatible with existing exports).
+  traktEnabled: false,
+  traktAccessToken: null,
+  traktRefreshToken: null,
+  traktTokenExpiresAt: null,
+  traktScrobbleEnabled: false,
+  traktSyncEnabled: false,
+  traktCatalogsEnabled: {},
+  traktCatalogOrder: [],
+  traktCatalogsBeforeAddon: false,
+  traktEnabledLists: [],
+  traktNuvioCatalogsEnabled: {},
+  traktNuvioCatalogOrder: [],
+  traktNuvioCatalogsBeforeAddon: false,
+  traktNuvioEnabledLists: [],
+  setTraktSettings: (partial) => {
+    const patch: Record<string, any> = {};
+    // `in` (not `!== undefined`) so an explicitly-passed undefined clears the
+    // field — the scrobbler's logout writes undefined to wipe catalogs/lists.
+    if ('traktEnabled' in partial) patch.traktEnabled = partial.traktEnabled ?? false;
+    if ('traktAccessToken' in partial) patch.traktAccessToken = partial.traktAccessToken ?? null;
+    if ('traktRefreshToken' in partial) patch.traktRefreshToken = partial.traktRefreshToken ?? null;
+    if ('traktTokenExpiresAt' in partial) patch.traktTokenExpiresAt = partial.traktTokenExpiresAt ?? null;
+    if ('traktScrobbleEnabled' in partial) patch.traktScrobbleEnabled = partial.traktScrobbleEnabled ?? false;
+    if ('traktSyncEnabled' in partial) patch.traktSyncEnabled = partial.traktSyncEnabled ?? false;
+    if ('traktCatalogsEnabled' in partial) patch.traktCatalogsEnabled = partial.traktCatalogsEnabled ?? {};
+    if ('traktCatalogOrder' in partial) patch.traktCatalogOrder = partial.traktCatalogOrder ?? [];
+    if ('traktCatalogsBeforeAddon' in partial) patch.traktCatalogsBeforeAddon = partial.traktCatalogsBeforeAddon ?? false;
+    if ('traktEnabledLists' in partial) patch.traktEnabledLists = partial.traktEnabledLists ?? [];
+    if ('traktNuvioCatalogsEnabled' in partial) patch.traktNuvioCatalogsEnabled = partial.traktNuvioCatalogsEnabled ?? {};
+    if ('traktNuvioCatalogOrder' in partial) patch.traktNuvioCatalogOrder = partial.traktNuvioCatalogOrder ?? [];
+    if ('traktNuvioCatalogsBeforeAddon' in partial) patch.traktNuvioCatalogsBeforeAddon = partial.traktNuvioCatalogsBeforeAddon ?? false;
+    if ('traktNuvioEnabledLists' in partial) patch.traktNuvioEnabledLists = partial.traktNuvioEnabledLists ?? [];
+    set(patch);
+    persistSettings(patch);
+  },
+
+  // Simkl integration
+  simklEnabled: false,
+  simklAccessToken: null,
+  simklScrobbleEnabled: false,
+  setSimklSettings: (partial) => {
+    const patch: Record<string, any> = {};
+    if (partial.simklEnabled !== undefined) patch.simklEnabled = partial.simklEnabled;
+    if (partial.simklAccessToken !== undefined) patch.simklAccessToken = partial.simklAccessToken;
+    if (partial.simklScrobbleEnabled !== undefined) patch.simklScrobbleEnabled = partial.simklScrobbleEnabled;
+    set(patch);
+    persistSettings(patch);
+  },
+
+  // TV calendar auto-sync
+  tvCalendarAutoSync: true,
+  setTvCalendarAutoSync: (enabled) => {
+    set({ tvCalendarAutoSync: enabled });
+    persistSettings({ tvCalendarAutoSync: enabled });
+  },
+
+  // Category sidebar visibility — the setter dispatches the legacy event so
+  // Settings.tsx's local-state listener stays in sync.
+  showAllChannels: true,
+  showFavorites: true,
+  showWatchlist: true,
+  showRecentlyViewed: true,
+  favoritesMode: 'global',
+  setCategorySettings: (partial) => {
+    const patch: Record<string, any> = {};
+    if (partial.showAllChannels !== undefined) patch.showAllChannels = partial.showAllChannels;
+    if (partial.showFavorites !== undefined) patch.showFavorites = partial.showFavorites;
+    if (partial.showWatchlist !== undefined) patch.showWatchlist = partial.showWatchlist;
+    if (partial.showRecentlyViewed !== undefined) patch.showRecentlyViewed = partial.showRecentlyViewed;
+    if (partial.favoritesMode !== undefined) patch.favoritesMode = partial.favoritesMode;
+    set(patch);
+    persistSettings(patch);
+    if (Object.keys(patch).length > 0) {
+      dispatchAppEvent('ynotv:category-settings-changed', patch);
+    }
+  },
+  collapseSourceCategoriesOnStartup: false,
+  setCollapseSourceCategoriesOnStartup: (enabled) => {
+    set({ collapseSourceCategoriesOnStartup: enabled });
+    persistSettings({ collapseSourceCategoriesOnStartup: enabled });
+  },
+
+  // Playback retry / stream-tuning knobs — the setter dispatches the legacy
+  // event so usePlayback's live-ref listener still gets notified.
+  streamMaxRetries: 20,
+  streamWatchdogSeconds: 10,
+  useEventBasedReconnect: false,
+  stallDetectionEnabled: true,
+  showLoadingScreen: false,
+  setRetrySettings: (partial) => {
+    const patch: Record<string, any> = {};
+    if ('streamMaxRetries' in partial) patch.streamMaxRetries = partial.streamMaxRetries;
+    if ('streamWatchdogSeconds' in partial) patch.streamWatchdogSeconds = partial.streamWatchdogSeconds;
+    if ('useEventBasedReconnect' in partial) patch.useEventBasedReconnect = partial.useEventBasedReconnect;
+    if ('stallDetectionEnabled' in partial) patch.stallDetectionEnabled = partial.stallDetectionEnabled;
+    if ('showLoadingScreen' in partial) patch.showLoadingScreen = partial.showLoadingScreen;
+    set(patch);
+    persistSettings(patch, true); // debounced — the old Settings writers used debouncedUpdateSettings
+    if (Object.keys(patch).length > 0) {
+      dispatchAppEvent('ynotv:retry-settings-changed', patch);
+    }
+  },
+
+  // Per-channel audio delay map (key: `${source_id}_${stream_id}`)
+  channelAudioDelays: {},
+  setChannelAudioDelays: (delays) => {
+    set({ channelAudioDelays: delays });
+    persistSettings({ channelAudioDelays: delays });
   },
 
   // Automated backups — the setter accepts the service-shaped partial and maps

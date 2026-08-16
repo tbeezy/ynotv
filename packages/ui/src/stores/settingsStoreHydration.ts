@@ -55,7 +55,12 @@ const BOOLEAN_KEYS = new Set([
   'logoCacheEnabled', 'logoCachePrefetch', 'epgDarkenCurrent', 'epgHighlightBorderCurrent',
   'epgBoldChannelNames', 'epgBoldTopCategories', 'epgBoldSourceCategories',
   'autoBackupEnabled', 'streamingCatalogsEnabled', 'streamingNuvioCatalogsEnabled',
-  'rpdbBackdropsEnabled',
+  'rpdbBackdropsEnabled', 'traktEnabled', 'traktScrobbleEnabled', 'traktSyncEnabled',
+  'traktCatalogsBeforeAddon', 'traktNuvioCatalogsBeforeAddon', 'simklEnabled',
+  'simklScrobbleEnabled', 'tvCalendarAutoSync', 'showAllChannels', 'showFavorites',
+  'showWatchlist', 'showRecentlyViewed', 'collapseSourceCategoriesOnStartup',
+  'useEventBasedReconnect', 'stallDetectionEnabled', 'showLoadingScreen',
+  'transparentGuideHideHeader', 'allowLanSources', 'v3DefaultMigrated',
 ] as const);
 
 const NUMBER_KEYS = new Set([
@@ -63,7 +68,10 @@ const NUMBER_KEYS = new Set([
   'channelInfoOverlayFontSize', 'channelInfoOverlayLogoSize', 'channelInfoOverlayBoxWidth',
   'channelInfoOverlayOpacity', 'overlayAutohideTimer', 'customScrollbarWidth',
   'channelLogoSize', 'epgVisibleHours', 'catchupStartPadding', 'catchupEndPadding',
-  'autoBackupIntervalHours', 'autoBackupMaxBackups',
+  'autoBackupIntervalHours', 'autoBackupMaxBackups', 'traktTokenExpiresAt',
+  'streamMaxRetries', 'streamWatchdogSeconds', 'channelFontSize', 'categoryFontSize',
+  'epgTitleFontSize', 'epgBodyFontSize', 'uiScale', 'transparentGuideHeight',
+  'transparentGuideOverlayOpacity', 'transparentGuideSidebarOpacity',
 ]);
 
 /** Coerce type-sensitive stored values; leave everything else untouched. */
@@ -164,6 +172,19 @@ async function hydrateSettingsStore(): Promise<void> {
     if (result.data && !isEmptyData(result.data)) {
       const data = sanitizeSettingData(result.data);
 
+      // v3-default migration — was owned by App's autosync boot block. Latch it
+      // here once per install: a missing flag means this install predates v3 as
+      // the default, so force v3 and persist the migration so it never re-runs.
+      if (!data.v3DefaultMigrated) {
+        data.modernUiEnabled = 'v3';
+        data.v3DefaultMigrated = true;
+        try {
+          window.storage.updateSettings({ modernUiEnabled: 'v3', v3DefaultMigrated: true }).catch(() => {});
+        } catch (e) {
+          console.warn('[settingsHydration] Failed to persist v3-default migration:', e);
+        }
+      }
+
       if (data.savedVolume !== undefined) {
         try {
           if (localStorage.getItem('ynotv_volume') === null) {
@@ -183,6 +204,20 @@ async function hydrateSettingsStore(): Promise<void> {
         maxSearchResults: data.maxSearchResults ?? 200,
         searchResultsOrder: data.searchResultsOrder ?? 'default',
         sourceFontSize: data.sourceFontSize ?? 12,
+        // channelFontSize defaults to 14 on v1/v2 designs (matches the old
+        // autosync boot default), 12 on v3.
+        channelFontSize: data.channelFontSize ?? (data.modernUiEnabled !== undefined && data.modernUiEnabled !== 'v3' ? 14 : 12),
+        categoryFontSize: data.categoryFontSize ?? 13,
+        epgTitleFontSize: data.epgTitleFontSize ?? 32,
+        epgBodyFontSize: data.epgBodyFontSize ?? 16,
+        uiScale: data.uiScale ?? 100,
+        transparentGuideHeight: data.transparentGuideHeight ?? 40,
+        transparentGuideHideHeader: data.transparentGuideHideHeader ?? false,
+        transparentGuideOverlayOpacity: data.transparentGuideOverlayOpacity ?? 55,
+        transparentGuideSidebarOpacity: data.transparentGuideSidebarOpacity ?? 55,
+        allowLanSources: data.allowLanSources ?? false,
+        modernUiEnabled: data.modernUiEnabled ?? 'v3',
+        v3DefaultMigrated: data.v3DefaultMigrated ?? false,
         categorySortOrder: data.categorySortOrder ?? 'default',
         includeAllChannelsToPlaylist: data.includeAllChannelsToPlaylist ?? false,
         hideDisabledSources: data.hideDisabledSources ?? false,
@@ -243,6 +278,38 @@ async function hydrateSettingsStore(): Promise<void> {
         downloadsPath: typeof data.downloadsPath === 'string' ? data.downloadsPath : '',
         movieGenresEnabled: Array.isArray(data.movieGenresEnabled) ? data.movieGenresEnabled : [],
         seriesGenresEnabled: Array.isArray(data.seriesGenresEnabled) ? data.seriesGenresEnabled : [],
+        traktEnabled: data.traktEnabled ?? false,
+        traktAccessToken: typeof data.traktAccessToken === 'string' ? data.traktAccessToken : null,
+        traktRefreshToken: typeof data.traktRefreshToken === 'string' ? data.traktRefreshToken : null,
+        traktTokenExpiresAt: typeof data.traktTokenExpiresAt === 'number' ? data.traktTokenExpiresAt : null,
+        traktScrobbleEnabled: data.traktScrobbleEnabled ?? false,
+        traktSyncEnabled: data.traktSyncEnabled ?? false,
+        traktCatalogsEnabled: data.traktCatalogsEnabled && typeof data.traktCatalogsEnabled === 'object'
+          ? data.traktCatalogsEnabled
+          : (data.traktWatchlistEnabled !== undefined ? { watchlist: data.traktWatchlistEnabled !== false } : {}),
+        traktCatalogOrder: Array.isArray(data.traktCatalogOrder) ? data.traktCatalogOrder : [],
+        traktCatalogsBeforeAddon: data.traktCatalogsBeforeAddon ?? false,
+        traktEnabledLists: Array.isArray(data.traktEnabledLists) ? data.traktEnabledLists : [],
+        traktNuvioCatalogsEnabled: data.traktNuvioCatalogsEnabled && typeof data.traktNuvioCatalogsEnabled === 'object' ? data.traktNuvioCatalogsEnabled : {},
+        traktNuvioCatalogOrder: Array.isArray(data.traktNuvioCatalogOrder) ? data.traktNuvioCatalogOrder : [],
+        traktNuvioCatalogsBeforeAddon: data.traktNuvioCatalogsBeforeAddon ?? false,
+        traktNuvioEnabledLists: Array.isArray(data.traktNuvioEnabledLists) ? data.traktNuvioEnabledLists : [],
+        simklEnabled: data.simklEnabled ?? false,
+        simklAccessToken: typeof data.simklAccessToken === 'string' ? data.simklAccessToken : null,
+        simklScrobbleEnabled: data.simklScrobbleEnabled ?? false,
+        tvCalendarAutoSync: data.tvCalendarAutoSync ?? true,
+        showAllChannels: data.showAllChannels ?? true,
+        showFavorites: data.showFavorites ?? true,
+        showWatchlist: data.showWatchlist ?? true,
+        showRecentlyViewed: data.showRecentlyViewed ?? true,
+        favoritesMode: data.favoritesMode === 'perSource' || data.favoritesMode === 'both' || data.favoritesMode === 'global' ? data.favoritesMode : 'global',
+        collapseSourceCategoriesOnStartup: data.collapseSourceCategoriesOnStartup ?? false,
+        streamMaxRetries: typeof data.streamMaxRetries === 'number' ? data.streamMaxRetries : 20,
+        streamWatchdogSeconds: typeof data.streamWatchdogSeconds === 'number' ? data.streamWatchdogSeconds : 10,
+        useEventBasedReconnect: data.useEventBasedReconnect ?? false,
+        stallDetectionEnabled: data.stallDetectionEnabled ?? true,
+        showLoadingScreen: data.showLoadingScreen ?? false,
+        channelAudioDelays: data.channelAudioDelays && typeof data.channelAudioDelays === 'object' ? data.channelAudioDelays : {},
         startupView: data.startupView ?? 'none',
         castEnabled: data.castEnabled ?? false,
         castRewriteTs: data.castRewriteTs ?? true,

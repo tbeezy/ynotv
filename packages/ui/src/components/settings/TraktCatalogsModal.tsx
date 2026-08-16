@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { scrobbler, TRAKT_CATALOG_DEFINITIONS } from '../../services/scrobbler';
 import { useSetTraktCatalogRefreshToken } from '../../stores/uiStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import '../Modal.css';
@@ -32,43 +33,27 @@ export function TraktCatalogsModal({ type, onClose }: TraktCatalogsModalProps) {
   const [listsLoading, setListsLoading] = useState(false);
 
   const loadSettings = async () => {
-    if (!(window as any).storage) return;
-    try {
-      const res = await (window as any).storage.getSettings();
-      const s = res.data || {};
+    // Settings live in the store (hydrated at boot; setters keep it current).
+    const s = useSettingsStore.getState();
 
-      let catalogsEnabled = s.traktCatalogsEnabled;
-      if (catalogsEnabled === undefined && s.traktWatchlistEnabled !== undefined) {
-        catalogsEnabled = { watchlist: s.traktWatchlistEnabled !== false };
-        (window as any).storage?.updateSettings({ traktCatalogsEnabled: catalogsEnabled });
-      }
-      setCatalogSettings(catalogsEnabled || {});
-      setCatalogOrder(s.traktCatalogOrder || []);
-      setCatalogsBeforeAddon(s.traktCatalogsBeforeAddon ?? false);
-      setTraktEnabledLists(s.traktEnabledLists || []);
+    setCatalogSettings(s.traktCatalogsEnabled || {});
+    setCatalogOrder(s.traktCatalogOrder || []);
+    setCatalogsBeforeAddon(s.traktCatalogsBeforeAddon ?? false);
+    setTraktEnabledLists(s.traktEnabledLists || []);
 
-      // Load Nuvio settings
-      setNuvioCatalogSettings(s.traktNuvioCatalogsEnabled || {});
-      setNuvioCatalogOrder(s.traktNuvioCatalogOrder || []);
-      setNuvioCatalogsBeforeAddon(s.traktNuvioCatalogsBeforeAddon ?? false);
-      setNuvioTraktEnabledLists(s.traktNuvioEnabledLists || []);
-    } catch (e) {
-      console.error('Error loading scrobbler settings:', e);
-    }
+    // Load Nuvio settings
+    setNuvioCatalogSettings(s.traktNuvioCatalogsEnabled || {});
+    setNuvioCatalogOrder(s.traktNuvioCatalogOrder || []);
+    setNuvioCatalogsBeforeAddon(s.traktNuvioCatalogsBeforeAddon ?? false);
+    setNuvioTraktEnabledLists(s.traktNuvioEnabledLists || []);
   };
 
   useEffect(() => {
     loadSettings();
   }, []);
 
-  const handleSettingUpdate = async (update: any) => {
-    if (!(window as any).storage) return;
-    try {
-      await (window as any).storage.updateSettings(update);
-      await loadSettings();
-    } catch (e) {
-      console.error('Error updating scrobbler settings:', e);
-    }
+  const handleSettingUpdate = (update: any) => {
+    useSettingsStore.getState().setTraktSettings(update);
   };
 
   const handleCatalogToggle = async (catType: string, enabled: boolean) => {

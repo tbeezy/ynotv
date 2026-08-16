@@ -5,6 +5,7 @@ import { useNuvioAuthStore } from '../../stores/nuvioAuthStore';
 import { useNuvioPluginStore } from '../../stores/nuvioPluginStore';
 import { useNuvioAddonStore } from '../../stores/nuvioAddonStore';
 import { useNuvioCollectionStore } from '../../stores/nuvioCollectionStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useUIStore } from '../../stores/uiStore';
 import { NuvioPinModal } from '../nuvio/NuvioPinModal';
 import { useModal } from '../Modal';
@@ -168,21 +169,9 @@ export const NuvioTab = forwardRef<{ save: () => Promise<void> }, NuvioTabProps>
   const token = authStore.token;
   const profile = authStore.activeProfile;
 
-  const [traktConnected, setTraktConnected] = useState(false);
+  const traktAccessToken = useSettingsStore((s) => s.traktAccessToken);
+  const traktConnected = !!traktAccessToken;
   const [showTraktModal, setShowTraktModal] = useState(false);
-  useEffect(() => {
-    const checkTraktStatus = async () => {
-      if (!window.storage) return;
-      try {
-        const res = await window.storage.getSettings();
-        const s = res.data || {};
-        setTraktConnected(!!s.traktAccessToken);
-      } catch (e) {
-        console.error('Failed to get Trakt status:', e);
-      }
-    };
-    checkTraktStatus();
-  }, []);
 
   // Badge import states
   const [badgeUrl, setBadgeUrl] = useState('');

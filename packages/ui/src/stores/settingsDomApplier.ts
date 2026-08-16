@@ -1,6 +1,7 @@
 import { useSettingsStore } from './settingsStore';
 import type { SettingsState } from './settingsStore';
 import { applyCustomTheme, updateScrollbarHoverColor } from '../utils/themeHelper';
+import { applyUiDesign } from '../utils/uiDesign';
 import i18n from '../i18n';
 
 /* ---------------------------------------------------------------------------
@@ -228,6 +229,53 @@ export function applySettingsDom(state: SettingsState): void {
   }
   if (sectionChanged('channelLogoPadding', { v: state.channelLogoPadding })) {
     toggleClass('logo-padded-tiles', state.channelLogoPadding === 'padded');
+  }
+
+  // UI font sizes (moved from the autosync boot block + Settings editor)
+  if (sectionChanged('channelFontSize', { v: state.channelFontSize })) {
+    setStyle('--channel-font-size', `${state.channelFontSize}px`);
+  }
+  if (sectionChanged('categoryFontSize', { v: state.categoryFontSize })) {
+    setStyle('--category-font-size', `${state.categoryFontSize}px`);
+  }
+  if (sectionChanged('sourceFontSize', { v: state.sourceFontSize })) {
+    setStyle('--source-font-size', `${state.sourceFontSize}px`);
+  }
+  if (sectionChanged('epgTitleFontSize', { v: state.epgTitleFontSize })) {
+    setStyle('--epg-title-font-size', `${state.epgTitleFontSize}px`);
+  }
+  if (sectionChanged('epgBodyFontSize', { v: state.epgBodyFontSize })) {
+    setStyle('--epg-body-font-size', `${state.epgBodyFontSize}px`);
+  }
+
+  // UI scale (--app-zoom). Dispatch a resize so the EPG grid re-measures
+  // availableWidth under the new zoom (was done inline in the autosync boot).
+  if (sectionChanged('uiScale', { v: state.uiScale })) {
+    setStyle('--app-zoom', String(state.uiScale / 100));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('resize'));
+    }
+  }
+
+  // Transparent guide overlay (was applied inline in the autosync boot block)
+  if (sectionChanged('transparentGuideHeight', { v: state.transparentGuideHeight })) {
+    setStyle('--transparent-guide-height', `${state.transparentGuideHeight}%`);
+  }
+  if (sectionChanged('transparentGuideHideHeader', { v: state.transparentGuideHideHeader })) {
+    toggleClass('transparent-guide-hide-header', !!state.transparentGuideHideHeader);
+  }
+  if (sectionChanged('transparentGuideOverlayOpacity', { v: state.transparentGuideOverlayOpacity })) {
+    setStyle('--transparent-guide-overlay-opacity', String(state.transparentGuideOverlayOpacity / 100));
+  }
+  if (sectionChanged('transparentGuideSidebarOpacity', { v: state.transparentGuideSidebarOpacity })) {
+    setStyle('--transparent-guide-sidebar-opacity', String(state.transparentGuideSidebarOpacity / 100));
+  }
+
+  // UI design version (v1/v2/v3 classes + stylesheets). The value comes from
+  // the store (hydration latches the v3-default migration); applyUiDesign is
+  // idempotent and owns the class/stylesheet side effects.
+  if (sectionChanged('uiDesign', { v: state.modernUiEnabled })) {
+    applyUiDesign(state.modernUiEnabled === 'v3' ? 'v3' : (state.modernUiEnabled === false || state.modernUiEnabled === 'v1' ? 'v1' : 'v2'));
   }
 
   // Custom scrollbar
