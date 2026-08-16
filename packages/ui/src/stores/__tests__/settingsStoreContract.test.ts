@@ -163,6 +163,7 @@ describe('useSettingsStore consumer contract', () => {
       'setTransparentGuideOverlayOpacity', 'transparentGuideSidebarOpacity',
       'setTransparentGuideSidebarOpacity', 'allowLanSources', 'setAllowLanSources',
       'modernUiEnabled', 'setModernUiEnabled', 'v3DefaultMigrated',
+      'stremioBadgeSize', 'setStremioBadgeSize', 'nuvioBadgeSize', 'setNuvioBadgeSize',
     ]) {
       expect(storeKeys.has(key)).toBe(true);
     }

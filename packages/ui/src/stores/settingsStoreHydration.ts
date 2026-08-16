@@ -72,6 +72,7 @@ const NUMBER_KEYS = new Set([
   'streamMaxRetries', 'streamWatchdogSeconds', 'channelFontSize', 'categoryFontSize',
   'epgTitleFontSize', 'epgBodyFontSize', 'uiScale', 'transparentGuideHeight',
   'transparentGuideOverlayOpacity', 'transparentGuideSidebarOpacity',
+  'stremioBadgeSize', 'nuvioBadgeSize',
 ]);
 
 /** Coerce type-sensitive stored values; leave everything else untouched. */
@@ -204,6 +205,8 @@ async function hydrateSettingsStore(): Promise<void> {
         maxSearchResults: data.maxSearchResults ?? 200,
         searchResultsOrder: data.searchResultsOrder ?? 'default',
         sourceFontSize: data.sourceFontSize ?? 12,
+        stremioBadgeSize: data.stremioBadgeSize ?? 100,
+        nuvioBadgeSize: data.nuvioBadgeSize ?? 100,
         // channelFontSize defaults to 14 on v1/v2 designs (matches the old
         // autosync boot default), 12 on v3.
         channelFontSize: data.channelFontSize ?? (data.modernUiEnabled !== undefined && data.modernUiEnabled !== 'v3' ? 14 : 12),

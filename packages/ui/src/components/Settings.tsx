@@ -1073,9 +1073,7 @@ export function Settings({
       setStremioStreamPickerMode(settings.stremioStreamPickerMode ?? 'modal');
       setShowStremioStreamBadges(settings.showStremioStreamBadges ?? true);
       setBadgeSources(mergeDefaultBadgeSources(settings.badgeSources as BadgeSource[] | undefined));
-      const loadedBadgeSize = settings.stremioBadgeSize ?? 100;
-      setStremioBadgeSize(loadedBadgeSize);
-      document.documentElement.style.setProperty('--stremio-badge-scale', String(loadedBadgeSize / 100));
+      setStremioBadgeSize(settings.stremioBadgeSize ?? 100);
       if (settings.showFileSizeBadges !== undefined) {
         setShowFileSizeBadges(settings.showFileSizeBadges);
       }
@@ -1090,9 +1088,7 @@ export function Settings({
       }
       setShowNuvioStreamBadges(settings.showNuvioStreamBadges ?? true);
       setNuvioBadgeSources(mergeDefaultBadgeSources(settings.nuvioBadgeSources as BadgeSource[] | undefined));
-      const loadedNuvioBadgeSize = settings.nuvioBadgeSize ?? 100;
-      setNuvioBadgeSize(loadedNuvioBadgeSize);
-      document.documentElement.style.setProperty('--nuvio-badge-scale', String(loadedNuvioBadgeSize / 100));
+      setNuvioBadgeSize(settings.nuvioBadgeSize ?? 100);
       if (settings.nuvioShowFileSizeBadges !== undefined) {
         setNuvioShowFileSizeBadges(settings.nuvioShowFileSizeBadges);
       }
@@ -1127,41 +1123,16 @@ export function Settings({
         setNuvioCacheFetchTimeout(settings.nuvioCacheFetchTimeout as number);
       }
 
-      // Load LiveTV settings
-      const darkenCurrent = settings.epgDarkenCurrent ?? false;
-      setEpgDarkenCurrent(darkenCurrent);
-      // Apply CSS class on load
-      if (darkenCurrent) {
-        document.documentElement.classList.add('epg-darken-current');
-      }
-
-      const highlightBorderCurrent = settings.epgHighlightBorderCurrent ?? false;
-      setEpgHighlightBorderCurrent(highlightBorderCurrent);
-      if (highlightBorderCurrent) {
-        document.documentElement.classList.add('epg-highlight-border-current');
-      }
-
-      const boldChannels = settings.epgBoldChannelNames ?? false;
-      setEpgBoldChannelNames(boldChannels);
-      if (boldChannels) {
-        document.documentElement.classList.add('epg-bold-channel-names');
-      }
-
-      const boldTopCategories = settings.epgBoldTopCategories ?? false;
-      setEpgBoldTopCategories(boldTopCategories);
-      if (boldTopCategories) {
-        document.documentElement.classList.add('epg-bold-top-categories');
-      }
-
-      const boldSourceCategories = settings.epgBoldSourceCategories ?? false;
-      setEpgBoldSourceCategories(boldSourceCategories);
-      if (boldSourceCategories) {
-        document.documentElement.classList.add('epg-bold-source-categories');
-      }
+      // Load LiveTV settings. The epg-* CSS classes are owned by the DOM
+      // applier (settings store) — already applied at boot/hydration; only
+      // seed the editor's local form state here.
+      setEpgDarkenCurrent(settings.epgDarkenCurrent ?? false);
+      setEpgHighlightBorderCurrent(settings.epgHighlightBorderCurrent ?? false);
+      setEpgBoldChannelNames(settings.epgBoldChannelNames ?? false);
+      setEpgBoldTopCategories(settings.epgBoldTopCategories ?? false);
+      setEpgBoldSourceCategories(settings.epgBoldSourceCategories ?? false);
       setEpgPreferEpgLogos(settings.epgPreferEpgLogos ?? false);
       setEpgLogoDisplay(settings.epgLogoDisplay ?? 'square');
-      if (settings.epgLogoDisplay === 'rectangle') {
-        document.documentElement.classList.add('epg-rectangle-logos');      }
 
       // Load EPG visible hours setting
       const rawEpgVisibleHours = settings.epgVisibleHours ?? 'auto';
@@ -1222,22 +1193,13 @@ export function Settings({
       setSkipIntroTimerSeconds(settings.skipIntroTimerSeconds ?? 10);
       setSkipIntroAutoSkip(settings.skipIntroAutoSkip ?? false);
 
-      // Load widget scale and apply CSS variable immediately
-      const loadedScale = settings.widgetScale ?? 1;
-      setWidgetScaleState(loadedScale);
-      document.documentElement.style.setProperty('--widget-scale', String(loadedScale));
-
-      const loadedBgOpacity = settings.widgetBgOpacity ?? 0.55;
-      setWidgetBgOpacityState(loadedBgOpacity);
-      document.documentElement.style.setProperty('--widget-bg-opacity', String(loadedBgOpacity));
-
-      const loadedSportsScale = settings.sportsScale ?? 1;
-      setSportsScaleState(loadedSportsScale);
-      document.documentElement.style.setProperty('--sports-scale', String(loadedSportsScale));
-
-      const loadedSportsBgOpacity = settings.sportsBgOpacity ?? 0.7;
-      setSportsBgOpacityState(loadedSportsBgOpacity);
-      document.documentElement.style.setProperty('--sports-bg-opacity', String(loadedSportsBgOpacity));
+      // Widget/sports scale + opacity vars are owned by the DOM applier
+      // (settings store) — already applied at boot/hydration; only seed the
+      // editor's local form state here.
+      setWidgetScaleState(settings.widgetScale ?? 1);
+      setWidgetBgOpacityState(settings.widgetBgOpacity ?? 0.55);
+      setSportsScaleState(settings.sportsScale ?? 1);
+      setSportsBgOpacityState(settings.sportsBgOpacity ?? 0.7);
     }
     setSettingsLoaded(true);
   }
@@ -1509,14 +1471,10 @@ export function Settings({
     }
   };
 
-  const handleStremioBadgeSizeChange = async (size: number) => {
+  const handleStremioBadgeSizeChange = (size: number) => {
     setStremioBadgeSize(size);
-    document.documentElement.style.setProperty('--stremio-badge-scale', String(size / 100));
     if (onStremioBadgeSizeChange) {
       onStremioBadgeSizeChange(size);
-    }
-    if (window.storage) {
-      await window.storage.updateSettings({ stremioBadgeSize: size });
     }
   };
 
@@ -1591,14 +1549,10 @@ export function Settings({
     }
   };
 
-  const handleNuvioBadgeSizeChange = async (size: number) => {
+  const handleNuvioBadgeSizeChange = (size: number) => {
     setNuvioBadgeSize(size);
-    document.documentElement.style.setProperty('--nuvio-badge-scale', String(size / 100));
     if (onNuvioBadgeSizeChange) {
       onNuvioBadgeSizeChange(size);
-    }
-    if (window.storage) {
-      await window.storage.updateSettings({ nuvioBadgeSize: size });
     }
   };
 

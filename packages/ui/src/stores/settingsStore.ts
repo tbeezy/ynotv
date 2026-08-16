@@ -140,6 +140,12 @@ export interface SettingsState {
   sourceFontSize: number;
   setSourceFontSize: (size: number) => void;
 
+  // Stremio/Nuvio detail badge scale (CSS vars owned by the DOM applier)
+  stremioBadgeSize: number;
+  setStremioBadgeSize: (size: number) => void;
+  nuvioBadgeSize: number;
+  setNuvioBadgeSize: (size: number) => void;
+
   // UI font sizes (CSS vars owned by the DOM applier)
   channelFontSize: number;
   setChannelFontSize: (size: number) => void;
@@ -611,6 +617,18 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setSourceFontSize: (size) => {
     set({ sourceFontSize: size });
     persistSettings({ sourceFontSize: size }, true);
+  },
+
+  // Stremio/Nuvio detail badge scale (CSS vars owned by the DOM applier)
+  stremioBadgeSize: (cachedSettings?.stremioBadgeSize as number) ?? 100,
+  setStremioBadgeSize: (size) => {
+    set({ stremioBadgeSize: size });
+    persistSettings({ stremioBadgeSize: size }, true);
+  },
+  nuvioBadgeSize: (cachedSettings?.nuvioBadgeSize as number) ?? 100,
+  setNuvioBadgeSize: (size) => {
+    set({ nuvioBadgeSize: size });
+    persistSettings({ nuvioBadgeSize: size }, true);
   },
 
   // UI font sizes (CSS vars owned by the DOM applier)

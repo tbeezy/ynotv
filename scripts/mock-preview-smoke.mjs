@@ -175,6 +175,34 @@ async function bootAndVerify(page) {
   check('App boots without deadlock', boot.rootLen > 1000 && boot.hasSettings,
     `root=${boot.rootLen}`);
 
+  // Single-writer regression: the DOM applier (not Settings.tsx's load path)
+  // must own the channel-info-overlay vars, widget/sports vars and EPG cosmetic
+  // classes. Assert they land from the hydrated store at boot.
+  const applierOwned = await page.evaluate(`(() => {
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      cioFont: cs.getPropertyValue('--cio-font-size').trim(),
+      cioLogo: cs.getPropertyValue('--cio-logo-size').trim(),
+      cioBox: cs.getPropertyValue('--cio-box-width').trim(),
+      widgetScale: cs.getPropertyValue('--widget-scale').trim(),
+      widgetOpacity: cs.getPropertyValue('--widget-bg-opacity').trim(),
+      sportsScale: cs.getPropertyValue('--sports-scale').trim(),
+      sportsOpacity: cs.getPropertyValue('--sports-bg-opacity').trim(),
+      stremioBadge: cs.getPropertyValue('--stremio-badge-scale').trim(),
+      nuvioBadge: cs.getPropertyValue('--nuvio-badge-scale').trim(),
+      hasEpgDarken: document.documentElement.classList.contains('epg-darken-current'),
+      hasEpgHighlight: document.documentElement.classList.contains('epg-highlight-border-current'),
+      hasEpgBoldNames: document.documentElement.classList.contains('epg-bold-channel-names'),
+    };
+  })()`);
+  check('Applier owns CIO/widget/sports vars + EPG classes at boot',
+    applierOwned.cioFont === '16px' && applierOwned.cioLogo === '42px' && applierOwned.cioBox === '380px'
+      && applierOwned.widgetScale === '1' && applierOwned.widgetOpacity === '0.55'
+      && applierOwned.sportsScale === '1' && applierOwned.sportsOpacity === '0.7'
+      && applierOwned.stremioBadge === '1' && applierOwned.nuvioBadge === '1'
+      && applierOwned.hasEpgDarken === false && applierOwned.hasEpgHighlight === false && applierOwned.hasEpgBoldNames === false,
+    JSON.stringify(applierOwned));
+
   // New CSS-var fields: the DOM applier should have applied font sizes,
   // --app-zoom and the design classes from the hydrated store, and the new
   // setters must persist.
@@ -186,22 +214,27 @@ async function bootAndVerify(page) {
     s.setUiScale(110);
     s.setAllowLanSources(true);
     s.setModernUiEnabled('v2');
+    s.setStremioBadgeSize(150);
+    s.setNuvioBadgeSize(80);
     const after = mod.useSettingsStore.getState();
     const cs = getComputedStyle(document.documentElement);
     await new Promise(r => setTimeout(r, 400)); // let the applier react + debounced writes flush
     const cs2 = getComputedStyle(document.documentElement);
     return {
-      state: { ch: after.channelFontSize, cat: after.categoryFontSize, scale: after.uiScale, lan: after.allowLanSources, design: after.modernUiEnabled },
-      vars: { ch: cs2.getPropertyValue('--channel-font-size').trim(), cat: cs2.getPropertyValue('--category-font-size').trim(), zoom: cs2.getPropertyValue('--app-zoom').trim() },
+      state: { ch: after.channelFontSize, cat: after.categoryFontSize, scale: after.uiScale, lan: after.allowLanSources, design: after.modernUiEnabled, stremio: after.stremioBadgeSize, nuvio: after.nuvioBadgeSize },
+      vars: { ch: cs2.getPropertyValue('--channel-font-size').trim(), cat: cs2.getPropertyValue('--category-font-size').trim(), zoom: cs2.getPropertyValue('--app-zoom').trim(), stremio: cs2.getPropertyValue('--stremio-badge-scale').trim(), nuvio: cs2.getPropertyValue('--nuvio-badge-scale').trim() },
       uiVersion: document.documentElement.getAttribute('data-ui-version'),
       persisted: (await window.__TAURI_INTERNALS__.invoke('plugin:store|get', { key: 'settings' }))[0],
     };
   })()`);
   check('New CSS-var setters persist + applier applies them',
     cssVars.state.ch === 14 && cssVars.state.cat === 15 && cssVars.state.scale === 110 && cssVars.state.lan === true && cssVars.state.design === 'v2'
+      && cssVars.state.stremio === 150 && cssVars.state.nuvio === 80
       && cssVars.vars.ch === '14px' && cssVars.vars.cat === '15px' && cssVars.vars.zoom === '1.1'
+      && cssVars.vars.stremio === '1.5' && cssVars.vars.nuvio === '0.8'
       && cssVars.uiVersion === 'v2'
-      && cssVars.persisted?.channelFontSize === 14 && cssVars.persisted?.allowLanSources === true,
+      && cssVars.persisted?.channelFontSize === 14 && cssVars.persisted?.allowLanSources === true
+      && cssVars.persisted?.stremioBadgeSize === 150 && cssVars.persisted?.nuvioBadgeSize === 80,
     JSON.stringify({ state: cssVars.state, vars: cssVars.vars, uiVersion: cssVars.uiVersion }));
 
   // Dismiss the What's New onboarding modal if present (it blocks clicks).

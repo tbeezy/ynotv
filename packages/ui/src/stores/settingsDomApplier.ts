@@ -248,6 +248,14 @@ export function applySettingsDom(state: SettingsState): void {
     setStyle('--epg-body-font-size', `${state.epgBodyFontSize}px`);
   }
 
+  // Stremio/Nuvio detail badge scale (was written inline by App + Settings)
+  if (sectionChanged('stremioBadgeSize', { v: state.stremioBadgeSize })) {
+    setStyle('--stremio-badge-scale', String(state.stremioBadgeSize / 100));
+  }
+  if (sectionChanged('nuvioBadgeSize', { v: state.nuvioBadgeSize })) {
+    setStyle('--nuvio-badge-scale', String(state.nuvioBadgeSize / 100));
+  }
+
   // UI scale (--app-zoom). Dispatch a resize so the EPG grid re-measures
   // availableWidth under the new zoom (was done inline in the autosync boot).
   if (sectionChanged('uiScale', { v: state.uiScale })) {

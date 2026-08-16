@@ -192,6 +192,10 @@ function App() {
   // ==========================================================================
   const rememberLastChannels = useSettingsStore((s) => s.rememberLastChannels);
   const reopenLastOnStartup = useSettingsStore((s) => s.reopenLastOnStartup);
+  const stremioBadgeSize = useSettingsStore((s) => s.stremioBadgeSize);
+  const setStremioBadgeSize = useSettingsStore((s) => s.setStremioBadgeSize);
+  const nuvioBadgeSize = useSettingsStore((s) => s.nuvioBadgeSize);
+  const setNuvioBadgeSize = useSettingsStore((s) => s.setNuvioBadgeSize);
   const savedLayoutState = useSettingsStore((s) => s.savedLayoutState);
   const layoutSettingsLoaded = useSettingsStore((s) => s.layoutSettingsLoaded);
   const timeshiftEnabled = useSettingsStore((s) => s.timeshiftEnabled);
@@ -323,16 +327,6 @@ function App() {
 
   const compiledBadgeRules = useMemo(() => compileBadgeSources(badgeSources), [badgeSources]);
 
-  // Stremio badge size
-  const [stremioBadgeSize, setStremioBadgeSize] = useState(100);
-  const handleStremioBadgeSizeChange = useCallback(async (size: number) => {
-    setStremioBadgeSize(size);
-    document.documentElement.style.setProperty('--stremio-badge-scale', String(size / 100));
-    if (window.storage) {
-      await window.storage.updateSettings({ stremioBadgeSize: size });
-    }
-  }, []);
-
   // Stremio hover details
   const [showHoverDetails, setShowHoverDetails] = useState(true);
   const handleShowHoverDetailsChange = useCallback(async (show: boolean) => {
@@ -378,15 +372,6 @@ function App() {
   }, []);
 
   const compiledNuvioBadgeRules = useMemo(() => compileBadgeSources(nuvioBadgeSources), [nuvioBadgeSources]);
-
-  const [nuvioBadgeSize, setNuvioBadgeSize] = useState(100);
-  const handleNuvioBadgeSizeChange = useCallback(async (size: number) => {
-    setNuvioBadgeSize(size);
-    document.documentElement.style.setProperty('--nuvio-badge-scale', String(size / 100));
-    if (window.storage) {
-      await window.storage.updateSettings({ nuvioBadgeSize: size });
-    }
-  }, []);
 
   const [nuvioShowFileSizeBadges, setNuvioShowFileSizeBadges] = useState(true);
   const handleNuvioShowFileSizeBadgesChange = useCallback(async (enabled: boolean) => {
@@ -531,13 +516,6 @@ function App() {
           setShowStremioStreamBadges(res.data.showStremioStreamBadges as boolean);
         }
         setBadgeSources(mergeDefaultBadgeSources(res.data?.badgeSources as BadgeSource[] | undefined));
-        if (res.data?.stremioBadgeSize !== undefined) {
-          const size = res.data.stremioBadgeSize as number;
-          setStremioBadgeSize(size);
-          document.documentElement.style.setProperty('--stremio-badge-scale', String(size / 100));
-        } else {
-          document.documentElement.style.setProperty('--stremio-badge-scale', '1');
-        }
         if (res.data?.showHoverDetails !== undefined) {
           setShowHoverDetails(res.data.showHoverDetails as boolean);
           document.documentElement.toggleAttribute('data-hover-details-disabled', !res.data.showHoverDetails);
@@ -553,13 +531,6 @@ function App() {
         }
         if (res.data?.nuvioBadgeSources !== undefined) {
           setNuvioBadgeSources(mergeDefaultBadgeSources(res.data.nuvioBadgeSources as BadgeSource[] | undefined));
-        }
-        if (res.data?.nuvioBadgeSize !== undefined) {
-          const size = res.data.nuvioBadgeSize as number;
-          setNuvioBadgeSize(size);
-          document.documentElement.style.setProperty('--nuvio-badge-scale', String(size / 100));
-        } else {
-          document.documentElement.style.setProperty('--nuvio-badge-scale', '1');
         }
         if (res.data?.nuvioShowFileSizeBadges !== undefined) {
           setNuvioShowFileSizeBadges(res.data.nuvioShowFileSizeBadges as boolean);
@@ -5291,7 +5262,7 @@ function useTmdbPresencePoster(
           badgeSources={badgeSources}
           onBadgeSourcesChange={handleBadgeSourcesChange}
           stremioBadgeSize={stremioBadgeSize}
-          onStremioBadgeSizeChange={handleStremioBadgeSizeChange}
+          onStremioBadgeSizeChange={setStremioBadgeSize}
           showHoverDetails={showHoverDetails}
           onShowHoverDetailsChange={handleShowHoverDetailsChange}
           showFileSizeBadges={showFileSizeBadges}
@@ -5307,7 +5278,7 @@ function useTmdbPresencePoster(
           nuvioBadgeSources={nuvioBadgeSources}
           onNuvioBadgeSourcesChange={handleNuvioBadgeSourcesChange}
           nuvioBadgeSize={nuvioBadgeSize}
-          onNuvioBadgeSizeChange={handleNuvioBadgeSizeChange}
+          onNuvioBadgeSizeChange={setNuvioBadgeSize}
           nuvioShowFileSizeBadges={nuvioShowFileSizeBadges}
           onNuvioShowFileSizeBadgesChange={handleNuvioShowFileSizeBadgesChange}
           nuvioStreamBadgePlacement={nuvioStreamBadgePlacement}
@@ -5456,7 +5427,7 @@ function useTmdbPresencePoster(
           badgeSources={badgeSources}
           onBadgeSourcesChange={handleBadgeSourcesChange}
           stremioBadgeSize={stremioBadgeSize}
-          onStremioBadgeSizeChange={handleStremioBadgeSizeChange}
+          onStremioBadgeSizeChange={setStremioBadgeSize}
           showHoverDetails={showHoverDetails}
           onShowHoverDetailsChange={handleShowHoverDetailsChange}
           showFileSizeBadges={showFileSizeBadges}
@@ -5479,7 +5450,7 @@ function useTmdbPresencePoster(
           nuvioBadgeSources={nuvioBadgeSources}
           onNuvioBadgeSourcesChange={handleNuvioBadgeSourcesChange}
           nuvioBadgeSize={nuvioBadgeSize}
-          onNuvioBadgeSizeChange={handleNuvioBadgeSizeChange}
+          onNuvioBadgeSizeChange={setNuvioBadgeSize}
           nuvioShowFileSizeBadges={nuvioShowFileSizeBadges}
           onNuvioShowFileSizeBadgesChange={handleNuvioShowFileSizeBadgesChange}
           nuvioStreamBadgePlacement={nuvioStreamBadgePlacement}

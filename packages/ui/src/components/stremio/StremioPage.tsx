@@ -40,7 +40,7 @@ interface StremioPageProps {
   badgeSources: BadgeSource[];
   onBadgeSourcesChange: (sources: BadgeSource[]) => Promise<void>;
   stremioBadgeSize: number;
-  onStremioBadgeSizeChange: (size: number) => Promise<void>;
+  onStremioBadgeSizeChange: (size: number) => void;
   showHoverDetails: boolean;
   onShowHoverDetailsChange: (show: boolean) => Promise<void>;
   showFileSizeBadges: boolean;

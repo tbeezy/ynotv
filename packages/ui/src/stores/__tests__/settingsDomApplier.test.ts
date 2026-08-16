@@ -48,6 +48,8 @@ function baseState() {
     sourceFontSize: 12,
     epgTitleFontSize: 32,
     epgBodyFontSize: 16,
+    stremioBadgeSize: 100,
+    nuvioBadgeSize: 100,
     uiScale: 100,
     transparentGuideHeight: 40,
     transparentGuideHideHeader: false,
@@ -179,6 +181,25 @@ describe('settings DOM applier idempotency', () => {
     const after = { ...fake.writes };
     applySettingsDom({ ...baseState(), categoryFontSize: 16 } as any);
     expect(fake.writes).toEqual(after);
+  });
+
+  it('applies the stremio/nuvio badge-scale vars idempotently', () => {
+    applySettingsDom(baseState() as any);
+    expect(fake.properties.get('--stremio-badge-scale')).toBe('1');
+    expect(fake.properties.get('--nuvio-badge-scale')).toBe('1');
+
+    applySettingsDom({ ...baseState(), stremioBadgeSize: 150 } as any);
+    expect(fake.properties.get('--stremio-badge-scale')).toBe('1.5');
+    expect(fake.properties.get('--nuvio-badge-scale')).toBe('1');
+
+    applySettingsDom({ ...baseState(), nuvioBadgeSize: 80 } as any);
+    expect(fake.properties.get('--stremio-badge-scale')).toBe('1');
+    expect(fake.properties.get('--nuvio-badge-scale')).toBe('0.8');
+
+    // Re-applying the same state → zero extra writes.
+    const snapshot = { ...fake.writes };
+    applySettingsDom({ ...baseState(), nuvioBadgeSize: 80 } as any);
+    expect(fake.writes).toEqual(snapshot);
   });
 
   it('toggles the transparent-guide hide-header class and uiDesign classes', () => {

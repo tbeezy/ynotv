@@ -322,6 +322,17 @@ applier-owned DOM writes and the v3-default migration into hydration:
   (applier owns the var); App derives `liveTvDesign` from
   `store.modernUiEnabled` and the autosync boot no longer writes CSS vars or
   runs the migration.
+- **Last load-path duplicates removed**: Settings.tsx's loadSettings no longer
+  writes the channelInfoOverlay vars, widget/sports vars, or the EPG cosmetic
+  classes to the DOM — the applier owns them all (the editor still seeds local
+  form state from the blob).
+- **Badge scales migrated**: `stremioBadgeSize`/`nuvioBadgeSize` moved into the
+  store with setters + applier sections (`--stremio-badge-scale` /
+  `--nuvio-badge-scale`), closing the last multi-writer CSS vars in the app.
+  App.tsx derives both from the store and passes the store setters as the
+  change callbacks (consumers unchanged); Settings.tsx's handlers no longer
+  write DOM or storage directly — each slider move previously wrote storage
+  twice and the var three times across four write sites.
 
 ## Risks & mitigations
 
