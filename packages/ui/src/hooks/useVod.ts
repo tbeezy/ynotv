@@ -936,10 +936,21 @@ export function useLazyStalkerLoader(type: 'movies' | 'series', categoryId: stri
   const syncTimestampKey = categoryId ? `stalker_sync_ts_${type}_${categoryId}` : null;
 
   useEffect(() => {
+    // cancelled guards against a sync started for a previous category writing
+    // state after the user has navigated away (e.g. back to "All").
+    let cancelled = false;
+
     if (!categoryId) {
+      // Leaving a category (e.g. switching to "All"): reset ALL lazy-load
+      // state. Previously only completed/hasCache were cleared, so a stalker
+      // sync started in a category kept `syncing=true` and the "All" view
+      // showed the full-page stalker loading screen.
       setCompleted(false);
       setHasCache(false);
-      return;
+      setSyncing(false);
+      setProgress(0);
+      setMessage('');
+      return () => { cancelled = true; };
     }
 
     const checkAndSync = async () => {
@@ -948,15 +959,26 @@ export function useLazyStalkerLoader(type: 'movies' | 'series', categoryId: stri
 
       // 1. Get category to find source_id
       const category = await db.vodCategories.get(categoryId);
+      if (cancelled) return;
       if (!category) return;
 
       // 2. Check if source is Stalker
       // We need window.storage to check source type
       if (!window.storage) return;
       const sourceRes = await window.storage.getSource(category.source_id);
+      if (cancelled) return;
       const source = sourceRes.data;
 
-      if (!source || source.type !== 'stalker') return;
+      // Non-stalker category: nothing to lazy-load. Clear any state left over
+      // from a previous stalker category so it can't keep showing that
+      // category's full-page loading screen.
+      if (!source || source.type !== 'stalker') {
+        setSyncing(false);
+        setProgress(0);
+        setMessage('');
+        setHasCache(false);
+        return;
+      }
 
       // 3. Check if we already have items for this category
       const table = type === 'movies' ? db.vodMovies : db.vodSeries;
@@ -965,6 +987,7 @@ export function useLazyStalkerLoader(type: 'movies' | 'series', categoryId: stri
         .equals(categoryId)
         .limit(1)
         .toArray();
+      if (cancelled) return;
 
       const count = existingItems.length;
 
@@ -995,31 +1018,38 @@ export function useLazyStalkerLoader(type: 'movies' | 'series', categoryId: stri
         // with the get_ordered_list batch fetches.
         if ((window as any).isPlaybackResolving) {
           console.log(`[useLazyStalkerLoader] Deferring ${type} sync for ${categoryId} - stream resolution in progress`);
-          setCompleted(true);
+          if (!cancelled) setCompleted(true);
           return;
         }
 
         setSyncing(true);
-        setMessage(count === 0 ? 'Loading...' : 'Updating...');
+        // message stays empty until real progress arrives — VodBrowse renders
+        // its own localized "Loading..." heading, so mirroring it here made
+        // the loading status appear twice on screen.
         try {
           const { syncStalkerCategory } = await import('../db/sync');
           await syncStalkerCategory(source.id, categoryId, type, (pct, msg) => {
+            if (cancelled) return;
             setProgress(pct);
             setMessage(msg);
           });
+          if (cancelled) return;
           // Record successful sync timestamp so cache check works next time
           if (syncTimestampKey) {
             localStorage.setItem(syncTimestampKey, String(Date.now()));
           }
           console.log(`[useLazyStalkerLoader] ${type} sync completed for ${categoryId}`);
         } catch (e) {
+          if (cancelled) return;
           console.error('[useLazyStalkerLoader] Sync failed:', e);
-          setMessage('Failed');
+          setMessage(i18n.t('vod:syncFailed'));
         } finally {
-          setSyncing(false);
-          setProgress(0);
-          setMessage('');
-          setCompleted(true); // Signal that sync completed (success or failure)
+          if (!cancelled) {
+            setSyncing(false);
+            setProgress(0);
+            setMessage('');
+            setCompleted(true); // Signal that sync completed (success or failure)
+          }
         }
       } else {
         // Cache is fresh, no need to sync
@@ -1029,6 +1059,8 @@ export function useLazyStalkerLoader(type: 'movies' | 'series', categoryId: stri
     };
 
     checkAndSync();
+
+    return () => { cancelled = true; };
   }, [categoryId, type]);
 
   return { syncing, progress, message, completed, hasCache };

@@ -382,7 +382,10 @@ export function VodBrowse({
       <div className="vod-browse vod-browse--loading-state">
         <div className="vod-browse__spinner"></div>
         <h3>{i18n.t('vod:loading')}</h3>
-        <p>{message}</p>
+        {/* Only show a detail line when the sync reports real progress — the
+            heading already says "Loading...", so a duplicate message (or the
+            old hardcoded 'Loading...' status) made it appear twice. */}
+        {message && <p>{message}</p>}
         {progress > 0 && (
           <div className="vod-browse__progress-bar">
             <div className="vod-browse__progress-fill" style={{ width: `${progress}%` }}></div>
