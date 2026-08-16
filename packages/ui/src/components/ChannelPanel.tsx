@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { useChannels, useCategories, useAllPrograms, useProgramsInRange, parseCategoryIds } from '../hooks/useChannels';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 import { useLiveQuery } from '../hooks/useSqliteLiveQuery';
 import { useTimeGrid } from '../hooks/useTimeGrid';
 import { useActiveRecordings } from '../hooks/useActiveRecordings';
@@ -360,7 +360,8 @@ export function ChannelPanel({
   const epgVisibleHours = useEpgVisibleHours();
   const epgClockFormat = useEpgClockFormat();
   const epgShowDate = useEpgShowDate();
-  const { epgLazyLoadingEnabled, layoutSettingsLoaded } = useAppSettings();
+  const epgLazyLoadingEnabled = useSettingsStore((s) => s.epgLazyLoadingEnabled);
+  const layoutSettingsLoaded = useSettingsStore((s) => s.layoutSettingsLoaded);
 
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);

@@ -21,7 +21,7 @@ import {
 } from '../../hooks/useVod';
 import { useVodFavoritesStore } from '../../stores/vodFavoritesStore';
 import { useSourceNameMap } from '../../hooks/useChannels';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import {
@@ -186,7 +186,8 @@ export function VodBrowse({
     setSortAndSave(val);
   }, [sortBy, setSortAndSave, toggleSortDirection]);
 
-  const { includeSourceInVodSearch, vodShowSourceBadge } = useAppSettings();
+  const includeSourceInVodSearch = useSettingsStore((s) => s.includeSourceInVodSearch);
+  const vodShowSourceBadge = useSettingsStore((s) => s.vodShowSourceBadge);
   const sourceNameMap = useSourceNameMap();
 
   // Debounce search to avoid expensive filtering on every keystroke

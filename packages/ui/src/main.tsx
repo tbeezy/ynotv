@@ -10,10 +10,23 @@ import { getDbHealth, isDbUnhealthy, RECOVERY_SCREEN_ENABLED, type DbHealth } fr
 import { installSafeStorage } from './services/safeStorage';
 import './App.css';
 import './services/tauri-bridge'; // Initialize Tauri bridge and polyfills
+import { ensureSettingsHydration } from './stores/settingsStoreHydration';
+// Side-effect import AFTER the settings store: self-initializes the single
+// DOM applier (subscribes to the store at module load) so the first paint is
+// already correct from the localStorage-seeded store state. Imported here —
+// after the store modules have fully evaluated — to avoid the circular
+// import deadlock that a store-side import would cause (the applier reads
+// useSettingsStore at module scope).
+import './stores/settingsDomApplier';
 
 // Must run before any component mounts: a localStorage write that exceeds the
 // WebView2 quota must never crash the (transparent) window.
 installSafeStorage();
+
+// Kick off the single boot-time settings load (the store seeds synchronously
+// from localStorage for first paint; this reconciles the authoritative values
+// from the Tauri store in the background — exactly once per run).
+ensureSettingsHydration();
 
 /**
  * Checks the database before mounting the main app. If the database is

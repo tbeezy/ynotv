@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { db, type StoredChannel, type StoredCategory } from '../db';
 import { buildSearchQueryClauses } from '../utils/searchNormalization';
+import { useSettingsStore } from '../stores/settingsStore';
 import {
     addChannelToFailoverGroup,
     removeChannelFromFailoverGroup,
@@ -54,13 +55,9 @@ function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceI
 
         async function search() {
             try {
-                let maxSearchResults = 200;
-                if (window.storage) {
-                    const settings = await window.storage.getSettings();
-                    if (settings.data?.maxSearchResults) {
-                        maxSearchResults = settings.data.maxSearchResults;
-                    }
-                }
+                // maxSearchResults is a settings-store field — read it synchronously
+                // instead of paying an IPC getSettings round-trip.
+                const maxSearchResults = useSettingsStore.getState().maxSearchResults ?? 200;
 
                 let enabledCategoryIds: Set<string> | null = null;
                 if (enabledSourceIds && enabledSourceIds.size > 0) {

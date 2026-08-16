@@ -3,7 +3,7 @@ import type { StoredChannel } from '../db';
 import { db } from '../db';
 import { getFailoverGroupMembers } from '../services/failover-groups';
 import { useSourceNameMap } from '../hooks/useChannels';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import './FailoverGroupOverlay.css';
 
@@ -33,7 +33,7 @@ export function FailoverGroupOverlay({
   const [groupName, setGroupName] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  const { failoverGroupShowSource: appSettingShowSource } = useAppSettings();
+  const appSettingShowSource = useSettingsStore((s) => s.failoverGroupShowSource);
   const [localShowSource, setLocalShowSource] = useState(appSettingShowSource);
   const sourceNameMap = useSourceNameMap();
 

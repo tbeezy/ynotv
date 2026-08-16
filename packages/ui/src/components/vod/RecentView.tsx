@@ -10,7 +10,7 @@ import { MediaCard } from './MediaCard';
 import type { StoredMovie, StoredSeries } from '../../db';
 import type { RecentlyWatchedItem } from '../../hooks/useVod';
 import { useSourceNameMap } from '../../hooks/useChannels';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import './VodBrowse.css'; // Reuse VodBrowse styles for consistent grid
@@ -47,7 +47,7 @@ export function RecentView({
   const virtuosoRef = useRef<VirtuosoGridHandle>(null);
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 0 });
 
-  const { vodShowSourceBadge } = useAppSettings();
+  const vodShowSourceBadge = useSettingsStore((s) => s.vodShowSourceBadge);
   const sourceNameMap = useSourceNameMap();
 
   // Debug logging

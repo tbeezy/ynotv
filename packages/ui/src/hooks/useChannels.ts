@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { applyFilterWordsDetailed } from './useFilterWords';
 import { useCategorySortOrder } from '../stores/uiStore';
-import { useAppSettings } from './useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 import { getCachedSettings } from '../services/settings-cache';
 import type { Source } from '@ynotv/core';
 import { buildSearchQueryClauses, getSearchVariants } from '../utils/searchNormalization';
@@ -405,7 +405,8 @@ async function applyHomeCategoryFilterWords(results: StoredChannel[]): Promise<S
 // Filters out channels from disabled sources
 export function useChannels(categoryId: string | null, sortOrder: 'alphabetical' | 'number' | 'provider' = 'alphabetical', options?: { skip?: boolean }) {
   const enabledSourceIds = useEnabledSources();
-  const { epgPreferEpgLogos, sourceLogoDisplayOverrides } = useAppSettings();
+  const epgPreferEpgLogos = useSettingsStore((s) => s.epgPreferEpgLogos);
+  const sourceLogoDisplayOverrides = useSettingsStore((s) => s.sourceLogoDisplayOverrides);
   const enabledSourceKey = useMemo(
     () => (enabledSourceIds ? Array.from(enabledSourceIds).sort().join(',') : 'loading'),
     [enabledSourceIds]
@@ -1089,7 +1090,8 @@ export function useChannelSearch(
   filterCategoryIds?: string[]
 ) {
   const enabledSourceIds = useEnabledSources();
-  const { epgPreferEpgLogos, sourceLogoDisplayOverrides } = useAppSettings();
+  const epgPreferEpgLogos = useSettingsStore((s) => s.epgPreferEpgLogos);
+  const sourceLogoDisplayOverrides = useSettingsStore((s) => s.sourceLogoDisplayOverrides);
   const sourceNameMap = useSourceNameMap();
   const categoryNameMap = useCategoryNameMap();
 

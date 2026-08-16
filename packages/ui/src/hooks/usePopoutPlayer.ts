@@ -3,6 +3,7 @@ import { Bridge } from '../services/tauri-bridge';
 import type { StoredChannel } from '../db';
 import type { VodPlayInfo } from '../types/media';
 import { resolvePlayUrl } from '../services/stream-resolver';
+import { useSettingsStore } from '../stores/settingsStore';
 import { logInfo, logWarn } from '../utils/logger';
 
 export type PopoutContent =
@@ -89,17 +90,12 @@ export function usePopoutPlayer(): PopoutPlayerState {
         userAgent = resolved.userAgent;
       }
 
-      // Read popout settings from store
-      let alwaysOnTop = false;
-      let stopMain = true;
-      let customParams = '';
-      try {
-        const result = await window.storage?.getSettings();
-        alwaysOnTop = result?.data?.popoutAlwaysOnTop ?? false;
-        stopMain = result?.data?.popoutStopMain ?? true;
-        const paramsEnabled = result?.data?.popoutMpvParamsEnabled ?? false;
-        customParams = paramsEnabled ? (result?.data?.popoutMpvParams ?? '') : '';
-      } catch { /* ignore */ }
+      // Popout settings are settings-store fields — read them synchronously
+      // instead of paying an IPC getSettings round-trip per popout open.
+      const pop = useSettingsStore.getState();
+      const alwaysOnTop = pop.popoutAlwaysOnTop ?? false;
+      const stopMain = pop.popoutStopMain ?? true;
+      const customParams = pop.popoutMpvParamsEnabled ? (pop.popoutMpvParams ?? '') : '';
 
       // If already open, just swap the URL
       if (isOpen) {

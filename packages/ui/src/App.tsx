@@ -132,7 +132,7 @@ import { applyUiDesign, initUiDesign } from './utils/uiDesign';
 initUiDesign();
 
 // NEW: Extracted hooks
-import { useAppSettings } from './hooks/useAppSettings';
+import { useSettingsStore } from './stores/settingsStore';
 import { usePlayback } from './hooks/usePlayback';
 import { useNavigation } from './hooks/useNavigation';
 import { useWatchlist } from './hooks/useWatchlist';
@@ -187,110 +187,108 @@ function TransitionView({ visible, children }: TransitionViewProps) {
 function App() {
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
   // ==========================================================================
-  // Settings & Configuration (from useAppSettings)
+  // Settings & Configuration (slice selectors on the settings store)
   // ==========================================================================
-  const {
-    rememberLastChannels,
-    reopenLastOnStartup,
-    savedLayoutState,
-    layoutSettingsLoaded,
-    timeshiftEnabled,
-    timeshiftCacheBytes,
-    liveBufferOffset,
-    includeSourceInSearch,
-    maxSearchResults,
-    searchResultsOrder,
-    advancedSearchScope,
-    advancedSearchSourceIds,
-    advancedSearchCategoryIds,
-    useAdvancedSearchForRegular,
-    searchCustomPlaylists: searchCustomPlaylistsSetting,
-    channelInfoOverlayEnabled,
-    channelInfoOverlayFontSize,
-    channelInfoOverlayLogoSize,
-    channelInfoOverlayBoxWidth,
-    channelInfoOverlayOpacity,
-    theme,
-    customThemeConfig,
-    shortcuts,
-    categoriesHidden,
-    categoriesHiddenTransparent,
-    setTheme,
-    updateCustomThemeConfig,
-    setShortcuts,
-    setCategoriesHidden,
-    setCategoriesHiddenTransparent,
-    setAdvancedSearchScope,
-    setAdvancedSearchSourceIds,
-    setAdvancedSearchCategoryIds,
-    setUseAdvancedSearchForRegular,
-    setSearchCustomPlaylists: setSearchCustomPlaylistsSetting,
-    setChannelInfoOverlayEnabled,
-    setChannelInfoOverlayFontSize,
-    setChannelInfoOverlayLogoSize,
-    setChannelInfoOverlayBoxWidth,
-    setChannelInfoOverlayOpacity,
-    channelInfoOverlayHideDescription,
-    channelInfoOverlayHideMetaBadge,
-    channelInfoOverlayHideLogo,
-    channelInfoOverlayHideTimer,
-    channelInfoOverlayPosition,
-    channelInfoOverlayLogoShape,
-    setChannelInfoOverlayHideMetaBadge,
-    setChannelInfoOverlayHideLogo,
-    setChannelInfoOverlayHideTimer,
-    setChannelInfoOverlayPosition,
-    setChannelInfoOverlayLogoShape,
-    setChannelInfoOverlayHideDescription,
-    transparentGuideOnZap,
-    setTransparentGuideOnZap,
-    overlayAutohideTimer,
-    setOverlayAutohideTimer,
-    overlayOnClickOnly,
-    setOverlayOnClickOnly,
-    popoutStopMain,
-    popoutAlwaysOnTop,
-    setPopoutAlwaysOnTop,
-    navHiddenTabs: settingsNavHiddenTabs,
-    epgHiddenButtons: settingsEpgHiddenButtons,
-    startupView,
-    castEnabled,
-    setCastEnabled,
-    castRewriteTs,
-    setCastRewriteTs,
-    discordRichPresence,
-    setDiscordRichPresence,
-    discordHideTitle,
-    setDiscordHideTitle,
-    discordShowWhenPaused,
-    setDiscordShowWhenPaused,
-    discordShowWhenBrowsing,
-    setDiscordShowWhenBrowsing,
-    discordShowPoster,
-    setDiscordShowPoster,
-    discordShowTimestamp,
-    setDiscordShowTimestamp,
-    vodAutoPlayNextEpisode,
-    setVodAutoPlayNextEpisode,
-    vodShowSourceBadge,
-    setVodShowSourceBadge,
-    failoverGroupShowSource,
-    setFailoverGroupShowSource,
-    playerControlDesign,
-    setPlayerControlDesign,
-    showVolumePercent,
-    setShowVolumePercent,
-    epgMetadataBadgeResolution,
-    setEpgMetadataBadgeResolution,
-    epgMetadataBadgeFps,
-    setEpgMetadataBadgeFps,
-    epgMetadataBadgeFpsSuffix,
-    setEpgMetadataBadgeFpsSuffix,
-    epgMetadataBadgeSound,
-    setEpgMetadataBadgeSound,
-    language,
-    setLanguage,
-  } = useAppSettings();
+  const rememberLastChannels = useSettingsStore((s) => s.rememberLastChannels);
+  const reopenLastOnStartup = useSettingsStore((s) => s.reopenLastOnStartup);
+  const savedLayoutState = useSettingsStore((s) => s.savedLayoutState);
+  const layoutSettingsLoaded = useSettingsStore((s) => s.layoutSettingsLoaded);
+  const timeshiftEnabled = useSettingsStore((s) => s.timeshiftEnabled);
+  const timeshiftCacheBytes = useSettingsStore((s) => s.timeshiftCacheBytes);
+  const liveBufferOffset = useSettingsStore((s) => s.liveBufferOffset);
+  const includeSourceInSearch = useSettingsStore((s) => s.includeSourceInSearch);
+  const maxSearchResults = useSettingsStore((s) => s.maxSearchResults);
+  const searchResultsOrder = useSettingsStore((s) => s.searchResultsOrder);
+  const advancedSearchScope = useSettingsStore((s) => s.advancedSearchScope);
+  const advancedSearchSourceIds = useSettingsStore((s) => s.advancedSearchSourceIds);
+  const advancedSearchCategoryIds = useSettingsStore((s) => s.advancedSearchCategoryIds);
+  const useAdvancedSearchForRegular = useSettingsStore((s) => s.useAdvancedSearchForRegular);
+  const searchCustomPlaylistsSetting = useSettingsStore((s) => s.searchCustomPlaylists);
+  const channelInfoOverlayEnabled = useSettingsStore((s) => s.channelInfoOverlayEnabled);
+  const channelInfoOverlayFontSize = useSettingsStore((s) => s.channelInfoOverlayFontSize);
+  const channelInfoOverlayLogoSize = useSettingsStore((s) => s.channelInfoOverlayLogoSize);
+  const channelInfoOverlayBoxWidth = useSettingsStore((s) => s.channelInfoOverlayBoxWidth);
+  const channelInfoOverlayOpacity = useSettingsStore((s) => s.channelInfoOverlayOpacity);
+  const theme = useSettingsStore((s) => s.theme);
+  const customThemeConfig = useSettingsStore((s) => s.customThemeConfig);
+  const shortcuts = useSettingsStore((s) => s.shortcuts);
+  const categoriesHidden = useSettingsStore((s) => s.categoriesHidden);
+  const categoriesHiddenTransparent = useSettingsStore((s) => s.categoriesHiddenTransparent);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const updateCustomThemeConfig = useSettingsStore((s) => s.updateCustomThemeConfig);
+  const setShortcuts = useSettingsStore((s) => s.setShortcuts);
+  const setCategoriesHidden = useSettingsStore((s) => s.setCategoriesHidden);
+  const setCategoriesHiddenTransparent = useSettingsStore((s) => s.setCategoriesHiddenTransparent);
+  const setAdvancedSearchScope = useSettingsStore((s) => s.setAdvancedSearchScope);
+  const setAdvancedSearchSourceIds = useSettingsStore((s) => s.setAdvancedSearchSourceIds);
+  const setAdvancedSearchCategoryIds = useSettingsStore((s) => s.setAdvancedSearchCategoryIds);
+  const setUseAdvancedSearchForRegular = useSettingsStore((s) => s.setUseAdvancedSearchForRegular);
+  const setSearchCustomPlaylistsSetting = useSettingsStore((s) => s.setSearchCustomPlaylists);
+  const setChannelInfoOverlayEnabled = useSettingsStore((s) => s.setChannelInfoOverlayEnabled);
+  const setChannelInfoOverlayFontSize = useSettingsStore((s) => s.setChannelInfoOverlayFontSize);
+  const setChannelInfoOverlayLogoSize = useSettingsStore((s) => s.setChannelInfoOverlayLogoSize);
+  const setChannelInfoOverlayBoxWidth = useSettingsStore((s) => s.setChannelInfoOverlayBoxWidth);
+  const setChannelInfoOverlayOpacity = useSettingsStore((s) => s.setChannelInfoOverlayOpacity);
+  const channelInfoOverlayHideDescription = useSettingsStore((s) => s.channelInfoOverlayHideDescription);
+  const channelInfoOverlayHideMetaBadge = useSettingsStore((s) => s.channelInfoOverlayHideMetaBadge);
+  const channelInfoOverlayHideLogo = useSettingsStore((s) => s.channelInfoOverlayHideLogo);
+  const channelInfoOverlayHideTimer = useSettingsStore((s) => s.channelInfoOverlayHideTimer);
+  const channelInfoOverlayPosition = useSettingsStore((s) => s.channelInfoOverlayPosition);
+  const channelInfoOverlayLogoShape = useSettingsStore((s) => s.channelInfoOverlayLogoShape);
+  const setChannelInfoOverlayHideMetaBadge = useSettingsStore((s) => s.setChannelInfoOverlayHideMetaBadge);
+  const setChannelInfoOverlayHideLogo = useSettingsStore((s) => s.setChannelInfoOverlayHideLogo);
+  const setChannelInfoOverlayHideTimer = useSettingsStore((s) => s.setChannelInfoOverlayHideTimer);
+  const setChannelInfoOverlayPosition = useSettingsStore((s) => s.setChannelInfoOverlayPosition);
+  const setChannelInfoOverlayLogoShape = useSettingsStore((s) => s.setChannelInfoOverlayLogoShape);
+  const setChannelInfoOverlayHideDescription = useSettingsStore((s) => s.setChannelInfoOverlayHideDescription);
+  const transparentGuideOnZap = useSettingsStore((s) => s.transparentGuideOnZap);
+  const setTransparentGuideOnZap = useSettingsStore((s) => s.setTransparentGuideOnZap);
+  const overlayAutohideTimer = useSettingsStore((s) => s.overlayAutohideTimer);
+  const setOverlayAutohideTimer = useSettingsStore((s) => s.setOverlayAutohideTimer);
+  const overlayOnClickOnly = useSettingsStore((s) => s.overlayOnClickOnly);
+  const setOverlayOnClickOnly = useSettingsStore((s) => s.setOverlayOnClickOnly);
+  const popoutStopMain = useSettingsStore((s) => s.popoutStopMain);
+  const popoutAlwaysOnTop = useSettingsStore((s) => s.popoutAlwaysOnTop);
+  const setPopoutAlwaysOnTop = useSettingsStore((s) => s.setPopoutAlwaysOnTop);
+  const settingsNavHiddenTabs = useSettingsStore((s) => s.navHiddenTabs);
+  const settingsEpgHiddenButtons = useSettingsStore((s) => s.epgHiddenButtons);
+  const startupView = useSettingsStore((s) => s.startupView);
+  const castEnabled = useSettingsStore((s) => s.castEnabled);
+  const setCastEnabled = useSettingsStore((s) => s.setCastEnabled);
+  const castRewriteTs = useSettingsStore((s) => s.castRewriteTs);
+  const setCastRewriteTs = useSettingsStore((s) => s.setCastRewriteTs);
+  const discordRichPresence = useSettingsStore((s) => s.discordRichPresence);
+  const setDiscordRichPresence = useSettingsStore((s) => s.setDiscordRichPresence);
+  const discordHideTitle = useSettingsStore((s) => s.discordHideTitle);
+  const setDiscordHideTitle = useSettingsStore((s) => s.setDiscordHideTitle);
+  const discordShowWhenPaused = useSettingsStore((s) => s.discordShowWhenPaused);
+  const setDiscordShowWhenPaused = useSettingsStore((s) => s.setDiscordShowWhenPaused);
+  const discordShowWhenBrowsing = useSettingsStore((s) => s.discordShowWhenBrowsing);
+  const setDiscordShowWhenBrowsing = useSettingsStore((s) => s.setDiscordShowWhenBrowsing);
+  const discordShowPoster = useSettingsStore((s) => s.discordShowPoster);
+  const setDiscordShowPoster = useSettingsStore((s) => s.setDiscordShowPoster);
+  const discordShowTimestamp = useSettingsStore((s) => s.discordShowTimestamp);
+  const setDiscordShowTimestamp = useSettingsStore((s) => s.setDiscordShowTimestamp);
+  const vodAutoPlayNextEpisode = useSettingsStore((s) => s.vodAutoPlayNextEpisode);
+  const setVodAutoPlayNextEpisode = useSettingsStore((s) => s.setVodAutoPlayNextEpisode);
+  const vodShowSourceBadge = useSettingsStore((s) => s.vodShowSourceBadge);
+  const setVodShowSourceBadge = useSettingsStore((s) => s.setVodShowSourceBadge);
+  const failoverGroupShowSource = useSettingsStore((s) => s.failoverGroupShowSource);
+  const setFailoverGroupShowSource = useSettingsStore((s) => s.setFailoverGroupShowSource);
+  const playerControlDesign = useSettingsStore((s) => s.playerControlDesign);
+  const setPlayerControlDesign = useSettingsStore((s) => s.setPlayerControlDesign);
+  const showVolumePercent = useSettingsStore((s) => s.showVolumePercent);
+  const setShowVolumePercent = useSettingsStore((s) => s.setShowVolumePercent);
+  const epgMetadataBadgeResolution = useSettingsStore((s) => s.epgMetadataBadgeResolution);
+  const setEpgMetadataBadgeResolution = useSettingsStore((s) => s.setEpgMetadataBadgeResolution);
+  const epgMetadataBadgeFps = useSettingsStore((s) => s.epgMetadataBadgeFps);
+  const setEpgMetadataBadgeFps = useSettingsStore((s) => s.setEpgMetadataBadgeFps);
+  const epgMetadataBadgeFpsSuffix = useSettingsStore((s) => s.epgMetadataBadgeFpsSuffix);
+  const setEpgMetadataBadgeFpsSuffix = useSettingsStore((s) => s.setEpgMetadataBadgeFpsSuffix);
+  const epgMetadataBadgeSound = useSettingsStore((s) => s.epgMetadataBadgeSound);
+  const setEpgMetadataBadgeSound = useSettingsStore((s) => s.setEpgMetadataBadgeSound);
+  const language = useSettingsStore((s) => s.language);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
   const navHiddenTabs = useUIStore((s) => s.navHiddenTabs);
   const setNavHiddenStore = useUIStore((s) => s.setNavHiddenTabs);
 
@@ -2441,10 +2439,12 @@ function useTmdbPresencePoster(
   const handlePlayInExternal = useCallback(async (channel: StoredChannel) => {
     try {
       const resolved = await resolvePlayUrl(channel.source_id, channel.direct_url);
-      const result = await window.storage?.getSettings();
-      let playerPath = result?.data?.externalPlayerPath || '';
-      const playerReuse = result?.data?.externalPlayerReuse ?? false;
-      const playerArgs = result?.data?.externalPlayerArgs || '';
+      // External-player settings are settings-store fields — read them
+      // synchronously instead of paying an IPC getSettings round-trip per play.
+      const ep = useSettingsStore.getState();
+      let playerPath = ep.externalPlayerPath || '';
+      const playerReuse = ep.externalPlayerReuse ?? false;
+      const playerArgs = ep.externalPlayerArgs || '';
       if (!playerPath) {
         console.warn('[App] External player path not configured');
         return;
@@ -2486,10 +2486,12 @@ function useTmdbPresencePoster(
   const handlePlayVodInExternal = useCallback(async (info: import('./types/media').VodPlayInfo) => {
     try {
       const resolved = await resolvePlayUrl(info.source_id, info.url);
-      const result = await window.storage?.getSettings();
-      let playerPath = result?.data?.externalPlayerPath || '';
-      const playerReuse = result?.data?.externalPlayerReuse ?? false;
-      const playerArgs = result?.data?.externalPlayerArgs || '';
+      // External-player settings are settings-store fields — read them
+      // synchronously instead of paying an IPC getSettings round-trip per play.
+      const ep = useSettingsStore.getState();
+      let playerPath = ep.externalPlayerPath || '';
+      const playerReuse = ep.externalPlayerReuse ?? false;
+      const playerArgs = ep.externalPlayerArgs || '';
       if (!playerPath) {
         if (info.url.startsWith('http://') || info.url.startsWith('https://')) {
           window.open(info.url, '_blank');
@@ -2699,13 +2701,7 @@ function useTmdbPresencePoster(
         }
 
         try {
-          let defaultLanguage = 'en';
-          if (window.storage) {
-            const settingsRes = await window.storage.getSettings();
-            if (settingsRes.data?.subtitleSettings?.defaultLanguage) {
-              defaultLanguage = settingsRes.data.subtitleSettings.defaultLanguage;
-            }
-          }
+          let defaultLanguage = useSettingsStore.getState().subtitleSettings.defaultLanguage || 'en';
 
           if (defaultLanguage === 'off') {
             console.log('[Stremio] Subtitle default language is off. Skipping external subtitles fetch.');

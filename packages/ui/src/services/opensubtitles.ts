@@ -165,6 +165,7 @@ async function apiFetch(
 /* ─── subtitle decoding ─── */
 import { decodeSubtitleBytes } from '../utils/subtitleEncoding';
 import i18n, { translateNativeError } from '../i18n';
+import { useSettingsStore } from '../stores/settingsStore';
 
 /**
  * Shared auto-retry wrapper used by search/download. Handles 401/403 by
@@ -181,10 +182,9 @@ async function apiFetchWithRetry(
   let res = await doFetch(activeToken);
 
   // Auto-retry once on 401/403 (unauthorized/expired token) via background re-login
-  if ((res.status === 401 || res.status === 403) && window.storage) {
+  if (res.status === 401 || res.status === 403) {
     log(logStage, `HTTP ${res.status} returned. Triggering background re-login...`);
-    const stored = await window.storage.getSettings();
-    const ss = stored.data?.subtitleSettings;
+    const ss = useSettingsStore.getState().subtitleSettings;
     const refreshed = await ensureValidOpenSubtitlesToken(ss, true);
     if (refreshed.token) {
       activeToken = refreshed.token;
@@ -341,16 +341,11 @@ export async function ensureValidOpenSubtitlesToken(
       const loginRes = await loginOpenSubtitles(credUser, credPass);
       if (loginRes.success && loginRes.token && loginRes.user) {
         log('ENSURE_TOKEN', 'Re-authentication successful! Updating cached token.');
-        if (window.storage) {
-          await window.storage.updateSettings({
-            subtitleSettings: {
-              ...subtitleSettings,
-              openSubtitlesToken: loginRes.token,
-              openSubtitlesUser: loginRes.user,
-              openSubtitlesUsername: credUser,
-            },
-          }).catch(console.error);
-        }
+        useSettingsStore.getState().setSubtitleSettings({
+          openSubtitlesToken: loginRes.token,
+          openSubtitlesUser: loginRes.user,
+          openSubtitlesUsername: credUser,
+        });
         return { token: loginRes.token, user: loginRes.user };
       }
     }

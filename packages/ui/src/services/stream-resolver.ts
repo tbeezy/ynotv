@@ -13,6 +13,7 @@
  */
 
 import { StalkerClient } from '@ynotv/local-adapter';
+import { useSettingsStore } from '../stores/settingsStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,8 +105,9 @@ export async function resolvePlayUrl(
         let userAgent: string | undefined = sourceData.user_agent || undefined;
         if (!userAgent) {
             try {
-                const settingsRes = await window.storage.getSettings();
-                const globalUa = settingsRes.data?.globalLiveTvUserAgent;
+                // globalLiveTvUserAgent is a settings-store field — read it
+                // synchronously instead of an IPC round-trip per stream resolve.
+                const globalUa = useSettingsStore.getState().globalLiveTvUserAgent;
                 if (globalUa && globalUa.trim()) {
                     userAgent = globalUa.trim();
                 }

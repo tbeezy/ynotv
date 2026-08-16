@@ -9,6 +9,7 @@ import { TVMazeSearchModal } from './TVMazeSearchModal';
 import { DvrScheduleOptionsModal } from './DvrScheduleOptionsModal';
 import { CatchupDownloadModal } from './CatchupDownloadModal';
 import { useEpgClockFormat } from '../stores/uiStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { formatTime } from '../utils/dateTime';
 import { useTranslation } from 'react-i18next';
 import i18n, { translateNativeError } from '../i18n';
@@ -47,8 +48,10 @@ export function ProgramContextMenu({
     const [menuHidden, setMenuHidden] = useState(false);
     const [defaultStartPadding, setDefaultStartPadding] = useState(60);
     const [defaultEndPadding, setDefaultEndPadding] = useState(300);
-    const [catchupStartPadding, setCatchupStartPadding] = useState(0);
-    const [catchupEndPadding, setCatchupEndPadding] = useState(0);
+    // catchup paddings are settings-store fields — subscribe instead of paying
+    // an IPC getSettings round-trip on every context-menu open.
+    const catchupStartPadding = useSettingsStore((s) => s.catchupStartPadding);
+    const catchupEndPadding = useSettingsStore((s) => s.catchupEndPadding);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [downloadingCatchup, setDownloadingCatchup] = useState(false);
     const { showSuccess, showError, showInfo, showConfirm, showModal, ModalComponent } = useModal();
@@ -59,14 +62,6 @@ export function ProgramContextMenu({
                 const settings = await getDvrSettings();
                 setDefaultStartPadding(settings.default_start_padding_sec);
                 setDefaultEndPadding(settings.default_end_padding_sec);
-
-                if (window.storage) {
-                    const storageSettings = await window.storage.getSettings();
-                    if (storageSettings.data) {
-                        setCatchupStartPadding(storageSettings.data.catchupStartPadding ?? 0);
-                        setCatchupEndPadding(storageSettings.data.catchupEndPadding ?? 0);
-                    }
-                }
             } catch (e) {
                 console.error('Failed to load settings:', e);
             }

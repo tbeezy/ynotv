@@ -5,7 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type { StoredChannel } from '../db';
 import type { VodPlayInfo } from '../types/media';
 import { useCurrentProgram, parseCategoryIds } from '../hooks/useChannels';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 import { MetadataBadge } from './MetadataBadge';
 import { scheduleRecording, getDvrSettings, updatePlayingStream, detectScheduleConflicts, db, type DvrSchedule } from '../db';
 import { StalkerClient } from '@ynotv/local-adapter';
@@ -159,7 +159,7 @@ export function NowPlayingBar({
   onSetAudioVisualizerMode,
 }: NowPlayingBarProps) {
   const { t } = useTranslation('player');
-  const { showVolumePercent: showVolumePercentSetting } = useAppSettings();
+  const showVolumePercentSetting = useSettingsStore((s) => s.showVolumePercent);
   const showVolumePercent = propShowVolumePercent ?? showVolumePercentSetting ?? false;
 
   // scrubMode: 'timeshift' | 'epgcatchup' — local toggle when channel supports both

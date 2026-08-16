@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bridge } from '../services/tauri-bridge';
+import { useSettingsStore } from '../stores/settingsStore';
 import { StoredChannel } from '../db';
 import './TrackSelectionModal.css';
 
@@ -252,11 +253,9 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
       setDevices(deviceList);
 
       let selectedDev = 'auto';
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        if (settingsResult.data?.subtitleSettings?.audioDevice) {
-          selectedDev = settingsResult.data.subtitleSettings.audioDevice;
-        }
+      const ss = useSettingsStore.getState().subtitleSettings;
+      if (ss.audioDevice) {
+        selectedDev = ss.audioDevice;
       }
       setCurrentDevice(selectedDev);
     } catch (e) {
@@ -269,16 +268,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
       await Bridge.setProperty('audio-device', deviceName);
       setCurrentDevice(deviceName);
 
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: {
-            ...ss,
-            audioDevice: deviceName
-          }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ audioDevice: deviceName });
     } catch (e) {
       console.error('Failed to set audio device:', e);
     }
@@ -286,17 +276,14 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
 
   const loadSubtitleSettings = async () => {
     try {
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        if (ss.defaultSize) setSubSize(ss.defaultSize);
-        if (ss.subColor) setSubColor(ss.subColor);
-        if (ss.subBackgroundEnabled !== undefined) setSubBackgroundEnabled(ss.subBackgroundEnabled);
-        if (ss.subBackgroundColor) setSubBackgroundColor(ss.subBackgroundColor);
-        if (ss.subBackgroundOpacity !== undefined) setSubBackgroundOpacity(ss.subBackgroundOpacity);
-        if (ss.subVerticalOffset !== undefined) setSubVerticalOffset(ss.subVerticalOffset);
-        if (ss.subAlign) setSubAlign(ss.subAlign);
-      }
+      const ss = useSettingsStore.getState().subtitleSettings;
+      if (ss.defaultSize) setSubSize(ss.defaultSize);
+      if (ss.subColor) setSubColor(ss.subColor);
+      if (ss.subBackgroundEnabled !== undefined) setSubBackgroundEnabled(ss.subBackgroundEnabled);
+      if (ss.subBackgroundColor) setSubBackgroundColor(ss.subBackgroundColor);
+      if (ss.subBackgroundOpacity !== undefined) setSubBackgroundOpacity(ss.subBackgroundOpacity);
+      if (ss.subVerticalOffset !== undefined) setSubVerticalOffset(ss.subVerticalOffset);
+      if (ss.subAlign) setSubAlign(ss.subAlign);
     } catch (e) {
       console.error('Failed to load subtitle settings:', e);
     }
@@ -334,13 +321,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
     setSubSize(val);
     try {
       await Bridge.setSubtitleSize(val);
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, defaultSize: val }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ defaultSize: val });
     } catch (e) {
       console.error('Failed to set subtitle size:', e);
     }
@@ -351,13 +332,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
     try {
       const pos = Math.max(0, Math.min(100, val));
       await Bridge.setSubtitlePos(pos);
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subVerticalOffset: val }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subVerticalOffset: val });
     } catch (e) {
       console.error('Failed to set subtitle position:', e);
     }
@@ -367,13 +342,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
     setSubAlign(align);
     try {
       await Bridge.setSubtitleAlign(align);
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subAlign: align }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subAlign: align });
     } catch (e) {
       console.error('Failed to set subtitle alignment:', e);
     }
@@ -383,13 +352,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
     setSubColor(color);
     try {
       await Bridge.setSubtitleColor(color);
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subColor: color }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subColor: color });
     } catch (e) {
       console.error('Failed to set subtitle color:', e);
     }
@@ -405,13 +368,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
         await Bridge.setSubtitleBackColor(subBackgroundColor, 0);
         await Bridge.setSubtitleBorderStyle('outline-and-shadow');
       }
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subBackgroundEnabled: enabled }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subBackgroundEnabled: enabled });
     } catch (e) {
       console.error('Failed to set subtitle background toggle:', e);
     }
@@ -423,13 +380,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
       if (subBackgroundEnabled) {
         await Bridge.setSubtitleBackColor(subBackgroundColor, opacity);
       }
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subBackgroundOpacity: opacity }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subBackgroundOpacity: opacity });
     } catch (e) {
       console.error('Failed to set subtitle background opacity:', e);
     }
@@ -441,13 +392,7 @@ export function TrackSelectionModal({ isOpen, type, onClose, channel, onAudioDel
       if (subBackgroundEnabled) {
         await Bridge.setSubtitleBackColor(color, subBackgroundOpacity);
       }
-      if (window.storage) {
-        const settingsResult = await window.storage.getSettings();
-        const ss = settingsResult.data?.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subBackgroundColor: color }
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subBackgroundColor: color });
     } catch (e) {
       console.error('Failed to set subtitle background color:', e);
     }

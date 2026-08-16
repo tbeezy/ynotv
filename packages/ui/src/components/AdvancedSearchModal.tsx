@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import i18n from '../i18n';
 import { db, type StoredCategory, type CategoryFolder } from '../db';
 import { isCategorySortCustomized } from '../utils/categorySortOverrides';
+import { useSettingsStore } from '../stores/settingsStore';
 import './AdvancedSearchModal.css';
 
 export type SearchScope = 'channels' | 'epg' | 'both';
@@ -123,14 +124,9 @@ export function AdvancedSearchModal({ isOpen, initialConfig, onSearch, onClose }
         const allCategoryLinks = await db.playlistCategoryLinks.toArray();
         const allCategoryFolders = await db.categoryFolders.toArray();
 
-        // Load categorySortOrder setting
-        let categorySortOrder: 'default' | 'alphabetical' = 'default';
-        try {
-          const settingsResult = window.storage ? await window.storage.getSettings() : { data: {} };
-          categorySortOrder = ((settingsResult.data as any)?.categorySortOrder as 'default' | 'alphabetical') || 'default';
-        } catch (e) {
-          console.warn('[AdvancedSearchModal] Failed to load categorySortOrder setting:', e);
-        }
+        // categorySortOrder is a settings-store field — read it synchronously
+        // instead of paying an IPC getSettings round-trip.
+        const categorySortOrder: 'default' | 'alphabetical' = useSettingsStore.getState().categorySortOrder || 'default';
 
         // Load pinned categories
         let pinnedCategories: string[] = [];

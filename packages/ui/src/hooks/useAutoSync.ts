@@ -201,7 +201,7 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
 
             // Delay startup sync so the app finishes its initial render first.
             // This keeps the JS thread free during the critical first-paint window
-            // and avoids racing with useAppSettings / the channel live-query.
+            // and avoids racing with the settings store / the channel live-query.
             await new Promise<void>(resolve => setTimeout(resolve, 2000));
 
             // Health check — ensure backend bulk-ops plugin is ready

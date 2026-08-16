@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { translateNativeError } from '../../i18n';
 import { isMouseBackButtonActive } from '../../constants/shortcuts';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { Virtuoso } from 'react-virtuoso';
 import { useNuvioAuthStore } from '../../stores/nuvioAuthStore';
 import { useNuvioCollectionStore } from '../../stores/nuvioCollectionStore';
@@ -350,7 +350,7 @@ function NuvioPageContent({
   onCardClick: onCardClickProp,
 }: NuvioPageProps) {
   const { t } = useTranslation('nuvio');
-  const { shortcuts } = useAppSettings();
+  const shortcuts = useSettingsStore((s) => s.shortcuts);
   const compiledBadgeRules = useMemo(() => compileBadgeSources(nuvioBadgeSources), [nuvioBadgeSources]);
   const addonsStore = useNuvioAddonStore();
   const addons = addonsStore.enabledAddons;

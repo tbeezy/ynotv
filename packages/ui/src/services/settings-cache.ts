@@ -11,7 +11,8 @@
  * short-lived (CACHE_TTL_MS) so that any subsequent calls — e.g. after a
  * settings save — always get fresh data.
  *
- * NOTE: useAppSettings is the canonical settings loader and continues to call
+ * NOTE: the settings store (stores/settingsStore.ts) is the canonical settings
+ * loader and continues to call
  * window.storage.getSettings() directly so it always gets authoritative data.
  * Secondary callers (auto-sync, badge loader, channel query) use this helper.
  */

@@ -26,7 +26,7 @@ import { ProxyTab } from './settings/ProxyTab';
 import { DiscordTab } from './settings/DiscordTab';
 import { useModal } from './Modal';
 import { TmdbTab } from './settings/TmdbTab';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 import type { ShortcutsMap, ThemeId, CustomThemeConfig } from '../types/app';
 import type { StremioStreamPickerMode, BadgeSource, StreamAutoPlayMode, StreamAutoPlaySourceScope } from '../types/stremio';
 import { DEFAULT_BADGE_SOURCES, mergeDefaultBadgeSources } from '../utils/streamBadges';
@@ -587,30 +587,30 @@ export function Settings({
     }
   }, [nuvioCacheFetchTimeoutProp]);
 
-  const {
-    logoCacheEnabled,
-    setLogoCacheEnabled,
-    logoCacheMaxMb,
-    setLogoCacheMaxMb,
-    logoCacheTtlDays,
-    setLogoCacheTtlDays,
-    logoCachePrefetch,
-    setLogoCachePrefetch,
-    sourceLogoDisplayOverrides,
-    setSourceLogoDisplayOverride,
-    channelLogoSize,
-    setChannelLogoSize,
-    channelLogoRoundEdges,
-    setChannelLogoRoundEdges,
-    channelLogoPadding,
-    setChannelLogoPadding,
-    logoSmartTrim,
-    setLogoSmartTrim,
-    logoLightBackgroundDetection,
-    setLogoLightBackgroundDetection,
-    oledBlack,
-    setOledBlack,
-  } = useAppSettings();
+  const subtitleSettings = useSettingsStore((s) => s.subtitleSettings);
+  const setSubtitleSettings = useSettingsStore((s) => s.setSubtitleSettings);
+  const logoCacheEnabled = useSettingsStore((s) => s.logoCacheEnabled);
+  const setLogoCacheEnabled = useSettingsStore((s) => s.setLogoCacheEnabled);
+  const logoCacheMaxMb = useSettingsStore((s) => s.logoCacheMaxMb);
+  const setLogoCacheMaxMb = useSettingsStore((s) => s.setLogoCacheMaxMb);
+  const logoCacheTtlDays = useSettingsStore((s) => s.logoCacheTtlDays);
+  const setLogoCacheTtlDays = useSettingsStore((s) => s.setLogoCacheTtlDays);
+  const logoCachePrefetch = useSettingsStore((s) => s.logoCachePrefetch);
+  const setLogoCachePrefetch = useSettingsStore((s) => s.setLogoCachePrefetch);
+  const sourceLogoDisplayOverrides = useSettingsStore((s) => s.sourceLogoDisplayOverrides);
+  const setSourceLogoDisplayOverride = useSettingsStore((s) => s.setSourceLogoDisplayOverride);
+  const channelLogoSize = useSettingsStore((s) => s.channelLogoSize);
+  const setChannelLogoSize = useSettingsStore((s) => s.setChannelLogoSize);
+  const channelLogoRoundEdges = useSettingsStore((s) => s.channelLogoRoundEdges);
+  const setChannelLogoRoundEdges = useSettingsStore((s) => s.setChannelLogoRoundEdges);
+  const channelLogoPadding = useSettingsStore((s) => s.channelLogoPadding);
+  const setChannelLogoPadding = useSettingsStore((s) => s.setChannelLogoPadding);
+  const logoSmartTrim = useSettingsStore((s) => s.logoSmartTrim);
+  const setLogoSmartTrim = useSettingsStore((s) => s.setLogoSmartTrim);
+  const logoLightBackgroundDetection = useSettingsStore((s) => s.logoLightBackgroundDetection);
+  const setLogoLightBackgroundDetection = useSettingsStore((s) => s.setLogoLightBackgroundDetection);
+  const oledBlack = useSettingsStore((s) => s.oledBlack);
+  const setOledBlack = useSettingsStore((s) => s.setOledBlack);
 
   // Category settings state
   const [showAllChannels, setShowAllChannels] = useState(true);
@@ -715,25 +715,6 @@ export function Settings({
       setUiSettings(prev => ({ ...prev, overlayOnClickOnly: overlayOnClickOnlyProp }));
     }
   }, [overlayOnClickOnlyProp]);
-
-  // Subtitle settings state
-  const [subtitleSettings, setSubtitleSettings] = useState<SubtitleSettings>({
-    subsourceApiKey: '',
-    openSubtitlesToken: '',
-    openSubtitlesUser: undefined,
-    preferredProvider: 'subsource',
-    defaultLanguage: 'en',
-    defaultAudioLanguage: 'default',
-    defaultSize: 35,
-    subColor: '#FFFFFF',
-    subBackgroundColor: '#000000',
-    subBackgroundEnabled: false,
-    subBackgroundOpacity: 80,
-    subOutlineColor: '#000000',
-    subDelay: 0,
-    subVerticalOffset: 90,
-    audioDevice: 'auto',
-  });
 
   // Loading state for settings
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -1262,14 +1243,6 @@ export function Settings({
       // Load Skip Intro settings
       setSkipIntroTimerSeconds(settings.skipIntroTimerSeconds ?? 10);
       setSkipIntroAutoSkip(settings.skipIntroAutoSkip ?? false);
-
-      // Load subtitle settings
-      if (settings.subtitleSettings) {
-        setSubtitleSettings(prev => ({
-          ...prev,
-          ...settings.subtitleSettings
-        }));
-      }
 
       // Load widget scale and apply CSS variable immediately
       const loadedScale = settings.widgetScale ?? 1;
@@ -2210,13 +2183,6 @@ export function Settings({
     }));
   };
 
-  const handleSubtitleSettingsChange = (partial: Partial<SubtitleSettings>) => {
-    const updated = { ...subtitleSettings, ...partial };
-    setSubtitleSettings(updated);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ subtitleSettings: updated });
-    }
-  };
 
   const handleWidgetScaleChange = (scale: number) => {
     setWidgetScaleState(scale);
@@ -2522,7 +2488,7 @@ export function Settings({
           <SubtitlesTab
             initialSubTab={pendingSubTab as 'subtitles' | 'audio' | undefined}
             settings={subtitleSettings}
-            onSettingsChange={handleSubtitleSettingsChange}
+            onSettingsChange={setSubtitleSettings}
           />
         );
       case 'strem':

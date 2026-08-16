@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { db, type StoredChannel, type StoredCategory } from '../db';
 import { buildSearchQueryClauses } from '../utils/searchNormalization';
 import { addChannelsToGroup, removeChannelsFromGroup, reorderGroupChannels, renameCustomGroup } from '../services/custom-groups';
+import { useSettingsStore } from '../stores/settingsStore';
 import './CustomGroupManager.css';
 import {
   DndContext,
@@ -119,14 +120,9 @@ function SearchResults({ query, groupChannelIds, onAdd, onRemove, enabledSourceI
 
         async function search() {
             try {
-                // Load max search results setting
-                let maxSearchResults = 200;
-                if (window.storage) {
-                    const settings = await window.storage.getSettings();
-                    if (settings.data?.maxSearchResults) {
-                        maxSearchResults = settings.data.maxSearchResults;
-                    }
-                }
+                // maxSearchResults is a settings-store field — read it synchronously
+                // instead of paying an IPC getSettings round-trip.
+                const maxSearchResults = useSettingsStore.getState().maxSearchResults ?? 200;
 
                 console.log('[CustomGroupManager] Searching for:', query);
 

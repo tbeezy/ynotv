@@ -1,25 +1,23 @@
 import { useState } from 'react';
 import { relaunch } from '@tauri-apps/plugin-process';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
 export function OptimizationTab() {
   useTranslation();
-  const {
-    hardwareAcceleration,
-    setHardwareAcceleration,
-    disableThemeBackdropBlur,
-    setDisableThemeBackdropBlur,
-    epgLazyLoadingEnabled,
-    setEpgLazyLoadingEnabled,
-    disableEpgTransitions,
-    setDisableEpgTransitions,
-    epgReduceGpuLayers,
-    setEpgReduceGpuLayers,
-    epgDisableChannelFade,
-    setEpgDisableChannelFade,
-  } = useAppSettings();
+  const hardwareAcceleration = useSettingsStore((s) => s.hardwareAcceleration);
+  const setHardwareAcceleration = useSettingsStore((s) => s.setHardwareAcceleration);
+  const disableThemeBackdropBlur = useSettingsStore((s) => s.disableThemeBackdropBlur);
+  const setDisableThemeBackdropBlur = useSettingsStore((s) => s.setDisableThemeBackdropBlur);
+  const epgLazyLoadingEnabled = useSettingsStore((s) => s.epgLazyLoadingEnabled);
+  const setEpgLazyLoadingEnabled = useSettingsStore((s) => s.setEpgLazyLoadingEnabled);
+  const disableEpgTransitions = useSettingsStore((s) => s.disableEpgTransitions);
+  const setDisableEpgTransitions = useSettingsStore((s) => s.setDisableEpgTransitions);
+  const epgReduceGpuLayers = useSettingsStore((s) => s.epgReduceGpuLayers);
+  const setEpgReduceGpuLayers = useSettingsStore((s) => s.setEpgReduceGpuLayers);
+  const epgDisableChannelFade = useSettingsStore((s) => s.epgDisableChannelFade);
+  const setEpgDisableChannelFade = useSettingsStore((s) => s.setEpgDisableChannelFade);
 
   const [showRestartModal, setShowRestartModal] = useState(false);
   const [pendingHwAccel, setPendingHwAccel] = useState<boolean | null>(null);

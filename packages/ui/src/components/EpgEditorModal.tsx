@@ -5,7 +5,7 @@ import { db } from '../db';
 import type { StoredChannel, StoredCategory } from '../db';
 import { ChannelLogo } from './ChannelLogo';
 import { useEpgClockFormat } from '../stores/uiStore';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { activeLocale } from '../utils/dateTime';
@@ -216,7 +216,8 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
   const [channel, setChannel] = useState<StoredChannel | undefined>(initialChannel);
   const resolvedSourceId = channel?.source_id ?? sourceId;
 
-  const { epgLogoDisplay, sourceLogoDisplayOverrides } = useAppSettings();
+  const epgLogoDisplay = useSettingsStore((s) => s.epgLogoDisplay);
+  const sourceLogoDisplayOverrides = useSettingsStore((s) => s.sourceLogoDisplayOverrides);
   const sourceDisplayOverride = channel?.source_id ? sourceLogoDisplayOverrides?.[channel.source_id] : undefined;
   const logoShape = (sourceDisplayOverride || epgLogoDisplay) as 'square' | 'rectangle';
 

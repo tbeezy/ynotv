@@ -5,6 +5,7 @@ import { validateSubSourceApiKey } from '../../services/subsource';
 import { loginOpenSubtitles, logoutOpenSubtitles, OpenSubtitlesUser } from '../../services/opensubtitles';
 import { Bridge } from '../../services/tauri-bridge';
 import { useToastStore } from '../../stores/toastStore';
+import { DEFAULT_SUBTITLE_SETTINGS } from '../../stores/settingsStore';
 import './PlaybackTab.css'; // Reuse existing tab styles
 
 export type SubtitlesSubTabId = 'subtitles' | 'audio';
@@ -31,25 +32,6 @@ export interface SubtitleSettings {
   audioDevice?: string;
 }
 
-const DEFAULT_SETTINGS: SubtitleSettings = {
-  subsourceApiKey: '',
-  openSubtitlesToken: '',
-  openSubtitlesUser: undefined,
-  preferredProvider: 'subsource',
-  defaultLanguage: 'en',
-  defaultAudioLanguage: 'default',
-  defaultSize: 35,
-  subColor: '#FFFFFF',
-  subBackgroundColor: '#000000',
-  subBackgroundEnabled: false,
-  subBackgroundOpacity: 80,
-  subOutlineColor: '#000000',
-  subDelay: 0,
-  subVerticalOffset: 90,
-  subAssOverride: 'yes',
-  subAlign: 'center',
-  audioDevice: 'auto',
-};
 
 const LANGUAGE_OPTIONS = [
   { code: 'en', label: 'English' },
@@ -89,7 +71,7 @@ interface SubtitlesTabProps {
 
 export function SubtitlesTab({ initialSubTab, settings, onSettingsChange }: SubtitlesTabProps) {
   useTranslation();
-  const merged = { ...DEFAULT_SETTINGS, ...settings };
+  const merged = { ...DEFAULT_SUBTITLE_SETTINGS, ...settings };
   const [localKey, setLocalKey] = useState(merged.subsourceApiKey);
   const [keyValid, setKeyValid] = useState<boolean | null>(null);
   const [validating, setValidating] = useState(false);

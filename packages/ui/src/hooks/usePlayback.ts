@@ -9,6 +9,7 @@ import { Bridge, registerOnAppClose, unregisterOnAppClose } from '../services/ta
 import { resolvePlayUrl } from '../services/stream-resolver';
 import { addToRecentChannels } from '../utils/recentChannels';
 import { db, recordVodWatch, updateVodWatchProgress, getVodWatchProgress, recordEpisodeWatch, getEpisodeProgress, updateDvrRecordingProgress } from '../db';
+import { useSettingsStore } from '../stores/settingsStore';
 import { useDownloadStore } from '../stores/downloadStore';
 import { useStremioWatchStore } from '../stores/stremioWatchStore';
 import { useNuvioAuthStore } from '../stores/nuvioAuthStore';
@@ -24,9 +25,7 @@ import i18n, { translateNativeError } from '../i18n';
  */
 async function applySubtitleSettings() {
   try {
-    if (!window.storage) return;
-    const result = await window.storage.getSettings();
-    const ss = result.data?.subtitleSettings;
+    const ss = useSettingsStore.getState().subtitleSettings;
     if (!ss) return;
 
     const size = ss.defaultSize || 35;
@@ -1770,9 +1769,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
   }, [handleLoadStream, resetHealthTracking, vodInfo, position, duration]);
 
   const autoSelectSubtitle = useCallback(async (providedSubTracks?: any[]) => {
-    if (!window.storage) return;
-    const result = await window.storage.getSettings();
-    const ss = result.data?.subtitleSettings;
+    const ss = useSettingsStore.getState().subtitleSettings;
     const rawDefaultLanguage = ss?.defaultLanguage || 'en';
 
     const subTracks = providedSubTracks || (await Bridge.getTrackList()).filter((t: any) => t.type === 'sub');
@@ -1918,9 +1915,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
   }, [autoSelectSubtitle]);
 
   const autoSelectAudio = useCallback(async (providedAudioTracks?: any[]) => {
-    if (!window.storage) return;
-    const result = await window.storage.getSettings();
-    const ss = result.data?.subtitleSettings;
+    const ss = useSettingsStore.getState().subtitleSettings;
     const rawDefaultAudioLanguage = ss?.defaultAudioLanguage || 'default';
 
     if (rawDefaultAudioLanguage === 'default') {

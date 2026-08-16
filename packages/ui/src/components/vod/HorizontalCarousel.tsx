@@ -4,7 +4,7 @@ import i18n from '../../i18n';
 import type { StoredMovie, StoredSeries } from '../../db';
 import { MediaCard } from './MediaCard';
 import { useSourceNameMap } from '../../hooks/useChannels';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import './HorizontalCarousel.css';
 
 export interface HorizontalCarouselProps {
@@ -43,7 +43,7 @@ export function HorizontalCarousel({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const { vodShowSourceBadge } = useAppSettings();
+  const vodShowSourceBadge = useSettingsStore((s) => s.vodShowSourceBadge);
   const sourceNameMap = useSourceNameMap();
 
   // Limit items for performance

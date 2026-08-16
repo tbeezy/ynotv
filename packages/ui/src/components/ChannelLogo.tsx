@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { classifyLogo, getCachedLogoVerdict } from '../utils/logoLuminance';
 import { getLogoContentBox, getCachedLogoContentBox, getCachedLogoDims, LogoContentBox } from '../utils/logoContentBox';
 import { getCachedLogoUrl } from '../services/logoCache';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 
 interface ChannelLogoProps {
   src?: string | null;
@@ -41,7 +41,9 @@ export const ChannelLogo = memo(function ChannelLogo({
   padding = 'default',
   shape,
 }: ChannelLogoProps) {
-  const { logoCacheEnabled, logoLightBackgroundDetection = true, logoSmartTrim = false } = useAppSettings();
+  const logoCacheEnabled = useSettingsStore((s) => s.logoCacheEnabled);
+  const logoLightBackgroundDetection = useSettingsStore((s) => s.logoLightBackgroundDetection) ?? true;
+  const logoSmartTrim = useSettingsStore((s) => s.logoSmartTrim) ?? false;
   // Seed the light tile from cache synchronously so already-classified logos
   // render correctly on first paint instead of flashing dark then flipping
   // light as the async luminance analysis resolves.

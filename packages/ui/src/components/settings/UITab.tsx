@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import './SourcesTab.css'; // Import shared tooltip styles
@@ -170,17 +170,15 @@ function WindowSizeSettings({ width, height, onChange }: { width: number; height
 export function UITab({ settings, onSettingsChange }: UITabProps) {
   useTranslation();
   const [activeSubTab, setActiveSubTab] = useState<'general' | 'player'>('general');
-  const {
-    appFontFamily,
-    appCustomFontBase64,
-    appCustomFontFormat,
-    appCustomFontName,
-    updateAppFont,
-    enableCustomScrollbarWidth,
-    setEnableCustomScrollbarWidth,
-    customScrollbarWidth,
-    setCustomScrollbarWidth,
-  } = useAppSettings();
+  const appFontFamily = useSettingsStore((s) => s.appFontFamily);
+  const appCustomFontBase64 = useSettingsStore((s) => s.appCustomFontBase64);
+  const appCustomFontFormat = useSettingsStore((s) => s.appCustomFontFormat);
+  const appCustomFontName = useSettingsStore((s) => s.appCustomFontName);
+  const updateAppFont = useSettingsStore((s) => s.updateAppFont);
+  const enableCustomScrollbarWidth = useSettingsStore((s) => s.enableCustomScrollbarWidth);
+  const setEnableCustomScrollbarWidth = useSettingsStore((s) => s.setEnableCustomScrollbarWidth);
+  const customScrollbarWidth = useSettingsStore((s) => s.customScrollbarWidth);
+  const setCustomScrollbarWidth = useSettingsStore((s) => s.setCustomScrollbarWidth);
 
   const [localScale, setLocalScale] = useState(settings.uiScale ?? 100);
   const [scaleStatus, setScaleStatus] = useState<'' | 'applied'>('');

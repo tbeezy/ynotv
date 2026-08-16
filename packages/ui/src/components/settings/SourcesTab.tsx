@@ -19,7 +19,7 @@ import { parseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
 import { CategoryManager } from './CategoryManager';
 import { DataRefreshTab } from './DataRefreshTab';
 import './SourcesTab.css';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useSourceVersion } from '../../contexts/SourceVersionContext';
 import type { GlobalEpgLink } from '../../types/app';
 import { decompressEpgDescription } from '../../utils/compression';
@@ -625,7 +625,10 @@ export function SourcesTab({
 }: SourcesTabProps) {
   const { incrementVersion } = useSourceVersion(); // Get version incrementer
   useTranslation();
-  const { globalLiveTvUserAgent, setGlobalLiveTvUserAgent, hideDisabledSources, setHideDisabledSources } = useAppSettings();
+  const globalLiveTvUserAgent = useSettingsStore((s) => s.globalLiveTvUserAgent);
+  const setGlobalLiveTvUserAgent = useSettingsStore((s) => s.setGlobalLiveTvUserAgent);
+  const hideDisabledSources = useSettingsStore((s) => s.hideDisabledSources);
+  const setHideDisabledSources = useSettingsStore((s) => s.setHideDisabledSources);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<SourceFormData>(emptyForm);

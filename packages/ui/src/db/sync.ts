@@ -3,6 +3,7 @@ import i18n, { translateNativeError } from '../i18n';
 import { fetchAndParseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
 import type { Source, Channel, Category, Movie, Series } from '@ynotv/core';
 import { useUIStore } from '../stores/uiStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { bulkOps, type BulkChannel, type BulkCategory } from '../services/bulk-ops';
 import { epgStreaming, type EpgProgressCallback, type EpgParseResult } from '../services/epg-streaming';
 import { dbEvents } from './sqlite-adapter';
@@ -58,12 +59,10 @@ async function resolveSourceUserAgent(source: any): Promise<any> {
   if (source.user_agent && source.user_agent.trim()) {
     return source; // source user agent overrides global
   }
-  if (!window.storage) {
-    return source;
-  }
   try {
-    const settingsResult = await window.storage.getSettings();
-    const globalUa = settingsResult.data?.globalLiveTvUserAgent;
+    // globalLiveTvUserAgent is a settings-store field — read it synchronously
+    // instead of paying an IPC getSettings round-trip per source resolution.
+    const globalUa = useSettingsStore.getState().globalLiveTvUserAgent;
     if (globalUa && globalUa.trim()) {
       return {
         ...source,

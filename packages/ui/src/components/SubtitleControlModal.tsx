@@ -25,6 +25,7 @@ import {
 } from '../services/opensubtitles';
 import { useToastStore } from '../stores/toastStore';
 import { useSubtitleDebugStore } from '../stores/subtitleDebugStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { SubtitleDiagnosticsModal } from './SubtitleDiagnosticsModal';
 import { cleanTitleForSearch } from '../utils/cleanTitle';
 import { db } from '../db';
@@ -331,8 +332,7 @@ export function SubtitleControlModal({
 
   const loadSettings = async (): Promise<{ key: string; osToken: string; prefProvider: string; defaultLanguage: string }> => {
     try {
-      const result = window.storage ? await window.storage.getSettings() : { data: {} };
-      const settings: any = result.data || {};
+      const settings: any = { subtitleSettings: useSettingsStore.getState().subtitleSettings };
       let key = '';
       let osToken = '';
       let prefProvider = 'subsource';
@@ -648,14 +648,7 @@ export function SubtitleControlModal({
     setSize(value);
     try {
       await Bridge.setSubtitleSize(value);
-      if (window.storage) {
-        const result = await window.storage.getSettings();
-        const settings: any = result.data || {};
-        const ss = settings.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, defaultSize: value },
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ defaultSize: value });
     } catch (e) { console.error(e); }
   }, []);
 
@@ -663,14 +656,7 @@ export function SubtitleControlModal({
     setVerticalOffset(value);
     try {
       await Bridge.setSubtitlePos(value);
-      if (window.storage) {
-        const result = await window.storage.getSettings();
-        const settings: any = result.data || {};
-        const ss = settings.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subVerticalOffset: value },
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subVerticalOffset: value });
     } catch (e) { console.error(e); }
   }, []);
 
@@ -692,14 +678,7 @@ export function SubtitleControlModal({
 
     // Persist setting
     try {
-      if (window.storage) {
-        const result = await window.storage.getSettings();
-        const settings: any = result.data || {};
-        const ss = settings.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subBackgroundEnabled: enabled },
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subBackgroundEnabled: enabled });
     } catch (e) {
       console.error('Failed to save subBackgroundEnabled:', e);
     }
@@ -713,14 +692,7 @@ export function SubtitleControlModal({
     
     // Persist setting
     try {
-      if (window.storage) {
-        const result = await window.storage.getSettings();
-        const settings: any = result.data || {};
-        const ss = settings.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, subBackgroundOpacity: opacity },
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ subBackgroundOpacity: opacity });
     } catch (e) {
       console.error('Failed to save subBackgroundOpacity:', e);
     }
@@ -739,9 +711,8 @@ export function SubtitleControlModal({
     providedToken?: string
   ) => {
     let token = providedToken || openSubtitlesToken;
-    if (!token && window.storage) {
-      const resSettings = await window.storage.getSettings();
-      const ss = resSettings.data?.subtitleSettings;
+    if (!token) {
+      const ss = useSettingsStore.getState().subtitleSettings;
       const valid = await ensureValidOpenSubtitlesToken(ss);
       if (valid.token) {
         token = valid.token;
@@ -925,14 +896,7 @@ export function SubtitleControlModal({
 
     // Save preferred provider to settings
     try {
-      if (window.storage) {
-        const result = await window.storage.getSettings();
-        const settings: any = result.data || {};
-        const ss = settings.subtitleSettings || {};
-        await window.storage.updateSettings({
-          subtitleSettings: { ...ss, preferredProvider: newProvider },
-        });
-      }
+      useSettingsStore.getState().setSubtitleSettings({ preferredProvider: newProvider });
     } catch (e) {
       console.error('Failed to save preferred provider setting:', e);
     }

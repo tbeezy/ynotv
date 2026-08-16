@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMemo } from 'react';
 import { isMouseBackButtonActive } from '../../constants/shortcuts';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import type { StremioStreamPickerMode, StremioMeta, StremioStream, StremioVideo, BadgeSource } from '../../types/stremio';
 import { compileBadgeSources } from '../../utils/streamBadges';
 import { useStremioAddonStore } from '../../stores/stremioAddonStore';
@@ -74,7 +74,7 @@ export function StremioPage({
   stremioCacheFetchTimeout,
   onStremioCacheFetchTimeoutChange,
 }: StremioPageProps) {
-  const { shortcuts } = useAppSettings();
+  const shortcuts = useSettingsStore((s) => s.shortcuts);
   const addons = useStremioAddonStore((s) => s.enabledAddons);
   const stremioView = useStremioView();
   const setStremioView = useSetStremioView();

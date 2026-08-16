@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSettingsStore } from '../../stores/settingsStore';
 import './MultiviewCell.css';
 
 interface MultiviewCellProps {
@@ -33,18 +34,9 @@ export function MultiviewCell({
     onSetProperty,
 }: MultiviewCellProps) {
     const { t } = useTranslation('player');
-    // Check if source name should be shown in multiview
-    const [showSourceName, setShowSourceName] = useState(false);
-    useEffect(() => {
-        async function loadSetting() {
-            if (!window.storage) return;
-            const result = await window.storage.getSettings();
-            if (result.data) {
-                setShowSourceName(result.data.includeSourceInSearch ?? false);
-            }
-        }
-        loadSetting();
-    }, []);
+    // includeSourceInSearch is a settings-store field — subscribe instead of
+    // paying an IPC getSettings round-trip on mount.
+    const showSourceName = useSettingsStore((s) => s.includeSourceInSearch);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
     const [volume, setVolume] = useState(100);
     const [muted, setMuted] = useState(true);

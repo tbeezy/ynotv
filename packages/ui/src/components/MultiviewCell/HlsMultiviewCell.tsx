@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Hls from 'hls.js';
+import { useSettingsStore } from '../../stores/settingsStore';
 import './HlsMultiviewCell.css';
 
 interface HlsMultiviewCellProps {
@@ -48,19 +49,9 @@ export function HlsMultiviewCell({
     const [muted, setMuted] = useState(true);
     const [hlsError, setHlsError] = useState<string | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-    const [showSourceName, setShowSourceName] = useState(false);
-
-    // Load source-name display setting (mirrors MultiviewCell behaviour)
-    useEffect(() => {
-        async function loadSetting() {
-            if (!window.storage) return;
-            const result = await window.storage.getSettings();
-            if (result.data) {
-                setShowSourceName(result.data.includeSourceInSearch ?? false);
-            }
-        }
-        loadSetting();
-    }, []);
+    // includeSourceInSearch is a settings-store field — subscribe instead of
+    // paying an IPC getSettings round-trip on mount (mirrors MultiviewCell).
+    const showSourceName = useSettingsStore((s) => s.includeSourceInSearch);
 
     // Destroy hls instance helper
     const destroyHls = useCallback(() => {

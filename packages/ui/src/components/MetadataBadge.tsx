@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getChannelMetadata } from '../services/video-metadata';
 import type { ChannelMetadata } from '../db';
 import { dbEvents } from '../db/sqlite-adapter';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { useSettingsStore } from '../stores/settingsStore';
 import './MetadataBadge.css';
 
 interface MetadataBadgeProps {
@@ -54,12 +54,10 @@ export function MetadataBadge({
 }: MetadataBadgeProps) {
     const [metadata, setMetadata] = useState<ChannelMetadata | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
-    const {
-        epgMetadataBadgeResolution = true,
-        epgMetadataBadgeFps = true,
-        epgMetadataBadgeFpsSuffix = true,
-        epgMetadataBadgeSound = true,
-    } = useAppSettings();
+    const epgMetadataBadgeResolution = useSettingsStore((s) => s.epgMetadataBadgeResolution) ?? true;
+    const epgMetadataBadgeFps = useSettingsStore((s) => s.epgMetadataBadgeFps) ?? true;
+    const epgMetadataBadgeFpsSuffix = useSettingsStore((s) => s.epgMetadataBadgeFpsSuffix) ?? true;
+    const epgMetadataBadgeSound = useSettingsStore((s) => s.epgMetadataBadgeSound) ?? true;
 
     const effectiveShowResolution = showResolution ?? epgMetadataBadgeResolution;
     const effectiveShowFps = showFps ?? epgMetadataBadgeFps;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ThemeId, CustomThemeConfig } from '../../types/app';
 import { extractCurrentThemeVariables } from '../../utils/themeHelper';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
@@ -245,15 +245,13 @@ export function ThemeTab({
   modernUiEnabled
 }: ThemeTabProps) {
   useTranslation();
-  const {
-    appFontFamily,
-    appCustomFontBase64,
-    appCustomFontFormat,
-    appCustomFontName,
-    updateAppFont,
-    savedCustomThemes,
-    setSavedCustomThemes
-  } = useAppSettings();
+  const appFontFamily = useSettingsStore((s) => s.appFontFamily);
+  const appCustomFontBase64 = useSettingsStore((s) => s.appCustomFontBase64);
+  const appCustomFontFormat = useSettingsStore((s) => s.appCustomFontFormat);
+  const appCustomFontName = useSettingsStore((s) => s.appCustomFontName);
+  const updateAppFont = useSettingsStore((s) => s.updateAppFont);
+  const savedCustomThemes = useSettingsStore((s) => s.savedCustomThemes);
+  const setSavedCustomThemes = useSettingsStore((s) => s.setSavedCustomThemes);
 
   const [activeSubTab, setActiveSubTab] = useState<'premade' | 'custom'>(() => {
     return theme === 'custom' ? 'custom' : 'premade';

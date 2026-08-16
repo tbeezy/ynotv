@@ -8,6 +8,7 @@ import { openPath } from '@tauri-apps/plugin-opener';
 import { appLogDir, join } from '@tauri-apps/api/path';
 import { debug as logDebug, info as logInfo, warn as logWarn, error as logError } from '@tauri-apps/plugin-log';
 import i18n, { translateNativeError } from '../i18n';
+import { useSettingsStore } from '../stores/settingsStore';
 
 // Store instance for Tauri
 let store: Store | null = null;
@@ -588,49 +589,46 @@ export const Bridge = {
             // mpv parameters would otherwise silently hide every selected subtitle.
             await invoke('mpv_set_property', { name: 'sub-visibility', value: true }).catch(() => {});
             try {
-                if (window.storage) {
-                    const result = await window.storage.getSettings();
-                    const ss = result.data?.subtitleSettings;
-                    const size = ss?.defaultSize || 35;
-                    const override = ss?.subAssOverride || 'yes';
-                    const effectiveOverride = override === 'no' ? 'no' : (override === 'scale' ? 'scale' : 'strip');
-                    const scale = Math.max(0.2, Math.min(3.0, size / 35));
-                    await invoke('mpv_set_property', { name: 'sub-font-size', value: size }).catch(() => {});
-                    await invoke('mpv_set_property', { name: 'sub-scale', value: scale }).catch(() => {});
-                    await invoke('mpv_set_property', { name: 'sub-ass-override', value: effectiveOverride }).catch(() => {});
-                    await invoke('mpv_set_property', { name: 'sub-use-media-style', value: override === 'no' }).catch(() => {});
-                    await invoke('mpv_set_property', { name: 'sub-ass-scale-with-window', value: true }).catch(() => {});
-                    if (ss?.subColor) {
-                        await invoke('mpv_set_property', { name: 'sub-color', value: ss.subColor }).catch(() => {});
-                    }
-                    if (ss?.subBackgroundEnabled && ss?.subBackgroundColor) {
-                        const opacityPercent = ss.subBackgroundOpacity ?? 80;
-                        const hex = ss.subBackgroundColor.replace('#', '').substring(0, 6);
-                        const r = parseInt(hex.substring(0, 2), 16) / 255;
-                        const g = parseInt(hex.substring(2, 4), 16) / 255;
-                        const b = parseInt(hex.substring(4, 6), 16) / 255;
-                        const a = opacityPercent / 100;
-                        await invoke('mpv_set_property', { name: 'sub-back-color', value: `${r}/${g}/${b}/${a}` }).catch(() => {});
-                        await invoke('mpv_set_property', { name: 'sub-border-style', value: 'background-box' }).catch(() => {});
-                    } else if (ss?.subBackgroundEnabled === false) {
-                        const hex = (ss.subBackgroundColor || '#000000').replace('#', '').substring(0, 6);
-                        const r = parseInt(hex.substring(0, 2), 16) / 255;
-                        const g = parseInt(hex.substring(2, 4), 16) / 255;
-                        const b = parseInt(hex.substring(4, 6), 16) / 255;
-                        await invoke('mpv_set_property', { name: 'sub-back-color', value: `${r}/${g}/${b}/0` }).catch(() => {});
-                        await invoke('mpv_set_property', { name: 'sub-border-style', value: 'outline-and-shadow' }).catch(() => {});
-                    }
-                    if (ss?.subOutlineColor) {
-                        await invoke('mpv_set_property', { name: 'sub-border-color', value: ss.subOutlineColor }).catch(() => {});
-                    }
-                    if (ss?.subVerticalOffset !== undefined) {
-                        const pos = Math.max(0, Math.min(100, ss.subVerticalOffset));
-                        await invoke('mpv_set_property', { name: 'sub-pos', value: pos }).catch(() => {});
-                    }
-                    const align = ss?.subAlign || 'center';
-                    const alignX = align === 'left' ? 'left' : (align === 'right' ? 'right' : 'center');
-                    await invoke('mpv_set_property', { name: 'sub-align-x', value: alignX }).catch(() => {});
+                const ss = useSettingsStore.getState().subtitleSettings;
+                const size = ss?.defaultSize || 35;
+                const override = ss?.subAssOverride || 'yes';
+                const effectiveOverride = override === 'no' ? 'no' : (override === 'scale' ? 'scale' : 'strip');
+                const scale = Math.max(0.2, Math.min(3.0, size / 35));
+                await invoke('mpv_set_property', { name: 'sub-font-size', value: size }).catch(() => {});
+                await invoke('mpv_set_property', { name: 'sub-scale', value: scale }).catch(() => {});
+                await invoke('mpv_set_property', { name: 'sub-ass-override', value: effectiveOverride }).catch(() => {});
+                await invoke('mpv_set_property', { name: 'sub-use-media-style', value: override === 'no' }).catch(() => {});
+                await invoke('mpv_set_property', { name: 'sub-ass-scale-with-window', value: true }).catch(() => {});
+                if (ss?.subColor) {
+                    await invoke('mpv_set_property', { name: 'sub-color', value: ss.subColor }).catch(() => {});
                 }
+                if (ss?.subBackgroundEnabled && ss?.subBackgroundColor) {
+                    const opacityPercent = ss.subBackgroundOpacity ?? 80;
+                    const hex = ss.subBackgroundColor.replace('#', '').substring(0, 6);
+                    const r = parseInt(hex.substring(0, 2), 16) / 255;
+                    const g = parseInt(hex.substring(2, 4), 16) / 255;
+                    const b = parseInt(hex.substring(4, 6), 16) / 255;
+                    const a = opacityPercent / 100;
+                    await invoke('mpv_set_property', { name: 'sub-back-color', value: `${r}/${g}/${b}/${a}` }).catch(() => {});
+                    await invoke('mpv_set_property', { name: 'sub-border-style', value: 'background-box' }).catch(() => {});
+                } else if (ss?.subBackgroundEnabled === false) {
+                    const hex = (ss.subBackgroundColor || '#000000').replace('#', '').substring(0, 6);
+                    const r = parseInt(hex.substring(0, 2), 16) / 255;
+                    const g = parseInt(hex.substring(2, 4), 16) / 255;
+                    const b = parseInt(hex.substring(4, 6), 16) / 255;
+                    await invoke('mpv_set_property', { name: 'sub-back-color', value: `${r}/${g}/${b}/0` }).catch(() => {});
+                    await invoke('mpv_set_property', { name: 'sub-border-style', value: 'outline-and-shadow' }).catch(() => {});
+                }
+                if (ss?.subOutlineColor) {
+                    await invoke('mpv_set_property', { name: 'sub-border-color', value: ss.subOutlineColor }).catch(() => {});
+                }
+                if (ss?.subVerticalOffset !== undefined) {
+                    const pos = Math.max(0, Math.min(100, ss.subVerticalOffset));
+                    await invoke('mpv_set_property', { name: 'sub-pos', value: pos }).catch(() => {});
+                }
+                const align = ss?.subAlign || 'center';
+                const alignX = align === 'left' ? 'left' : (align === 'right' ? 'right' : 'center');
+                await invoke('mpv_set_property', { name: 'sub-align-x', value: alignX }).catch(() => {});
             } catch (e) {}
         } else {
             await invoke('mpv_set_property', { name: 'sub-visibility', value: false }).catch(() => {});
