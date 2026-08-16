@@ -287,14 +287,17 @@ export function GameDetail({ event, onClose, onChannelClick, onPlayChannel, vari
     return (
       <div className="game-detail-scoring">
         {scoringPlays.map((play, idx) => {
-          const isHomeScore = play.teamId === summary.homeTeam.id;
+          const isHomeScore = play.teamId ? (play.teamId === summary.homeTeam.id || play.teamId === event.homeTeam.id) : undefined;
+          const isAwayScore = play.teamId ? (play.teamId === summary.awayTeam.id || play.teamId === event.awayTeam.id) : undefined;
           const teamName = isHomeScore 
             ? (event.homeTeam.shortName || event.homeTeam.name)
-            : (event.awayTeam.shortName || event.awayTeam.name);
-          const teamLogo = isHomeScore ? event.homeTeam.logo : event.awayTeam.logo;
+            : isAwayScore
+            ? (event.awayTeam.shortName || event.awayTeam.name)
+            : '';
+          const teamLogo = isHomeScore ? event.homeTeam.logo : isAwayScore ? event.awayTeam.logo : undefined;
 
           return (
-            <div key={play.id || idx} className={`game-detail-scoring-play ${isHomeScore ? 'home' : 'away'}`}>
+            <div key={play.id || idx} className={`game-detail-scoring-play ${isHomeScore ? 'home' : isAwayScore ? 'away' : ''}`}>
               <div className="game-detail-scoring-header">
                 <span className="game-detail-scoring-period">{play.period}</span>
                 <span className="game-detail-scoring-clock">{play.clock}</span>

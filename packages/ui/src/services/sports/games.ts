@@ -394,31 +394,88 @@ function extractPlayerStats(teamId: string, boxscore?: any, rosters?: any): Play
 function extractScoringPlays(data: any, homeTeamId: string): ScoringPlay[] {
   const scoringPlays: ScoringPlay[] = [];
 
-  // NFL/NBA/MLB/NHL use plays array
-  if (data.plays) {
+  const formatPeriod = (period: any): string => {
+    if (!period) return '';
+    if (typeof period === 'object') {
+      return period.displayValue || (period.number ? `Q${period.number}` : '');
+    }
+    if (typeof period === 'number') return `Q${period}`;
+    return String(period);
+  };
+
+  const formatClock = (clock: any): string => {
+    if (!clock) return '';
+    if (typeof clock === 'object') return clock.displayValue || '';
+    return String(clock);
+  };
+
+  // 1. Direct top-level scoringPlays array (NFL, NCAAF, etc.)
+  if (Array.isArray(data.scoringPlays) && data.scoringPlays.length > 0) {
+    for (const p of data.scoringPlays) {
+      scoringPlays.push({
+        id: p.id || '',
+        period: formatPeriod(p.period),
+        clock: formatClock(p.clock),
+        text: p.text || '',
+        homeScore: typeof p.homeScore === 'number' ? p.homeScore : parseInt(p.homeScore || '0', 10),
+        awayScore: typeof p.awayScore === 'number' ? p.awayScore : parseInt(p.awayScore || '0', 10),
+        scoringType: p.scoringType?.displayName || p.type?.text || p.scoringType?.abbreviation || p.type?.abbreviation || '',
+        teamId: p.team?.id,
+      });
+    }
+    return scoringPlays;
+  }
+
+  // 2. Plays array (NBA, MLB, NHL, etc.)
+  if (Array.isArray(data.plays) && data.plays.length > 0) {
     for (const p of data.plays) {
       if (p.scoringPlay) {
         scoringPlays.push({
-          id: p.id,
-          period: typeof p.period === 'object' ? p.period.displayValue : `Q${p.period}`,
-          clock: typeof p.clock === 'object' ? p.clock.displayValue : '',
-          text: p.text,
-          homeScore: p.homeScore,
-          awayScore: p.awayScore,
-          scoringType: p.type?.text,
+          id: p.id || '',
+          period: formatPeriod(p.period),
+          clock: formatClock(p.clock),
+          text: p.text || '',
+          homeScore: typeof p.homeScore === 'number' ? p.homeScore : parseInt(p.homeScore || '0', 10),
+          awayScore: typeof p.awayScore === 'number' ? p.awayScore : parseInt(p.awayScore || '0', 10),
+          scoringType: p.scoringType?.displayName || p.type?.text || (p.scoreValue ? `+${p.scoreValue} pts` : ''),
           teamId: p.team?.id,
         });
       }
     }
+    if (scoringPlays.length > 0) return scoringPlays;
   }
 
-  // Soccer uses keyEvents array for goals
-  if (data.keyEvents) {
+  // 3. Drives plays (Football fallback)
+  if (data.drives && Array.isArray(data.drives.previous)) {
+    for (const drive of data.drives.previous) {
+      if (Array.isArray(drive.plays)) {
+        for (const p of drive.plays) {
+          if (p.scoringPlay) {
+            scoringPlays.push({
+              id: p.id || '',
+              period: formatPeriod(p.period),
+              clock: formatClock(p.clock),
+              text: p.text || '',
+              homeScore: typeof p.homeScore === 'number' ? p.homeScore : parseInt(p.homeScore || '0', 10),
+              awayScore: typeof p.awayScore === 'number' ? p.awayScore : parseInt(p.awayScore || '0', 10),
+              scoringType: p.scoringType?.displayName || p.type?.text || drive.result || '',
+              teamId: p.team?.id || drive.team?.id,
+            });
+          }
+        }
+      }
+    }
+    if (scoringPlays.length > 0) return scoringPlays;
+  }
+
+  // 4. Soccer keyEvents
+  if (Array.isArray(data.keyEvents)) {
     for (const e of data.keyEvents) {
-      if (e.scoringPlay || (e.type?.type && e.type.type.includes('goal'))) {
-        let homeScore = 0;
-        let awayScore = 0;
-        if (e.text) {
+      const typeText = (e.type?.text || e.type?.type || '').toLowerCase();
+      if (e.scoringPlay || typeText.includes('goal')) {
+        let homeScore = typeof e.homeScore === 'number' ? e.homeScore : 0;
+        let awayScore = typeof e.awayScore === 'number' ? e.awayScore : 0;
+        if (!homeScore && !awayScore && e.text) {
           const scoreMatch = e.text.match(/(\d+)\s*,\s*(\d+)/);
           if (scoreMatch) {
             awayScore = parseInt(scoreMatch[1], 10);
@@ -427,9 +484,9 @@ function extractScoringPlays(data: any, homeTeamId: string): ScoringPlay[] {
         }
 
         scoringPlays.push({
-          id: e.id,
-          period: e.period?.displayValue || 'Half',
-          clock: e.clock?.displayValue || '',
+          id: e.id || '',
+          period: formatPeriod(e.period) || 'Half',
+          clock: formatClock(e.clock),
           text: e.text || e.shortText || 'Goal',
           homeScore,
           awayScore,
