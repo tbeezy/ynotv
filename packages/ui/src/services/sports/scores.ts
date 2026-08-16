@@ -125,8 +125,19 @@ async function getScoresForLeaguesInternal(
   onProgress?: OnBatchProgress,
   existingEvents?: SportsEvent[]
 ): Promise<SportsEvent[]> {
-  const allEvents: SportsEvent[] = existingEvents ? [...existingEvents] : [];
-  const existingIds = new Set(allEvents.map(e => e.id));
+  // Map of leagueId -> SportsEvent[]
+  const leagueEventsMap = new Map<string, SportsEvent[]>();
+
+  // If existing events provided, group them by league.id
+  if (existingEvents && existingEvents.length > 0) {
+    for (const event of existingEvents) {
+      const lid = event.league.id;
+      if (!leagueEventsMap.has(lid)) {
+        leagueEventsMap.set(lid, []);
+      }
+      leagueEventsMap.get(lid)!.push(event);
+    }
+  }
 
   // Split leagues into batches
   const batches: string[][] = [];
@@ -145,7 +156,7 @@ async function getScoresForLeaguesInternal(
     // Wait between batches (except for first batch)
     if (batchIndex > 0) {
       console.log(`[ESPN API] Waiting ${BATCH_DELAY_MS}ms before batch ${batchIndex + 1}/${totalBatches}`);
-      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+      await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
     }
 
     // Fetch current batch in parallel
@@ -153,15 +164,18 @@ async function getScoresForLeaguesInternal(
     const batchPromises = batch.map(async (sportKey) => {
       try {
         const res = await fetchSportScores(sportKey);
-        const uniqueEvents = res.filter(e => !existingIds.has(e.id));
-        uniqueEvents.forEach(e => existingIds.add(e.id));
-        allEvents.push(...uniqueEvents);
+        // Replace this league's events in the map with fresh data
+        leagueEventsMap.set(sportKey, res);
       } catch (err) {
         console.error(`[ESPN API] Error in progressive fetch for ${sportKey}:`, err);
       } finally {
         completedApis++;
         if (onProgress) {
-          const filtered = filterLiveEvents([...allEvents]);
+          const combined: SportsEvent[] = [];
+          for (const evs of leagueEventsMap.values()) {
+            combined.push(...evs);
+          }
+          const filtered = filterLiveEvents(combined);
           const sorted = sortEvents(filtered);
           onProgress(sorted, batchIndex, totalBatches, completedApis, totalApis);
         }
@@ -173,10 +187,14 @@ async function getScoresForLeaguesInternal(
   }
 
   // Final filter and sort
-  const filteredEvents = filterLiveEvents(allEvents);
+  const finalCombined: SportsEvent[] = [];
+  for (const evs of leagueEventsMap.values()) {
+    finalCombined.push(...evs);
+  }
+  const filteredEvents = filterLiveEvents(finalCombined);
   const sortedEvents = sortEvents(filteredEvents);
 
-  console.log(`[ESPN API] Total: ${sortedEvents.length} events (${sortedEvents.filter(e => e.status === 'live').length} live)`);
+  console.log(`[ESPN API] Total: ${sortedEvents.length} events (${sortedEvents.filter((e) => e.status === 'live').length} live)`);
   return sortedEvents;
 }
 
@@ -190,10 +208,11 @@ async function getScoresForLeaguesInternal(
  */
 export async function getLiveScores(
   leagues?: string[],
-  onProgress?: OnBatchProgress
+  onProgress?: OnBatchProgress,
+  existingEvents?: SportsEvent[]
 ): Promise<SportsEvent[]> {
   const targetLeagues = leagues || DEFAULT_LIVE_LEAGUES;
-  return getScoresForLeaguesInternal(targetLeagues, onProgress);
+  return getScoresForLeaguesInternal(targetLeagues, onProgress, existingEvents);
 }
 
 /**
@@ -215,14 +234,10 @@ export async function getLiveScoresForLeagues(
     return sortEvents(filtered);
   }
 
-  // Filter existing events to keep only leagues we're NOT fetching
-  const existingIds = new Set(leaguesToFetch);
-  const keptEvents = existingEvents.filter(e => !existingIds.has(e.league.id));
-
-  console.log(`[ESPN API Selective] Keeping ${keptEvents.length} events from cache, fetching ${leaguesToFetch.length} leagues`);
+  console.log(`[ESPN API Selective] Merging with ${existingEvents.length} cached events, fetching ${leaguesToFetch.length} leagues`);
 
   // Fetch only the specified leagues, merging with kept events
-  return getScoresForLeaguesInternal(leaguesToFetch, onProgress, keptEvents);
+  return getScoresForLeaguesInternal(leaguesToFetch, onProgress, existingEvents);
 }
 
 /**

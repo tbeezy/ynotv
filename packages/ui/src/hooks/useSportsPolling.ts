@@ -311,7 +311,7 @@ export function useSportsPolling(options: UseSportsPollingOptions = {}): UseSpor
       } else {
         // Full fetch - all leagues (initial load, manual refresh, or all leagues need updates)
         console.log(`[SportsPolling] Full fetch: all ${leagues.length} leagues`);
-        data = await getLiveScores(leagues, onProgress);
+        data = await getLiveScores(leagues, onProgress, currentEvents);
       }
 
       // Update per-league cache

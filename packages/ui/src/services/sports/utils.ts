@@ -1,5 +1,6 @@
 import { formatTime, formatDate } from '../../utils/dateTime';
 import i18n from '../../i18n';
+import type { SportsEvent } from '@ynotv/core';
 
 /**
  * Sports Utils
@@ -90,6 +91,67 @@ export function isEventUpcoming<T extends { status: string; startTime: Date }>(e
 
 export function isEventFinished<T extends { status: string }>(event: T): boolean {
   return event.status === 'finished';
+}
+
+// Status display text (period/quarter/inning + elapsed time) for the score overlays
+export function getStatusDisplay(event: SportsEvent): string {
+  if (event.status === 'scheduled' && isEventLiveOrPastStart(event)) {
+    return event.timeElapsed || i18n.t('sports:statusLive');
+  }
+  if (event.status !== 'live') return '';
+  const sport = event.league.sport.toLowerCase();
+  const period = event.period ? parseInt(event.period, 10) : 0;
+
+  switch (sport) {
+    case 'football':
+    case 'basketball':
+      return `Q${event.period || '-'}${event.timeElapsed ? ' ' + event.timeElapsed : ''}`;
+    case 'baseball': {
+      const inningLabel = period > 9 ? `${period}th` :
+        period === 1 ? '1st' :
+          period === 2 ? '2nd' :
+            period === 3 ? '3rd' :
+              period ? `${period}th` : '';
+      return `${inningLabel || '-'}${event.timeElapsed ? ' ' + event.timeElapsed : ''}`;
+    }
+    case 'hockey': {
+      const periodLabel = period <= 3 ? `${period}${period === 1 ? 'st' : period === 2 ? 'nd' : period === 3 ? 'rd' : 'th'}` :
+        period === 4 ? 'OT' :
+          period === 5 ? 'SO' : `${period - 3}OT`;
+      return `${periodLabel || '-'}${event.timeElapsed ? ' ' + event.timeElapsed : ''}`;
+    }
+    case 'soccer':
+    default:
+      return event.timeElapsed || i18n.t('sports:statusLive');
+  }
+}
+
+// Change detection — identical content in a new array should not trigger a re-render.
+// Used by the score overlays so a no-op poll doesn't flash/remount the whole widget.
+export function eventSignature(event: SportsEvent): string {
+  return [
+    event.id,
+    event.status,
+    event.homeScore ?? '',
+    event.awayScore ?? '',
+    event.period ?? '',
+    event.timeElapsed ?? '',
+    event.league?.name ?? '',
+    event.homeTeam?.shortName || event.homeTeam?.name || '',
+    event.awayTeam?.shortName || event.awayTeam?.name || '',
+    event.startTime ? new Date(event.startTime).getTime() : '',
+  ].join('|');
+}
+
+export function sameEvents(a: SportsEvent[], b: SportsEvent[]): boolean {
+  if (a.length !== b.length) return false;
+  const sigA = new Map(a.map((e) => [e.id, eventSignature(e)] as const));
+  const sigB = new Map(b.map((e) => [e.id, eventSignature(e)] as const));
+  if (sigA.size !== sigB.size) return false;
+  for (const [id, sig] of sigA) {
+    if (sigB.get(id) !== sig) return false;
+  }
+  return true;
 }
 
 // League/Sport helpers

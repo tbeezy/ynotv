@@ -66,15 +66,37 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
     return valid;
   }, [enabledLeagueIds]);
 
-  // Filter leagues by sport category
+  // Only show sport categories that have at least one enabled league!
+  const availableSportCategories = useMemo(() => {
+    const presentCategoryIds = new Set(enabledLeagues.map((l) => l.category));
+    return getAvailableCategories().filter((cat) => presentCategoryIds.has(cat.id));
+  }, [enabledLeagues]);
+
+  // If the active category filter has no leagues, reset to 'all'
+  useEffect(() => {
+    if (
+      selectedSportCategory !== 'all' &&
+      !availableSportCategories.some((c) => c.id === selectedSportCategory)
+    ) {
+      setSelectedSportCategory('all');
+    }
+  }, [availableSportCategories, selectedSportCategory]);
+
+  // Filter leagues by selected sport category
   const filteredLeagues = useMemo(() => {
     if (selectedSportCategory === 'all') return enabledLeagues;
     return enabledLeagues.filter((l) => l.category === selectedSportCategory);
   }, [enabledLeagues, selectedSportCategory]);
 
   const selectedLeague = useMemo(() => {
-    return enabledLeagues.find((l) => l.id === selectedLeagueId) || enabledLeagues[0] || null;
-  }, [enabledLeagues, selectedLeagueId]);
+    return (
+      filteredLeagues.find((l) => l.id === selectedLeagueId) ||
+      enabledLeagues.find((l) => l.id === selectedLeagueId) ||
+      filteredLeagues[0] ||
+      enabledLeagues[0] ||
+      null
+    );
+  }, [filteredLeagues, enabledLeagues, selectedLeagueId]);
 
   // Set default selected league
   useEffect(() => {
@@ -91,26 +113,6 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
       }
     }
   }, [isOpen, initialLeagueId, enabledLeagues, selectedLeagueId]);
-
-  // Close on Escape for consistency with the other sports modals
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Lock background scroll while the modal is open
-  useEffect(() => {
-    if (!isOpen) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isOpen]);
 
   // Load sources and enabled categories from DB
   useEffect(() => {
@@ -164,20 +166,13 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
 
   // Sync state when selectedLeague changes
   useEffect(() => {
-    if (!selectedLeague?.id) return;
-    let cancelled = false;
-    (async () => {
-      await useLeagueSearchConfigStore.getState().ensureLoaded();
-      if (cancelled) return;
+    if (selectedLeague?.id) {
       const cfg = getConfig(selectedLeague.id);
       setSelectedSourceIds(cfg.sourceIds || []);
       setSelectedCategoryIds(cfg.categoryIds || []);
       setCategorySearch('');
       setExpandedSourceIds(new Set());
-    })();
-    return () => {
-      cancelled = true;
-    };
+    }
   }, [selectedLeague?.id, getConfig]);
 
   // Filter categories by search and selected sources
@@ -212,7 +207,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
       const sName =
         c.source_name ||
         (c.source_id && sources.find((s) => s.id === c.source_id)?.name) ||
-        t('sports:other');
+        'Other';
       if (!sourceMap.has(sId)) {
         sourceMap.set(sId, { sourceName: sName, categories: [] });
       }
@@ -226,7 +221,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
       }
     }
     return groups;
-  }, [filteredCategories, sources, selectedSourceIds, t]);
+  }, [filteredCategories, sources, selectedSourceIds]);
 
   // When searching, auto-expand all matching source accordions
   useEffect(() => {
@@ -344,44 +339,59 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
         <div className="sss-header">
           <div className="sss-header-info">
             <div className="sss-header-title-row">
-              <span className="sss-header-icon">🔍</span>
-              <h2 className="sss-title">{t('sports:searchSettings', { defaultValue: 'Stream Search Settings' })}</h2>
-              {selectedLeague && (
-                <span className="sss-league-badge-top">{selectedLeague.name}</span>
-              )}
+              <div className="sss-modal-icon-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </div>
+              <div className="sss-title-column">
+                <div className="sss-title-with-league">
+                  <h2 className="sss-title">{t('sports:searchSettings', { defaultValue: 'Stream Search Settings' })}</h2>
+                  {selectedLeague && (
+                    <span className="sss-league-badge-top">{selectedLeague.name}</span>
+                  )}
+                </div>
+                <p className="sss-subtitle">
+                  Choose which playlist sources and categories to scan when searching for {selectedLeague?.name || 'league'} streams. All on by default.
+                </p>
+              </div>
             </div>
-            <p className="sss-subtitle">
-              {t('sports:searchSettingsSubtitle', { league: selectedLeague?.name || t('sports:eachLeague') })}
-            </p>
           </div>
           <button className="sss-close-btn" onClick={onClose} aria-label={t('common:close')}>
             ✕
           </button>
         </div>
 
-        {/* League Selector Strip */}
+        {/* League Selector Strip (Wrapping naturally, no horizontal scrollbars) */}
         <div className="sss-league-selector-section">
-          {/* Category filter pills */}
-          <div className="sss-category-pills-row">
-            <button
-              className={`sss-category-pill ${selectedSportCategory === 'all' ? 'active' : ''}`}
-              onClick={() => setSelectedSportCategory('all')}
-            >
-              {t('sports:all', { defaultValue: 'All' })}
-            </button>
-            {getAvailableCategories().map((cat) => (
+          {/* Sport category filter pills - Only for categories with active leagues */}
+          {availableSportCategories.length > 1 && (
+            <div className="sss-category-pills-row">
               <button
-                key={cat.id}
-                className={`sss-category-pill ${selectedSportCategory === cat.id ? 'active' : ''}`}
-                onClick={() => setSelectedSportCategory(cat.id)}
+                className={`sss-category-pill ${selectedSportCategory === 'all' ? 'active' : ''}`}
+                onClick={() => setSelectedSportCategory('all')}
               >
-                {cat.name}
+                {t('sports:all', { defaultValue: 'All' })}
               </button>
-            ))}
-          </div>
+              {availableSportCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  className={`sss-category-pill ${selectedSportCategory === cat.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedSportCategory(cat.id);
+                    const firstInCat = enabledLeagues.find((l) => l.category === cat.id);
+                    if (firstInCat) setSelectedLeagueId(firstInCat.id);
+                  }}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
 
-          {/* League pills */}
-          <div className="sss-leagues-pills-scroll tcs-custom-scrollbar">
+          {/* League selector pills - Wrapping naturally */}
+          <div className="sss-leagues-pills-wrap">
             {filteredLeagues.map((l: LeagueConfig) => {
               const isSelected = l.id === selectedLeague?.id;
               const hasCustom = hasCustomConfig(l.id);
@@ -392,7 +402,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                   onClick={() => setSelectedLeagueId(l.id)}
                 >
                   <span className="sss-league-pill-name">{l.name}</span>
-                  {hasCustom && <span className="sss-league-pill-custom-dot" title={t('sports:customFiltersActiveTitle')} />}
+                  {hasCustom && <span className="sss-league-pill-custom-dot" title="Custom search filters active" />}
                 </button>
               );
             })}
@@ -405,14 +415,14 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
             className={`sss-nav-tab ${activeTab === 'sources' ? 'active' : ''}`}
             onClick={() => setActiveTab('sources')}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
             <span>{t('sports:sourceScope', { defaultValue: 'Playlist Sources' })}</span>
             <span className="sss-badge-pill">
               {selectedSourceIds.length === 0
-                ? t('sports:allSources', { defaultValue: 'All Sources' })
-                : `${selectedSourceIds.length}`}
+                ? t('sports:allSources', { defaultValue: 'All Enabled Sources' })
+                : `${selectedSourceIds.length} Selected`}
             </span>
           </button>
 
@@ -420,14 +430,14 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
             className={`sss-nav-tab ${activeTab === 'categories' ? 'active' : ''}`}
             onClick={() => setActiveTab('categories')}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             <span>{t('sports:categoryScope', { defaultValue: 'Category Filters' })}</span>
             <span className="sss-badge-pill">
               {selectedCategoryIds.length === 0
                 ? t('sports:allCategories', { defaultValue: 'All Categories' })
-                : `${selectedCategoryIds.length}`}
+                : `${selectedCategoryIds.length} Selected`}
             </span>
           </button>
         </div>
@@ -439,7 +449,9 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
             <div className="sss-section">
               <div className="sss-section-header">
                 <h3>{t('sports:sourceScope', { defaultValue: 'Playlist Sources' })}</h3>
-                <p>{t('sports:sourceScopeDescForLeague', { league: selectedLeague?.name || '' })}</p>
+                <p>
+                  Choose which playlist sources are searched for <strong>{selectedLeague?.name}</strong> streams.
+                </p>
               </div>
 
               <div className="sss-filter-toolbar">
@@ -447,12 +459,12 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                   className={`sss-btn-mini ${selectedSourceIds.length === 0 ? 'active' : ''}`}
                   onClick={handleSelectAllSources}
                 >
-                  {t('sports:allSources', { defaultValue: 'All Sources (Default)' })}
+                  {t('sports:allSources', { defaultValue: 'All Enabled Sources' })}
                 </button>
                 <span className="sss-toolbar-count">
                   {selectedSourceIds.length === 0
-                    ? t('sports:searchingAllSources', { count: sources.length })
-                    : t('sports:sourcesSelected', { selected: selectedSourceIds.length, total: sources.length })}
+                    ? `Searching across all ${sources.length} sources`
+                    : `${selectedSourceIds.length} of ${sources.length} sources selected`}
                 </span>
               </div>
 
@@ -486,7 +498,9 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
             <div className="sss-section">
               <div className="sss-section-header">
                 <h3>{t('sports:categoryScope', { defaultValue: 'Category Filters' })}</h3>
-                <p>{t('sports:categoryScopeDescForLeague', { league: selectedLeague?.name || '' })}</p>
+                <p>
+                  Target specific categories for <strong>{selectedLeague?.name}</strong> streams. Click any source to view categories.
+                </p>
               </div>
 
               <div className="sss-category-controls">
@@ -541,7 +555,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                       </button>
                       {selectedCategoryIds.length > 0 && (
                         <button className="sss-btn-mini" onClick={handleClearCategories}>
-                          {t('sports:clearCount', { count: selectedCategoryIds.length })}
+                          Clear ({selectedCategoryIds.length})
                         </button>
                       )}
                     </>
@@ -549,11 +563,11 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
 
                   <div className="sss-expand-collapse-group">
                     <button className="sss-btn-mini-link" onClick={handleExpandAllSources}>
-                      {t('sports:expandAll')}
+                      Expand All
                     </button>
                     <span className="sss-divider-dot">•</span>
                     <button className="sss-btn-mini-link" onClick={handleCollapseAllSources}>
-                      {t('sports:collapseAll')}
+                      Collapse All
                     </button>
                   </div>
                 </div>
@@ -562,18 +576,18 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
               <div className="sss-category-count-bar">
                 <span>
                   {selectedCategoryIds.length === 0
-                    ? t('sports:searchingAllCategories', { count: categories.length })
-                    : t('sports:categoriesSelected', { count: selectedCategoryIds.length })}
+                    ? `Searching all enabled categories (${categories.length} total)`
+                    : `${selectedCategoryIds.length} categories selected`}
                 </span>
                 <span className="sss-showing-count">
-                  {t('sports:categoriesInSources', { categories: filteredCategories.length, sources: categoriesBySource.length })}
+                  {filteredCategories.length} categories in {categoriesBySource.length} sources
                 </span>
               </div>
 
               <div className="sss-categories-list">
                 {categoriesBySource.length === 0 ? (
                   <div className="sss-empty-state">
-                    <span>{t('sports:noCategoriesMatching', { query: categorySearch })}</span>
+                    <span>No enabled categories found matching "{categorySearch}"</span>
                   </div>
                 ) : (
                   categoriesBySource.map((group) => {
@@ -631,8 +645,8 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                           <div className="sss-source-group-right">
                             <span className={`sss-source-group-badge ${groupSelectedCount > 0 ? 'active' : ''}`}>
                               {groupSelectedCount > 0
-                                ? t('sports:selectedOutOf', { selected: groupSelectedCount, total: group.categories.length })
-                                : t('sports:categoryCount', { count: group.categories.length })}
+                                ? `${groupSelectedCount} / ${group.categories.length} selected`
+                                : `${group.categories.length} categories`}
                             </span>
                           </div>
                         </div>
@@ -656,7 +670,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                                     <span className="sss-cat-name">{c.name}</span>
                                   </div>
                                   {c.channel_count !== undefined && c.channel_count > 0 && (
-                                    <span className="sss-cat-count">{t('sports:channelCountShort', { count: c.channel_count })}</span>
+                                    <span className="sss-cat-count">{c.channel_count} ch</span>
                                   )}
                                 </label>
                               );

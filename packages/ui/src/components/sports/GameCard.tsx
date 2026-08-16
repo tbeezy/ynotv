@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import type { SportsEvent } from '@ynotv/core';
 import { formatEventTime } from '../../services/sports';
@@ -62,7 +62,7 @@ function TeamLogo({ name, logo, size = 'md' }: { name: string; logo?: string; si
   );
 }
 
-function TeamPlayButton({
+export function TeamPlayButton({
   links,
   onPlay,
 }: {
@@ -134,7 +134,7 @@ function TeamPlayButton({
           onPlay(primary);
         }}
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
       </button>
     );
   }
@@ -151,7 +151,7 @@ function TeamPlayButton({
             onPlay(primary);
           }}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
         </button>
         <button
           className={`gc-team-play-dropdown-btn ${menuOpen ? 'active' : ''}`}
@@ -162,7 +162,7 @@ function TeamPlayButton({
             setMenuOpen(!menuOpen);
           }}
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
@@ -217,7 +217,34 @@ interface GameCardProps {
 
 const inlineSearchCache = new Map<string, StoredChannel[]>();
 
-export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlayChannel, compact = false }: GameCardProps) {
+// Signature of everything GameCard renders — used by the memo comparator so a
+// poll that didn't change a card's displayed data skips re-rendering it.
+function gameCardSignature(event: SportsEvent): string {
+  return [
+    event.id,
+    event.status,
+    event.homeScore ?? '',
+    event.awayScore ?? '',
+    event.period ?? '',
+    event.timeElapsed ?? '',
+    event.league?.id ?? '',
+    event.league?.name ?? '',
+    event.homeTeam?.name ?? '',
+    event.homeTeam?.shortName ?? '',
+    event.homeTeam?.logo ?? '',
+    event.awayTeam?.name ?? '',
+    event.awayTeam?.shortName ?? '',
+    event.awayTeam?.logo ?? '',
+    event.startTime ? new Date(event.startTime).getTime() : '',
+    event.title ?? '',
+    event.venue ?? '',
+    (event.channels || []).map((c) => c.name).join(','),
+    event.matches ? JSON.stringify(event.matches) : '',
+  ].join('|');
+}
+
+export const GameCard = memo(
+  function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlayChannel, compact = false }: GameCardProps) {
   const epgClockFormat = useEpgClockFormat();
   useTranslation();
   const isLive = event.status === 'live';
@@ -685,5 +712,17 @@ export function GameCard({ event, onClick, onChannelClick, onSearchTeams, onPlay
     </div>
   );
 
-  return compact ? compactView : fullView;
-}
+    return compact ? compactView : fullView;
+  },
+  (prev, next) => {
+    if (prev.compact !== next.compact) return false;
+    // Handler truthiness controls whether whole UI regions render (e.g. the
+    // play-button column and the search/streams action row) — re-render if any
+    // of them appear or disappear, but ignore the identities themselves.
+    if (Boolean(prev.onClick) !== Boolean(next.onClick)) return false;
+    if (Boolean(prev.onChannelClick) !== Boolean(next.onChannelClick)) return false;
+    if (Boolean(prev.onSearchTeams) !== Boolean(next.onSearchTeams)) return false;
+    if (Boolean(prev.onPlayChannel) !== Boolean(next.onPlayChannel)) return false;
+    return gameCardSignature(prev.event) === gameCardSignature(next.event);
+  }
+);

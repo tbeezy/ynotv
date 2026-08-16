@@ -811,12 +811,15 @@ html[data-ui-version="v2"] .view-transition-container {
   text-transform: uppercase;
 }
 
+/* Tabular numerals + a fixed-width cell keep the card a constant width as
+   scores tick up ("9" → "10"), so score updates don't shift the whole strip. */
 .live-sports-score-value {
   font-size: 13px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.85);
-  min-width: 16px;
+  min-width: max(16px, 2ch);
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .live-sports-score-value.winning {
@@ -828,6 +831,7 @@ html[data-ui-version="v2"] .view-transition-container {
   font-weight: 600;
   color: var(--accent-primary, #ef4444);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Restore hidden matches area - positioned at right edge of overlay */

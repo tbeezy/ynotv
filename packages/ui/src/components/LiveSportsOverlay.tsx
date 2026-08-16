@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo, memo } from 'react';
 import i18n from '../i18n';
 import type { SportsEvent } from '@ynotv/core';
 import { useSportsPolling } from '../hooks/useSportsPolling';
@@ -6,40 +6,82 @@ import { useSportsSettingsStore } from '../stores/sportsSettingsStore';
 import { GameDetail } from './sports/GameDetail';
 import { getHiddenEventIds, hideEvent, clearHiddenEvents } from '../utils/hiddenSportsEvents';
 import { isEventLiveOrPastStart } from '../services/sports';
+import { getStatusDisplay, sameEvents } from '../services/sports/utils';
 
-function getStatusDisplay(event: SportsEvent): string {
-  if (event.status === 'scheduled' && isEventLiveOrPastStart(event)) {
-    return event.timeElapsed || i18n.t('sports:statusLive');
-  }
-  if (event.status !== 'live') return '';
-  const sport = event.league.sport.toLowerCase();
-  const period = event.period ? parseInt(event.period, 10) : 0;
+// -----------------------------------------------------------------------------
+// Memoized score item — re-renders only when ITS score/status changed
+// -----------------------------------------------------------------------------
 
-  switch (sport) {
-    case 'football':
-      return `Q${event.period || '-'}${event.timeElapsed ? ' ' + event.timeElapsed : ''}`;
-    case 'basketball':
-      return `Q${event.period || '-'}${event.timeElapsed ? ' ' + event.timeElapsed : ''}`;
-    case 'baseball': {
-      const inningLabel = period > 9 ? `${period}th` :
-        period === 1 ? '1st' :
-          period === 2 ? '2nd' :
-            period === 3 ? '3rd' :
-              period ? `${period}th` : '';
-      return `${inningLabel || '-'}${event.timeElapsed ? ' ' + event.timeElapsed : ''}`;
-    }
-    case 'hockey': {
-      const periodLabel = period <= 3 ? `${period}${period === 1 ? 'st' : period === 2 ? 'nd' : period === 3 ? 'rd' : 'th'}` :
-        period === 4 ? 'OT' :
-          period === 5 ? 'SO' : `${period - 3}OT`;
-      return `${periodLabel || '-'}${event.timeElapsed ? ' ' + event.timeElapsed : ''}`;
-    }
-    case 'soccer':
-      return event.timeElapsed || i18n.t('sports:statusLive');
-    default:
-      return event.timeElapsed || i18n.t('sports:statusLive');
-  }
+interface ScoreItemProps {
+  event: SportsEvent;
+  onOpen: (event: SportsEvent) => void;
+  onContextMenu: (e: React.MouseEvent, eventId: string) => void;
 }
+
+const LiveSportsScoreItem = memo(
+  function LiveSportsScoreItem({ event, onOpen, onContextMenu }: ScoreItemProps) {
+    const awayWinning = (event.awayScore ?? 0) > (event.homeScore ?? 0);
+    const homeWinning = (event.homeScore ?? 0) > (event.awayScore ?? 0);
+    const statusText = getStatusDisplay(event);
+
+    return (
+      <div
+        className="live-sports-score-item"
+        onClick={() => onOpen(event)}
+        onContextMenu={(e) => onContextMenu(e, event.id)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpen(event);
+          }
+        }}
+      >
+        <span className="live-sports-score-league">{event.league.name}</span>
+        <div className="live-sports-score-matchup">
+          <span className="live-sports-score-block">
+            <span className={`live-sports-score-team ${awayWinning ? 'winning' : ''}`}>
+              {event.awayTeam.shortName || event.awayTeam.name}
+            </span>
+            <span className={`live-sports-score-value ${awayWinning ? 'winning' : ''}`}>
+              {event.awayScore ?? 0}
+            </span>
+          </span>
+          <span className="live-sports-score-vs">{i18n.t('sports:vs')}</span>
+          <span className="live-sports-score-block">
+            <span className={`live-sports-score-value ${homeWinning ? 'winning' : ''}`}>
+              {event.homeScore ?? 0}
+            </span>
+            <span className={`live-sports-score-team ${homeWinning ? 'winning' : ''}`}>
+              {event.homeTeam.shortName || event.homeTeam.name}
+            </span>
+          </span>
+        </div>
+        {statusText && (
+          <span className="live-sports-score-status">{statusText}</span>
+        )}
+      </div>
+    );
+  },
+  (prev, next) => {
+    // Return true (props equal → skip re-render) unless a displayed field changed.
+    const a = prev.event;
+    const b = next.event;
+    return (
+      a.id === b.id &&
+      a.status === b.status &&
+      a.homeScore === b.homeScore &&
+      a.awayScore === b.awayScore &&
+      a.period === b.period &&
+      a.timeElapsed === b.timeElapsed &&
+      a.league?.name === b.league?.name &&
+      (a.homeTeam?.shortName || a.homeTeam?.name) === (b.homeTeam?.shortName || b.homeTeam?.name) &&
+      (a.awayTeam?.shortName || a.awayTeam?.name) === (b.awayTeam?.shortName || b.awayTeam?.name) &&
+      (a.startTime ? new Date(a.startTime).getTime() : 0) === (b.startTime ? new Date(b.startTime).getTime() : 0)
+    );
+  }
+);
 
 interface LiveSportsOverlayProps {
   mode: 'autohide' | 'persistent';
@@ -59,6 +101,7 @@ export function LiveSportsOverlay({ mode, showControls, activeView }: LiveSports
   const restoreRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
+  const prevLiveRef = useRef<SportsEvent[]>([]);
 
   // Load custom leagues from settings so we match the Sports page exactly
   const { liveLeagues, loaded, loadSettings } = useSportsSettingsStore();
@@ -77,9 +120,14 @@ export function LiveSportsOverlay({ mode, showControls, activeView }: LiveSports
     leagues: loaded ? liveLeagues : undefined,
   });
 
-  // Keep our local liveEvents in sync with the polled events
+  // Keep our local liveEvents in sync with the polled events.
+  // Only touch state when the displayed data actually changed — a no-op poll
+  // must not re-render the whole overlay.
   useEffect(() => {
     const live = events.filter(isEventLiveOrPastStart);
+    const prev = prevLiveRef.current;
+    if (sameEvents(prev, live)) return;
+    prevLiveRef.current = live;
     setLiveEvents(live);
   }, [events]);
 
@@ -159,7 +207,11 @@ export function LiveSportsOverlay({ mode, showControls, activeView }: LiveSports
         }
         if (contentWidth > 0) contentWidth -= 16;
 
-        setIsOverflowing(contentWidth > overlayRef.current.clientWidth);
+        // Hysteresis: only flip modes when the width difference clears the
+        // margin, so a few pixels of score growth can't flicker the strip
+        // in and out of ticker mode on every poll.
+        const shouldOverflow = contentWidth > overlayRef.current.clientWidth + 24;
+        setIsOverflowing((prev) => (shouldOverflow === prev ? prev : shouldOverflow));
       }
     };
 
@@ -170,7 +222,20 @@ export function LiveSportsOverlay({ mode, showControls, activeView }: LiveSports
       clearTimeout(timer);
       window.removeEventListener('resize', checkOverflow);
     };
-  }, [visibleEvents]);
+  }, [visibleEvents.length]);
+
+  const marqueeDuration = useMemo(
+    () => `${Math.max(visibleEvents.length, 1) * 4}s`,
+    [visibleEvents.length]
+  );
+
+  const trackStyle = useMemo(
+    () =>
+      isOverflowing
+        ? ({ '--marquee-duration': marqueeDuration } as React.CSSProperties)
+        : undefined,
+    [isOverflowing, marqueeDuration]
+  );
 
   // Visibility logic
   const isMainScreen = activeView === 'none';
@@ -193,58 +258,33 @@ export function LiveSportsOverlay({ mode, showControls, activeView }: LiveSports
         <div 
           ref={trackRef} 
           className={`live-sports-track ${isOverflowing ? 'is-ticker' : ''}`}
-          style={isOverflowing ? { '--marquee-duration': `${visibleEvents.length * 4}s` } as React.CSSProperties : undefined}
+          style={trackStyle}
         >
-          {[...visibleEvents, ...(isOverflowing ? visibleEvents : [])].map((event, index) => {
-            const awayWinning = (event.awayScore ?? 0) > (event.homeScore ?? 0);
-            const homeWinning = (event.homeScore ?? 0) > (event.awayScore ?? 0);
-            const statusText = getStatusDisplay(event);
-
-            return (
-              <div
-                key={`${event.id}-${index}`}
-                className="live-sports-score-item"
-                onClick={() => setSelectedEvent(event)}
-                onContextMenu={(e) => {
+          {visibleEvents.map((event) => (
+            <LiveSportsScoreItem
+              key={event.id}
+              event={event}
+              onOpen={setSelectedEvent}
+              onContextMenu={(e, eventId) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setContextMenu({ x: e.clientX, y: e.clientY, eventId });
+              }}
+            />
+          ))}
+          {isOverflowing &&
+            visibleEvents.map((event) => (
+              <LiveSportsScoreItem
+                key={`${event.id}-dup`}
+                event={event}
+                onOpen={setSelectedEvent}
+                onContextMenu={(e, eventId) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setContextMenu({ x: e.clientX, y: e.clientY, eventId: event.id });
+                  setContextMenu({ x: e.clientX, y: e.clientY, eventId });
                 }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setSelectedEvent(event);
-                  }
-                }}
-              >
-                <span className="live-sports-score-league">{event.league.name}</span>
-                <div className="live-sports-score-matchup">
-                  <span className="live-sports-score-block">
-                    <span className={`live-sports-score-team ${awayWinning ? 'winning' : ''}`}>
-                      {event.awayTeam.shortName || event.awayTeam.name}
-                    </span>
-                    <span className={`live-sports-score-value ${awayWinning ? 'winning' : ''}`}>
-                      {event.awayScore ?? 0}
-                    </span>
-                  </span>
-                  <span className="live-sports-score-vs">{i18n.t('sports:vs')}</span>
-                  <span className="live-sports-score-block">
-                    <span className={`live-sports-score-value ${homeWinning ? 'winning' : ''}`}>
-                      {event.homeScore ?? 0}
-                    </span>
-                    <span className={`live-sports-score-team ${homeWinning ? 'winning' : ''}`}>
-                      {event.homeTeam.shortName || event.homeTeam.name}
-                    </span>
-                  </span>
-                </div>
-                {statusText && (
-                  <span className="live-sports-score-status">{statusText}</span>
-                )}
-              </div>
-            );
-          })}
+              />
+            ))}
         </div>
 
         {hasHiddenMatches && (

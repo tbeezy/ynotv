@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { SportsEvent } from '@ynotv/core';
 import {
@@ -28,6 +28,15 @@ export function GameDetail({ event, onClose, onChannelClick, onPlayChannel, vari
   const [summary, setSummary] = useState<GameSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('stats');
+  const [playerTeamTab, setPlayerTeamTab] = useState<'away' | 'home'>('away');
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectPlayerTeam = (team: 'away' | 'home') => {
+    setPlayerTeamTab(team);
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const isLive = event.status === 'live';
   const homeWinning = (event.homeScore ?? 0) > (event.awayScore ?? 0);
@@ -107,6 +116,76 @@ export function GameDetail({ event, onClose, onChannelClick, onPlayChannel, vari
     );
   };
 
+  // Auto-select team with stats if one team has none
+  const getEffectivePlayerTeamTab = (): 'away' | 'home' => {
+    if (!summary) return playerTeamTab;
+    const homePlayerStats = summary.homeTeam.playerStats || [];
+    const awayPlayerStats = summary.awayTeam.playerStats || [];
+    if (playerTeamTab === 'away' && awayPlayerStats.length === 0 && homePlayerStats.length > 0) return 'home';
+    if (playerTeamTab === 'home' && homePlayerStats.length === 0 && awayPlayerStats.length > 0) return 'away';
+    return playerTeamTab;
+  };
+
+  // Team sub-tab bar — rendered OUTSIDE the scrollable content area (like the
+  // main tab row) so it spans the full modal width and stays pinned above the
+  // tables while they scroll, instead of being overlapped by them.
+  const renderPlayerTeamTabs = () => {
+    if (!summary) return null;
+    const homePlayerStats = summary.homeTeam.playerStats || [];
+    const awayPlayerStats = summary.awayTeam.playerStats || [];
+    if (homePlayerStats.length === 0 && awayPlayerStats.length === 0) return null;
+
+    const effectiveTeamTab = getEffectivePlayerTeamTab();
+
+    return (
+      <div className="game-detail-players-team-tabs">
+        <button
+          className={`game-detail-players-tab-btn ${effectiveTeamTab === 'away' ? 'active' : ''} ${awayPlayerStats.length === 0 ? 'disabled' : ''}`}
+          onClick={() => handleSelectPlayerTeam('away')}
+          disabled={awayPlayerStats.length === 0}
+        >
+          {event.awayTeam.logo ? (
+            <img
+              src={event.awayTeam.logo}
+              alt=""
+              className="game-detail-players-tab-logo"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : (
+            <div className="game-detail-players-tab-logo-placeholder">
+              {event.awayTeam.name.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <span className="game-detail-players-tab-name">
+            {event.awayTeam.name}
+          </span>
+        </button>
+
+        <button
+          className={`game-detail-players-tab-btn ${effectiveTeamTab === 'home' ? 'active' : ''} ${homePlayerStats.length === 0 ? 'disabled' : ''}`}
+          onClick={() => handleSelectPlayerTeam('home')}
+          disabled={homePlayerStats.length === 0}
+        >
+          {event.homeTeam.logo ? (
+            <img
+              src={event.homeTeam.logo}
+              alt=""
+              className="game-detail-players-tab-logo"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : (
+            <div className="game-detail-players-tab-logo-placeholder">
+              {event.homeTeam.name.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <span className="game-detail-players-tab-name">
+            {event.homeTeam.name}
+          </span>
+        </button>
+      </div>
+    );
+  };
+
   const renderPlayersTab = () => {
     if (!summary) return null;
 
@@ -121,22 +200,19 @@ export function GameDetail({ event, onClose, onChannelClick, onPlayChannel, vari
       );
     }
 
+    const effectiveTeamTab = getEffectivePlayerTeamTab();
+
     const renderPlayerTable = (stats: PlayerStatCategory[], teamName: string, teamLogo?: string) => {
-      if (stats.length === 0) return null;
+      if (stats.length === 0) {
+        return (
+          <div className="game-detail-no-data">
+            <span>{i18n.t('sports:playerStatsUnavailable')}</span>
+          </div>
+        );
+      }
 
       return (
         <div className="game-detail-players-team">
-          <div className="game-detail-players-team-header">
-            {teamLogo && (
-              <img 
-                src={teamLogo} 
-                alt={teamName}
-                className="game-detail-players-team-logo"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
-            )}
-            <span className="game-detail-players-team-name">{teamName}</span>
-          </div>
           {stats.map((category, catIdx) => (
             <div key={catIdx} className="game-detail-players-category">
               <h4 className="game-detail-players-category-title">{category.text}</h4>
@@ -183,9 +259,13 @@ export function GameDetail({ event, onClose, onChannelClick, onPlayChannel, vari
 
     return (
       <div className="game-detail-players">
-        <div className="game-detail-players-grid">
-          {renderPlayerTable(awayPlayerStats, event.awayTeam.name, event.awayTeam.logo)}
-          {renderPlayerTable(homePlayerStats, event.homeTeam.name, event.homeTeam.logo)}
+        <div className="game-detail-players-content">
+          {effectiveTeamTab === 'away' && (
+            renderPlayerTable(awayPlayerStats, event.awayTeam.name, event.awayTeam.logo)
+          )}
+          {effectiveTeamTab === 'home' && (
+            renderPlayerTable(homePlayerStats, event.homeTeam.name, event.homeTeam.logo)
+          )}
         </div>
       </div>
     );
@@ -1119,31 +1199,33 @@ export function GameDetail({ event, onClose, onChannelClick, onPlayChannel, vari
         <div className="game-detail-tabs">
           <button
             className={`game-detail-tab ${activeTab === 'stats' ? 'active' : ''}`}
-            onClick={() => setActiveTab('stats')}
+            onClick={() => { setActiveTab('stats'); contentRef.current?.scrollTo({ top: 0, behavior: 'auto' }); }}
           >
             Team Stats
           </button>
           <button
             className={`game-detail-tab ${activeTab === 'players' ? 'active' : ''}`}
-            onClick={() => setActiveTab('players')}
+            onClick={() => { setActiveTab('players'); contentRef.current?.scrollTo({ top: 0, behavior: 'auto' }); }}
           >
             Players
           </button>
           <button
             className={`game-detail-tab ${activeTab === 'scoring' ? 'active' : ''}`}
-            onClick={() => setActiveTab('scoring')}
+            onClick={() => { setActiveTab('scoring'); contentRef.current?.scrollTo({ top: 0, behavior: 'auto' }); }}
           >
             Scoring Plays
           </button>
           <button
             className={`game-detail-tab ${activeTab === 'info' ? 'active' : ''}`}
-            onClick={() => setActiveTab('info')}
+            onClick={() => { setActiveTab('info'); contentRef.current?.scrollTo({ top: 0, behavior: 'auto' }); }}
           >
             Game Info
           </button>
         </div>
 
-        <div className="game-detail-content">
+        {activeTab === 'players' && renderPlayerTeamTabs()}
+
+        <div className="game-detail-content" ref={contentRef}>
           {loading ? (
             <div className="game-detail-loading">
               <div className="game-detail-spinner" />

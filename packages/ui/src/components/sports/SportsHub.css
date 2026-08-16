@@ -578,12 +578,15 @@
   text-transform: uppercase;
 }
 
+/* Tabular numerals + a fixed-width cell keep the card a constant width as
+   scores tick up ("9" → "10"), so score updates don't shift the whole strip. */
 .sports-score-value {
   font-size: 13px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.85);
-  min-width: 16px;
+  min-width: max(16px, 2ch);
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .sports-score-value.winning {
@@ -595,6 +598,7 @@
   font-weight: 600;
   color: var(--accent-primary, #ef4444);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .sports-info-pane {
@@ -2935,7 +2939,92 @@
 
 /* Player Stats */
 .game-detail-players {
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* The bar lives OUTSIDE the scrollable content (sibling of .game-detail-content),
+   so it spans the full modal width and stays pinned above the tables naturally. */
+.game-detail-players-team-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 24px;
+  background: var(--bg-primary, #0f0f0f);
+  border-bottom: 1px solid var(--border-color, #2a2a2a);
+  box-sizing: border-box;
+}
+
+.game-detail-players-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary, #94a3b8);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.game-detail-players-tab-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #ffffff);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.game-detail-players-tab-btn.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.25);
+}
+
+.game-detail-players-tab-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.game-detail-players-tab-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.game-detail-players-tab-logo-placeholder {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary, #94a3b8);
+  flex-shrink: 0;
+}
+
+.game-detail-players-tab-name {
+  font-size: 13.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-detail-players-content {
+  padding: 20px 24px 24px 24px;
 }
 
 /* Scrollbar handled by .sports-hub parent */
@@ -8022,6 +8111,12 @@
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.4);
   font-weight: 600;
+}
+
+.your-teams-today-team .gc-team-play-btn,
+.your-teams-today-team .gc-team-play-group {
+  margin-left: 2px;
+  flex-shrink: 0;
 }
 
 .your-teams-today-watch-btn {

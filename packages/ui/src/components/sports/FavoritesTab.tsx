@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import i18n from '../../i18n';
 import type { SportsTeam, SportsEvent, SportsTabId } from '@ynotv/core';
 import { 
@@ -20,10 +20,12 @@ import {
   isEventLiveOrPastStart,
   type TeamDetails
 } from '../../services/sports';
-import type { StoredChannel } from '../../db';
+import { db, type StoredChannel, type TeamChannelLink } from '../../db';
+import { useTeamLinks } from '../../stores/teamChannelLinksStore';
 import { searchGameStreams } from '../../services/sports/gameStreamSearcher';
 import { TeamDetail } from './TeamDetail';
 import { GameDetail } from './GameDetail';
+import { TeamPlayButton } from './GameCard';
 
 import {
   DndContext,
@@ -127,6 +129,46 @@ function buildTeamSearchQuery(homeTeam: string, awayTeam?: string): string {
   return `${stripCityPrefix(homeTeam)} ${stripCityPrefix(awayTeam)}`;
 }
 
+// -----------------------------------------------------------------------------
+// Memo comparison helpers — a poll that didn't change a card's displayed data
+// must not re-render that card (silent scoreboard updates, like the overlays).
+// -----------------------------------------------------------------------------
+
+function favoriteTeamEqual(a: FavoriteTeam, b: FavoriteTeam): boolean {
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    a.shortName === b.shortName &&
+    a.logo === b.logo &&
+    a.country === b.country &&
+    a.leagueId === b.leagueId &&
+    a.addedAt === b.addedAt &&
+    a.isPinned === b.isPinned
+  );
+}
+
+function favoriteCardEventEqual(a?: SportsEvent, b?: SportsEvent): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return (
+    a.id === b.id &&
+    a.status === b.status &&
+    a.homeScore === b.homeScore &&
+    a.awayScore === b.awayScore &&
+    a.period === b.period &&
+    a.timeElapsed === b.timeElapsed &&
+    a.league?.id === b.league?.id &&
+    a.league?.name === b.league?.name &&
+    a.homeTeam?.name === b.homeTeam?.name &&
+    a.homeTeam?.shortName === b.homeTeam?.shortName &&
+    a.homeTeam?.logo === b.homeTeam?.logo &&
+    a.awayTeam?.name === b.awayTeam?.name &&
+    a.awayTeam?.shortName === b.awayTeam?.shortName &&
+    a.awayTeam?.logo === b.awayTeam?.logo &&
+    (a.startTime ? new Date(a.startTime).getTime() : 0) === (b.startTime ? new Date(b.startTime).getTime() : 0)
+  );
+}
+
 
 
 /**
@@ -192,7 +234,8 @@ interface SortableFavoriteCardProps {
   dropIndicator?: 'above' | 'below' | null;
 }
 
-function SortableFavoriteCard(props: SortableFavoriteCardProps) {
+const SortableFavoriteCard = memo(
+  function SortableFavoriteCard(props: SortableFavoriteCardProps) {
   const {
     team,
     details,
@@ -432,7 +475,193 @@ function SortableFavoriteCard(props: SortableFavoriteCardProps) {
       )}
     </div>
   );
-}
+  },
+  (prev, next) => {
+    if (prev.isLive !== next.isLive) return false;
+    if (prev.isSearching !== next.isSearching) return false;
+    if (prev.searchQuery !== next.searchQuery) return false;
+    if (prev.epgClockFormat !== next.epgClockFormat) return false;
+    if (prev.dropIndicator !== next.dropIndicator) return false;
+    if (prev.streamsList !== next.streamsList) return false;
+    if (prev.details !== next.details) return false;
+    if (!favoriteTeamEqual(prev.team, next.team)) return false;
+    if (!favoriteCardEventEqual(prev.liveEvent, next.liveEvent)) return false;
+    if (!favoriteCardEventEqual(prev.nextEvent, next.nextEvent)) return false;
+    return true;
+  }
+);
+
+const YourTeamsTodayCard = memo(
+  function YourTeamsTodayCard({
+  team,
+  event,
+  isLive,
+  epgClockFormat,
+  searchingKeys,
+  inlineStreams,
+  onSelectEvent,
+  onChannelClick,
+  onPlayChannel,
+  onToggleInlineStreams,
+  onStreamClick,
+}: {
+  team: FavoriteTeam;
+  event: SportsEvent;
+  isLive: boolean;
+  epgClockFormat?: string;
+  searchingKeys: Record<string, boolean>;
+  inlineStreams: Record<string, StoredChannel[] | null>;
+  onSelectEvent: (event: SportsEvent) => void;
+  onChannelClick: (channelName: string) => void;
+  onPlayChannel?: (channel: any) => void;
+  onToggleInlineStreams: (cardKey: string, query: string, leagueId?: string) => void;
+  onStreamClick: (ch: StoredChannel) => void;
+}) {
+  const cardKey = `today-${event.id}`;
+  const searchQuery = buildTeamSearchQuery(event.homeTeam.name, event.awayTeam.name);
+  const isSearching = searchingKeys[cardKey] || false;
+  const streamsList = inlineStreams[cardKey];
+  const leagueId = event.league?.id || team.leagueId || '';
+
+  const homeLinks = useTeamLinks(leagueId, event.homeTeam.id || '');
+  const awayLinks = useTeamLinks(leagueId, event.awayTeam.id || '');
+
+  const handlePlayLinked = useCallback(async (link: TeamChannelLink) => {
+    try {
+      const channel = await db.channels.get(link.stream_id);
+      if (channel && onPlayChannel) {
+        onPlayChannel(channel);
+      } else if (onChannelClick) {
+        onChannelClick(link.channel_name);
+      }
+    } catch (err) {
+      console.error('[FavoritesTab] Failed to resolve linked channel:', err);
+    }
+  }, [onPlayChannel, onChannelClick]);
+
+  return (
+    <div className={`your-teams-today-card ${isLive ? 'is-live' : ''}`}>
+      {/* Top Match Info */}
+      <div className="your-teams-today-match-info" onClick={() => onSelectEvent(event)}>
+        {isLive ? (
+          <span className="your-teams-today-status live">
+            <span className="live-count-dot" /> LIVE
+          </span>
+        ) : (
+          <span className="your-teams-today-status time">
+            {formatEventTime(event.startTime, epgClockFormat !== '24h')}
+          </span>
+        )}
+
+        <div className="your-teams-today-teams">
+          <div className="your-teams-today-team">
+            {event.homeTeam.logo && (
+              <img src={event.homeTeam.logo} alt="" className="your-teams-today-logo" />
+            )}
+            <span className="your-teams-today-team-name">{event.homeTeam.shortName || event.homeTeam.name}</span>
+            {isLive && event.homeScore !== undefined && (
+              <span className="your-teams-today-score">{event.homeScore}</span>
+            )}
+            {onPlayChannel && homeLinks.length > 0 && (
+              <TeamPlayButton links={homeLinks} onPlay={handlePlayLinked} />
+            )}
+          </div>
+          <span className="your-teams-today-vs">{i18n.t('sports:vs')}</span>
+          <div className="your-teams-today-team">
+            {event.awayTeam.logo && (
+              <img src={event.awayTeam.logo} alt="" className="your-teams-today-logo" />
+            )}
+            <span className="your-teams-today-team-name">{event.awayTeam.shortName || event.awayTeam.name}</span>
+            {isLive && event.awayScore !== undefined && (
+              <span className="your-teams-today-score">{event.awayScore}</span>
+            )}
+            {onPlayChannel && awayLinks.length > 0 && (
+              <TeamPlayButton links={awayLinks} onPlay={handlePlayLinked} />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions Row Underneath Match Info */}
+      <div className="your-teams-today-actions-row">
+        <button
+          className="favorite-action-text-btn search-btn"
+          title={i18n.t('sports:searchEpgForTeam', { home: event.homeTeam.name, away: event.awayTeam.name })}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChannelClick(searchQuery);
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          Search
+        </button>
+
+        <button
+          className={`favorite-action-text-btn list-btn ${streamsList && streamsList.length > 0 ? 'active' : ''}`}
+          title={streamsList ? i18n.t('sports:hideStreams') : i18n.t('sports:listStreamsForGame')}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleInlineStreams(cardKey, searchQuery, leagueId);
+          }}
+        >
+          {isSearching ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="gc-spin">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 2v4" />
+              <path d="m5 5 2.8 2.8" />
+              <path d="m19 5-2.8 2.8" />
+              <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" />
+            </svg>
+          )}
+          List Streams Here
+        </button>
+      </div>
+
+      {/* Inline Streams Vertically Stacked List */}
+      {streamsList !== undefined && streamsList !== null && (
+        <div className="favorite-card-inline-streams">
+          {streamsList.length > 0 ? (
+            <div className="favorite-streams-vlist">
+              {streamsList.map((ch, idx) => (
+                <button
+                  key={`today-ch-${ch.stream_id}-${idx}`}
+                  className="favorite-stream-pill-vertical"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStreamClick(ch);
+                  }}
+                  title={ch.name}
+                >
+                  <span className="favorite-stream-play">▶</span>
+                  <span className="favorite-stream-name">{ch.name}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="favorite-no-streams-text">{i18n.t('sports:noStreamsInPlaylists')}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+  },
+  (prev, next) => {
+    if (prev.isLive !== next.isLive) return false;
+    if (prev.epgClockFormat !== next.epgClockFormat) return false;
+    if (!favoriteTeamEqual(prev.team, next.team)) return false;
+    if (!favoriteCardEventEqual(prev.event, next.event)) return false;
+    const key = `today-${next.event.id}`;
+    if ((prev.searchingKeys[key] || false) !== (next.searchingKeys[key] || false)) return false;
+    if (prev.inlineStreams[key] !== next.inlineStreams[key]) return false;
+    return true;
+  }
+);
 
 export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: FavoritesTabProps) {
   const favorites = useFavoriteTeams();
@@ -763,120 +992,22 @@ export function FavoritesTab({ onSearchChannels, onPlayChannel, onSetTab }: Favo
 
         {todayFavoriteGames.length > 0 ? (
           <div className="your-teams-today-ticker">
-            {todayFavoriteGames.map(({ team, event, isLive }) => {
-              const isHome = event.homeTeam.id === team.id;
-              const opponent = isHome ? event.awayTeam : event.homeTeam;
-              const cardKey = `today-${event.id}`;
-              const searchQuery = buildTeamSearchQuery(event.homeTeam.name, event.awayTeam.name);
-              const isSearching = searchingKeys[cardKey] || false;
-              const streamsList = inlineStreams[cardKey];
-
-              return (
-                <div key={event.id} className={`your-teams-today-card ${isLive ? 'is-live' : ''}`}>
-                  {/* Top Match Info */}
-                  <div className="your-teams-today-match-info" onClick={() => setSelectedEvent(event)}>
-                    {isLive ? (
-                      <span className="your-teams-today-status live">
-                        <span className="live-count-dot" /> LIVE
-                      </span>
-                    ) : (
-                      <span className="your-teams-today-status time">
-                        {formatEventTime(event.startTime, epgClockFormat !== '24h')}
-                      </span>
-                    )}
-
-                    <div className="your-teams-today-teams">
-                      <div className="your-teams-today-team">
-                        {event.homeTeam.logo && (
-                          <img src={event.homeTeam.logo} alt="" className="your-teams-today-logo" />
-                        )}
-                        <span className="your-teams-today-team-name">{event.homeTeam.shortName || event.homeTeam.name}</span>
-                        {isLive && event.homeScore !== undefined && (
-                          <span className="your-teams-today-score">{event.homeScore}</span>
-                        )}
-                      </div>
-                      <span className="your-teams-today-vs">{i18n.t('sports:vs')}</span>
-                      <div className="your-teams-today-team">
-                        {event.awayTeam.logo && (
-                          <img src={event.awayTeam.logo} alt="" className="your-teams-today-logo" />
-                        )}
-                        <span className="your-teams-today-team-name">{event.awayTeam.shortName || event.awayTeam.name}</span>
-                        {isLive && event.awayScore !== undefined && (
-                          <span className="your-teams-today-score">{event.awayScore}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions Row Underneath Match Info */}
-                  <div className="your-teams-today-actions-row">
-                    <button
-                      className="favorite-action-text-btn search-btn"
-                      title={i18n.t('sports:searchEpgForTeam', { home: event.homeTeam.name, away: event.awayTeam.name })}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleChannelClick(searchQuery);
-                      }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="m21 21-4.35-4.35" />
-                      </svg>
-                      Search
-                    </button>
-
-                    <button
-                      className={`favorite-action-text-btn list-btn ${streamsList && streamsList.length > 0 ? 'active' : ''}`}
-                      title={streamsList ? i18n.t('sports:hideStreams') : i18n.t('sports:listStreamsForGame')}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleInlineStreams(cardKey, searchQuery, event.league.id);
-                      }}
-                    >
-                      {isSearching ? (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="gc-spin">
-                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                        </svg>
-                      ) : (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M12 2v4" />
-                          <path d="m5 5 2.8 2.8" />
-                          <path d="m19 5-2.8 2.8" />
-                          <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" />
-                        </svg>
-                      )}
-                      List Streams Here
-                    </button>
-                  </div>
-
-                  {/* Inline Streams Vertically Stacked List */}
-                  {streamsList !== undefined && streamsList !== null && (
-                    <div className="favorite-card-inline-streams">
-                      {streamsList.length > 0 ? (
-                        <div className="favorite-streams-vlist">
-                          {streamsList.map((ch, idx) => (
-                            <button
-                              key={`today-ch-${ch.stream_id}-${idx}`}
-                              className="favorite-stream-pill-vertical"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleStreamClick(ch);
-                              }}
-                              title={ch.name}
-                            >
-                              <span className="favorite-stream-play">▶</span>
-                              <span className="favorite-stream-name">{ch.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="favorite-no-streams-text">{i18n.t('sports:noStreamsInPlaylists')}</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {todayFavoriteGames.map(({ team, event, isLive }) => (
+              <YourTeamsTodayCard
+                key={event.id}
+                team={team}
+                event={event}
+                isLive={isLive}
+                epgClockFormat={epgClockFormat}
+                searchingKeys={searchingKeys}
+                inlineStreams={inlineStreams}
+                onSelectEvent={setSelectedEvent}
+                onChannelClick={handleChannelClick}
+                onPlayChannel={onPlayChannel}
+                onToggleInlineStreams={toggleInlineStreams}
+                onStreamClick={handleStreamClick}
+              />
+            ))}
           </div>
         ) : (
           <div className="your-teams-today-empty">
