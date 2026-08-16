@@ -83,8 +83,10 @@ html.modern-ui-v3 {
   --glass-feature-border: 1px solid rgba(255, 255, 255, 0.12);
   --glass-feature-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.25);
   --glass-feature-radius: 20px;
-  /* Sports hub — blurred solid whose bg follows the theme, same frame as surfaces */
-  --glass-sports-bg: var(--bg-primary, #0b131e);
+  /* Sports hub — same frosted glass as every other v3 page surface, so the
+     liquid-glass backdrop shows through and Sports matches LiveTV/DVR/Stremio
+     instead of painting an opaque panel over it */
+  --glass-sports-bg: var(--glass-surface-bg, rgba(255, 255, 255, 0.06));
   /* Deep detail modal (game detail) — heavier drop than the standard modal */
   --glass-detail-bg: rgba(255, 255, 255, 0.06);
   --glass-detail-filter: blur(24px) saturate(180%);
@@ -151,6 +153,14 @@ html.modern-ui-v3 {
   --prog-past-bg: rgba(255, 255, 255, 0.01);
   --prog-past-border-color: rgba(255, 255, 255, 0.02);
   --prog-past-opacity: 0.65;
+  /* Catch-up available — solid amber so past catch-up programs read as yellow
+     at rest. v3 never defined these tokens, so it inherited v2's dim 40%-alpha
+     yellow which, under the past-block 0.65 opacity, read as the neutral
+     border color instead of yellow (only the hover tint made it recognizable). */
+  --prog-catch-border-color: #e5a00d;
+  --prog-catch-hover-bg: rgba(229, 160, 13, 0.15);
+  --prog-catch-hover-border-color: #ffb524;
+  --prog-catch-icon-color: #e5a00d;
   --prog-title-font-size: 0.82rem;
   --prog-desc-font-size: 0.75rem;
   --prog-desc-opacity: 0.55;
@@ -215,20 +225,23 @@ html.modern-ui-v3 {
   --sports-preview-pane-filter: blur(24px) saturate(180%);
   --sports-preview-pane-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.25);
   --sports-preview-filler-bg: transparent;
-  /* with-preview modes — the topbar/content glass when MPV video is shown */
+  /* with-preview modes — the video pane is the ONLY transparent surface; the
+     topbar/content share the same frosted glass as the hub (and every other v3
+     page), so preview-on/off and the rest of the app all show the same
+     liquid-glass surface over the backdrop. */
   --sports-hub-preview-bg: transparent;
   --sports-hub-preview-filter: none;
-  --sports-topbar-preview-bg: rgba(255, 255, 255, 0.07);
-  --sports-topbar-preview-filter: blur(30px) saturate(200%);
-  --sports-topbar-preview-radius: 24px 24px 0 0;
-  --sports-topbar-preview-border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  --sports-topbar-preview-bg: var(--glass-sports-bg, var(--glass-surface-bg, rgba(255, 255, 255, 0.06)));
+  --sports-topbar-preview-filter: var(--glass-surface-filter, none);
+  --sports-topbar-preview-radius: 0;
+  --sports-topbar-preview-border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   --sports-pane-preview-bg: transparent;
   --sports-pane-preview-filter: none;
   --sports-pane-preview-shadow: none;
   --sports-pane-preview-border: none;
-  --sports-content-preview-bg: rgba(255, 255, 255, 0.06);
-  --sports-content-preview-filter: blur(24px) saturate(180%);
-  --sports-content-preview-radius: 0 0 24px 24px;
+  --sports-content-preview-bg: var(--glass-sports-bg, var(--glass-surface-bg, rgba(255, 255, 255, 0.06)));
+  --sports-content-preview-filter: var(--glass-surface-filter, none);
+  --sports-content-preview-radius: 0;
   /* game cards */
   --sports-card-bg: rgba(255, 255, 255, 0.03);
   --sports-card-border: 1px solid rgba(255, 255, 255, 0.06);
@@ -1757,30 +1770,21 @@ html.modern-ui-v3[data-theme="light"] {
   --type-sel-active-color: var(--accent-primary, #0066cc);
   --type-sel-active-border: 1px solid color-mix(in srgb, var(--accent-primary, #0066cc) 35%, rgba(0, 0, 0, 0.1));
   --type-sel-active-border-color: color-mix(in srgb, var(--accent-primary, #0066cc) 35%, rgba(0, 0, 0, 0.1));
-  /* EPG program-block current state — light */
-  --prog-current-bg: color-mix(in srgb, var(--accent-primary, #8b5cf6) 12%, rgba(255, 255, 255, 0.5));
-  --prog-current-border-top: 1px solid color-mix(in srgb, var(--accent-primary, #8b5cf6) 30%, rgba(0, 0, 0, 0.1));
-  --prog-current-border-bottom: 1px solid color-mix(in srgb, var(--accent-primary, #8b5cf6) 30%, rgba(0, 0, 0, 0.1));
-  --prog-current-border-left: 3px solid color-mix(in srgb, var(--accent-primary, #8b5cf6) 30%, rgba(0, 0, 0, 0.1));
-  --prog-current-border-right: none;
-  --prog-current-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 10px color-mix(in srgb, var(--accent-primary, #8b5cf6) 8%, rgba(0, 0, 0, 0.04));
-  --prog-current-hover-bg: color-mix(in srgb, var(--accent-primary, #8b5cf6) 12%, rgba(255, 255, 255, 0.5));
-  --prog-current-hover-border-color: color-mix(in srgb, var(--accent-primary, #8b5cf6) 30%, rgba(0, 0, 0, 0.1));
-  --prog-current-hover-border-left-color: color-mix(in srgb, var(--accent-primary, #8b5cf6) 30%, rgba(0, 0, 0, 0.1));
-  --prog-current-hover-transform: translateY(-1px) scale(1.01);
-  --prog-current-hover-z: 20;
+  /* EPG program-block current state on light is supplied by the light sheet's
+     html[data-theme="light"] --prog-current-* block (flat light look, matching
+     the pre-token-migration rules). No v3-specific overrides here. */
   /* EPG text shadows — light keeps none for clean readability (mirrors the old
      light rule); the currently-playing name also drops the v3 dark shadow */
   --guide-text-shadow: none;
   --guide-row-current-name-shadow: none;
-  /* Sports with-preview — light keeps bright frosted surfaces over the video
-     (mirrors the old light with-preview rules; the dark values above still
-     drive radius, which the light rules never set) */
-  --sports-topbar-preview-bg: rgba(255, 255, 255, 0.5);
-  --sports-topbar-preview-filter: blur(35px) saturate(200%);
+  /* Sports with-preview — light: same opaque surface as preview-off (no frosted
+     glass; the video shows only through the preview pane, like the original
+     design) */
+  --sports-topbar-preview-bg: var(--glass-sports-bg, #f1f5f9);
+  --sports-topbar-preview-filter: none;
   --sports-topbar-preview-border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  --sports-content-preview-bg: rgba(255, 255, 255, 0.45);
-  --sports-content-preview-filter: blur(30px) saturate(190%);
+  --sports-content-preview-bg: var(--glass-sports-bg, #f1f5f9);
+  --sports-content-preview-filter: none;
   /* Titlebar nav filter — v3 light keeps no drop-shadow (dark-only look) */
   --titlebar-nav-filter: none;
   /* Modal/editor text inputs — light */
@@ -1975,14 +1979,35 @@ html.modern-ui-v3[data-theme="light"] {
   --stg-section-desc-color: #64748b;
   --stg-scroll-thumb-bg: rgba(0, 0, 0, 0.15);
   --stg-scroll-thumb-hover-bg: rgba(0, 0, 0, 0.25);
-  /* EPG program-block — light liquid glass (beats the light sheet's flat rule) */
+  /* EPG program-block — light liquid glass. The base ProgramBlock.css rules
+     consume these directly (the old !important bridges were removed); the
+     remaining light values (current/past-title/empty-title/state colors)
+     come from the light sheet's html[data-theme="light"] --prog-* block. */
   --prog-bg: rgba(255, 255, 255, 0.3);
+  --prog-border: 1px solid rgba(0, 0, 0, 0.06);
+  --prog-border-left: 1px solid rgba(0, 0, 0, 0.06);
   --prog-border-color: rgba(0, 0, 0, 0.06);
   --prog-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   --prog-hover-bg: rgba(255, 255, 255, 0.6);
   --prog-hover-border-color: rgba(0, 0, 0, 0.12);
   --prog-hover-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 4px 12px rgba(0, 0, 0, 0.06);
+  --prog-past-bg: rgba(255, 255, 255, 0.3);
+  --prog-past-border-color: rgba(0, 0, 0, 0.06);
+  --prog-empty-bg: rgba(255, 255, 255, 0.3);
+  --prog-empty-border-color: rgba(0, 0, 0, 0.06);
+  --prog-sched-bg: rgba(255, 255, 255, 0.3);
+  /* Catch-up available — light (deeper amber for contrast on white) */
+  --prog-catch-border-color: #ca8a04;
+  --prog-catch-hover-bg: rgba(202, 138, 4, 0.12);
+  --prog-catch-hover-border-color: #a16207;
+  --prog-catch-icon-color: #ca8a04;
+  /* Recording — light (readable reds on white; the base rules consume these
+     where no !important override interferes) */
+  --prog-rec-bg: rgba(239, 68, 68, 0.1);
+  --prog-rec-border-color: #ef4444;
+  --prog-rec-hover-bg: rgba(239, 68, 68, 0.16);
+  --prog-rec-hover-border-color: #ef4444;
   /* Generic modal close button — light */
   --close-border: 1px solid rgba(0, 0, 0, 0.1);
   --close-color: #64748b;
@@ -2914,6 +2939,27 @@ html.modern-ui-v3[data-theme] .guide-channel-row.currently-playing .program-bloc
   z-index: var(--prog-current-playing-hover-z, 20) !important;
 }
 
+/* Catch-up programs keep their yellow border on the currently-playing row too —
+   this beats the playing glow's accent left bar (higher specificity + !important)
+   so a catch-up block reads yellow at rest and on hover, while the row's accent
+   background/name glow still marks it as playing. */
+html.modern-ui-v3[data-theme] .guide-channel-row.currently-playing .program-block.current.catchup-available,
+html.modern-ui-v3[data-theme] .guide-channel-row.currently-playing .program-block.current.catchup-available:hover {
+  border-left-color: var(--prog-catch-border-color, #e5a00d) !important;
+  border-left-width: 3px !important;
+}
+
+/* Recording keeps its red state on the currently-playing row — beats the
+   playing glow's accent border/background (higher specificity + !important).
+   Values come from the --prog-rec-* tokens (dark defaults, or the light block
+   below) so the recording look stays intact in both themes. */
+html.modern-ui-v3[data-theme] .guide-channel-row.currently-playing .program-block.current.is-recording,
+html.modern-ui-v3[data-theme] .guide-channel-row.currently-playing .program-block.current.is-recording:hover {
+  background: var(--prog-rec-bg, rgba(204, 34, 34, 0.08)) !important;
+  border-color: var(--prog-rec-border-color, rgba(204, 34, 34, 0.35)) !important;
+  box-shadow: var(--prog-rec-shadow, none) !important;
+}
+
 html.modern-ui-v3[data-theme] .guide-channel-logo {
   background: var(--guide-logo-bg, rgba(255, 255, 255, 0.04)) !important;
 }
@@ -3115,21 +3161,9 @@ html.modern-ui-v3[data-theme="light"] .livetv-liquid-glass-bg::after {
 }
 
 /* Light Theme Panel and Titlebar Overrides for readability
-   (the v3 light titlebar surface is covered by the token-driven consumer + tokens) */
-
-html.modern-ui-v3[data-theme="light"] .program-block {
-  background: var(--prog-bg, rgba(255, 255, 255, 0.3)) !important;
-  border-color: var(--prog-border-color, rgba(0, 0, 0, 0.06)) !important;
-  box-shadow: var(--prog-shadow, 0 1px 2px rgba(0, 0, 0, 0.02)) !important;
-}
-
-html.modern-ui-v3[data-theme="light"] .program-block:hover {
-  background: var(--prog-hover-bg, rgba(255, 255, 255, 0.6)) !important;
-  border-color: var(--prog-hover-border-color, rgba(0, 0, 0, 0.12)) !important;
-  box-shadow: 
-    var(--prog-hover-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 4px 12px rgba(0, 0, 0, 0.06)) !important;
-}
+   (the v3 light titlebar surface is covered by the token-driven consumer + tokens;
+   program blocks are fully token-driven: the v3 light token block + the light
+   sheet's [data-theme="light"] --prog-* tokens, no rule bridges needed) */
 
 html.modern-ui-v3[data-theme="light"] .settings-content {
   background: transparent !important;

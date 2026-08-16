@@ -1053,64 +1053,63 @@ html.modern-ui-v3[data-theme="light"] .guide-channel-logo .logo-placeholder {
 }
 
 /* ==================== PROGRAM BLOCKS ==================== */
-[data-theme="light"] .program-block {
-  background: var(--lt-bg-surface, #ffffff) !important;
-  border: var(--lt-bd, 1px solid #cbd5e1) !important;
-  border-radius: 6px !important;
-  box-shadow: var(--lt-shadow-xxs-02, 0 1px 2px rgba(0, 0, 0, 0.02)) !important;
-}
-
-[data-theme="light"] .program-block:hover {
-  background: var(--lt-bg-subtle, #f8fafc) !important;
-  border-color: var(--lt-bd-color-strong, #94a3b8) !important;
-  box-shadow: var(--lt-shadow-xxs-04, 0 2px 4px rgba(0, 0, 0, 0.05)) !important;
-}
-
-[data-theme="light"] .program-block-title {
-  color: var(--lt-text-primary, #0f172a) !important;
-}
-
-[data-theme="light"] .program-block-desc {
-  color: var(--lt-text-secondary, #475569) !important;
-}
-
-[data-theme="light"] .program-block.current,
-html[data-theme="light"] .program-block.current,
-html.modern-ui-v3[data-theme="light"] .program-block.current {
-  background: var(--lt-bg-info-soft, #f0f7ff) !important;
-  border: var(--lt-bd, 1px solid #cbd5e1) !important;
-  border-left: 4px solid var(--accent-primary, #0066cc) !important;
-  box-shadow: var(--lt-shadow-xxs, 0 1px 3px rgba(0, 0, 0, 0.04)) !important;
-}
-
-[data-theme="light"] .program-block.current:hover,
-html[data-theme="light"] .program-block.current:hover,
-html.modern-ui-v3[data-theme="light"] .program-block.current:hover {
-  background: var(--lt-bg-active, #e2e8f0) !important;
-  border-color: var(--lt-bd-color-strong, #94a3b8) !important;
-  border-left-color: var(--accent-primary, #0066cc) !important;
-}
-
-[data-theme="light"] .program-block.current .program-block-title,
-html[data-theme="light"] .program-block.current .program-block-title,
-html.modern-ui-v3[data-theme="light"] .program-block.current .program-block-title {
-  color: var(--lt-text-primary, #0f172a) !important;
-  font-weight: 600 !important;
-}
-
-[data-theme="light"] .program-block.current .program-block-desc,
-html[data-theme="light"] .program-block.current .program-block-desc,
-html.modern-ui-v3[data-theme="light"] .program-block.current .program-block-desc {
-  color: var(--lt-text-secondary, #475569) !important;
-}
-
-[data-theme="light"] .program-block.empty {
-  background: var(--lt-bg-subtle, #f8fafc) !important;
-  border-color: var(--lt-bd-color, #cbd5e1) !important;
-}
-
-[data-theme="light"] .program-block.empty .program-block-title {
-  color: var(--lt-text-faint, #94a3b8) !important;
+/* Light program-block styling now flows entirely from --prog-* tokens consumed
+   by the base ProgramBlock.css rules, so the light sheet no longer needs
+   !important border/background rules that fight the state colors (recording,
+   scheduled, catch-up). Values below match the previous blanket rules 1:1.
+   The v3 light block in ModernV3.css overrides the surface tokens for the
+   liquid-glass look; every other design (v1/v2) gets these. */
+html[data-theme="light"] {
+  --prog-bg: #ffffff;
+  --prog-border: 1px solid #cbd5e1;
+  --prog-border-left: 1px solid #cbd5e1;
+  --prog-radius: 6px;
+  --prog-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --prog-hover-bg: #f8fafc;
+  --prog-hover-border-color: #94a3b8;
+  --prog-hover-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --prog-title-color: #0f172a;
+  --prog-desc-color: #475569;
+  --prog-past-bg: #ffffff;
+  --prog-past-border-color: #cbd5e1;
+  --prog-past-title-color: #0f172a;
+  --prog-past-desc-color: #475569;
+  --prog-current-bg: #f0f7ff;
+  --prog-current-border-color: #cbd5e1;
+  --prog-current-border-top: 1px solid #cbd5e1;
+  --prog-current-border-bottom: 1px solid #cbd5e1;
+  --prog-current-border-left: 4px solid var(--accent-primary, #0066cc);
+  --prog-current-border-right: 1px solid #cbd5e1;
+  --prog-current-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --prog-current-hover-bg: #e2e8f0;
+  --prog-current-hover-border-color: #94a3b8;
+  --prog-current-hover-border-left-color: var(--accent-primary, #0066cc);
+  --prog-current-hover-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --prog-current-title-color: #0f172a;
+  --prog-current-title-font-weight: 600;
+  --prog-current-desc-color: #475569;
+  --prog-empty-bg: #f8fafc;
+  --prog-empty-border-color: #cbd5e1;
+  --prog-empty-border-style: solid;
+  --prog-empty-title-color: #94a3b8;
+  --prog-rec-bg: rgba(239, 68, 68, 0.1);
+  --prog-rec-border-color: #ef4444;
+  --prog-rec-hover-bg: rgba(239, 68, 68, 0.16);
+  --prog-rec-hover-border-color: #ef4444;
+  --prog-sched-bg: #ffffff;
+  --prog-sched-border-color: #94a3b8;
+  --prog-sched-border-style: dashed;
+  --prog-sched-hover-bg: #f8fafc;
+  --prog-sched-hover-border-color: #94a3b8;
+  --prog-catch-border-color: #ca8a04;
+  --prog-catch-hover-bg: rgba(202, 138, 4, 0.12);
+  --prog-catch-hover-border-color: #a16207;
+  --prog-catch-icon-color: #ca8a04;
+  --prog-darken-bg: #f0f7ff;
+  --prog-darken-hover-bg: #e2e8f0;
+  --prog-darken-border-left-color: var(--accent-primary, #0066cc);
+  --prog-darken-border-left-width: 4px;
+  --prog-darken-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* ==================== GUIDE HEADER & ACTIONS ==================== */
@@ -2709,6 +2708,26 @@ html.modern-ui-v3[data-theme="light"] .vertical-sidebar__item.active.nested {
 [data-theme="light"] .search-program-slot.future {
   background: var(--lt-bg-accent-05, rgba(0, 102, 204, 0.05)) !important;
   border-color: var(--lt-bd-color-accent-20, rgba(0, 102, 204, 0.2)) !important;
+}
+
+/* Search-slot recording/scheduled states — the blanket .search-program-slot
+   rule above would otherwise flatten them to the neutral border, same pattern
+   as the EPG program blocks. */
+[data-theme="light"] .search-program-slot.is-recording,
+[data-theme="light"] .search-program-slot.is-recording:hover {
+  background: var(--lt-bg-danger-10, rgba(239, 68, 68, 0.1)) !important;
+  border-color: var(--lt-bd-color-danger-bright, #ef4444) !important;
+}
+
+[data-theme="light"] .search-program-slot.is-scheduled,
+[data-theme="light"] .search-program-slot.is-scheduled:hover {
+  background: var(--lt-bg-subtle, #f8fafc) !important;
+  border-color: var(--lt-bd-color-strong, #94a3b8) !important;
+}
+
+[data-theme="light"] .search-program-slot.live:hover {
+  background: var(--lt-bg-red-tint, rgba(255, 59, 48, 0.05)) !important;
+  border-color: var(--lt-bd-color-red-20, rgba(255, 59, 48, 0.2)) !important;
 }
 
 [data-theme="light"] .search-program-datetime {

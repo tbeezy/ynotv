@@ -88,14 +88,14 @@
 
 /* Darker highlight when epg-darken-current is enabled on document */
 .epg-darken-current .program-block.current {
-  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, rgba(0, 0, 0, 0.4));
-  border-left-color: var(--accent-primary, #00d4ff);
-  border-left-width: 3px;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+  background: var(--prog-darken-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 20%, rgba(0, 0, 0, 0.4)));
+  border-left-color: var(--prog-darken-border-left-color, var(--accent-primary, #00d4ff));
+  border-left-width: var(--prog-darken-border-left-width, 3px);
+  box-shadow: var(--prog-darken-shadow, inset 0 0 20px rgba(0, 0, 0, 0.3));
 }
 
 .epg-darken-current .program-block.current:hover {
-  background: color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, rgba(0, 0, 0, 0.5));
+  background: var(--prog-darken-hover-bg, color-mix(in srgb, var(--accent-primary, #00d4ff) 25%, rgba(0, 0, 0, 0.5)));
 }
 
 /* Empty state (no EPG data) */
@@ -107,7 +107,7 @@
 }
 
 .program-block.empty .program-block-title {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--prog-empty-title-color, rgba(255, 255, 255, 0.3));
   font-style: italic;
 }
 
@@ -201,6 +201,31 @@
 .program-block.catchup-available:hover {
   background: var(--prog-catch-hover-bg, rgba(229, 160, 13, 0.15));
   border-color: var(--prog-catch-hover-border-color, #e5a00d);
+}
+
+/* Catch-up wins the left edge over the current-program accent bar: when a
+   catch-up program is the currently-airing block and epg-darken-current is
+   enabled, the darker-highlight rule paints an accent left border — keep it
+   catch-up yellow instead (higher specificity than that rule). */
+.epg-darken-current .program-block.current.catchup-available {
+  border-left-color: var(--prog-catch-border-color, #e5a00d);
+}
+
+/* Recording keeps its red state over the current-program accent markers —
+   the base currently-playing row rule and epg-darken-current both paint
+   accent borders on .current blocks, but the recording state is functional.
+   (The v3 !important playing bridge is overridden in ModernV3.css.) */
+.guide-channel-row.currently-playing .program-block.current.is-recording,
+.epg-darken-current .program-block.current.is-recording {
+  background: var(--prog-rec-bg, rgba(204, 34, 34, 0.08));
+  border-color: var(--prog-rec-border-color, #c22);
+}
+
+/* Catch-up wins the left edge on the currently-playing row in every design —
+   the v3 !important bridge lives in ModernV3.css; this covers v1/v2 where the
+   base playing-row rule would otherwise paint the accent left bar. */
+.guide-channel-row.currently-playing .program-block.current.catchup-available {
+  border-left-color: var(--prog-catch-border-color, #e5a00d);
 }
 
 /* Catchup icon — only on the first title line (title, not subtitle), so the
