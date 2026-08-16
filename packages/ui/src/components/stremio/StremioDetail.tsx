@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { StremioMeta, StremioStream, StremioVideo, StremioStreamBadge } from '../../types/stremio';
 import { useStremioAddonStore } from '../../stores/stremioAddonStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import {
   useStremioSelectedSeason,
   useSetStremioSelectedSeason,
@@ -146,15 +147,10 @@ export function StremioDetail({
     let active = true;
 
     const fetchFullMetadata = async () => {
-      // Retrieve TMDB token, fallback to direct settings check if not populated yet in React state
+      // Retrieve TMDB token, fallback to the settings store if not populated yet in React state
       let activeToken = tmdbToken;
-      if (!activeToken && window.storage) {
-        try {
-          const settings = await window.storage.getSettings();
-          activeToken = (settings.data as any)?.tmdbApiKey || null;
-        } catch (e) {
-          console.error('[StremioDetail] Failed to read tmdbApiKey directly from storage:', e);
-        }
+      if (!activeToken) {
+        activeToken = useSettingsStore.getState().tmdbApiKey || null;
       }
 
       const isTmdbId = meta.id.startsWith('tmdb:');

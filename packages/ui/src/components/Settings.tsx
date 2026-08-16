@@ -346,23 +346,26 @@ export function Settings({
   const [sources, setSources] = useState<Source[]>([]);
   const [isEncryptionAvailable, setIsEncryptionAvailable] = useState(true);
 
-  const [tmdbApiKey, setTmdbApiKey] = useState('');
+  // Metadata + streaming-catalog settings — settings-store backed
+  const tmdbApiKey = useSettingsStore((s) => s.tmdbApiKey);
+  const setTmdbApiKey = useSettingsStore((s) => s.setTmdbApiKey);
+  const streamingCatalogsEnabled = useSettingsStore((s) => s.streamingCatalogsEnabled);
+  const setStreamingCatalogsEnabled = useSettingsStore((s) => s.setStreamingCatalogsEnabled);
+  const streamingNuvioCatalogsEnabled = useSettingsStore((s) => s.streamingNuvioCatalogsEnabled);
+  const setStreamingNuvioCatalogsEnabled = useSettingsStore((s) => s.setStreamingNuvioCatalogsEnabled);
+  const enabledStreamingServices = useSettingsStore((s) => s.enabledStreamingServices);
+  const setEnabledStreamingServices = useSettingsStore((s) => s.setEnabledStreamingServices);
+  const posterDbApiKey = useSettingsStore((s) => s.posterDbApiKey);
+  const setPosterDbApiKey = useSettingsStore((s) => s.setPosterDbApiKey);
+  const rpdbBackdropsEnabled = useSettingsStore((s) => s.rpdbBackdropsEnabled);
+  const setRpdbBackdropsEnabled = useSettingsStore((s) => s.setRpdbBackdropsEnabled);
   const [tmdbKeyValid, setTmdbKeyValid] = useState<boolean | null>(null);
-
-  // Streaming Catalogs state
-  const [streamingCatalogsEnabled, setStreamingCatalogsEnabled] = useState(true);
-  const [streamingNuvioCatalogsEnabled, setStreamingNuvioCatalogsEnabled] = useState(true);
-  const [enabledStreamingServices, setEnabledStreamingServices] = useState<string[]>(['netflix', 'disney', 'hulu', 'prime', 'apple', 'max', 'paramount', 'peacock']);
+  const [posterDbKeyValid, setPosterDbKeyValid] = useState<boolean | null>(null);
 
   // Refresh settings state
   const [vodRefreshHours, setVodRefreshHours] = useState(24);
   const [epgRefreshHours, setEpgRefreshHours] = useState(6);
   const [epgSyncConcurrency, setEpgSyncConcurrency] = useState(0);
-
-  // PosterDB state
-  const [posterDbApiKey, setPosterDbApiKey] = useState('');
-  const [posterDbKeyValid, setPosterDbKeyValid] = useState<boolean | null>(null);
-  const [rpdbBackdropsEnabled, setRpdbBackdropsEnabled] = useState(false);
 
   // Security state
   const [allowLanSources, setAllowLanSources] = useState(false);
@@ -956,16 +959,11 @@ export function Settings({
         setCastRewriteTs(settings.castRewriteTs);
       }
 
-      // Load TMDB API key
-      const key = settings.tmdbApiKey || '';
-      setTmdbApiKey(key);
-      if (key) {
+      // TMDB key + streaming-catalog settings hydrate through the settings
+      // store (setters keep them current). Only the validation flags are local.
+      if (settings.tmdbApiKey) {
         setTmdbKeyValid(true); // Assume valid if previously saved
       }
-
-      setStreamingCatalogsEnabled(settings.streamingCatalogsEnabled ?? true);
-      setStreamingNuvioCatalogsEnabled(settings.streamingNuvioCatalogsEnabled ?? true);
-      setEnabledStreamingServices(settings.enabledStreamingServices ?? ['netflix', 'disney', 'hulu', 'prime', 'apple', 'max', 'paramount', 'peacock']);
 
       // Load refresh settings
       if (settings.vodRefreshHours !== undefined) {
@@ -978,13 +976,11 @@ export function Settings({
         setEpgSyncConcurrency(settings.epgSyncConcurrency);
       }
 
-      // Load PosterDB key
-      const rpdbKey = settings.posterDbApiKey || '';
-      setPosterDbApiKey(rpdbKey);
-      if (rpdbKey) {
+      // PosterDB key + backdrops hydrate through the settings store; only the
+      // validation flag is local.
+      if (settings.posterDbApiKey) {
         setPosterDbKeyValid(true); // Assume valid if previously saved
       }
-      setRpdbBackdropsEnabled(settings.rpdbBackdropsEnabled ?? false);
 
       // Load security settings
       setAllowLanSources(settings.allowLanSources ?? false);
@@ -2441,28 +2437,18 @@ export function Settings({
     }
   };
 
-  const handleStreamingCatalogsEnabledChange = async (enabled: boolean) => {
+  // Streaming-catalog setters persist through the store and dispatch
+  // `ynotv:streaming-catalogs-changed` for any remaining listeners.
+  const handleStreamingCatalogsEnabledChange = (enabled: boolean) => {
     setStreamingCatalogsEnabled(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ streamingCatalogsEnabled: enabled });
-      window.dispatchEvent(new CustomEvent('ynotv:streaming-catalogs-changed'));
-    }
   };
 
-  const handleStreamingNuvioCatalogsEnabledChange = async (enabled: boolean) => {
+  const handleStreamingNuvioCatalogsEnabledChange = (enabled: boolean) => {
     setStreamingNuvioCatalogsEnabled(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ streamingNuvioCatalogsEnabled: enabled });
-      window.dispatchEvent(new CustomEvent('ynotv:streaming-catalogs-changed'));
-    }
   };
 
-  const handleEnabledStreamingServicesChange = async (services: string[]) => {
+  const handleEnabledStreamingServicesChange = (services: string[]) => {
     setEnabledStreamingServices(services);
-    if (window.storage) {
-      await window.storage.updateSettings({ enabledStreamingServices: services });
-      window.dispatchEvent(new CustomEvent('ynotv:streaming-catalogs-changed'));
-    }
   };
 
   function renderTabContent() {

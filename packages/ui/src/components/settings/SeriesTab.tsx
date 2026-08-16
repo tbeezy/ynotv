@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useTvGenres, useMultipleSeriesByGenre } from '../../hooks/useTmdbLists';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 interface SeriesTabProps {
   tmdbApiKey: string | null;
@@ -17,6 +18,7 @@ export function SeriesTab({
   settingsLoaded,
 }: SeriesTabProps) {
   useTranslation();
+  const setSeriesGenresEnabled = useSettingsStore((s) => s.setSeriesGenresEnabled);
   const { genres, loading } = useTvGenres(tmdbApiKey);
 
   // Get all genre IDs to check availability
@@ -71,9 +73,8 @@ export function SeriesTab({
     saveToStorage([]);
   }
 
-  async function saveToStorage(genreIds: number[]) {
-    if (!window.storage) return;
-    await window.storage.updateSettings({ seriesGenresEnabled: genreIds });
+  function saveToStorage(genreIds: number[]) {
+    setSeriesGenresEnabled(genreIds);
   }
 
   return (

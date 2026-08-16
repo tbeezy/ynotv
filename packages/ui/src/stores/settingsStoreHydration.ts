@@ -54,6 +54,8 @@ const BOOLEAN_KEYS = new Set([
   'epgMetadataBadgeResolution', 'epgMetadataBadgeFps', 'epgMetadataBadgeFpsSuffix', 'epgMetadataBadgeSound',
   'logoCacheEnabled', 'logoCachePrefetch', 'epgDarkenCurrent', 'epgHighlightBorderCurrent',
   'epgBoldChannelNames', 'epgBoldTopCategories', 'epgBoldSourceCategories',
+  'autoBackupEnabled', 'streamingCatalogsEnabled', 'streamingNuvioCatalogsEnabled',
+  'rpdbBackdropsEnabled',
 ] as const);
 
 const NUMBER_KEYS = new Set([
@@ -61,6 +63,7 @@ const NUMBER_KEYS = new Set([
   'channelInfoOverlayFontSize', 'channelInfoOverlayLogoSize', 'channelInfoOverlayBoxWidth',
   'channelInfoOverlayOpacity', 'overlayAutohideTimer', 'customScrollbarWidth',
   'channelLogoSize', 'epgVisibleHours', 'catchupStartPadding', 'catchupEndPadding',
+  'autoBackupIntervalHours', 'autoBackupMaxBackups',
 ]);
 
 /** Coerce type-sensitive stored values; leave everything else untouched. */
@@ -84,6 +87,19 @@ function sanitizeSettingData(data: Record<string, any>): Record<string, any> {
   }
   if (out.language !== undefined && (typeof out.language !== 'string' || !isSupportedLocale(out.language))) {
     delete out.language;
+  }
+  // Enum-valued string fields — reject anything outside the known ids so a
+  // corrupt value can't break the trailer picker.
+  if (out.trailerSource !== undefined && out.trailerSource !== 'source' && out.trailerSource !== 'tmdb') {
+    delete out.trailerSource;
+  }
+  if (
+    out.trailerPlayerMode !== undefined &&
+    out.trailerPlayerMode !== 'embedded' &&
+    out.trailerPlayerMode !== 'popout' &&
+    out.trailerPlayerMode !== 'external'
+  ) {
+    delete out.trailerPlayerMode;
   }
   return out;
 }
@@ -211,6 +227,22 @@ async function hydrateSettingsStore(): Promise<void> {
         epgHiddenButtons: data.epgHiddenButtons ?? [],
         shortcuts: data.shortcuts ?? {},
         subtitleSettings: { ...DEFAULT_SUBTITLE_SETTINGS, ...(data.subtitleSettings ?? {}) },
+        globalEpgLinks: data.globalEpgLinks ?? [],
+        autoBackupEnabled: data.autoBackupEnabled ?? true,
+        autoBackupIntervalHours: data.autoBackupIntervalHours ?? 24,
+        autoBackupMaxBackups: data.autoBackupMaxBackups ?? 5,
+        autoBackupDirectory: typeof data.autoBackupDirectory === 'string' ? data.autoBackupDirectory : '',
+        streamingCatalogsEnabled: data.streamingCatalogsEnabled ?? true,
+        streamingNuvioCatalogsEnabled: data.streamingNuvioCatalogsEnabled ?? true,
+        enabledStreamingServices: data.enabledStreamingServices ?? ['netflix', 'disney', 'hulu', 'prime', 'apple', 'max', 'paramount', 'peacock'],
+        trailerSource: data.trailerSource ?? 'source',
+        trailerPlayerMode: data.trailerPlayerMode ?? 'embedded',
+        tmdbApiKey: typeof data.tmdbApiKey === 'string' ? data.tmdbApiKey : '',
+        posterDbApiKey: typeof data.posterDbApiKey === 'string' ? data.posterDbApiKey : '',
+        rpdbBackdropsEnabled: data.rpdbBackdropsEnabled ?? false,
+        downloadsPath: typeof data.downloadsPath === 'string' ? data.downloadsPath : '',
+        movieGenresEnabled: Array.isArray(data.movieGenresEnabled) ? data.movieGenresEnabled : [],
+        seriesGenresEnabled: Array.isArray(data.seriesGenresEnabled) ? data.seriesGenresEnabled : [],
         startupView: data.startupView ?? 'none',
         castEnabled: data.castEnabled ?? false,
         castRewriteTs: data.castRewriteTs ?? true,

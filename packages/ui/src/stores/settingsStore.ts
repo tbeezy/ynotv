@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import type { SavedLayoutState } from '../hooks/useLayoutPersistence';
-import type { ThemeId, CustomThemeConfig, ShortcutsMap } from '../types/app';
+import type { ThemeId, CustomThemeConfig, ShortcutsMap, GlobalEpgLink } from '../types/app';
 import type { SubtitleSettings } from '../components/settings/SubtitlesTab';
+import type { AutoBackupSettings } from '../services/autoBackup';
+import type { TrailerSource, VodPlayerMode } from '../components/vod/SplitPlayButton';
 import i18n, { isSupportedLocale } from '../i18n';
 
 /* ---------------------------------------------------------------------------
@@ -174,6 +176,49 @@ export interface SettingsState {
   // Subtitle settings
   subtitleSettings: SubtitleSettings;
   setSubtitleSettings: (partial: Partial<SubtitleSettings>) => void;
+
+  // Global EPG links (cache EPGs that overlay provider EPG data)
+  globalEpgLinks: GlobalEpgLink[];
+  setGlobalEpgLinks: (links: GlobalEpgLink[]) => void;
+
+  // Automated backups (flat storage keys for backward compat with existing exports)
+  autoBackupEnabled: boolean;
+  autoBackupIntervalHours: number;
+  autoBackupMaxBackups: number;
+  autoBackupDirectory: string;
+  setAutoBackupSettings: (partial: Partial<AutoBackupSettings>) => void;
+
+  // Streaming catalogs (TMDB-powered Netflix-style rows)
+  streamingCatalogsEnabled: boolean;
+  setStreamingCatalogsEnabled: (enabled: boolean) => void;
+  streamingNuvioCatalogsEnabled: boolean;
+  setStreamingNuvioCatalogsEnabled: (enabled: boolean) => void;
+  enabledStreamingServices: string[];
+  setEnabledStreamingServices: (services: string[]) => void;
+
+  // VOD trailer preferences (per-session pick persists app-wide)
+  trailerSource: TrailerSource;
+  setTrailerSource: (source: TrailerSource) => void;
+  trailerPlayerMode: VodPlayerMode;
+  setTrailerPlayerMode: (mode: VodPlayerMode) => void;
+
+  // Metadata APIs
+  tmdbApiKey: string;
+  setTmdbApiKey: (key: string) => void;
+  posterDbApiKey: string;
+  setPosterDbApiKey: (key: string) => void;
+  rpdbBackdropsEnabled: boolean;
+  setRpdbBackdropsEnabled: (enabled: boolean) => void;
+
+  // Downloads default directory (empty = prompt every time)
+  downloadsPath: string;
+  setDownloadsPath: (path: string) => void;
+
+  // TMDB genre carousel enablement (movie + series)
+  movieGenresEnabled: number[];
+  setMovieGenresEnabled: (genres: number[]) => void;
+  seriesGenresEnabled: number[];
+  setSeriesGenresEnabled: (genres: number[]) => void;
 
   // Navigation tab visibility
   navHiddenTabs: string[];
@@ -935,6 +980,102 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     const merged = { ...get().subtitleSettings, ...partial };
     set({ subtitleSettings: merged });
     persistSettings({ subtitleSettings: merged }, true);
+  },
+
+  // Global EPG links
+  globalEpgLinks: [],
+  setGlobalEpgLinks: (links) => {
+    set({ globalEpgLinks: links });
+    persistSettings({ globalEpgLinks: links });
+  },
+
+  // Streaming catalogs — setters dispatch the legacy event so any remaining
+  // listener (or future code) still gets notified.
+  streamingCatalogsEnabled: true,
+  setStreamingCatalogsEnabled: (enabled) => {
+    set({ streamingCatalogsEnabled: enabled });
+    persistSettings({ streamingCatalogsEnabled: enabled });
+    dispatchAppEvent('ynotv:streaming-catalogs-changed', {});
+  },
+  streamingNuvioCatalogsEnabled: true,
+  setStreamingNuvioCatalogsEnabled: (enabled) => {
+    set({ streamingNuvioCatalogsEnabled: enabled });
+    persistSettings({ streamingNuvioCatalogsEnabled: enabled });
+    dispatchAppEvent('ynotv:streaming-catalogs-changed', {});
+  },
+  enabledStreamingServices: ['netflix', 'disney', 'hulu', 'prime', 'apple', 'max', 'paramount', 'peacock'],
+  setEnabledStreamingServices: (services) => {
+    set({ enabledStreamingServices: services });
+    persistSettings({ enabledStreamingServices: services });
+    dispatchAppEvent('ynotv:streaming-catalogs-changed', {});
+  },
+
+  // VOD trailer preferences
+  trailerSource: 'source',
+  setTrailerSource: (source) => {
+    set({ trailerSource: source });
+    persistSettings({ trailerSource: source });
+  },
+  trailerPlayerMode: 'embedded',
+  setTrailerPlayerMode: (mode) => {
+    set({ trailerPlayerMode: mode });
+    persistSettings({ trailerPlayerMode: mode });
+  },
+
+  // Metadata APIs — setTmdbApiKey dispatches the legacy event so Nuvio-sync
+  // listeners and other consumers still get notified.
+  tmdbApiKey: '',
+  setTmdbApiKey: (key) => {
+    set({ tmdbApiKey: key });
+    persistSettings({ tmdbApiKey: key });
+    dispatchAppEvent('ynotv:tmdb-key-changed', {});
+  },
+  posterDbApiKey: '',
+  setPosterDbApiKey: (key) => {
+    set({ posterDbApiKey: key });
+    persistSettings({ posterDbApiKey: key });
+  },
+  rpdbBackdropsEnabled: false,
+  setRpdbBackdropsEnabled: (enabled) => {
+    set({ rpdbBackdropsEnabled: enabled });
+    persistSettings({ rpdbBackdropsEnabled: enabled });
+  },
+
+  // Downloads default directory
+  downloadsPath: '',
+  setDownloadsPath: (path) => {
+    set({ downloadsPath: path });
+    persistSettings({ downloadsPath: path });
+  },
+
+  // TMDB genre carousel enablement
+  movieGenresEnabled: [],
+  setMovieGenresEnabled: (genres) => {
+    set({ movieGenresEnabled: genres });
+    persistSettings({ movieGenresEnabled: genres });
+  },
+  seriesGenresEnabled: [],
+  setSeriesGenresEnabled: (genres) => {
+    set({ seriesGenresEnabled: genres });
+    persistSettings({ seriesGenresEnabled: genres });
+  },
+
+  // Automated backups — the setter accepts the service-shaped partial and maps
+  // it to the flat storage keys, persisting through the write queue and
+  // notifying the scheduler so it reschedules immediately.
+  autoBackupEnabled: true,
+  autoBackupIntervalHours: 24,
+  autoBackupMaxBackups: 5,
+  autoBackupDirectory: '',
+  setAutoBackupSettings: (partial) => {
+    const patch: Record<string, any> = {};
+    if (partial.enabled !== undefined) patch.autoBackupEnabled = partial.enabled;
+    if (partial.intervalHours !== undefined) patch.autoBackupIntervalHours = partial.intervalHours;
+    if (partial.maxBackups !== undefined) patch.autoBackupMaxBackups = partial.maxBackups;
+    if (partial.directory !== undefined) patch.autoBackupDirectory = partial.directory;
+    set(patch);
+    persistSettings(patch);
+    dispatchAppEvent('ynotv:auto-backup-settings-changed', {});
   },
 
   // EPG cosmetic classes (load-time only — hydrated from settings, no setters)

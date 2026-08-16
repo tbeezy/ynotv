@@ -8,7 +8,6 @@ import { useSourceVersion } from '../contexts/SourceVersionContext';
 import { applyFilterWordsDetailed } from './useFilterWords';
 import { useCategorySortOrder } from '../stores/uiStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import { getCachedSettings } from '../services/settings-cache';
 import type { Source } from '@ynotv/core';
 import { buildSearchQueryClauses, getSearchVariants } from '../utils/searchNormalization';
 import { dbEvents } from '../db/sqlite-adapter';
@@ -774,8 +773,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
 
           if (window.storage && epgIdsToQuery.size > 0) {
             try {
-              const settings = await getCachedSettings();
-              const globalEpgLinks = settings.data?.globalEpgLinks || [];
+              const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
               const cacheLinks = globalEpgLinks.filter((link: any) => link.saveEntireEpg);
               
               if (cacheLinks.length > 0) {
@@ -1394,8 +1392,7 @@ export function useChannelSearch(
 
           if (window.storage && epgIdsToQuery.size > 0) {
             try {
-              const settings = await window.storage.getSettings();
-              const globalEpgLinks = settings.data?.globalEpgLinks || [];
+              const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
               const cacheLinks = globalEpgLinks.filter(link => link.saveEntireEpg);
               
               if (cacheLinks.length > 0) {

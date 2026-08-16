@@ -18,6 +18,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from './useSqliteLiveQuery';
 import { db, type StoredMovie, type StoredSeries } from '../db';
 import { useNuvioAuthStore } from '../stores/nuvioAuthStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import {
   getTrendingMoviesWithCache,
   getTrendingTvShowsWithCache,
@@ -47,33 +48,13 @@ import {
 // ===========================================================================
 
 /**
- * Get TMDB access token from settings
- * Note: This is the "API Read Access Token" from TMDB, not the API key
+ * Get TMDB access token from the settings store (hydrated at boot; the
+ * setTmdbApiKey setter keeps it current — no IPC read or event listener).
+ * Note: This is the "API Read Access Token" from TMDB, not the API key.
  */
 export function useTmdbAccessToken(): string | null {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadToken() {
-      if (!window.storage) return;
-      const result = await window.storage.getSettings();
-      if (result.data) {
-        setAccessToken((result.data as { tmdbApiKey?: string }).tmdbApiKey ?? null);
-      }
-    }
-    loadToken();
-
-    const handleKeyChange = () => {
-      loadToken();
-    };
-
-    window.addEventListener('ynotv:tmdb-key-changed', handleKeyChange);
-    return () => {
-      window.removeEventListener('ynotv:tmdb-key-changed', handleKeyChange);
-    };
-  }, []);
-
-  return accessToken;
+  const tmdbApiKey = useSettingsStore((s) => s.tmdbApiKey);
+  return tmdbApiKey || null;
 }
 
 // Alias for backwards compatibility
@@ -91,45 +72,20 @@ export function useActiveTmdbToken(): string | null {
 }
 
 /**
- * Get enabled movie genres from settings
- * Returns undefined if not yet loaded, or array of genre IDs
+ * Get enabled movie genres from the settings store (hydrated at boot; the
+ * setMovieGenresEnabled setter keeps it current — no IPC read).
+ * Returns the store's default ([]) until hydration lands, then the saved IDs.
  */
 export function useEnabledMovieGenres(): number[] | undefined {
-  const [enabledGenres, setEnabledGenres] = useState<number[] | undefined>(undefined);
-
-  useEffect(() => {
-    async function loadSettings() {
-      if (!window.storage) return;
-      const result = await window.storage.getSettings();
-      if (result.data && 'movieGenresEnabled' in result.data) {
-        setEnabledGenres((result.data as { movieGenresEnabled?: number[] }).movieGenresEnabled);
-      }
-    }
-    loadSettings();
-  }, []);
-
-  return enabledGenres;
+  return useSettingsStore((s) => s.movieGenresEnabled);
 }
 
 /**
- * Get enabled series genres from settings
- * Returns undefined if not yet loaded, or array of genre IDs
+ * Get enabled series genres from the settings store (hydrated at boot).
+ * Returns the store's default ([]) until hydration lands, then the saved IDs.
  */
 export function useEnabledSeriesGenres(): number[] | undefined {
-  const [enabledGenres, setEnabledGenres] = useState<number[] | undefined>(undefined);
-
-  useEffect(() => {
-    async function loadSettings() {
-      if (!window.storage) return;
-      const result = await window.storage.getSettings();
-      if (result.data && 'seriesGenresEnabled' in result.data) {
-        setEnabledGenres((result.data as { seriesGenresEnabled?: number[] }).seriesGenresEnabled);
-      }
-    }
-    loadSettings();
-  }, []);
-
-  return enabledGenres;
+  return useSettingsStore((s) => s.seriesGenresEnabled);
 }
 
 // ===========================================================================

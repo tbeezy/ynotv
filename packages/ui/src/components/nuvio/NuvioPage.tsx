@@ -429,9 +429,9 @@ function NuvioPageContent({
   const [nuvioSearchQuery, setNuvioSearchQuery] = useState('');
   const [editableCollections, setEditableCollections] = useState<NuvioCollection[]>([]);
 
-  const [tmdbApiKey, setTmdbApiKey] = useState('');
-  const [streamingNuvioCatalogsEnabled, setStreamingNuvioCatalogsEnabled] = useState(false);
-  const [enabledStreamingServices, setEnabledStreamingServices] = useState<string[]>([]);
+  const tmdbApiKey = useSettingsStore((s) => s.tmdbApiKey);
+  const streamingNuvioCatalogsEnabled = useSettingsStore((s) => s.streamingNuvioCatalogsEnabled);
+  const enabledStreamingServices = useSettingsStore((s) => s.enabledStreamingServices);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const nuvioServiceScrollRef = useRef<HTMLDivElement>(null);
   const scrollNuvioServices = (dir: 'left' | 'right') => {
@@ -1271,30 +1271,8 @@ function NuvioPageContent({
     };
   }, [refreshToken]);
 
-  const loadTmdbSettings = useCallback(async () => {
-    if (!window.storage) return;
-    try {
-      const res = await window.storage.getSettings();
-      const s = res.data || {};
-      setTmdbApiKey(s.tmdbApiKey || '');
-      setStreamingNuvioCatalogsEnabled(s.streamingNuvioCatalogsEnabled ?? true);
-      setEnabledStreamingServices(s.enabledStreamingServices || ['netflix', 'disney', 'hulu', 'prime', 'apple', 'max', 'paramount', 'peacock']);
-    } catch (e) {
-      console.error('Failed to load TMDB Nuvio settings:', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadTmdbSettings();
-  }, [loadTmdbSettings]);
-
-  useEffect(() => {
-    const handleChanged = () => {
-      loadTmdbSettings();
-    };
-    window.addEventListener('ynotv:streaming-catalogs-changed', handleChanged);
-    return () => window.removeEventListener('ynotv:streaming-catalogs-changed', handleChanged);
-  }, [loadTmdbSettings]);
+  // TMDB/streaming-catalog settings come from the settings store (setters keep
+  // them current — no IPC read or event listener needed).
 
   useEffect(() => {
     const syncHandler = () => {

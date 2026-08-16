@@ -1039,8 +1039,7 @@ export async function applyGlobalEpgToSource(
   }
 
   try {
-    const settingsResult = await window.storage.getSettings();
-    const globalEpgLinks = settingsResult.data?.globalEpgLinks || [];
+    const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
 
     // Filter to links that include this source, sorted by display_order (lower = higher priority)
     const linksForSource = globalEpgLinks
@@ -1318,8 +1317,7 @@ export async function applyGlobalEpgToSource(
     // Update lastSyncResult on each affected link (merge with existing perSource data)
     if (linkResultCounts.size > 0 && window.storage) {
       try {
-        const settingsResult = await window.storage.getSettings();
-        const existingLinks = settingsResult.data?.globalEpgLinks || [];
+        const existingLinks = useSettingsStore.getState().globalEpgLinks;
         const updatedLinks = existingLinks.map((link: GlobalEpgLink) => {
           const statsForThisSource = linkResultCounts.get(link.id);
           if (statsForThisSource === undefined) return link;
@@ -1365,7 +1363,7 @@ export async function applyGlobalEpgToSource(
             },
           };
         });
-        await window.storage.updateSettings({ globalEpgLinks: updatedLinks });
+        useSettingsStore.getState().setGlobalEpgLinks(updatedLinks);
         console.log(`[Global EPG] Updated lastSyncResult for ${linkResultCounts.size} link(s) after manual sync of ${source.name}`);
       } catch (err) {
         console.warn(`[Global EPG] Failed to update lastSyncResult after manual sync:`, err);
@@ -1422,8 +1420,7 @@ async function syncAllStaleGlobalEpgLinksImpl(
   }
 
   try {
-    const settingsResult = await window.storage.getSettings();
-    const globalEpgLinks = settingsResult.data?.globalEpgLinks || [];
+    const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
     const sourceIdFilter = sourceIds && sourceIds.length > 0 ? new Set(sourceIds) : null;
     // Sort by display_order so higher priority EPGs are synced first
     const staleLinks = globalEpgLinks
@@ -1583,10 +1580,9 @@ async function syncGlobalEpgLinkStandaloneImpl(
     }
   }
 
-  if (!userAgent && window.storage) {
+  if (!userAgent) {
     try {
-      const settingsResult = await window.storage.getSettings();
-      const globalUa = settingsResult.data?.globalLiveTvUserAgent;
+      const globalUa = useSettingsStore.getState().globalLiveTvUserAgent;
       if (globalUa && globalUa.trim()) {
         userAgent = globalUa.trim();
       }
@@ -1850,8 +1846,7 @@ async function updateGlobalEpgLastSynced(
 ): Promise<void> {
   if (!window.storage) return;
   try {
-    const settingsResult = await window.storage.getSettings();
-    const existingLinks = settingsResult.data?.globalEpgLinks || [];
+    const existingLinks = useSettingsStore.getState().globalEpgLinks;
     const updatedLinks = existingLinks.map((link: GlobalEpgLink) =>
       link.id === epgLinkId
         ? {
@@ -1868,7 +1863,7 @@ async function updateGlobalEpgLastSynced(
           }
         : link
     );
-    await window.storage.updateSettings({ globalEpgLinks: updatedLinks });
+    useSettingsStore.getState().setGlobalEpgLinks(updatedLinks);
     console.log(`[Global EPG] Updated lastSynced for link ${epgLinkId}`);
   } catch (err) {
     console.warn(`[Global EPG] Failed to update lastSynced:`, err);
@@ -3877,13 +3872,7 @@ export async function syncAllVod(): Promise<Map<string, VodSyncResult>> {
 export async function enrichSourceMetadata(source?: Source, _force?: boolean) {
   startTmdbMatching();
   try {
-    let accessToken: string | null = null;
-    if (window.storage) {
-      const settingsResult = await window.storage.getSettings();
-      if (settingsResult.data && 'tmdbApiKey' in settingsResult.data) {
-        accessToken = (settingsResult.data as { tmdbApiKey?: string }).tmdbApiKey ?? null;
-      }
-    }
+    const accessToken = useSettingsStore.getState().tmdbApiKey || null;
     const [movieCount, seriesCount] = await Promise.all([
       matchAllMoviesLazy(accessToken),
       matchAllSeriesLazy(accessToken),

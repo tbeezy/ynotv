@@ -12,9 +12,9 @@ import {
     openBackupFolder,
     getLastBackupAt,
     pickBackupFolder,
-    hasCustomBackupDir,
-    AUTO_BACKUP_DEFAULTS
+    hasCustomBackupDir
 } from '../../services/autoBackup';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 export function ImportExportTab() {
     useTranslation();
@@ -27,9 +27,11 @@ export function ImportExportTab() {
     const [healthChecked, setHealthChecked] = useState(false);
 
     // Automated backup settings
-    const [autoBackupEnabled, setAutoBackupEnabled] = useState(AUTO_BACKUP_DEFAULTS.enabled);
-    const [autoBackupIntervalHours, setAutoBackupIntervalHours] = useState(AUTO_BACKUP_DEFAULTS.intervalHours);
-    const [autoBackupMaxBackups, setAutoBackupMaxBackups] = useState(AUTO_BACKUP_DEFAULTS.maxBackups);
+    // Auto-backup settings — settings-store backed (single source of truth)
+    const autoBackupEnabled = useSettingsStore((s) => s.autoBackupEnabled);
+    const autoBackupIntervalHours = useSettingsStore((s) => s.autoBackupIntervalHours);
+    const autoBackupMaxBackups = useSettingsStore((s) => s.autoBackupMaxBackups);
+    const setAutoBackupSettings = useSettingsStore((s) => s.setAutoBackupSettings);
     const [autoBackupProcessing, setAutoBackupProcessing] = useState(false);
     const [autoBackupStatus, setAutoBackupStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [backupFolder, setBackupFolder] = useState('');
@@ -39,15 +41,6 @@ export function ImportExportTab() {
 
     useEffect(() => {
         const load = async () => {
-            try {
-                const res = await window.storage?.getSettings();
-                const s = (res?.data ?? {}) as Record<string, any>;
-                setAutoBackupEnabled(s.autoBackupEnabled ?? AUTO_BACKUP_DEFAULTS.enabled);
-                setAutoBackupIntervalHours(s.autoBackupIntervalHours ?? AUTO_BACKUP_DEFAULTS.intervalHours);
-                setAutoBackupMaxBackups(s.autoBackupMaxBackups ?? AUTO_BACKUP_DEFAULTS.maxBackups);
-            } catch (e) {
-                console.warn('[ImportExport] Failed to load auto-backup settings:', e);
-            }
             try {
                 const dir = await getBackupDirPath();
                 setBackupFolder(dir);
@@ -60,31 +53,16 @@ export function ImportExportTab() {
         load();
     }, []);
 
-    const persistAutoBackup = async (patch: Record<string, any>) => {
-        if (window.storage) {
-            try {
-                await window.storage.updateSettings(patch);
-            } catch (e) {
-                console.error('[ImportExport] Failed to save auto-backup settings:', e);
-            }
-        }
-        // Notify the scheduler so it reschedules immediately.
-        window.dispatchEvent(new CustomEvent('ynotv:auto-backup-settings-changed'));
-    };
-
     const handleAutoBackupEnabledChange = (enabled: boolean) => {
-        setAutoBackupEnabled(enabled);
-        void persistAutoBackup({ autoBackupEnabled: enabled });
+        setAutoBackupSettings({ enabled });
     };
 
     const handleAutoBackupIntervalChange = (hours: number) => {
-        setAutoBackupIntervalHours(hours);
-        void persistAutoBackup({ autoBackupIntervalHours: hours });
+        setAutoBackupSettings({ intervalHours: hours });
     };
 
     const handleAutoBackupMaxBackupsChange = (max: number) => {
-        setAutoBackupMaxBackups(max);
-        void persistAutoBackup({ autoBackupMaxBackups: max });
+        setAutoBackupSettings({ maxBackups: max });
     };
 
     const handleBackupNow = async () => {
@@ -121,7 +99,7 @@ export function ImportExportTab() {
         if (!dir) return;
         setIsCustomFolder(true);
         setBackupFolder(dir);
-        void persistAutoBackup({ autoBackupDirectory: dir });
+        setAutoBackupSettings({ directory: dir });
         try {
             setBackupCount((await listBackups(dir)).length);
         } catch (e) {
@@ -131,7 +109,7 @@ export function ImportExportTab() {
 
     const handleUseDefaultFolder = async () => {
         setIsCustomFolder(false);
-        void persistAutoBackup({ autoBackupDirectory: '' });
+        setAutoBackupSettings({ directory: '' });
         try {
             const dir = await getBackupDirPath();
             setBackupFolder(dir);

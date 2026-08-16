@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import i18n, { translateNativeError } from '../i18n';
+import { useSettingsStore } from './settingsStore';
 
 export interface DownloadItem {
   id: string;
@@ -132,13 +133,7 @@ export const useDownloadStore = create<DownloadState>()(
           if (preResolvedSavePath) {
             savePath = preResolvedSavePath;
           } else {
-            let downloadsPath = '';
-            if (window.storage) {
-              const settingsRes = await window.storage.getSettings();
-              if (settingsRes.data?.downloadsPath) {
-                downloadsPath = settingsRes.data.downloadsPath;
-              }
-            }
+            const downloadsPath = useSettingsStore.getState().downloadsPath;
 
             const isHls = url.includes('.m3u8') || url.includes('/mono.m3u8');
             const ext = isHls ? 'mkv' : 'mp4';

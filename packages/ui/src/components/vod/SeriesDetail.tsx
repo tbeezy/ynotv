@@ -21,6 +21,7 @@ import { db, recordVodWatch, recordEpisodeWatch, setVodEpisodeWatchedState } fro
 import type { VodPlayInfo } from '../../types/media';
 import { resolvePlayUrl } from '../../services/stream-resolver';
 import { useDownloadStore } from '../../stores/downloadStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useVodFavoritesStore } from '../../stores/vodFavoritesStore';
 import { useActiveTmdbToken } from '../../hooks/useTmdbLists';
 import { useLazyVodTrailer, useTrailerPlayerMode, useTrailerSource } from '../../hooks/useLazyVodTrailer';
@@ -139,14 +140,8 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
 
     setDownloadingSeason(true);
     try {
-      // 1. Resolve downloads path
-      let downloadsPath = '';
-      if (window.storage) {
-        const settingsRes = await window.storage.getSettings();
-        if (settingsRes.data?.downloadsPath) {
-          downloadsPath = settingsRes.data.downloadsPath;
-        }
-      }
+      // 1. Resolve downloads path (from the settings store — hydrated at boot)
+      const downloadsPath = useSettingsStore.getState().downloadsPath;
 
       let targetDir = downloadsPath;
       if (!targetDir) {

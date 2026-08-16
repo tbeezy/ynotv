@@ -1,6 +1,6 @@
 # Settings Store Migration — `useAppSettings` → zustand
 
-Status: **All phases complete** (store shell + single boot load + write-queue persistence + consolidated DOM applier + full consumer conversion + old-machinery removal + Phase 6 tests). Direct-`getSettings` audit: `docs/settings-getsettings-audit.md`.
+Status: **All phases complete** (store shell + single boot load + write-queue persistence + consolidated DOM applier + full consumer conversion + old-machinery removal + Phase 6 tests). Direct-`getSettings` audit: see the follow-up section below (42 remaining calls).
 Owner: UI / settings
 Scope: `packages/ui/src/hooks/useAppSettings.ts` and its 20 consumers
 
@@ -218,25 +218,47 @@ keeps render cost *equal or better* than today.
   changed section writes, OLED toggles exactly once per change, custom-theme
   vars apply and get removed. Uses a tracked fake DOM (Proxy-backed dataset —
   a naive accessor fake silently breaks under `delete el.dataset.oled`).
-- [ ] **Consumer contract test:** every consumer's selector resolves (catches
-  typos in slice paths) — not written; the full-suite tsc pass covers the
-  selector field names statically.
+- [x] **Consumer contract test** (`stores/__tests__/settingsStoreContract.test.ts`):
+  scans every non-test source file that imports `useSettingsStore`, captures
+  full property chains for both selector and `getState()` forms, and walks them
+  against the real store state with optional-chain handling — a typo in a
+  nested path like `.subtitleSettings.defaultLangauge` fails. Regression tests
+  assert the new fields/setters exist.
 - [ ] Optional: render-perf sanity check comparing re-render counts before/after
   on the EPG (Virtuoso rows were the pathological case) — deferred.
 
 Gates after Phase 6: `tsc --noEmit` clean; **87 vitest tests pass** (was 5);
-`pnpm css:audit` 129 files OK; locale parity OK.
+`pnpm css:audit` 129 files OK; locale parity OK. (Later passes: 140+ vitest
+tests, including the consumer contract test.)
 
 ## Post-migration follow-up: direct `getSettings()` audit
 
-`docs/settings-getsettings-audit.md` classifies the ~100 remaining direct
-`window.storage.getSettings()` call sites across 46 files: Tier 1 (convert to
-store reads now — reads only store fields), Tier 2 (convert after the field
-lands in the store — `subtitleSettings`, `globalEpgLinks`, auto-backup,
-streaming-catalog, trakt/metadata fields), Tier 3 (keep direct by design — the
-bridge definition, the Settings editor, the autosync v3 migration). No
-conversions applied yet; Tier 1 is the low-risk mechanical pass (~14 files,
-~20 calls).
+A dedicated audit doc (`docs/settings-getsettings-audit.md`, now archived)
+classified the ~100 direct `window.storage.getSettings()` call sites across 46
+files into three tiers. All three tiers have been worked through:
+
+- **Tier 1 — convert now (reads only store fields):** fully converted. Search
+  modals, multiview cells, `ProgramContextMenu`, external-player handlers,
+  popout, `db/sync`, `stream-resolver`, subtitle consumers, and the
+  `tauri-bridge` subtitle-track styling all read the store.
+- **Tier 2 — convert after the field lands in the store:** all fields migrated
+  into the store — `subtitleSettings` (blob + setter, debounced persist),
+  `globalEpgLinks` (+ setter, db/sync writes flow through it so the SourcesTab
+  list stays live), `autoBackup*` (flat keys + `setAutoBackupSettings`),
+  streaming-catalog fields, trailer fields, metadata-API fields
+  (`tmdbApiKey`/`posterDbApiKey`/`rpdbBackdropsEnabled`), `downloadsPath`,
+  and the TMDB genre lists (`movieGenresEnabled`/`seriesGenresEnabled`).
+- **Tier 3 — keep direct by design:** the bridge's `getSettings` definition,
+  the Settings editor blob, the autosync v3 migration, and `CategoryStrip`'s
+  nav/category flags.
+
+The count dropped from ~100 to **42 direct calls in 23 files**. Remaining
+Tier-2 work (fields not yet in the store): `trakt*`/`simkl*`/
+`tvCalendarAutoSync` (ScrobblingTab, SimklTab, NuvioTab, TVCalendarTab,
+TraktCatalogsModal, scrobbler service), `collapseSourceCategoriesOnStartup` +
+nav/category flags (CategoryStrip), and `streamMaxRetries` /
+`streamWatchdogSeconds` / `channelAudioDelays` (playback hot paths — keep
+direct until those fields land in the store).
 
 ## Risks & mitigations
 

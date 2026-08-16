@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import i18n, { translateNativeError } from '../i18n';
+import { useSettingsStore } from './settingsStore';
 import {
   loginNuvio,
   signUpNuvio,
@@ -312,9 +313,9 @@ export const useNuvioAuthStore = create<NuvioAuthStore>()(
           set({ settings: profileSettings });
           // Sync TMDB key locally if found
           const tmdbKey = profileSettings?.features?.tmdb_settings?.apiKey;
-          if (tmdbKey && (window as any).storage) {
-            await (window as any).storage.updateSettings({ tmdbApiKey: tmdbKey });
-            window.dispatchEvent(new CustomEvent('ynotv:tmdb-key-changed'));
+          if (tmdbKey) {
+            // Store setter persists and dispatches `ynotv:tmdb-key-changed`.
+            useSettingsStore.getState().setTmdbApiKey(tmdbKey);
           }
         } catch (e) {
           console.error('[NuvioAuthStore] Failed to fetch profile settings:', e);
@@ -342,9 +343,8 @@ export const useNuvioAuthStore = create<NuvioAuthStore>()(
           
           // Also sync TMDB API key locally if it was updated
           const tmdbKey = updatedFeatures.tmdb_settings?.apiKey;
-          if (tmdbKey && (window as any).storage) {
-            await (window as any).storage.updateSettings({ tmdbApiKey: tmdbKey });
-            window.dispatchEvent(new CustomEvent('ynotv:tmdb-key-changed'));
+          if (tmdbKey) {
+            useSettingsStore.getState().setTmdbApiKey(tmdbKey);
           }
         } catch (e: any) {
           console.error('[NuvioAuthStore] Failed to update profile settings:', e);
@@ -405,9 +405,8 @@ export const useNuvioAuthStore = create<NuvioAuthStore>()(
             set({ settings: profileSettings });
             // Sync TMDB key locally if found
             const tmdbKey = profileSettings?.features?.tmdb_settings?.apiKey;
-            if (tmdbKey && (window as any).storage) {
-              await (window as any).storage.updateSettings({ tmdbApiKey: tmdbKey });
-              window.dispatchEvent(new CustomEvent('ynotv:tmdb-key-changed'));
+            if (tmdbKey) {
+              useSettingsStore.getState().setTmdbApiKey(tmdbKey);
             }
 
             // Pull home catalog settings

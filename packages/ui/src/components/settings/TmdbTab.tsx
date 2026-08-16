@@ -4,6 +4,7 @@ import i18n from '../../i18n';
 import { validateAccessToken } from '../../services/tmdb';
 import { validateRpdbApiKey, getRpdbTier, rpdbSupportsBackdrops } from '../../services/rpdb';
 import { SERVICES, type StreamingService } from '../../constants/streamingProviders';
+import { useSettingsStore } from '../../stores/settingsStore';
 import './PlaybackTab.css'; // Reuse existing tab styles
 
 export type MetadataSubTabId = 'tmdb' | 'rpdb';
@@ -72,8 +73,8 @@ export function TmdbTab({
     onApiKeyValidChange(isValid);
 
     if (isValid) {
-      await window.storage.updateSettings({ tmdbApiKey });
-      window.dispatchEvent(new CustomEvent('ynotv:tmdb-key-changed'));
+      // Store setter persists and dispatches `ynotv:tmdb-key-changed`.
+      useSettingsStore.getState().setTmdbApiKey(tmdbApiKey);
     }
 
     setTmdbValidating(false);
@@ -89,7 +90,7 @@ export function TmdbTab({
     onRpdbKeyValidChange(isValid);
 
     if (isValid) {
-      await window.storage.updateSettings({ posterDbApiKey: rpdbApiKey });
+      useSettingsStore.getState().setPosterDbApiKey(rpdbApiKey);
     }
 
     setTmdbValidating(false);
@@ -98,7 +99,7 @@ export function TmdbTab({
   async function handleBackdropsToggle(enabled: boolean) {
     if (!window.storage) return;
     onRpdbBackdropsEnabledChange(enabled);
-    await window.storage.updateSettings({ rpdbBackdropsEnabled: enabled });
+    useSettingsStore.getState().setRpdbBackdropsEnabled(enabled);
   }
 
   return (

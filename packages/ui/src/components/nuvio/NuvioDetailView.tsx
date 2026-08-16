@@ -3,6 +3,7 @@ import type { StremioMeta, StremioStream, StremioVideo, StremioStreamBadge, Stre
 import { useNuvioAddonStore } from '../../stores/nuvioAddonStore';
 import { useNuvioPluginStore } from '../../stores/nuvioPluginStore';
 import { useNuvioAuthStore } from '../../stores/nuvioAuthStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { fetchMeta, fetchStreams } from '../../services/stremio-addon';
 import { executePlugin } from '../../services/nuvio-plugin-runtime';
 import { pushNuvioLibrary, fetchNuvioLibrary, fetchNuvioWatchProgress, pushNuvioWatchProgress, type NuvioLibrarySyncItem } from '../../services/nuvio-api';
@@ -166,10 +167,9 @@ export function NuvioDetailView({
 
     const fetchFull = async () => {
       let activeToken = tmdbToken;
-      if (!activeToken && window.storage) {
+      if (!activeToken) {
         try {
-          const settings = await (window.storage as any).getSettings();
-          activeToken = (settings.data as any)?.tmdbApiKey || null;
+          activeToken = useSettingsStore.getState().tmdbApiKey || null;
         } catch {}
       }
 

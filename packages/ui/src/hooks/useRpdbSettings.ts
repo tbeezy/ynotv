@@ -5,12 +5,12 @@
  * for generating RPDB image URLs.
  */
 
-import { useState, useEffect } from 'react';
 import {
   getRpdbPosterUrl,
   getRpdbBackdropUrl,
   rpdbSupportsBackdrops,
 } from '../services/rpdb';
+import { useSettingsStore } from '../stores/settingsStore';
 
 interface RpdbSettings {
   apiKey: string | null;
@@ -19,32 +19,14 @@ interface RpdbSettings {
 }
 
 /**
- * Load RPDB settings from storage
+ * Load RPDB settings from the settings store (hydrated at boot and kept
+ * current by the setters — no IPC read). `loading` is always false because
+ * the store seeds synchronously.
  */
 export function useRpdbSettings(): RpdbSettings {
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [backdropsEnabled, setBackdropsEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadSettings() {
-      if (!window.storage) {
-        setLoading(false);
-        return;
-      }
-
-      const result = await window.storage.getSettings();
-      if (result.data) {
-        setApiKey(result.data.posterDbApiKey || null);
-        setBackdropsEnabled(result.data.rpdbBackdropsEnabled ?? false);
-      }
-      setLoading(false);
-    }
-
-    loadSettings();
-  }, []);
-
-  return { apiKey, backdropsEnabled, loading };
+  const apiKey = useSettingsStore((s) => s.posterDbApiKey) || null;
+  const backdropsEnabled = useSettingsStore((s) => s.rpdbBackdropsEnabled);
+  return { apiKey, backdropsEnabled, loading: false };
 }
 
 /**

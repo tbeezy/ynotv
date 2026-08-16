@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 import { exportAllDataToPath } from '../utils/exportImport';
 import { useUIStore } from '../stores/uiStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 const BACKUP_DIR = 'backups';
 const BACKUP_PREFIX = 'ynotv-backup-';
@@ -20,28 +21,18 @@ export interface AutoBackupSettings {
     directory: string;
 }
 
-export const AUTO_BACKUP_DEFAULTS: AutoBackupSettings = {
-    enabled: true,
-    intervalHours: 24,
-    maxBackups: 5,
-    directory: '',
-};
-
-/** Read the auto-backup settings from the persisted app settings store. */
-export async function readAutoBackupSettings(): Promise<AutoBackupSettings> {
-    try {
-        const result = await window.storage?.getSettings();
-        const s = (result?.data ?? {}) as Record<string, any>;
-        return {
-            enabled: s.autoBackupEnabled ?? AUTO_BACKUP_DEFAULTS.enabled,
-            intervalHours: s.autoBackupIntervalHours ?? AUTO_BACKUP_DEFAULTS.intervalHours,
-            maxBackups: s.autoBackupMaxBackups ?? AUTO_BACKUP_DEFAULTS.maxBackups,
-            directory: typeof s.autoBackupDirectory === 'string' ? s.autoBackupDirectory : AUTO_BACKUP_DEFAULTS.directory,
-        };
-    } catch (e) {
-        console.warn('[AutoBackup] Failed to read settings, using defaults:', e);
-        return { ...AUTO_BACKUP_DEFAULTS };
-    }
+/**
+ * Read the auto-backup settings from the settings store (hydrated at boot and
+ * kept current by setAutoBackupSettings — no IPC round-trip per read).
+ */
+export function readAutoBackupSettings(): AutoBackupSettings {
+    const s = useSettingsStore.getState();
+    return {
+        enabled: s.autoBackupEnabled,
+        intervalHours: s.autoBackupIntervalHours,
+        maxBackups: s.autoBackupMaxBackups,
+        directory: s.autoBackupDirectory,
+    };
 }
 
 function formatTimestamp(d = new Date()): string {
@@ -85,7 +76,7 @@ function getInstallTime(): number | null {
 
 /** Absolute path of the active backup folder (custom choice or the default app-data folder). */
 export async function getBackupDirPath(): Promise<string> {
-    const settings = await readAutoBackupSettings();
+    const settings = readAutoBackupSettings();
     if (settings.directory && settings.directory.trim().length > 0) {
         return settings.directory.trim();
     }
@@ -94,7 +85,7 @@ export async function getBackupDirPath(): Promise<string> {
 
 /** Whether the user has chosen a custom (non-default) backup folder. */
 export async function hasCustomBackupDir(): Promise<boolean> {
-    const settings = await readAutoBackupSettings();
+    const settings = readAutoBackupSettings();
     return Boolean(settings.directory && settings.directory.trim().length > 0);
 }
 
@@ -164,7 +155,7 @@ export async function runAutoBackupNow(): Promise<{ success: boolean; filePath?:
             // Non-fatal: last-backup timestamp is only used for scheduling.
         }
 
-        const settings = await readAutoBackupSettings();
+        const settings = readAutoBackupSettings();
         await pruneBackups(dir, settings.maxBackups);
         return { success: true, filePath: fullPath };
     } catch (e) {
@@ -243,7 +234,7 @@ async function waitForSyncIdle(quietPeriodMs = 30_000, timeoutMs = 30 * 60 * 100
 
 async function scheduleNext(): Promise<void> {
     clearTimer();
-    const settings = await readAutoBackupSettings();
+    const settings = readAutoBackupSettings();
     if (!settings.enabled) return;
 
     const intervalMs = Math.max(1, settings.intervalHours) * 60 * 60 * 1000;

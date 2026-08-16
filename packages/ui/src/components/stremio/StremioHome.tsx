@@ -22,6 +22,7 @@ import {
   useUIStore,
 } from '../../stores/uiStore';
 import { useTmdbApiKey } from '../../hooks/useTmdbLists';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { SERVICES, type StreamingService } from '../../constants/streamingProviders';
 import { StreamingServiceView } from './StreamingServiceView';
 import { StremioCatalogRow } from './StremioCatalogRow';
@@ -75,8 +76,8 @@ export function StremioHome({ addons, onItemClick }: StremioHomeProps) {
   const [catalogFilter, setCatalogFilter] = useState('');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const tmdbApiKey = useTmdbApiKey();
-  const [streamingCatalogsEnabled, setStreamingCatalogsEnabled] = useState(true);
-  const [enabledStreamingServices, setEnabledStreamingServices] = useState<string[]>(['netflix', 'disney', 'hulu', 'prime', 'apple', 'max', 'paramount', 'peacock']);
+  const streamingCatalogsEnabled = useSettingsStore((s) => s.streamingCatalogsEnabled);
+  const enabledStreamingServices = useSettingsStore((s) => s.enabledStreamingServices);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const scrollToTop = useCallback(() => {
@@ -86,30 +87,8 @@ export function StremioHome({ addons, onItemClick }: StremioHomeProps) {
     }
   }, []);
 
-  useEffect(() => {
-    async function loadSettings() {
-      if (!window.storage) return;
-      const res = await window.storage.getSettings();
-      const s = res.data || {};
-      if (s.streamingCatalogsEnabled !== undefined) {
-        setStreamingCatalogsEnabled(s.streamingCatalogsEnabled);
-      }
-      if (s.enabledStreamingServices !== undefined) {
-        setEnabledStreamingServices(s.enabledStreamingServices);
-      }
-    }
-
-    loadSettings();
-
-    const handleSettingsChange = () => {
-      loadSettings();
-    };
-
-    window.addEventListener('ynotv:streaming-catalogs-changed', handleSettingsChange);
-    return () => {
-      window.removeEventListener('ynotv:streaming-catalogs-changed', handleSettingsChange);
-    };
-  }, []);
+  // Streaming-catalog settings come from the settings store (setters keep them
+  // current — no IPC read or event listener needed).
 
   const serviceScrollRef = useRef<HTMLDivElement>(null);
   const [canScrollServiceLeft, setCanScrollServiceLeft] = useState(false);

@@ -9,6 +9,7 @@
 import { db } from '../db';
 import type { EpgChannelOverride, EpgProgramOverride, StoredEpgChannel } from '../db';
 import { getSearchVariants } from '../utils/searchNormalization';
+import { useSettingsStore } from '../stores/settingsStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -610,8 +611,7 @@ export async function searchEpgChannels(
   const extraResults: ScoredEpgChannel[] = [];
   if (searchMode === 'epg' && window.storage) {
     try {
-      const settingsResult = await window.storage.getSettings();
-      const globalEpgLinks = settingsResult.data?.globalEpgLinks || [];
+      const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
       const cacheLinks = globalEpgLinks.filter(link => link.saveEntireEpg);
       
       const Database = (await import('@tauri-apps/plugin-sql')).default;
@@ -706,8 +706,7 @@ export async function autoMatchChannelName(
   const extraResults: ScoredEpgChannel[] = [];
   if (searchMode === 'epg' && window.storage) {
     try {
-      const settingsResult = await window.storage.getSettings();
-      const globalEpgLinks = settingsResult.data?.globalEpgLinks || [];
+      const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
       const cacheLinks = globalEpgLinks.filter(link => link.saveEntireEpg);
       
       const Database = (await import('@tauri-apps/plugin-sql')).default;

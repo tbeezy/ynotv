@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useMovieGenres, useMultipleMoviesByGenre } from '../../hooks/useTmdbLists';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 interface MoviesTabProps {
   tmdbApiKey: string | null;
@@ -17,6 +18,7 @@ export function MoviesTab({
   settingsLoaded,
 }: MoviesTabProps) {
   useTranslation();
+  const setMovieGenresEnabled = useSettingsStore((s) => s.setMovieGenresEnabled);
   const { genres, loading } = useMovieGenres(tmdbApiKey);
 
   // Get all genre IDs to check availability
@@ -71,9 +73,8 @@ export function MoviesTab({
     saveToStorage([]);
   }
 
-  async function saveToStorage(genreIds: number[]) {
-    if (!window.storage) return;
-    await window.storage.updateSettings({ movieGenresEnabled: genreIds });
+  function saveToStorage(genreIds: number[]) {
+    setMovieGenresEnabled(genreIds);
   }
 
   return (

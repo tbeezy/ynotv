@@ -3,12 +3,14 @@ import { getDvrSettings, saveDvrSetting } from '../../db';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+import { useSettingsStore } from '../../stores/settingsStore';
 import '../Settings.css';
 
 export function DvrTab() {
     useTranslation();
     const [storagePath, setStoragePath] = useState('');
-    const [downloadsPath, setDownloadsPath] = useState('');
+    const downloadsPath = useSettingsStore((s) => s.downloadsPath);
+    const setDownloadsPath = useSettingsStore((s) => s.setDownloadsPath);
     const [startPadding, setStartPadding] = useState(60);
     const [endPadding, setEndPadding] = useState(300);
     const [customEndPaddingInput, setCustomEndPaddingInput] = useState('');
@@ -38,13 +40,8 @@ export function DvrTab() {
             setMaxDiskUsage(settings.max_disk_usage_percent || 80);
             setKeepDays(settings.keep_recordings_days !== undefined ? settings.keep_recordings_days : 30);
             setAllowPermissiveHls(settings.allow_permissive_hls_extensions === true || settings.allow_permissive_hls_extensions === 'true');
-
-            if (window.storage) {
-                const settingsRes = await window.storage.getSettings();
-                if (settingsRes?.data?.downloadsPath) {
-                    setDownloadsPath(settingsRes.data.downloadsPath);
-                }
-            }
+            // downloadsPath is read from the settings store (hydrated at boot),
+            // so no IPC round-trip is needed here.
         } catch (error) {
             console.error('Failed to load DVR settings:', error);
         } finally {
@@ -80,9 +77,6 @@ export function DvrTab() {
 
             if (selected && typeof selected === 'string') {
                 setDownloadsPath(selected);
-                if (window.storage) {
-                    await window.storage.updateSettings({ downloadsPath: selected });
-                }
             }
         } catch (error) {
             console.error('Failed to select downloads directory:', error);

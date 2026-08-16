@@ -168,35 +168,9 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
 
   // Streaming platform state
   const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [streamingCatalogsEnabled, setStreamingCatalogsEnabled] = useState(true);
-  const [enabledStreamingServices, setEnabledStreamingServices] = useState<string[]>(['netflix', 'disney', 'hulu', 'prime', 'apple', 'max', 'paramount', 'peacock']);
+  const streamingCatalogsEnabled = useSettingsStore((s) => s.streamingCatalogsEnabled);
+  const enabledStreamingServices = useSettingsStore((s) => s.enabledStreamingServices);
   const [prevViewState, setPrevViewState] = useState<{ categoryId: string | null; service: string | null } | null>(null);
-
-  useEffect(() => {
-    async function loadSettings() {
-      if (!window.storage) return;
-      const result = await window.storage.getSettings();
-      const s = result.data as any;
-      if (!s) return;
-      if (s.streamingCatalogsEnabled !== undefined) {
-        setStreamingCatalogsEnabled(s.streamingCatalogsEnabled);
-      }
-      if (s.enabledStreamingServices !== undefined) {
-        setEnabledStreamingServices(s.enabledStreamingServices);
-      }
-    }
-
-    loadSettings();
-
-    const handleSettingsChange = () => {
-      loadSettings();
-    };
-
-    window.addEventListener('ynotv:streaming-catalogs-changed', handleSettingsChange);
-    return () => {
-      window.removeEventListener('ynotv:streaming-catalogs-changed', handleSettingsChange);
-    };
-  }, []);
 
   // Category state - use the appropriate store based on type
   const moviesCategory = useMoviesCategory();

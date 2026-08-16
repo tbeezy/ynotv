@@ -275,15 +275,12 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
 
   useEffect(() => {
     if (!window.storage) return;
-    Promise.all([
-      window.storage.getSources(),
-      window.storage.getSettings()
-    ]).then(([sourcesResult, settingsResult]) => {
+    window.storage.getSources().then((sourcesResult) => {
       const map = new Map<string, string>();
       if (sourcesResult.data) {
         for (const s of sourcesResult.data) map.set(s.id, s.name);
       }
-      const globalEpgLinks = settingsResult.data?.globalEpgLinks || [];
+      const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
       for (const link of globalEpgLinks) {
         map.set(`global_epg_${link.id}`, `${link.name} (Cache)`);
       }
@@ -357,8 +354,7 @@ export function EpgEditorModal({ channel: initialChannel, sourceId, sourceName, 
       // Check cache databases
       if (window.storage) {
         try {
-          const settings = await window.storage.getSettings();
-          const globalEpgLinks = settings.data?.globalEpgLinks || [];
+          const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
           const cacheLinks = globalEpgLinks.filter(link => link.saveEntireEpg);
           const Database = (await import('@tauri-apps/plugin-sql')).default;
           

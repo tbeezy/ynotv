@@ -3,6 +3,7 @@ import type { StoredMovie, StoredSeries } from '../db';
 import { fetchVodProviderTrailerInfo } from '../db/sync';
 import { cleanTitleForSearch } from '../utils/cleanTitle';
 import type { Source } from '@ynotv/core';
+import { useSettingsStore } from '../stores/settingsStore';
 import {
   getTmdb,
   searchMovies,
@@ -174,55 +175,18 @@ export type TrailerSource = 'source' | 'tmdb';
  * provide one. Persisted to settings.
  */
 export function useTrailerSource(): [TrailerSource, (source: TrailerSource) => void] {
-  const [sourcePref, setSourcePref] = useState<TrailerSource>('source');
-
-  useEffect(() => {
-    async function load() {
-      if (!window.storage) return;
-      try {
-        const res = await window.storage.getSettings();
-        const pref = res.data?.trailerSource;
-        if (pref === 'tmdb' || pref === 'source') setSourcePref(pref);
-      } catch (e) {
-        console.warn('[useTrailerSource] Failed to load trailerSource:', e);
-      }
-    }
-    load();
-  }, []);
-
+  const sourcePref = useSettingsStore((s) => s.trailerSource);
   const setPref = useCallback((pref: TrailerSource) => {
-    setSourcePref(pref);
-    if (window.storage) {
-      window.storage.updateSettings({ trailerSource: pref }).catch(console.error);
-    }
+    useSettingsStore.getState().setTrailerSource(pref);
   }, []);
 
   return [sourcePref, setPref];
 }
 
 export function useTrailerPlayerMode(): [import('../components/vod/SplitPlayButton').VodPlayerMode, (mode: import('../components/vod/SplitPlayButton').VodPlayerMode) => void] {
-  const [mode, setModeState] = useState<import('../components/vod/SplitPlayButton').VodPlayerMode>('embedded');
-
-  useEffect(() => {
-    async function load() {
-      if (!window.storage) return;
-      try {
-        const res = await window.storage.getSettings();
-        if (res.data?.trailerPlayerMode) {
-          setModeState(res.data.trailerPlayerMode as import('../components/vod/SplitPlayButton').VodPlayerMode);
-        }
-      } catch (e) {
-        console.warn('[useTrailerPlayerMode] Failed to load trailerPlayerMode:', e);
-      }
-    }
-    load();
-  }, []);
-
+  const mode = useSettingsStore((s) => s.trailerPlayerMode);
   const setMode = (newMode: import('../components/vod/SplitPlayButton').VodPlayerMode) => {
-    setModeState(newMode);
-    if (window.storage) {
-      window.storage.updateSettings({ trailerPlayerMode: newMode }).catch(console.error);
-    }
+    useSettingsStore.getState().setTrailerPlayerMode(newMode);
   };
 
   return [mode, setMode];

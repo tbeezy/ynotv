@@ -716,8 +716,9 @@ export function SourcesTab({
     }
   }, [initialSubTab]);
 
-  // Global EPG links state
-  const [globalEpgLinks, setGlobalEpgLinks] = useState<GlobalEpgLink[]>([]);
+  // Global EPG links — settings-store backed (single source of truth)
+  const globalEpgLinks = useSettingsStore((s) => s.globalEpgLinks);
+  const setGlobalEpgLinks = useSettingsStore((s) => s.setGlobalEpgLinks);
   const [showAddEpgForm, setShowAddEpgForm] = useState(false);
   const [editingEpgId, setEditingEpgId] = useState<string | null>(null);
   const [epgFormData, setEpgFormData] = useState({ name: '', url: '', sourceIds: [] as string[], saveEntireEpg: false });
@@ -726,19 +727,6 @@ export function SourcesTab({
   const [viewMatchesEpg, setViewMatchesEpg] = useState<GlobalEpgLink | null>(null);
   const [syncingEpgId, setSyncingEpgId] = useState<string | null>(null);
   const [syncingAllEpg, setSyncingAllEpg] = useState(false);
-
-  // Load global EPG links from settings
-  async function loadGlobalEpgLinks() {
-    if (!window.storage) return;
-    const result = await window.storage.getSettings();
-    if (result.data?.globalEpgLinks) {
-      setGlobalEpgLinks(result.data.globalEpgLinks);
-    }
-  }
-
-  useEffect(() => {
-    loadGlobalEpgLinks();
-  }, []);
 
   const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
 
@@ -1359,8 +1347,8 @@ export function SourcesTab({
     } finally {
       setSyncing(false);
       setSyncStatusMsg(null);
-      // Refresh global EPG links to pick up post-sync results
-      await loadGlobalEpgLinks();
+      // Global EPG links update via the settings store (db/sync writes through
+      // setGlobalEpgLinks), so the list re-renders without a manual refresh.
     }
   }
 
@@ -1413,8 +1401,8 @@ export function SourcesTab({
         if (globalCount > 0) {
           console.log(`Source ${source.name}: ${globalCount} programs from global EPG`);
         }
-        // Refresh global EPG links state so cards show updated lastSyncResult
-        await loadGlobalEpgLinks();
+        // Global EPG links state updates via the settings store, so the cards
+        // re-render with the updated lastSyncResult automatically.
       } catch (epgErr) {
         console.error(`Source ${source.name}: global EPG apply failed:`, epgErr);
       }
@@ -1495,7 +1483,6 @@ export function SourcesTab({
     setGlobalEpgLinks(newLinks);
     const linkId = deleteEpgConfirm.id;
     setDeleteEpgConfirm(null);
-    await window.storage.updateSettings({ globalEpgLinks: newLinks });
     try {
       await cleanupGlobalEpgCache(linkId);
     } catch (e) {
@@ -1550,7 +1537,6 @@ export function SourcesTab({
     setEpgFormData({ name: '', url: '', sourceIds: [], saveEntireEpg: false });
     setEditingEpgId(null);
     setEpgFormError(null);
-    await window.storage.updateSettings({ globalEpgLinks: newLinks });
   }
 
   function toggleEpgSourceId(sourceId: string) {
@@ -1584,7 +1570,6 @@ export function SourcesTab({
       display_order: orderById.get(e.id) ?? e.display_order,
     }));
     setGlobalEpgLinks(newLinks);
-    await window.storage.updateSettings({ globalEpgLinks: newLinks });
   }
 
   async function moveEpgUp(index: number) {
@@ -1604,13 +1589,6 @@ export function SourcesTab({
       const count = await syncGlobalEpgLinkStandalone(epg, (msg) => {
         console.log(`[Global EPG] ${epg.name}: ${msg}`);
       });
-      // Refresh lastSynced and results from settings
-      if (window.storage) {
-        const result = await window.storage.getSettings();
-        if (result.data?.globalEpgLinks) {
-          setGlobalEpgLinks(result.data.globalEpgLinks);
-        }
-      }
       console.log(`[Global EPG] Synced ${epg.name}: ${count} programs inserted`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1632,13 +1610,6 @@ export function SourcesTab({
           console.log(`[Global EPG] Synced ${epg.name}: ${count} programs inserted`);
         } catch (err) {
           console.error(`[Global EPG] Failed to sync ${epg.name}:`, err);
-        }
-      }
-      // Refresh lastSynced from settings
-      if (window.storage) {
-        const result = await window.storage.getSettings();
-        if (result.data?.globalEpgLinks) {
-          setGlobalEpgLinks(result.data.globalEpgLinks);
         }
       }
     } finally {
