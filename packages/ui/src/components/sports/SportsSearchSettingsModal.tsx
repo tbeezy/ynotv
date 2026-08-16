@@ -207,7 +207,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
       const sName =
         c.source_name ||
         (c.source_id && sources.find((s) => s.id === c.source_id)?.name) ||
-        'Other';
+        t('sports:other');
       if (!sourceMap.has(sId)) {
         sourceMap.set(sId, { sourceName: sName, categories: [] });
       }
@@ -221,7 +221,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
       }
     }
     return groups;
-  }, [filteredCategories, sources, selectedSourceIds]);
+  }, [filteredCategories, sources, selectedSourceIds, t]);
 
   // When searching, auto-expand all matching source accordions
   useEffect(() => {
@@ -353,7 +353,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                   )}
                 </div>
                 <p className="sss-subtitle">
-                  Choose which playlist sources and categories to scan when searching for {selectedLeague?.name || 'league'} streams. All on by default.
+                  {t('sports:searchSettingsSubtitle', { league: selectedLeague?.name || t('sports:eachLeague') })}
                 </p>
               </div>
             </div>
@@ -402,7 +402,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                   onClick={() => setSelectedLeagueId(l.id)}
                 >
                   <span className="sss-league-pill-name">{l.name}</span>
-                  {hasCustom && <span className="sss-league-pill-custom-dot" title="Custom search filters active" />}
+                  {hasCustom && <span className="sss-league-pill-custom-dot" title={t('sports:customFiltersActiveTitle')} />}
                 </button>
               );
             })}
@@ -422,7 +422,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
             <span className="sss-badge-pill">
               {selectedSourceIds.length === 0
                 ? t('sports:allSources', { defaultValue: 'All Enabled Sources' })
-                : `${selectedSourceIds.length} Selected`}
+                : selectedSourceIds.length}
             </span>
           </button>
 
@@ -437,7 +437,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
             <span className="sss-badge-pill">
               {selectedCategoryIds.length === 0
                 ? t('sports:allCategories', { defaultValue: 'All Categories' })
-                : `${selectedCategoryIds.length} Selected`}
+                : selectedCategoryIds.length}
             </span>
           </button>
         </div>
@@ -450,7 +450,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
               <div className="sss-section-header">
                 <h3>{t('sports:sourceScope', { defaultValue: 'Playlist Sources' })}</h3>
                 <p>
-                  Choose which playlist sources are searched for <strong>{selectedLeague?.name}</strong> streams.
+                  {t('sports:sourceScopeDescForLeague', { league: selectedLeague?.name || '' })}
                 </p>
               </div>
 
@@ -463,8 +463,8 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                 </button>
                 <span className="sss-toolbar-count">
                   {selectedSourceIds.length === 0
-                    ? `Searching across all ${sources.length} sources`
-                    : `${selectedSourceIds.length} of ${sources.length} sources selected`}
+                    ? t('sports:searchingAllSources', { count: sources.length })
+                    : t('sports:sourcesSelected', { selected: selectedSourceIds.length, total: sources.length })}
                 </span>
               </div>
 
@@ -499,7 +499,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
               <div className="sss-section-header">
                 <h3>{t('sports:categoryScope', { defaultValue: 'Category Filters' })}</h3>
                 <p>
-                  Target specific categories for <strong>{selectedLeague?.name}</strong> streams. Click any source to view categories.
+                  {t('sports:categoryScopeDescForLeague', { league: selectedLeague?.name || '' })}
                 </p>
               </div>
 
@@ -555,7 +555,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                       </button>
                       {selectedCategoryIds.length > 0 && (
                         <button className="sss-btn-mini" onClick={handleClearCategories}>
-                          Clear ({selectedCategoryIds.length})
+                          {t('sports:clearCount', { count: selectedCategoryIds.length })}
                         </button>
                       )}
                     </>
@@ -563,11 +563,11 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
 
                   <div className="sss-expand-collapse-group">
                     <button className="sss-btn-mini-link" onClick={handleExpandAllSources}>
-                      Expand All
+                      {t('sports:expandAll')}
                     </button>
                     <span className="sss-divider-dot">•</span>
                     <button className="sss-btn-mini-link" onClick={handleCollapseAllSources}>
-                      Collapse All
+                      {t('sports:collapseAll')}
                     </button>
                   </div>
                 </div>
@@ -576,18 +576,18 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
               <div className="sss-category-count-bar">
                 <span>
                   {selectedCategoryIds.length === 0
-                    ? `Searching all enabled categories (${categories.length} total)`
-                    : `${selectedCategoryIds.length} categories selected`}
+                    ? t('sports:searchingAllCategories', { count: categories.length })
+                    : t('sports:categoriesSelected', { count: selectedCategoryIds.length })}
                 </span>
                 <span className="sss-showing-count">
-                  {filteredCategories.length} categories in {categoriesBySource.length} sources
+                  {t('sports:categoriesInSources', { categories: filteredCategories.length, sources: categoriesBySource.length })}
                 </span>
               </div>
 
               <div className="sss-categories-list">
                 {categoriesBySource.length === 0 ? (
                   <div className="sss-empty-state">
-                    <span>No enabled categories found matching "{categorySearch}"</span>
+                    <span>{t('sports:noCategoriesMatching', { query: categorySearch })}</span>
                   </div>
                 ) : (
                   categoriesBySource.map((group) => {
@@ -645,8 +645,8 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                           <div className="sss-source-group-right">
                             <span className={`sss-source-group-badge ${groupSelectedCount > 0 ? 'active' : ''}`}>
                               {groupSelectedCount > 0
-                                ? `${groupSelectedCount} / ${group.categories.length} selected`
-                                : `${group.categories.length} categories`}
+                                ? t('sports:selectedOutOf', { selected: groupSelectedCount, total: group.categories.length })
+                                : t('sports:categoryCount', { count: group.categories.length })}
                             </span>
                           </div>
                         </div>
@@ -670,7 +670,7 @@ export const SportsSearchSettingsModal: React.FC<SportsSearchSettingsModalProps>
                                     <span className="sss-cat-name">{c.name}</span>
                                   </div>
                                   {c.channel_count !== undefined && c.channel_count > 0 && (
-                                    <span className="sss-cat-count">{c.channel_count} ch</span>
+                                    <span className="sss-cat-count">{t('sports:channelCountShort', { count: c.channel_count })}</span>
                                   )}
                                 </label>
                               );
