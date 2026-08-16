@@ -491,12 +491,12 @@
   -webkit-backdrop-filter: var(--glass-info-filter, blur(var(--glass-blur, 20px)));
   border: var(--glass-surface-border, none);
   border-left: var(--glass-info-border-left, var(--glass-surface-border, none));
+  border-bottom: var(--glass-surface-border, none);
   border-radius: var(--glass-surface-radius, 0);
   box-shadow: var(--glass-info-shadow, var(--glass-surface-shadow, none));
   padding: var(--glass-info-padding, 30px);
   display: flex;
   flex-direction: column;
-  border-bottom: var(--glass-border, 1px solid rgba(255, 255, 255, 0.08));
   overflow-y: auto;
   min-width: 0;
 }
