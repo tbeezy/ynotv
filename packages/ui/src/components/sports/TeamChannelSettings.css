@@ -1851,3 +1851,211 @@
 .tcs-btn-danger:hover {
   background: #ef4444;
 }
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES
+   The base styles above are tuned for dark modal surfaces. When the light
+   theme is active the modal shell (var(--bg-primary)) turns light, so remap
+   the hardcoded white-tinted surfaces and white/light accent text to
+   dark-based equivalents.
+   ========================================================================== */
+
+/* Modal shells — softer shadow/ring so light surfaces don't glow white */
+html[data-theme="light"] .tcs-modal,
+html[data-theme="light"] .tcs-picker-dialog,
+html[data-theme="light"] .tcs-confirm-dialog {
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="light"] .tcs-modal-header,
+html[data-theme="light"] .tcs-picker-dialog-header,
+html[data-theme="light"] .tcs-picker-dialog-footer {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* White-tinted surfaces -> black-tinted (cards, rows, inputs, tabs) */
+html[data-theme="light"] .tcs-stats-card,
+html[data-theme="light"] .tcs-team-card,
+html[data-theme="light"] .tcs-status-tabs,
+html[data-theme="light"] .tcs-team-channel-row,
+html[data-theme="light"] .tcs-btn-row-action,
+html[data-theme="light"] .tcs-search-input,
+html[data-theme="light"] .tcs-channel-result-card,
+html[data-theme="light"] .tcs-btn-secondary,
+html[data-theme="light"] .tcs-category-pill,
+html[data-theme="light"] .tcs-btn-mini-link {
+  background: rgba(0, 0, 0, 0.035);
+}
+
+html[data-theme="light"] .tcs-team-search-input {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Borders — white-tint borders vanish on a light shell */
+html[data-theme="light"] .tcs-modal,
+html[data-theme="light"] .tcs-picker-dialog,
+html[data-theme="light"] .tcs-team-card,
+html[data-theme="light"] .tcs-team-channel-row,
+html[data-theme="light"] .tcs-status-tabs,
+html[data-theme="light"] .tcs-btn-row-action,
+html[data-theme="light"] .tcs-league-select,
+html[data-theme="light"] .tcs-mini-select,
+html[data-theme="light"] .tcs-search-input,
+html[data-theme="light"] .tcs-channel-result-card,
+html[data-theme="light"] .tcs-btn-secondary,
+html[data-theme="light"] .tcs-category-pill,
+html[data-theme="light"] .tcs-btn-mini-link {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Hover / active states — white hover fills become dark fills */
+html[data-theme="light"] .tcs-modal-close:hover,
+html[data-theme="light"] .tcs-btn-dismiss-suggestions:hover,
+html[data-theme="light"] .tcs-status-tab:hover,
+html[data-theme="light"] .tcs-category-pill:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #1a1a1a);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="light"] .tcs-status-tab.active {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary, #1a1a1a);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="light"] .tcs-team-card:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+
+html[data-theme="light"] .tcs-channel-result-card:hover:not(.active) {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+
+html[data-theme="light"] .tcs-btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="light"] .tcs-btn-row-action:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary, #1a1a1a);
+}
+
+html[data-theme="light"] .tcs-team-search-input:focus,
+html[data-theme="light"] .tcs-search-input:focus {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="light"] .tcs-team-search-clear,
+html[data-theme="light"] .tcs-search-clear {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.65);
+}
+
+html[data-theme="light"] .tcs-team-search-clear:hover,
+html[data-theme="light"] .tcs-search-clear:hover {
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--text-primary, #1a1a1a);
+}
+
+/* Hardcoded white text -> dark text */
+html[data-theme="light"] .tcs-team-logo-fallback,
+html[data-theme="light"] .tcs-team-channel-title,
+html[data-theme="light"] .tcs-picker-dialog-league-badge,
+html[data-theme="light"] .tcs-channel-result-name,
+html[data-theme="light"] .tcs-category-badge,
+html[data-theme="light"] .tcs-meta-tag,
+html[data-theme="light"] .tcs-suggestions-empty-filter,
+html[data-theme="light"] .tcs-mini-label {
+  color: rgba(0, 0, 0, 0.75);
+}
+
+/* Light accent text (blue/green) -> darker shades for contrast on light bg */
+html[data-theme="light"] .tcs-btn-add-backup,
+html[data-theme="light"] .tcs-btn-link-primary,
+html[data-theme="light"] .tcs-source-badge,
+html[data-theme="light"] .tcs-btn-select-chip,
+html[data-theme="light"] .tcs-picker-dialog-count-badge {
+  color: #2563eb;
+}
+
+html[data-theme="light"] .tcs-btn-add-backup:hover,
+html[data-theme="light"] .tcs-btn-link-primary:hover {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #1d4ed8;
+}
+
+html[data-theme="light"] .tcs-btn-select-chip.backup,
+html[data-theme="light"] .tcs-stat-chip.backup {
+  color: #1d4ed8;
+}
+
+html[data-theme="light"] .tcs-category-pill.active {
+  color: #2563eb;
+}
+
+html[data-theme="light"] .tcs-quick-link-btn,
+html[data-theme="light"] .tcs-btn-quick-accept,
+html[data-theme="light"] .tcs-btn-accept-all,
+html[data-theme="light"] .tcs-suggestions-panel-title {
+  color: #0369a1;
+}
+
+html[data-theme="light"] .tcs-match-percent {
+  color: #075985;
+}
+
+html[data-theme="light"] .tcs-btn-make-primary-chip,
+html[data-theme="light"] .tcs-badge-current,
+html[data-theme="light"] .tcs-stat-chip.linked {
+  color: #059669;
+}
+
+html[data-theme="light"] .tcs-btn-make-primary-chip:hover {
+  background: rgba(5, 150, 105, 0.2);
+  color: #047857;
+}
+
+html[data-theme="light"] .tcs-priority-tag.primary,
+html[data-theme="light"] .tcs-priority-pill.primary,
+html[data-theme="light"] .tcs-priority-tag-mini.primary,
+html[data-theme="light"] .tcs-match-score-pill.high,
+html[data-theme="light"] .tcs-match-badge.high {
+  color: #059669;
+}
+
+html[data-theme="light"] .tcs-priority-tag.backup,
+html[data-theme="light"] .tcs-priority-pill.backup,
+html[data-theme="light"] .tcs-priority-tag-mini.backup {
+  color: #2563eb;
+}
+
+html[data-theme="light"] .tcs-match-score-pill.medium {
+  color: #b45309;
+}
+
+html[data-theme="light"] .tcs-btn-quick-accept.accepted {
+  color: #059669;
+}
+
+html[data-theme="light"] .tcs-btn-unlink-danger,
+html[data-theme="light"] .tcs-btn-reset-league {
+  color: #dc2626;
+}
+
+html[data-theme="light"] .tcs-btn-unlink-danger:hover {
+  color: #b91c1c;
+}
+
+/* Spinner — white ring is invisible on light bg */
+html[data-theme="light"] .tcs-spinner-small {
+  border-color: rgba(0, 0, 0, 0.2);
+  border-top-color: var(--accent, #4a7dff);
+}
+
+/* Deliberately dark inner cards (suggestions, linked section) stay dark, so
+   their white text is untouched. */

@@ -857,3 +857,175 @@ input[type="checkbox"]:checked + .als-checkbox-custom::after {
   box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
   transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES
+   The base styles are tuned for dark surfaces and the shell hardcodes a dark
+   background, so in the light theme the inherited var(--text-primary) flips to
+   dark-on-dark and the white-tinted surfaces vanish. Remap to light surfaces
+   and dark-based colors when the light theme is active.
+   ========================================================================== */
+
+/* Modal shell — go light like the other settings modals */
+html[data-theme="light"] .als-modal {
+  background: #f7f8fa;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  color: var(--text-primary, #1a1a1a);
+}
+
+html[data-theme="light"] .als-header,
+html[data-theme="light"] .als-footer {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Dark selector / footer bands become light so var()-based dark text stays legible */
+html[data-theme="light"] .als-nav-tabs,
+html[data-theme="light"] .als-source-group-items,
+html[data-theme="light"] .als-footer {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* White-tinted surfaces -> black-tinted */
+html[data-theme="light"] .als-close-btn,
+html[data-theme="light"] .als-radio-card,
+html[data-theme="light"] .als-setting-box,
+html[data-theme="light"] .als-btn-mini,
+html[data-theme="light"] .als-checkbox-card,
+html[data-theme="light"] .als-search-input,
+html[data-theme="light"] .als-source-category-group,
+html[data-theme="light"] .als-source-group-header,
+html[data-theme="light"] .als-source-group-badge,
+html[data-theme="light"] .als-category-row,
+html[data-theme="light"] .als-btn-cancel,
+html[data-theme="light"] .als-btn-save {
+  background: rgba(0, 0, 0, 0.035);
+}
+
+html[data-theme="light"] .als-radio-card:hover,
+html[data-theme="light"] .als-checkbox-card:hover,
+html[data-theme="light"] .als-source-group-header:hover,
+html[data-theme="light"] .als-category-row:hover,
+html[data-theme="light"] .als-btn-mini:hover,
+html[data-theme="light"] .als-close-btn:hover,
+html[data-theme="light"] .als-btn-cancel:hover,
+html[data-theme="light"] .als-btn-save:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Borders — white-tint borders vanish on a light shell */
+html[data-theme="light"] .als-header,
+html[data-theme="light"] .als-nav-tabs,
+html[data-theme="light"] .als-close-btn,
+html[data-theme="light"] .als-radio-card,
+html[data-theme="light"] .als-setting-box,
+html[data-theme="light"] .als-btn-mini,
+html[data-theme="light"] .als-checkbox-card,
+html[data-theme="light"] .als-search-input,
+html[data-theme="light"] .als-source-category-group,
+html[data-theme="light"] .als-source-group-items,
+html[data-theme="light"] .als-category-row,
+html[data-theme="light"] .als-btn-cancel,
+html[data-theme="light"] .als-btn-save,
+html[data-theme="light"] .als-footer {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Hardcoded white text -> dark text */
+html[data-theme="light"] .als-title,
+html[data-theme="light"] .als-section-header h3,
+html[data-theme="light"] .als-radio-title,
+html[data-theme="light"] .als-toggle-title,
+html[data-theme="light"] .als-source-name,
+html[data-theme="light"] .als-source-group-title,
+html[data-theme="light"] .als-cat-name,
+html[data-theme="light"] .als-btn-cancel,
+html[data-theme="light"] .als-btn-save {
+  color: var(--text-primary, #1a1a1a);
+}
+
+html[data-theme="light"] .als-subtitle,
+html[data-theme="light"] .als-section-header p,
+html[data-theme="light"] .als-radio-desc,
+html[data-theme="light"] .als-setting-label,
+html[data-theme="light"] .als-setting-hint,
+html[data-theme="light"] .als-toggle-desc,
+html[data-theme="light"] .als-toolbar-count,
+html[data-theme="light"] .als-source-total-count,
+html[data-theme="light"] .als-source-group-badge,
+html[data-theme="light"] .als-cat-count,
+html[data-theme="light"] .als-category-count-bar,
+html[data-theme="light"] .als-empty-state,
+html[data-theme="light"] .als-badge-pill {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="light"] .als-close-btn,
+html[data-theme="light"] .als-search-clear,
+html[data-theme="light"] .als-source-chevron,
+html[data-theme="light"] .als-search-wrap svg {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* Accent text (blue/green/amber) -> darker shades for contrast on light bg */
+html[data-theme="light"] .als-league-name,
+html[data-theme="light"] .als-nav-tab.active,
+html[data-theme="light"] .als-btn-mini-link,
+html[data-theme="light"] .als-source-chevron.expanded,
+html[data-theme="light"] .als-source-group-badge.active,
+html[data-theme="light"] .als-btn-mini.active,
+html[data-theme="light"] .als-chip-tag.default {
+  color: #2563eb;
+}
+
+html[data-theme="light"] .als-btn-mini-link:hover {
+  color: #1d4ed8;
+}
+
+html[data-theme="light"] .als-nav-tab:hover {
+  color: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme="light"] .als-nav-tab.active .als-badge-pill {
+  background: rgba(37, 99, 235, 0.15);
+  color: #1d4ed8;
+}
+
+html[data-theme="light"] .als-chip-tag.recommended {
+  color: #059669;
+}
+
+html[data-theme="light"] .als-chip-tag.relaxed {
+  color: #b45309;
+}
+
+html[data-theme="light"] .als-btn-mini.highlight {
+  color: #059669;
+}
+
+html[data-theme="light"] .als-btn-mini.highlight:hover {
+  color: #047857;
+}
+
+/* Checkbox custom box — white border invisible on light */
+html[data-theme="light"] .als-checkbox-custom {
+  border-color: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* Select control keeps its dark popover; keep text light-on-dark there */
+html[data-theme="light"] .als-select-control option {
+  background: #1e222d;
+  color: #ffffff;
+}
+
+/* Danger / reset button — light red is unreadable on light bg */
+html[data-theme="light"] .als-btn-reset {
+  color: #dc2626;
+}
+
+html[data-theme="light"] .als-btn-reset:hover {
+  color: #b91c1c;
+}

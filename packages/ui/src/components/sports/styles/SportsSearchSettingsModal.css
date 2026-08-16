@@ -812,3 +812,129 @@ input[type="checkbox"]:checked + .sss-checkbox-custom::after {
   background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
 }
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES
+   The base styles are tuned for dark surfaces. When the light theme is active
+   the modal shell (var(--bg-primary)) turns light, so remap the hardcoded
+   white-tinted surfaces and white/light accent text to dark-based equivalents.
+   ========================================================================== */
+
+/* Modal shell — softer shadow/ring on light bg */
+html[data-theme="light"] .sss-modal {
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme="light"] .sss-header,
+html[data-theme="light"] .sss-footer {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Dark selector bands become light so var()-based dark text stays legible */
+html[data-theme="light"] .sss-league-selector-section {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme="light"] .sss-source-group-items {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* White-tinted surfaces -> black-tinted */
+html[data-theme="light"] .sss-nav-tabs,
+html[data-theme="light"] .sss-filter-toolbar,
+html[data-theme="light"] .sss-checkbox-card,
+html[data-theme="light"] .sss-btn-mini,
+html[data-theme="light"] .sss-category-pill,
+html[data-theme="light"] .sss-league-pill,
+html[data-theme="light"] .sss-source-category-group,
+html[data-theme="light"] .sss-source-group-badge,
+html[data-theme="light"] .sss-category-row,
+html[data-theme="light"] .sss-btn-cancel {
+  background: rgba(0, 0, 0, 0.035);
+}
+
+html[data-theme="light"] .sss-checkbox-card:hover,
+html[data-theme="light"] .sss-source-group-header:hover,
+html[data-theme="light"] .sss-category-row:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Borders — white-tint borders vanish on a light shell */
+html[data-theme="light"] .sss-nav-tabs,
+html[data-theme="light"] .sss-filter-toolbar,
+html[data-theme="light"] .sss-checkbox-card,
+html[data-theme="light"] .sss-btn-mini,
+html[data-theme="light"] .sss-category-pill,
+html[data-theme="light"] .sss-league-pill,
+html[data-theme="light"] .sss-source-category-group,
+html[data-theme="light"] .sss-category-row,
+html[data-theme="light"] .sss-search-input,
+html[data-theme="light"] .sss-btn-cancel {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Hover / active states */
+html[data-theme="light"] .sss-close-btn:hover,
+html[data-theme="light"] .sss-category-pill:hover,
+html[data-theme="light"] .sss-nav-tab:hover,
+html[data-theme="light"] .sss-btn-mini:hover,
+html[data-theme="light"] .sss-btn-cancel:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #1a1a1a);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="light"] .sss-league-pill:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+
+html[data-theme="light"] .sss-search-clear {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.65);
+}
+
+html[data-theme="light"] .sss-search-clear:hover {
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--text-primary, #1a1a1a);
+}
+
+/* Light accent text (blue/green) -> darker shades for contrast on light bg */
+html[data-theme="light"] .sss-league-badge-top,
+html[data-theme="light"] .sss-nav-tab.active,
+html[data-theme="light"] .sss-btn-mini.active,
+html[data-theme="light"] .sss-btn-mini-link:hover,
+html[data-theme="light"] .sss-source-group-badge.active,
+html[data-theme="light"] .sss-category-pill.active {
+  color: #2563eb;
+}
+
+html[data-theme="light"] .sss-nav-tab.active .sss-badge-pill {
+  background: rgba(37, 99, 235, 0.15);
+  color: #1d4ed8;
+}
+
+html[data-theme="light"] .sss-btn-mini.highlight {
+  color: #059669;
+}
+
+html[data-theme="light"] .sss-btn-mini.highlight:hover {
+  color: #047857;
+}
+
+html[data-theme="light"] .sss-divider-dot {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+/* Danger / reset button — light red is unreadable on light bg */
+html[data-theme="light"] .sss-btn-reset {
+  color: #dc2626;
+}
+
+html[data-theme="light"] .sss-btn-reset:hover:not(:disabled) {
+  color: #b91c1c;
+}
