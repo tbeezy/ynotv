@@ -17,6 +17,59 @@ function getInitialSettingsFromStorage(): Record<string, any> | null {
 
 let cachedSettings: Record<string, any> | null = getInitialSettingsFromStorage();
 
+/* ---------------------------------------------------------------------------
+   OLED true-black — single source of truth for the data-oled attribute.
+
+   This MUST NOT be driven by a per-instance React effect: useAppSettings is
+   called by ~20 components, and every instance mounts with oledBlack=false
+   until its async storage load resolves. A per-instance effect therefore
+   DELETES data-oled on every mount (blobs + grey surfaces flash back on),
+   then re-sets it once the load lands — a constant race while navigating.
+
+   Instead the attribute is synced from one module-level value that is:
+    1. seeded synchronously from the localStorage cache at module load (so the
+       very first paint is already OLED-correct — no startup flash), and
+    2. re-synced only when the authoritative storage load resolves and when
+       the user toggles the setting.
+   All instances converge on the same storage value, so nothing fights.
+   --------------------------------------------------------------------------- */
+let oledBlackGlobal: boolean = Boolean(cachedSettings?.oledBlack);
+let oledAttributeApplied: boolean | null = null;
+
+function applyOledAttribute() {
+  const enabled = oledBlackGlobal === true;
+  if (oledAttributeApplied === enabled) return; // idempotent — no churn
+  oledAttributeApplied = enabled;
+  if (typeof document !== 'undefined') {
+    if (enabled) {
+      document.documentElement.dataset.oled = 'true';
+    } else {
+      delete document.documentElement.dataset.oled;
+    }
+  }
+}
+
+// Seed the attribute synchronously on first paint.
+applyOledAttribute();
+
+/* ---------------------------------------------------------------------------
+   Stale-read guard for theme / custom-theme-accent settings.
+
+   Several useAppSettings instances load settings asynchronously (one IPC round
+   trip each). If a component mounts right after the user changes a setting and
+   its load read storage BEFORE the save landed, the load would happily apply
+   and merge the OLD value — reverting the user's change in the DOM and in the
+   module cache ("setting reverts after exiting Settings").
+
+   Setters stamp the key when the user changes it; a load that started before
+   that stamp skips applying/merging the key, so a delayed read can never
+   clobber a newer write.
+   --------------------------------------------------------------------------- */
+const settingsWriteStamps: Record<string, number> = {};
+function stampSettingsWrite(key: string) {
+  settingsWriteStamps[key] = Date.now();
+}
+
 
 export interface AppSettings {
   // i18n / language — the pinned i18n entry point. `language` is a BCP-47 code
@@ -119,6 +172,7 @@ export interface AppSettings {
   // Theme Optimization
   hardwareAcceleration: boolean;
   disableThemeBackdropBlur: boolean;
+  oledBlack: boolean;
   epgLazyLoadingEnabled: boolean;
   disableEpgTransitions: boolean;
   epgReduceGpuLayers: boolean;
@@ -219,6 +273,7 @@ export interface AppSettings {
     setSavedCustomThemes: (themes: CustomThemeConfig[]) => void;
     setHardwareAcceleration: (enabled: boolean) => void;
     setDisableThemeBackdropBlur: (disabled: boolean) => void;
+    setOledBlack: (enabled: boolean) => void;
     setEpgLazyLoadingEnabled: (enabled: boolean) => void;
     setDisableEpgTransitions: (disabled: boolean) => void;
     setEpgReduceGpuLayers: (enabled: boolean) => void;
@@ -450,6 +505,7 @@ export function useAppSettings(): AppSettings {
   // Theme Optimization settings
   const [hardwareAcceleration, setHardwareAccelerationState] = useState(true);
   const [disableThemeBackdropBlur, setDisableThemeBackdropBlurState] = useState(false);
+  const [oledBlack, setOledBlackState] = useState(false);
   const [epgLazyLoadingEnabled, setEpgLazyLoadingEnabledState] = useState(false);
   const [disableEpgTransitions, setDisableEpgTransitionsState] = useState(false);
   const [epgReduceGpuLayers, setEpgReduceGpuLayersState] = useState(false);
@@ -625,6 +681,10 @@ export function useAppSettings(): AppSettings {
     }
   }, [disableThemeBackdropBlur]);
 
+  // OLED true-black is synced globally (module-level) from the settings load
+  // and the setter — deliberately NOT from a per-instance effect here, so
+  // component mounts never delete the attribute while their load is pending.
+
   useEffect(() => {
     if (disableEpgTransitions) {
       document.documentElement.classList.add('disable-epg-transitions');
@@ -659,6 +719,9 @@ export function useAppSettings(): AppSettings {
 
       try {
         // Try Tauri storage first
+        // Capture when this load began so a slow read that started before a
+        // user change can be detected and skipped (see settingsWriteStamps).
+        const loadStartedAt = Date.now();
         const result = await window.storage.getSettings();
 
         // Also check localStorage for saved layout state and theme (saved on app close)
@@ -804,6 +867,9 @@ export function useAppSettings(): AppSettings {
           // Load Optimization settings
           setHardwareAccelerationState(result.data.hardwareAcceleration ?? true);
           setDisableThemeBackdropBlurState(result.data.disableThemeBackdropBlur ?? false);
+          setOledBlackState(result.data.oledBlack ?? false);
+          oledBlackGlobal = result.data.oledBlack ?? false;
+          applyOledAttribute();
           setEpgLazyLoadingEnabledState(result.data.epgLazyLoadingEnabled ?? false);
           setDisableEpgTransitionsState(result.data.disableEpgTransitions ?? false);
           setEpgReduceGpuLayersState(result.data.epgReduceGpuLayers ?? false);
@@ -873,7 +939,11 @@ export function useAppSettings(): AppSettings {
 
           // Load active custom theme config FIRST so themeState doesn't trigger effect with uninitialized config
           let loadedCustomConfig = result.data.customThemeConfig;
-          if (!loadedCustomConfig) {
+          if (settingsWriteStamps['customThemeConfig'] > loadStartedAt) {
+            // The user changed the accent config while this load was in flight —
+            // keep the newer in-memory config instead of the stale snapshot.
+            loadedCustomConfig = undefined;
+          } else if (!loadedCustomConfig) {
             try {
               const existing = localStorage.getItem('app-settings');
               if (existing) {
@@ -903,7 +973,10 @@ export function useAppSettings(): AppSettings {
           setSavedCustomThemesState(savedThemesList);
 
           // Load theme
-          const savedTheme = result.data.theme || localStorageTheme || 'dark-cyan';
+          const savedTheme =
+            settingsWriteStamps['theme'] > loadStartedAt
+              ? (cachedSettings?.theme as ThemeId | undefined) || (localStorageTheme as ThemeId) || 'dark-cyan'
+              : (result.data.theme as ThemeId) || (localStorageTheme as ThemeId) || 'dark-cyan';
           cachedSettings = { ...cachedSettings, ...result.data, theme: savedTheme, customThemeConfig: loadedCustomConfig || cachedSettings?.customThemeConfig };
           setThemeState(savedTheme as ThemeId);
 
@@ -976,6 +1049,10 @@ export function useAppSettings(): AppSettings {
   const updateCustomThemeConfig = useCallback(async (newConfig: Partial<CustomThemeConfig>) => {
     setCustomThemeConfigState((prev) => {
       const updated = { ...prev, ...newConfig };
+      // Keep the module cache fresh so instances that mount afterwards seed the
+      // new accent config instead of a stale one (mirrors setTheme).
+      cachedSettings = { ...cachedSettings, customThemeConfig: updated };
+      stampSettingsWrite('customThemeConfig');
       // Persist to storage
       if (window.storage) {
         window.storage.updateSettings({ customThemeConfig: updated }).catch((e) => {
@@ -995,6 +1072,7 @@ export function useAppSettings(): AppSettings {
 
   const setTheme = useCallback(async (newTheme: ThemeId) => {
     cachedSettings = { ...cachedSettings, theme: newTheme };
+    stampSettingsWrite('theme');
     setThemeState(newTheme);
     // Persist to storage
     if (window.storage) {
@@ -1677,6 +1755,19 @@ export function useAppSettings(): AppSettings {
     }
   }, []);
 
+  const setOledBlack = useCallback(async (enabled: boolean) => {
+    setOledBlackState(enabled);
+    oledBlackGlobal = enabled;
+    applyOledAttribute();
+    if (window.storage) {
+      try {
+        await window.storage.updateSettings({ oledBlack: enabled });
+      } catch (e) {
+        console.error('[useAppSettings] Failed to save oledBlack:', e);
+      }
+    }
+  }, []);
+
   const setEpgLazyLoadingEnabled = useCallback(async (enabled: boolean) => {
     setEpgLazyLoadingEnabledState(enabled);
     if (window.storage) {
@@ -2095,6 +2186,8 @@ export function useAppSettings(): AppSettings {
     setExternalPlayerReuse,
     disableThemeBackdropBlur,
     setDisableThemeBackdropBlur,
+    oledBlack,
+    setOledBlack,
     hardwareAcceleration,
     setHardwareAcceleration,
     epgLazyLoadingEnabled,

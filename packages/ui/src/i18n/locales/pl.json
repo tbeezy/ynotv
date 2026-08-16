@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Motywy gotowe",
+"oledBlack": "Prawdziwa czerń (OLED)",
+"oledBlackSub": "Wyświetla powierzchnie \"{{theme}}\" jako czystą czerń, zachowując kolor akcentu. Dotyczy ciemnych motywów w interfejsie V3.",
       "customTheme": "Motyw niestandardowy",
       "selectTheme": "Wybierz motyw",
       "editCustomColors": "Edytuj kolory motywu niestandardowego",

@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Előre beállított témák",
+"oledBlack": "Valódi fekete (OLED)",
+"oledBlackSub": "A(z) \"{{theme}}\" felületeit tiszta feketeként jeleníti meg, megtartva az akcentusszínt. A sötét témákra vonatkozik a V3 felületben.",
       "customTheme": "Egyéni téma",
       "selectTheme": "Téma kiválasztása",
       "editCustomColors": "Egyéni téma színeinek szerkesztése",

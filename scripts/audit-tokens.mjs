@@ -21,7 +21,7 @@ function walk(dir) {
 }
 walk(root);
 
-const defined = new Map(); // token -> file
+const defined = new Map(); // token -> Set<file>
 const used = []; // {token, file, hasFallback, line}
 
 for (const f of files) {
@@ -30,7 +30,8 @@ for (const f of files) {
   const defRe = /(--[\w-]+)\s*:/g;
   let m;
   while ((m = defRe.exec(css))) {
-    if (!defined.has(m[1])) defined.set(m[1], f);
+    if (!defined.has(m[1])) defined.set(m[1], new Set());
+    defined.get(m[1]).add(f);
   }
   // usages: var(--name or var(--name, fallback
   const useRe = /var\(\s*(--[\w-]+)(\s*,\s*[^)]*)?\)/g;
@@ -51,7 +52,7 @@ if (undefinedTokens.length === 0) console.log('(none)');
 // Tokens defined ONLY in ModernV3.css (v3-gated) consumed in base/component files
 // without a fallback -> would be undefined in v1/v2.
 const v3File = path.join(uiDir, 'src/styles/ModernV3.css');
-const v3Only = [...defined.entries()].filter(([, f]) => f === v3File).map(([t]) => t);
+const v3Only = [...defined.entries()].filter(([, files]) => files.size === 1 && files.has(v3File)).map(([t]) => t);
 console.log('\n=== v3-ONLY TOKENS consumed in base/component files WITHOUT fallback ===');
 let risky = 0;
 for (const u of used) {
@@ -65,9 +66,9 @@ for (const u of used) {
 }
 if (risky === 0) console.log('(none — all v3-only tokens consumed with fallbacks in base rules)');
 
-// Tokens defined in ModernV2.css consumed in base files without fallback (v1 risk)
+// Tokens defined ONLY in ModernV2.css consumed in base files without fallback (v1 risk)
 const v2File = path.join(uiDir, 'src/styles/ModernV2.css');
-const v2Only = [...defined.entries()].filter(([, f]) => f === v2File).map(([t]) => t);
+const v2Only = [...defined.entries()].filter(([, files]) => files.size === 1 && files.has(v2File)).map(([t]) => t);
 console.log('\n=== v2-ONLY TOKENS consumed in base/component files WITHOUT fallback ===');
 let risky2 = 0;
 for (const u of used) {

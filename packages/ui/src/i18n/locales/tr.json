@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Hazır Temalar",
+"oledBlack": "Gerçek Siyah (OLED)",
+"oledBlackSub": "\"{{theme}}\" yüzeylerini vurgu rengini koruyarak saf siyah olarak gösterir. V3 arayüzündeki koyu temalar için geçerlidir.",
       "customTheme": "Özel Tema",
       "selectTheme": "Tema Seç",
       "editCustomColors": "Özel Tema Renklerini Düzenle",

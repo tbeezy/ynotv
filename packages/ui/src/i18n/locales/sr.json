@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Gotove teme",
+"oledBlack": "Prava crna (OLED)",
+"oledBlackSub": "Prikazuje površine \"{{theme}}\" kao čistu crnu, zadržavajući akcentnu boju. Primerjuje se na tamne teme u V3 interfejsu.",
       "customTheme": "Prilagođena tema",
       "selectTheme": "Izaberi temu",
       "editCustomColors": "Izmeni boje prilagođene teme",

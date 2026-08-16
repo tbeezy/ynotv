@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Temas predefinidos",
+"oledBlack": "Preto puro (OLED)",
+"oledBlackSub": "Exibe as superfícies de \"{{theme}}\" como preto puro, mantendo a cor de destaque. Aplica-se aos temas escuros na interface V3.",
       "customTheme": "Tema personalizado",
       "selectTheme": "Selecionar tema",
       "editCustomColors": "Editar cores do tema personalizado",

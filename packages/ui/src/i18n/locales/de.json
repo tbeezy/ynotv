@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Vordefinierte Designs",
+"oledBlack": "Echtes Schwarz (OLED)",
+"oledBlackSub": "Stellt die Oberflächen von \"{{theme}}\" als reines Schwarz dar und behält die Akzentfarbe. Gilt für Dark- und Dark-Color-Designs in der V3-Oberfläche.",
       "customTheme": "Benutzerdefiniertes Design",
       "selectTheme": "Design auswählen",
       "editCustomColors": "Farben des benutzerdefinierten Designs bearbeiten",

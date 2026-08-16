@@ -608,6 +608,8 @@ export function Settings({
     setLogoSmartTrim,
     logoLightBackgroundDetection,
     setLogoLightBackgroundDetection,
+    oledBlack,
+    setOledBlack,
   } = useAppSettings();
 
   // Category settings state
@@ -2708,6 +2710,9 @@ export function Settings({
             onThemeChange={onThemeChange || (() => { })}
             customThemeConfig={customThemeConfig}
             onCustomThemeConfigChange={onCustomThemeConfigChange || (() => { })}
+            oledBlack={oledBlack}
+            setOledBlack={setOledBlack}
+            modernUiEnabled={uiSettings.modernUiEnabled}
           />
         );
       case 'startup':

@@ -10,6 +10,10 @@ interface ThemeTabProps {
   onThemeChange: (theme: ThemeId) => void;
   customThemeConfig?: CustomThemeConfig;
   onCustomThemeConfigChange?: (config: Partial<CustomThemeConfig>) => void;
+  oledBlack?: boolean;
+  setOledBlack?: (enabled: boolean) => void;
+  /** UI design version — OLED true-black only applies to the v3 UI. */
+  modernUiEnabled?: boolean | string;
 }
 
 const THEMES: { id: ThemeId; name: string; description: string; preview: string; gradient?: string }[] = [
@@ -231,11 +235,14 @@ function ButtonGroupSelector<T extends string>({
   );
 }
 
-export function ThemeTab({ 
-  theme, 
-  onThemeChange, 
-  customThemeConfig, 
-  onCustomThemeConfigChange 
+export function ThemeTab({
+  theme,
+  onThemeChange,
+  customThemeConfig,
+  onCustomThemeConfigChange,
+  oledBlack = false,
+  setOledBlack,
+  modernUiEnabled
 }: ThemeTabProps) {
   useTranslation();
   const {
@@ -479,6 +486,12 @@ export function ThemeTab({
 
   const activeThemeObj = THEMES.find(t => t.id === theme);
 
+  // OLED true-black only makes sense in the v3 UI and for the dark family
+  // (dark + dark-* presets). Custom/light/glass/solid themes are unaffected.
+  // v3 is the default UI (and legacy settings may store `true` for modern).
+  const isV3Ui = modernUiEnabled === 'v3' || modernUiEnabled === true || modernUiEnabled === undefined;
+  const themeIsDarkFamily = theme === 'dark' || theme.startsWith('dark-');
+
   return (
     <div className="settings-tab-content">
       {/* Sub Tab Navigation */}
@@ -563,6 +576,25 @@ export function ThemeTab({
           <p className="section-description">
             {i18n.t('settings:theme.selectThemeSub')}
           </p>
+
+          {/* OLED True-Black — v3 only, applies to the dark-family themes */}
+          {isV3Ui && themeIsDarkFamily && (
+            <div className="form-group" style={{ marginTop: '1.5rem', marginBottom: '0.75rem', textTransform: 'none', letterSpacing: 'normal' }}>
+              <label className="genre-checkbox" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none', textTransform: 'none', letterSpacing: 'normal' }}>
+                <input
+                  type="checkbox"
+                  checked={oledBlack}
+                  onChange={(e) => setOledBlack?.(e.target.checked)}
+                />
+                <span className="genre-name" style={{ fontSize: '0.95rem', fontWeight: 600, textTransform: 'none', letterSpacing: 'normal' }}>
+                  {i18n.t('settings:theme.oledBlack')}
+                </span>
+              </label>
+              <p className="form-hint" style={{ marginTop: '0.5rem', textTransform: 'none', letterSpacing: 'normal' }}>
+                {i18n.t('settings:theme.oledBlackSub', { theme: activeThemeObj?.name || theme })}
+              </p>
+            </div>
+          )}
 
           <div className="theme-grid" style={{
             display: 'grid',

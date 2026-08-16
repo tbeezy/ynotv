@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Tema të gatshme",
+"oledBlack": "E zezë e vërtetë (OLED)",
+"oledBlackSub": "Shfaq sipërfaqet e \"{{theme}}\" si të zeza të pastra, duke ruajtur ngjyrën e theksit. Vlen për temat e errëta në UI-në V3.",
       "customTheme": "Temë e personalizuar",
       "selectTheme": "Zgjidh temën",
       "editCustomColors": "Ndrysho ngjyrat e temës së personalizuar",

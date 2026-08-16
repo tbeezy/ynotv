@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Vooraf ingestelde thema's",
+"oledBlack": "Echt zwart (OLED)",
+"oledBlackSub": "Toont de oppervlakken van \"{{theme}}\" als puur zwart terwijl de accentkleur behouden blijft. Geldt voor donkere thema's in de V3-interface.",
       "customTheme": "Aangepast thema",
       "selectTheme": "Thema selecteren",
       "editCustomColors": "Kleuren van aangepast thema bewerken",

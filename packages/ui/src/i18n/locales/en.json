@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Preset Themes",
+      "oledBlack": "True Black (OLED)",
+      "oledBlackSub": "Renders \"{{theme}}\" surfaces as pure black while keeping its accent color. Applies to Dark & Dark Color themes in the V3 UI.",
       "customTheme": "Custom Theme",
       "selectTheme": "Select Theme",
       "editCustomColors": "Edit Custom Theme Colors",

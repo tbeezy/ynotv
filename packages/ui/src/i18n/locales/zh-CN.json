@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "预设主题",
+"oledBlack": "纯黑 (OLED)",
+"oledBlackSub": "将\"{{theme}}\"的表面渲染为纯黑，同时保留其强调色。适用于V3界面中的深色主题。",
       "customTheme": "自定义主题",
       "selectTheme": "选择主题",
       "editCustomColors": "编辑自定义主题颜色",

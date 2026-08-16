@@ -174,6 +174,7 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchResult[] = [
 
   // --- Theme ---
   { id: 'theme-tab', label: 'Theme', tabId: 'theme', tabLabel: 'Theme', section: 'Theme' },
+  { id: 'theme-oled-black', label: 'True Black (OLED)', description: 'Render dark theme surfaces as pure black while keeping the theme accent color. Applies to Dark & Dark Color themes in the V3 UI.', tabId: 'theme', tabLabel: 'Theme', section: 'Theme' },
 
   // --- Optimization ---
   { id: 'optimization-tab', label: 'Optimization', tabId: 'optimization', tabLabel: 'Optimization', section: 'Optimization' },

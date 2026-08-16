@@ -3944,3 +3944,205 @@ html.modern-ui-v3[data-theme="custom"] .livetv-liquid-glass-bg::after {
   will-change: var(--glass-blob-will-change, transform) !important;
 }
 
+/* ==========================================================================
+   OLED TRUE-BLACK MODE
+   html[data-oled="true"] — a Settings → Theme toggle that forces the dark
+   family of themes (dark, dark-crimson, dark-cyan, ... dark-steel) onto
+   pure-black surfaces so the grey chrome reads as true OLED black. The
+   background/surface tokens are remapped to black, backdrop blur & saturation
+   boosts are removed (so scrolling glass never samples or flashes underlying
+   colors through GPU compositing), scrollbars use neutral grey thumbs, and
+   the preview resizer dot remains clean without unwanted accent colors.
+   The theme's accent colors + text colors are left exactly as the selected
+   dark theme defines them for badges, highlights, and active items.
+
+   Scoped to the v3 UI and to the dark family via [data-theme^="dark"]
+   (matches "dark" plus every "dark-*" preset; no other theme id starts
+   with "dark"). Light/glass/solid/custom themes are untouched.
+   ========================================================================== */
+html.modern-ui-v3[data-oled="true"][data-theme^="dark"],
+html[data-oled="true"][data-theme^="dark"],
+[data-oled="true"][data-theme^="dark"] {
+  /* Base backgrounds — pure OLED black */
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-tertiary: #050505;
+  --bg-overlay: #000000;
+
+  /* Surfaces — pure black / dark solid */
+  --surface-color: #000000;
+  --surface-hover: #0d0d0d;
+  --surface-active: #141414;
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-glow: none;
+
+  /* Background gradients — flatten to black so no grey or colored tint leaks through */
+  --bg-gradient-1: #000000;
+  --bg-gradient-2: #000000;
+  --bg-gradient-3: #000000;
+
+  /* Liquid-glass page background — pure black */
+  --lgb-bg: #000000;
+
+  /* Glass surfaces — opaque pure black in OLED mode so scrolling layers never sample underlying colors */
+  --glass-surface-bg: #000000;
+  --glass-modal-bg: #050505;
+  --glass-overlay-bg: rgba(0, 0, 0, 0.75);
+  --glass-overlay-bg-noblur: rgba(0, 0, 0, 0.75);
+  --glass-settings-bg: #080808;
+  --glass-feature-bg: #000000;
+  --glass-sports-bg: #000000;
+  --glass-detail-bg: #050505;
+  --glass-sidepanel-bg: #000000;
+  --glass-stremio-right-bg: #050505;
+  --strip-bg: #000000;
+  --glass-info-bg: #000000;
+  --glass-grid-bg: #000000;
+  --vod-browse-bg: #000000;
+
+  /* Disable backdrop filter blur & saturation boost to eliminate GPU scroll tile flashing & repaints */
+  --glass-surface-filter: none;
+  --glass-modal-filter: none;
+  --glass-modal-filter-strong: none;
+  --glass-overlay-filter: none;
+  --glass-settings-filter: none;
+  --glass-feature-filter: none;
+  --glass-detail-filter: none;
+  --glass-sidepanel-filter: none;
+  --glass-stremio-right-filter: none;
+  --strip-filter: none;
+  --glass-info-filter: none;
+  --glass-grid-filter: none;
+  --guide-placeholder-filter: none;
+  --gpm-filter: none;
+  --glass-blur: 0px;
+  --glass-surface-blur: 0px;
+  --glass-surface-saturation: 100%;
+
+  /* Neutral dark drop shadows — remove accent-color glow components from panel edges */
+  --glass-surface-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02), 0 8px 32px rgba(0, 0, 0, 0.8);
+  --glass-modal-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02), 0 20px 50px rgba(0, 0, 0, 0.9);
+  --glass-settings-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02), 0 20px 50px rgba(0, 0, 0, 0.9);
+  --glass-feature-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02), 0 8px 32px rgba(0, 0, 0, 0.8);
+  --glass-info-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+  --glass-grid-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+  --guide-preview-video-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+  --glass-detail-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02), 0 24px 50px rgba(0, 0, 0, 0.9);
+  --glass-sidepanel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.02), -10px 0 30px rgba(0, 0, 0, 0.8);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+
+  /* Scrollbars in LiveTV / Movies / Series — neutral subtle grey thumb (no accent gradients when scrolling) */
+  --vs-scrollbar-thumb-bg: rgba(255, 255, 255, 0.12);
+  --vs-scrollbar-thumb-hover-bg: var(--accent-primary, #00d4ff);
+  --guide-scroll-strip-thumb-bg: rgba(255, 255, 255, 0.12);
+  --guide-scroll-ch-thumb-bg: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb-bg: rgba(255, 255, 255, 0.12);
+  --scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  --scrollbar-color-hover: var(--scrollbar-hover-color, var(--accent-primary, rgba(0, 212, 255, 0.5))) transparent;
+
+  /* Guide / EPG surfaces */
+  --guide-row-bg: rgba(255, 255, 255, 0.02);
+  --guide-row-hover-bg: rgba(255, 255, 255, 0.06);
+  --guide-btn-bg: rgba(255, 255, 255, 0.03);
+  --guide-navbtn-bg: rgba(255, 255, 255, 0.03);
+  --guide-nowbtn-bg: rgba(255, 255, 255, 0.03);
+  --prog-bg: rgba(255, 255, 255, 0.03);
+  --prog-hover-bg: rgba(255, 255, 255, 0.07);
+
+  /* Select a channel placeholder & Preview Resizer in EPG Preview Pane */
+  --resizer-dot-bg: rgba(255, 255, 255, 0.25);
+  --resizer-dot-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
+  --guide-placeholder-bg: rgba(12, 12, 12, 0.9);
+  --guide-placeholder-border: 1px solid rgba(255, 255, 255, 0.1);
+  --guide-placeholder-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --guide-placeholder-color: rgba(255, 255, 255, 0.5);
+
+  /* Category list items — selected rows read as a black tile tinted with the
+     theme's accent (the only accent OLED keeps on the surface). */
+  --cat-item-selected-bg: color-mix(in srgb, var(--accent-primary, #8b5cf6) 12%, #000000);
+  --cat-list-selected-bg: color-mix(in srgb, var(--accent-primary, #8b5cf6) 12%, #000000);
+  --cat-custom-selected-bg: color-mix(in srgb, var(--accent-primary, #8b5cf6) 12%, #000000);
+
+  /* Token for hardcoded shells that never consume the theme tokens — always
+     pure black in OLED mode */
+  --oled-shell-bg: #000000;
+}
+
+/* Background elements and floating blobs in OLED mode:
+   Hard-kill the blobs and animated floaters and ensure page background is solid black */
+html[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg,
+[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg {
+  background: #000000 !important;
+}
+
+html[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg::before,
+html[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg::after,
+html[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg .glass-blob,
+[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg::before,
+[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg::after,
+[data-oled="true"][data-theme^="dark"] .livetv-liquid-glass-bg .glass-blob {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  animation: none !important;
+  will-change: auto !important;
+}
+
+/* LiveTV, Movies & Series Page Base Containers in OLED mode */
+html[data-oled="true"][data-theme^="dark"] .vod-browse,
+html[data-oled="true"][data-theme^="dark"] .vod-home,
+html[data-oled="true"][data-theme^="dark"] .movie-detail,
+html[data-oled="true"][data-theme^="dark"] .series-detail,
+[data-oled="true"][data-theme^="dark"] .vod-browse,
+[data-oled="true"][data-theme^="dark"] .vod-home,
+[data-oled="true"][data-theme^="dark"] .movie-detail,
+[data-oled="true"][data-theme^="dark"] .series-detail {
+  background: #000000 !important;
+}
+
+html[data-oled="true"][data-theme^="dark"] .category-strip,
+html[data-oled="true"][data-theme^="dark"] .vertical-sidebar,
+[data-oled="true"][data-theme^="dark"] .category-strip,
+[data-oled="true"][data-theme^="dark"] .vertical-sidebar {
+  background: #000000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-oled="true"][data-theme^="dark"] .guide-grid-section,
+html[data-oled="true"][data-theme^="dark"] .guide-info-pane,
+html[data-oled="true"][data-theme^="dark"] .guide-preview-pane,
+[data-oled="true"][data-theme^="dark"] .guide-grid-section,
+[data-oled="true"][data-theme^="dark"] .guide-info-pane,
+[data-oled="true"][data-theme^="dark"] .guide-preview-pane {
+  background: #000000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Video preview resizer hover behavior in OLED mode */
+html[data-oled="true"][data-theme^="dark"] .guide-preview-resizer .resizer-dot,
+[data-oled="true"][data-theme^="dark"] .guide-preview-resizer .resizer-dot {
+  background: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8) !important;
+}
+
+html[data-oled="true"][data-theme^="dark"] .guide-preview-resizer:hover .resizer-dot,
+[data-oled="true"][data-theme^="dark"] .guide-preview-resizer:hover .resizer-dot {
+  background: var(--accent-primary) !important;
+  box-shadow: 0 0 8px var(--accent-primary) !important;
+}
+
+/* Hardcoded dark-grey modal/menu shells that don't consume the theme tokens */
+html[data-oled="true"][data-theme^="dark"] .gc-team-play-menu,
+html[data-oled="true"][data-theme^="dark"] .als-modal,
+html[data-oled="true"][data-theme^="dark"] .movie-detail__poster-placeholder,
+html[data-oled="true"][data-theme^="dark"] .series-detail__poster-placeholder,
+[data-oled="true"][data-theme^="dark"] .gc-team-play-menu,
+[data-oled="true"][data-theme^="dark"] .als-modal,
+[data-oled="true"][data-theme^="dark"] .movie-detail__poster-placeholder,
+[data-oled="true"][data-theme^="dark"] .series-detail__poster-placeholder {
+  background: var(--oled-shell-bg, #000000);
+}
+

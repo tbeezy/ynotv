@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "Thèmes prédéfinis",
+"oledBlack": "Noir véritable (OLED)",
+"oledBlackSub": "Affiche les surfaces de \"{{theme}}\" en noir pur tout en conservant sa couleur d'accent. S'applique aux thèmes sombres de l'interface V3.",
       "customTheme": "Thème personnalisé",
       "selectTheme": "Sélectionner le thème",
       "editCustomColors": "Modifier les couleurs du thème personnalisé",

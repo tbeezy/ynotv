@@ -1447,6 +1447,8 @@
     },
     "theme": {
       "presetThemes": "Chủ Đề Có Sẵn",
+"oledBlack": "Đen thật (OLED)",
+"oledBlackSub": "Hiển thị bề mặt \"{{theme}}\" thành màu đen thuần, giữ nguyên màu nhấn. Áp dụng cho chủ đề tối trong giao diện V3.",
       "customTheme": "Chủ Đề Tùy Chỉnh",
       "selectTheme": "Chọn Chủ Đề",
       "editCustomColors": "Chỉnh Màu Chủ Đề Tùy Chỉnh",

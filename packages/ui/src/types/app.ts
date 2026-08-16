@@ -157,6 +157,9 @@ export interface AppSettings {
     logoCacheTtlDays?: number;
     logoCachePrefetch?: boolean;
     disableThemeBackdropBlur?: boolean;
+    // True-black (OLED) mode for the dark-family themes in the v3 UI: surfaces
+    // render pure black while keeping the theme's accent color.
+    oledBlack?: boolean;
     epgLazyLoadingEnabled?: boolean;
     disableEpgTransitions?: boolean;
     epgReduceGpuLayers?: boolean;

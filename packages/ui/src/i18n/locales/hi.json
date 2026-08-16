@@ -456,6 +456,8 @@
     },
     "theme": {
       "presetThemes": "प्रीसेट थीम",
+"oledBlack": "शुद्ध काला (OLED)",
+"oledBlackSub": "\"{{theme}}\" की सतहों को उसका एक्सेंट रंग रखते हुए शुद्ध काला दिखाता है। V3 UI में डार्क थीम पर लागू होता है।",
       "customTheme": "कस्टम थीम",
       "selectTheme": "थीम चुनें",
       "editCustomColors": "कस्टम थीम रंग संपादित करें",
