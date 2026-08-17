@@ -2550,7 +2550,16 @@
     "editMetadataReset": "بازگردانی به فرادادهٔ ارائه‌دهنده",
     "dragReorderHint": "برای کشیدن و مرتب کردن مجدد منابع و دسته‌ها، {{hotkey}} را نگه دارید",
     "dragReorderHintAlways": "برای مرتب کردن مجدد منابع و دسته‌ها بکشید",
-    "dismissDragHint": "رد کردن"
+    "dismissDragHint": "رد کردن",
+    "hiddenUnavailable": "منبع در دسترس نیست",
+    "showHiddenItems": "نمایش موارد پنهان",
+    "hideHiddenItems": "پنهان کردن موارد پنهان",
+    "removeAllHidden": "حذف همه موارد پنهان",
+    "removeAllHiddenConfirm_one": "{{count}} مورد پنهان حذف شود؟ منبع آن حذف یا غیرفعال شده است و دیگر قابل پخش نیست.",
+    "removeAllHiddenConfirm_other": "{{count}} مورد پنهان حذف شوند؟ منابع آن‌ها حذف یا غیرفعال شده‌اند و دیگر قابل پخش نیستند.",
+    "allItemsHidden": "همه موارد این فهرست پنهان هستند — منابع آن‌ها حذف یا غیرفعال شده‌اند.",
+    "playlistHiddenCount_one": "{{count}} مورد پنهان (منبع حذف یا غیرفعال شده)",
+    "playlistHiddenCount_other": "{{count}} مورد پنهان (منابع حذف یا غیرفعال شده‌اند)"
   },
   "dvr": {
     "title": "DVR و دانلودها",

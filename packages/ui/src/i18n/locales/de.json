@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Auf Anbieter-Metadaten zurücksetzen",
     "dragReorderHint": "Halte {{hotkey}} gedrückt, um Quellen und Kategorien zu ziehen und neu anzuordnen",
     "dragReorderHintAlways": "Ziehen zum Neuanordnen von Quellen und Kategorien",
-    "dismissDragHint": "Schließen"
+    "dismissDragHint": "Schließen",
+    "hiddenUnavailable": "Quelle nicht verfügbar",
+    "showHiddenItems": "Ausgeblendete anzeigen",
+    "hideHiddenItems": "Ausgeblendete ausblenden",
+    "removeAllHidden": "Alle ausgeblendeten entfernen",
+    "removeAllHiddenConfirm_one": "{{count}} ausgeblendetes Element entfernen? Seine Quelle wurde gelöscht oder deaktiviert, sodass es nicht mehr abgespielt werden kann.",
+    "removeAllHiddenConfirm_other": "{{count}} ausgeblendete Elemente entfernen? Ihre Quellen wurden gelöscht oder deaktiviert, sodass sie nicht mehr abgespielt werden können.",
+    "allItemsHidden": "Alle Elemente in dieser Wiedergabeliste sind ausgeblendet — ihre Quellen wurden gelöscht oder deaktiviert.",
+    "playlistHiddenCount_one": "{{count}} ausgeblendetes Element (Quelle gelöscht oder deaktiviert)",
+    "playlistHiddenCount_other": "{{count}} ausgeblendete Elemente (Quellen gelöscht oder deaktiviert)"
   },
   "dvr": {
     "title": "DVR und Downloads",

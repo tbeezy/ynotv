@@ -2551,7 +2551,16 @@
     "editMetadataReset": "Reset to provider metadata",
     "dragReorderHint": "Hold {{hotkey}} to drag and reorder sources and categories",
     "dragReorderHintAlways": "Drag to reorder sources and categories",
-    "dismissDragHint": "Dismiss"
+    "dismissDragHint": "Dismiss",
+    "hiddenUnavailable": "Source unavailable",
+    "showHiddenItems": "Show hidden",
+    "hideHiddenItems": "Hide hidden",
+    "removeAllHidden": "Remove All Hidden",
+    "removeAllHiddenConfirm_one": "Remove {{count}} hidden item? Its source was deleted or disabled, so it can no longer be played.",
+    "removeAllHiddenConfirm_other": "Remove {{count}} hidden items? Their sources were deleted or disabled, so they can no longer be played.",
+    "allItemsHidden": "All items in this playlist are hidden — their sources were deleted or disabled.",
+    "playlistHiddenCount_one": "{{count}} hidden item (source deleted or disabled)",
+    "playlistHiddenCount_other": "{{count}} hidden items (sources deleted or disabled)"
   },
   "dvr": {
     "title": "DVR & Downloads",

@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Restaurer les métadonnées du fournisseur",
     "dragReorderHint": "Maintenez {{hotkey}} pour faire glisser et réorganiser sources et catégories",
     "dragReorderHintAlways": "Glissez pour réorganiser sources et catégories",
-    "dismissDragHint": "Fermer"
+    "dismissDragHint": "Fermer",
+    "hiddenUnavailable": "Source indisponible",
+    "showHiddenItems": "Afficher les masqués",
+    "hideHiddenItems": "Masquer les masqués",
+    "removeAllHidden": "Supprimer tous les masqués",
+    "removeAllHiddenConfirm_one": "Supprimer {{count}} élément masqué ? Sa source a été supprimée ou désactivée, il ne peut donc plus être lu.",
+    "removeAllHiddenConfirm_other": "Supprimer {{count}} éléments masqués ? Leurs sources ont été supprimées ou désactivées, ils ne peuvent donc plus être lus.",
+    "allItemsHidden": "Tous les éléments de cette liste de lecture sont masqués — leurs sources ont été supprimées ou désactivées.",
+    "playlistHiddenCount_one": "{{count}} élément masqué (source supprimée ou désactivée)",
+    "playlistHiddenCount_other": "{{count}} éléments masqués (sources supprimées ou désactivées)"
   },
   "dvr": {
     "title": "DVR et Téléchargements",

@@ -2550,7 +2550,16 @@
     "editMetadataReset": "إعادة التعيين إلى بيانات المزود",
     "dragReorderHint": "اضغط مع الاستمرار على {{hotkey}} لسحب وإعادة ترتيب المصادر والفئات",
     "dragReorderHintAlways": "اسحب لإعادة ترتيب المصادر والفئات",
-    "dismissDragHint": "تجاهل"
+    "dismissDragHint": "تجاهل",
+    "hiddenUnavailable": "المصدر غير متاح",
+    "showHiddenItems": "إظهار المخفي",
+    "hideHiddenItems": "إخفاء المخفي",
+    "removeAllHidden": "إزالة كل المخفي",
+    "removeAllHiddenConfirm_one": "إزالة {{count}} عنصر مخفي؟ تم حذف مصدره أو تعطيله، لذا لا يمكن تشغيله بعد الآن.",
+    "removeAllHiddenConfirm_other": "إزالة {{count}} عناصر مخفية؟ تم حذف مصادرها أو تعطيلها، لذا لا يمكن تشغيلها بعد الآن.",
+    "allItemsHidden": "جميع العناصر في قائمة التشغيل هذه مخفية — تم حذف مصادرها أو تعطيلها.",
+    "playlistHiddenCount_one": "{{count}} عنصر مخفي (المصدر محذوف أو معطل)",
+    "playlistHiddenCount_other": "{{count}} عناصر مخفية (المصادر محذوفة أو معطلة)"
   },
   "dvr": {
     "title": "التسجيل والتنزيلات",

@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Terugzetten naar provider-metadata",
     "dragReorderHint": "Houd {{hotkey}} ingedrukt om bronnen en categorieën te slepen en te herschikken",
     "dragReorderHintAlways": "Sleep om bronnen en categorieën te herschikken",
-    "dismissDragHint": "Sluiten"
+    "dismissDragHint": "Sluiten",
+    "hiddenUnavailable": "Bron niet beschikbaar",
+    "showHiddenItems": "Verborgen tonen",
+    "hideHiddenItems": "Verborgen verbergen",
+    "removeAllHidden": "Alle verborgen verwijderen",
+    "removeAllHiddenConfirm_one": "{{count}} verborgen item verwijderen? De bron is verwijderd of uitgeschakeld, dus het kan niet meer worden afgespeeld.",
+    "removeAllHiddenConfirm_other": "{{count}} verborgen items verwijderen? De bronnen zijn verwijderd of uitgeschakeld, dus ze kunnen niet meer worden afgespeeld.",
+    "allItemsHidden": "Alle items in deze afspeellijst zijn verborgen — hun bronnen zijn verwijderd of uitgeschakeld.",
+    "playlistHiddenCount_one": "{{count}} verborgen item (bron verwijderd of uitgeschakeld)",
+    "playlistHiddenCount_other": "{{count}} verborgen items (bronnen verwijderd of uitgeschakeld)"
   },
   "dvr": {
     "title": "DVR en downloads",

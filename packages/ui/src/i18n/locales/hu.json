@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Visszaállítás a szolgáltató metaadataira",
     "dragReorderHint": "Tartsd lenyomva a(z) {{hotkey}} billentyűt a források és kategóriák átrendezéséhez",
     "dragReorderHintAlways": "Húzd át a forrásokat és kategóriákat az átrendezéshez",
-    "dismissDragHint": "Elutasítás"
+    "dismissDragHint": "Elutasítás",
+    "hiddenUnavailable": "A forrás nem érhető el",
+    "showHiddenItems": "Rejtett megjelenítése",
+    "hideHiddenItems": "Rejtett elrejtése",
+    "removeAllHidden": "Összes rejtett eltávolítása",
+    "removeAllHiddenConfirm_one": "Eltávolítod a(z) {{count}} rejtett elemet? A forrása törölve vagy letiltva lett, így már nem játszható le.",
+    "removeAllHiddenConfirm_other": "Eltávolítod a(z) {{count}} rejtett elemet? A forrásaik törölve vagy letiltva lettek, így már nem játszhatók le.",
+    "allItemsHidden": "Ennek a lejátszási listának az összes eleme rejtett — a forrásaik törölve vagy letiltva lettek.",
+    "playlistHiddenCount_one": "{{count}} rejtett elem (a forrás törölve vagy letiltva)",
+    "playlistHiddenCount_other": "{{count}} rejtett elem (a források törölve vagy letiltva)"
   },
   "dvr": {
     "title": "DVR és letöltések",

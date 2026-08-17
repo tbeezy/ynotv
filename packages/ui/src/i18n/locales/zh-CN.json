@@ -2550,7 +2550,16 @@
     "editMetadataReset": "重置为提供商元数据",
     "dragReorderHint": "按住 {{hotkey}} 可拖拽重新排序源和分类",
     "dragReorderHintAlways": "拖拽可重新排序源和分类",
-    "dismissDragHint": "关闭"
+    "dismissDragHint": "关闭",
+    "hiddenUnavailable": "源不可用",
+    "showHiddenItems": "显示隐藏项",
+    "hideHiddenItems": "隐藏隐藏项",
+    "removeAllHidden": "删除所有隐藏项",
+    "removeAllHiddenConfirm_one": "删除 {{count}} 个隐藏项？其源已被删除或禁用，无法再播放。",
+    "removeAllHiddenConfirm_other": "删除 {{count}} 个隐藏项？其源已被删除或禁用，无法再播放。",
+    "allItemsHidden": "此播放列表中的所有项目均已隐藏 — 其源已被删除或禁用。",
+    "playlistHiddenCount_one": "{{count}} 个隐藏项（源已被删除或禁用）",
+    "playlistHiddenCount_other": "{{count}} 个隐藏项（源已被删除或禁用）"
   },
   "dvr": {
     "title": "DVR 与下载",

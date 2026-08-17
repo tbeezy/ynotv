@@ -2550,7 +2550,16 @@
     "editMetadataReset": "प्रदाता मेटाडेटा पर रीसेट करें",
     "dragReorderHint": "स्रोतों और श्रेणियों को खींचकर पुनर्व्यवस्थित करने के लिए {{hotkey}} दबाए रखें",
     "dragReorderHintAlways": "स्रोतों और श्रेणियों को पुनर्व्यवस्थित करने के लिए खींचें",
-    "dismissDragHint": "खारिज करें"
+    "dismissDragHint": "खारिज करें",
+    "hiddenUnavailable": "स्रोत उपलब्ध नहीं है",
+    "showHiddenItems": "छिपे हुए दिखाएँ",
+    "hideHiddenItems": "छिपे हुए छिपाएँ",
+    "removeAllHidden": "सभी छिपे हुए हटाएँ",
+    "removeAllHiddenConfirm_one": "{{count}} छिपी हुई वस्तु हटाएँ? इसका स्रोत हटा दिया गया या अक्षम कर दिया गया है, इसलिए इसे अब नहीं चलाया जा सकता।",
+    "removeAllHiddenConfirm_other": "{{count}} छिपी हुई वस्तुएँ हटाएँ? उनके स्रोत हटा दिए गए या अक्षम कर दिए गए हैं, इसलिए उन्हें अब नहीं चलाया जा सकता।",
+    "allItemsHidden": "इस प्लेलिस्ट की सभी वस्तुएँ छिपी हुई हैं — उनके स्रोत हटा दिए गए या अक्षम कर दिए गए हैं।",
+    "playlistHiddenCount_one": "{{count}} छिपी हुई वस्तु (स्रोत हटाया गया या अक्षम किया गया)",
+    "playlistHiddenCount_other": "{{count}} छिपी हुई वस्तुएँ (स्रोत हटाए गए या अक्षम किए गए)"
   },
   "dvr": {
     "title": "DVR और डाउनलोड",

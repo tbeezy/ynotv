@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Przywróć metadane dostawcy",
     "dragReorderHint": "Przytrzymaj {{hotkey}}, aby przeciągać i zmieniać kolejność źródeł i kategorii",
     "dragReorderHintAlways": "Przeciągnij, aby zmienić kolejność źródeł i kategorii",
-    "dismissDragHint": "Odrzuć"
+    "dismissDragHint": "Odrzuć",
+    "hiddenUnavailable": "Źródło niedostępne",
+    "showHiddenItems": "Pokaż ukryte",
+    "hideHiddenItems": "Ukryj ukryte",
+    "removeAllHidden": "Usuń wszystkie ukryte",
+    "removeAllHiddenConfirm_one": "Usunąć {{count}} ukryty element? Jego źródło zostało usunięte lub wyłączone, więc nie można go już odtwarzać.",
+    "removeAllHiddenConfirm_other": "Usunąć {{count}} ukryte elementy? Ich źródła zostały usunięte lub wyłączone, więc nie można ich już odtwarzać.",
+    "allItemsHidden": "Wszystkie elementy tej listy odtwarzania są ukryte — ich źródła zostały usunięte lub wyłączone.",
+    "playlistHiddenCount_one": "{{count}} ukryty element (źródło usunięte lub wyłączone)",
+    "playlistHiddenCount_other": "{{count}} ukryte elementy (źródła usunięte lub wyłączone)"
   },
   "dvr": {
     "title": "DVR i pobieranie",

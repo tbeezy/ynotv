@@ -6,6 +6,17 @@ import type { PlaylistItemProgress } from '../hooks/usePlaylistProgress';
 import type { VodPlayInfo } from '../types/media';
 
 /**
+ * True when a playlist item's source has been removed or disabled, so the
+ * item can't be played anymore. Items without a sourceId (rare/manual) stay
+ * visible. While sources are still loading (null) nothing is treated as
+ * hidden, so the UI never flashes items away during startup.
+ */
+export function isPlaylistItemHidden(item: PlaylistItem, enabledSources: Set<string> | null): boolean {
+  if (!enabledSources) return false;
+  return !!item.sourceId && !enabledSources.has(item.sourceId);
+}
+
+/**
  * Build the canonical VodPlayInfo for a playlist item, mirroring what
  * SeriesDetail/MovieDetail pass to playback so that resume and progress
  * tracking work exactly like normal VOD playback.

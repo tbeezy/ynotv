@@ -44,6 +44,7 @@ interface VodPlaylistState {
   addItemToPlaylist: (playlistId: string, item: Omit<PlaylistItem, 'id' | 'playlistId' | 'addedAt'>) => void;
   addItemsToPlaylist: (playlistId: string, items: Array<Omit<PlaylistItem, 'id' | 'playlistId' | 'addedAt'>>) => void;
   removeItemFromPlaylist: (playlistId: string, itemId: string) => void;
+  removeItemsFromPlaylist: (playlistId: string, itemIds: string[]) => void;
   reorderPlaylistItems: (playlistId: string, fromIndex: number, toIndex: number) => void;
   randomizePlaylistItems: (playlistId: string) => void;
   undoRandomizePlaylistItems: (playlistId: string) => void;
@@ -135,6 +136,14 @@ export const useVodPlaylistStore = create<VodPlaylistState>()(
             ? { ...p, items: p.items.filter((item) => item.id !== itemId), updatedAt: Date.now() }
             : p
         ),
+      })),
+
+      removeItemsFromPlaylist: (playlistId, itemIds) => set((state) => ({
+        playlists: state.playlists.map((p) => {
+          if (p.id !== playlistId || itemIds.length === 0) return p;
+          const removeIds = new Set(itemIds);
+          return { ...p, items: p.items.filter((item) => !removeIds.has(item.id)), updatedAt: Date.now() };
+        }),
       })),
 
       reorderPlaylistItems: (playlistId, fromIndex, toIndex) => set((state) => ({

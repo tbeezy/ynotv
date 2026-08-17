@@ -19,9 +19,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useVodPlaylistStore, type Playlist, type PlaylistItem } from '../../stores/vodPlaylistStore';
-import { useSourceNameMap } from '../../hooks/useChannels';
+import { useEnabledSources, useSourceNameMap } from '../../hooks/useChannels';
 import { usePlaylistItemsProgress, type PlaylistItemProgress } from '../../hooks/usePlaylistProgress';
-import { findLastWatchedItem, sortPlaylistsByLastPlayed } from '../../utils/playlistPlayback';
+import { findLastWatchedItem, isPlaylistItemHidden, sortPlaylistsByLastPlayed } from '../../utils/playlistPlayback';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { useModal } from '../Modal';
@@ -191,6 +191,52 @@ function SortablePlaylistItem({
   );
 }
 
+/**
+ * Static row for a playlist item whose source was removed or disabled — no
+ * play/reorder controls, just a remove button. Rendered outside the sortable
+ * list so it can't be dragged into the playable items.
+ */
+function HiddenPlaylistItemRow({ item, onRemove }: { item: PlaylistItem; onRemove: (itemId: string) => void }) {
+  return (
+    <div className="playlist-item-card playlist-item-card--hidden">
+      <div className="playlist-item-card__left">
+        {item.poster ? (
+          <img src={item.poster} alt="" className="playlist-item-card__poster" />
+        ) : (
+          <div
+            className="playlist-item-card__poster"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}
+          >
+            {item.title.charAt(0)}
+          </div>
+        )}
+        <div className="playlist-item-card__details">
+          <span className="playlist-item-card__title">
+            {item.title}
+            <span className="playlist-item-card__hidden-badge">{i18n.t('vod:hiddenUnavailable')}</span>
+          </span>
+          <div className="playlist-item-card__sub">
+            <span>{item.itemType === 'movie' ? i18n.t('vod:movie') : i18n.t('vod:series')}</span>
+            {item.sourceName && <span className="playlist-item-card__sourcename">{item.sourceName}</span>}
+          </div>
+        </div>
+      </div>
+      <div className="playlist-item-card__right">
+        <button
+          className="playlist-item-card__remove-btn"
+          onClick={() => onRemove(item.id)}
+          title={i18n.t('vod:removeFromPlaylist')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export interface PlaylistsViewProps {
   onPlayPlaylistItem?: (item: PlaylistItem, playlist: Playlist, isShuffle?: boolean) => void;
 }
@@ -198,6 +244,7 @@ export interface PlaylistsViewProps {
 export function PlaylistsView({ onPlayPlaylistItem }: PlaylistsViewProps) {
   useTranslation();
   const sourceNameMap = useSourceNameMap();
+  const enabledSources = useEnabledSources();
   const { showPrompt, showConfirm, ModalComponent } = useModal();
   const {
     playlists,
@@ -205,6 +252,7 @@ export function PlaylistsView({ onPlayPlaylistItem }: PlaylistsViewProps) {
     deletePlaylist,
     renamePlaylist,
     removeItemFromPlaylist,
+    removeItemsFromPlaylist,
     reorderPlaylistItems,
     randomizePlaylistItems,
     undoRandomizePlaylistItems,
@@ -214,6 +262,8 @@ export function PlaylistsView({ onPlayPlaylistItem }: PlaylistsViewProps) {
     toggleShowSourceName,
   } = useVodPlaylistStore();
 
+  const [showHiddenItems, setShowHiddenItems] = useState(false);
+
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editingNameValue, setEditingNameValue] = useState('');
@@ -221,6 +271,20 @@ export function PlaylistsView({ onPlayPlaylistItem }: PlaylistsViewProps) {
   const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
   // How many shuffles can be undone for the currently open playlist
   const undoDepth = selectedPlaylist ? (randomizeHistory[selectedPlaylist.id]?.length || 0) : 0;
+
+  // Items whose source was removed or disabled can't be played; they're hidden
+  // from the list (with a banner + bulk-remove) until the source returns.
+  const hiddenItems = React.useMemo(() => {
+    if (!selectedPlaylist) return [];
+    return selectedPlaylist.items.filter((i) => isPlaylistItemHidden(i, enabledSources));
+  }, [selectedPlaylist, enabledSources]);
+
+  const visibleItems = React.useMemo(() => {
+    if (!selectedPlaylist) return [];
+    if (hiddenItems.length === 0) return selectedPlaylist.items;
+    const hiddenIds = new Set(hiddenItems.map((i) => i.id));
+    return selectedPlaylist.items.filter((i) => !hiddenIds.has(i.id));
+  }, [selectedPlaylist, hiddenItems]);
 
   // The view's scroll container. Focused on mount / playlist change so arrow and
   // Page keys scroll it (same pattern as SeriesDetail / the nuvio homepage).
@@ -355,16 +419,28 @@ export function PlaylistsView({ onPlayPlaylistItem }: PlaylistsViewProps) {
   };
 
   const handlePlaySequential = (playlist: Playlist) => {
-    if (!playlist.items.length) return;
-    const startItem = playlist.items[0];
+    // Only start from visible (playable) items — hidden ones have no source.
+    const playable = playlist.items.filter((i) => !isPlaylistItemHidden(i, enabledSources));
+    if (!playable.length) return;
+    const startItem = playable[0];
     onPlayPlaylistItem?.(startItem, playlist, false);
   };
 
   const handlePlayRandom = (playlist: Playlist) => {
-    if (!playlist.items.length) return;
-    const randomIndex = Math.floor(Math.random() * playlist.items.length);
-    const startItem = playlist.items[randomIndex];
+    const playable = playlist.items.filter((i) => !isPlaylistItemHidden(i, enabledSources));
+    if (!playable.length) return;
+    const randomIndex = Math.floor(Math.random() * playable.length);
+    const startItem = playable[randomIndex];
     onPlayPlaylistItem?.(startItem, playlist, true);
+  };
+
+  const handleRemoveAllHidden = () => {
+    if (!selectedPlaylist || hiddenItems.length === 0) return;
+    showConfirm(
+      i18n.t('vod:removeAllHidden'),
+      i18n.t('vod:removeAllHiddenConfirm', { count: hiddenItems.length }),
+      () => removeItemsFromPlaylist(selectedPlaylist.id, hiddenItems.map((i) => i.id))
+    );
   };
 
   return (
@@ -644,42 +720,86 @@ export function PlaylistsView({ onPlayPlaylistItem }: PlaylistsViewProps) {
             </div>
           </div>
 
-          {/* Items List — dnd-kit drag to reorder, arrows kept for fine moves */}
+          {/* Items List — dnd-kit drag to reorder, arrows kept for fine moves.
+              Hidden (source removed/disabled) items are excluded from the sortable
+              list and shown below the banner instead. */}
           <div className="playlist-items-list">
             {selectedPlaylist.items.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.5)' }}>
                 {i18n.t('vod:noContent')}
               </div>
             ) : (
-              <DndContext
-                sensors={reorderSensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleReorderStart}
-                onDragOver={handleReorderOver}
-                onDragCancel={handleReorderCancel}
-                onDragEnd={handleReorderEnd}
-              >
-                <SortableContext
-                  items={selectedPlaylist.items.map((i) => i.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {selectedPlaylist.items.map((item, idx) => (
-                    <SortablePlaylistItem
-                      key={item.id}
-                      item={item}
-                      index={idx}
-                      playlist={selectedPlaylist}
-                      showSourceName={selectedPlaylist.showSourceName ?? true}
-                      progress={itemProgress.get(item.id) ?? null}
-                      dropEdge={dropEdgeFor(item.id)}
-                      sourceNameMap={sourceNameMap}
-                      onPlay={(it, pl) => onPlayPlaylistItem?.(it, pl, false)}
-                      onMove={(fromIndex, toIndex) => reorderPlaylistItems(selectedPlaylist.id, fromIndex, toIndex)}
-                      onRemove={(itemId) => removeItemFromPlaylist(selectedPlaylist.id, itemId)}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
+              <>
+                {visibleItems.length > 0 ? (
+                  <DndContext
+                    sensors={reorderSensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleReorderStart}
+                    onDragOver={handleReorderOver}
+                    onDragCancel={handleReorderCancel}
+                    onDragEnd={handleReorderEnd}
+                  >
+                    <SortableContext
+                      items={visibleItems.map((i) => i.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {visibleItems.map((item) => {
+                        // Real index within the playlist so reorder arrows and
+                        // dnd moves stay consistent even with hidden items in between.
+                        const realIdx = selectedPlaylist.items.findIndex((i) => i.id === item.id);
+                        return (
+                          <SortablePlaylistItem
+                            key={item.id}
+                            item={item}
+                            index={realIdx}
+                            playlist={selectedPlaylist}
+                            showSourceName={selectedPlaylist.showSourceName ?? true}
+                            progress={itemProgress.get(item.id) ?? null}
+                            dropEdge={dropEdgeFor(item.id)}
+                            sourceNameMap={sourceNameMap}
+                            onPlay={(it, pl) => onPlayPlaylistItem?.(it, pl, false)}
+                            onMove={(fromIndex, toIndex) => reorderPlaylistItems(selectedPlaylist.id, fromIndex, toIndex)}
+                            onRemove={(itemId) => removeItemFromPlaylist(selectedPlaylist.id, itemId)}
+                          />
+                        );
+                      })}
+                    </SortableContext>
+                  </DndContext>
+                ) : (
+                  <div className="playlist-hidden-empty">{i18n.t('vod:allItemsHidden')}</div>
+                )}
+
+                {hiddenItems.length > 0 && (
+                  <div className="playlist-hidden-section">
+                    <div className="playlist-hidden-banner">
+                      <span className="playlist-hidden-banner__text">
+                        {i18n.t('vod:playlistHiddenCount', { count: hiddenItems.length })}
+                      </span>
+                      <button
+                        className="playlist-hidden-banner__btn"
+                        onClick={() => setShowHiddenItems((v) => !v)}
+                      >
+                        {showHiddenItems ? i18n.t('vod:hideHiddenItems') : i18n.t('vod:showHiddenItems')}
+                      </button>
+                      <button
+                        className="playlist-hidden-banner__btn playlist-hidden-banner__btn--danger"
+                        onClick={handleRemoveAllHidden}
+                      >
+                        {i18n.t('vod:removeAllHidden')}
+                      </button>
+                    </div>
+
+                    {showHiddenItems &&
+                      hiddenItems.map((item) => (
+                        <HiddenPlaylistItemRow
+                          key={item.id}
+                          item={item}
+                          onRemove={(itemId) => removeItemFromPlaylist(selectedPlaylist.id, itemId)}
+                        />
+                      ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

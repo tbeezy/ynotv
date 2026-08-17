@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Врати метаподатке провајдера",
     "dragReorderHint": "Држите {{hotkey}} да бисте превлачили и преуређивали изворе и категорије",
     "dragReorderHintAlways": "Превлачите да бисте преуредили изворе и категорије",
-    "dismissDragHint": "Одбаци"
+    "dismissDragHint": "Одбаци",
+    "hiddenUnavailable": "Извор није доступан",
+    "showHiddenItems": "Прикажи скривено",
+    "hideHiddenItems": "Сакриј скривено",
+    "removeAllHidden": "Уклони све скривено",
+    "removeAllHiddenConfirm_one": "Уклонити {{count}} скривену ставку? Њен извор је обрисан или онемогућен, па се више не може репродуковати.",
+    "removeAllHiddenConfirm_other": "Уклонити {{count}} скривених ставки? Њихови извори су обрисани или онемогућени, па се више не могу репродуковати.",
+    "allItemsHidden": "Све ставке у овој листи су скривене — њихови извори су обрисани или онемогућени.",
+    "playlistHiddenCount_one": "{{count}} скривена ставка (извор обрисан или онемогућен)",
+    "playlistHiddenCount_other": "{{count}} скривених ставки (извори обрисани или онемогућени)"
   },
   "dvr": {
     "title": "DVR i preuzimanje",

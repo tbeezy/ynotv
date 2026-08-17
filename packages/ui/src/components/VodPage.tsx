@@ -12,7 +12,7 @@ import { FavoritesView } from './vod/FavoritesView';
 import { PlaylistsView } from './vod/PlaylistsView';
 import { useActivePlaylistStore } from '../stores/activePlaylistStore';
 import type { PlaylistItem, Playlist } from '../stores/vodPlaylistStore';
-import { playlistItemToVodInfo, recordPlaylistItemWatch } from '../utils/playlistPlayback';
+import { isPlaylistItemHidden, playlistItemToVodInfo, recordPlaylistItemWatch } from '../utils/playlistPlayback';
 import { MovieDetail } from './vod/MovieDetail';
 import { SeriesDetail } from './vod/SeriesDetail';
 import { SourceContextMenu } from './SourceContextMenu';
@@ -331,11 +331,16 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
   const { categories } = useVodCategories(type);
 
   const handlePlayPlaylistItem = useCallback((item: PlaylistItem, playlist: Playlist, isShuffle?: boolean) => {
+    // Skip items whose source was removed/disabled so the queue never tries to
+    // play an unavailable stream. Keeps the played item's own queue position.
+    const queueItems = enabledSourceIds
+      ? playlist.items.filter((i) => !isPlaylistItemHidden(i, enabledSourceIds))
+      : playlist.items;
     useActivePlaylistStore.getState().startPlayback(
       playlist.id,
       playlist.name,
-      playlist.items,
-      playlist.items.findIndex(i => i.id === item.id),
+      queueItems,
+      queueItems.findIndex(i => i.id === item.id),
       isShuffle
     );
 

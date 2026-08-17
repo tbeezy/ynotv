@@ -2550,7 +2550,16 @@
     "editMetadataReset": "فراہم کنندہ کے میٹا ڈیٹا پر ری سیٹ کریں",
     "dragReorderHint": "ذرائع اور زمرے گھسیٹ کر دوبارہ ترتیب دینے کے لیے {{hotkey}} دبائے رکھیں",
     "dragReorderHintAlways": "ذرائع اور زمرے دوبارہ ترتیب دینے کے لیے گھسیٹیں",
-    "dismissDragHint": "مسترد کریں"
+    "dismissDragHint": "مسترد کریں",
+    "hiddenUnavailable": "ذریعہ دستیاب نہیں",
+    "showHiddenItems": "پوشیدہ دکھائیں",
+    "hideHiddenItems": "پوشیدہ چھپائیں",
+    "removeAllHidden": "تمام پوشیدہ ہٹائیں",
+    "removeAllHiddenConfirm_one": "{{count}} پوشیدہ آئٹم ہٹائیں؟ اس کا ذریعہ حذف یا غیر فعال کر دیا گیا ہے، اس لیے اسے مزید چلایا نہیں جا سکتا۔",
+    "removeAllHiddenConfirm_other": "{{count}} پوشیدہ آئٹمز ہٹائیں؟ ان کے ذرائع حذف یا غیر فعال کر دیے گئے ہیں، اس لیے انہیں مزید نہیں چلایا جا سکتا۔",
+    "allItemsHidden": "اس پلے لسٹ کے تمام آئٹمز پوشیدہ ہیں — ان کے ذرائع حذف یا غیر فعال کر دیے گئے ہیں۔",
+    "playlistHiddenCount_one": "{{count}} پوشیدہ آئٹم (ذریعہ حذف یا غیر فعال)",
+    "playlistHiddenCount_other": "{{count}} پوشیدہ آئٹمز (ذرائع حذف یا غیر فعال)"
   },
   "dvr": {
     "title": "ڈی وی آر اور ڈاؤن لوڈز",

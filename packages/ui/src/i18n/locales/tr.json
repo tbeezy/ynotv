@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Sağlayıcı meta verilerine sıfırla",
     "dragReorderHint": "Kaynakları ve kategorileri sürükleyip yeniden sıralamak için {{hotkey}} tuşunu basılı tutun",
     "dragReorderHintAlways": "Kaynakları ve kategorileri yeniden sıralamak için sürükleyin",
-    "dismissDragHint": "Kapat"
+    "dismissDragHint": "Kapat",
+    "hiddenUnavailable": "Kaynak kullanılamıyor",
+    "showHiddenItems": "Gizlileri göster",
+    "hideHiddenItems": "Gizlileri gizle",
+    "removeAllHidden": "Tüm gizlileri kaldır",
+    "removeAllHiddenConfirm_one": "{{count}} gizli öğe kaldırılsın mı? Kaynağı silindi veya devre dışı bırakıldı, bu yüzden artık oynatılamıyor.",
+    "removeAllHiddenConfirm_other": "{{count}} gizli öğe kaldırılsın mı? Kaynakları silindi veya devre dışı bırakıldı, bu yüzden artık oynatılamıyorlar.",
+    "allItemsHidden": "Bu oynatma listesindeki tüm öğeler gizli — kaynakları silindi veya devre dışı bırakıldı.",
+    "playlistHiddenCount_one": "{{count}} gizli öğe (kaynak silindi veya devre dışı bırakıldı)",
+    "playlistHiddenCount_other": "{{count}} gizli öğe (kaynaklar silindi veya devre dışı bırakıldı)"
   },
   "dvr": {
     "title": "DVR ve İndirmeler",

@@ -2550,7 +2550,16 @@
     "editMetadataReset": "Restaurar metadados do provedor",
     "dragReorderHint": "Segure {{hotkey}} para arrastar e reordenar fontes e categorias",
     "dragReorderHintAlways": "Arraste para reordenar fontes e categorias",
-    "dismissDragHint": "Dispensar"
+    "dismissDragHint": "Dispensar",
+    "hiddenUnavailable": "Fonte indisponível",
+    "showHiddenItems": "Mostrar ocultos",
+    "hideHiddenItems": "Ocultar ocultos",
+    "removeAllHidden": "Remover todos os ocultos",
+    "removeAllHiddenConfirm_one": "Remover {{count}} item oculto? A fonte foi excluída ou desabilitada, portanto não pode mais ser reproduzida.",
+    "removeAllHiddenConfirm_other": "Remover {{count}} itens ocultos? As fontes foram excluídas ou desabilitadas, portanto não podem mais ser reproduzidos.",
+    "allItemsHidden": "Todos os itens desta playlist estão ocultos — suas fontes foram excluídas ou desabilitadas.",
+    "playlistHiddenCount_one": "{{count}} item oculto (fonte excluída ou desabilitada)",
+    "playlistHiddenCount_other": "{{count}} itens ocultos (fontes excluídas ou desabilitadas)"
   },
   "dvr": {
     "title": "DVR e Downloads",

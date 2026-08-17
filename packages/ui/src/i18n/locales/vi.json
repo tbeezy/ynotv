@@ -3883,6 +3883,15 @@
     "editMetadataReset": "Đặt lại về siêu dữ liệu của nhà cung cấp",
     "dragReorderHint": "Giữ {{hotkey}} để kéo và sắp xếp lại nguồn và danh mục",
     "dragReorderHintAlways": "Kéo để sắp xếp lại nguồn và danh mục",
-    "dismissDragHint": "Bỏ qua"
+    "dismissDragHint": "Bỏ qua",
+    "hiddenUnavailable": "Nguồn không khả dụng",
+    "showHiddenItems": "Hiện mục ẩn",
+    "hideHiddenItems": "Ẩn mục ẩn",
+    "removeAllHidden": "Xóa tất cả mục ẩn",
+    "removeAllHiddenConfirm_one": "Xóa {{count}} mục ẩn? Nguồn của nó đã bị xóa hoặc vô hiệu hóa, vì vậy không thể phát được nữa.",
+    "removeAllHiddenConfirm_other": "Xóa {{count}} mục ẩn? Nguồn của chúng đã bị xóa hoặc vô hiệu hóa, vì vậy không thể phát được nữa.",
+    "allItemsHidden": "Tất cả mục trong danh sách phát này đều bị ẩn — nguồn của chúng đã bị xóa hoặc vô hiệu hóa.",
+    "playlistHiddenCount_one": "{{count}} mục ẩn (nguồn bị xóa hoặc vô hiệu hóa)",
+    "playlistHiddenCount_other": "{{count}} mục ẩn (nguồn bị xóa hoặc vô hiệu hóa)"
   }
 }

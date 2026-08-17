@@ -2550,7 +2550,16 @@
     "editMetadataReset": "重設為提供者中繼資料",
     "dragReorderHint": "按住 {{hotkey}} 可拖曳重新排序來源和分類",
     "dragReorderHintAlways": "拖曳可重新排序來源和分類",
-    "dismissDragHint": "關閉"
+    "dismissDragHint": "關閉",
+    "hiddenUnavailable": "來源不可用",
+    "showHiddenItems": "顯示隱藏項目",
+    "hideHiddenItems": "隱藏隱藏項目",
+    "removeAllHidden": "刪除所有隱藏項目",
+    "removeAllHiddenConfirm_one": "刪除 {{count}} 個隱藏項目？其來源已被刪除或停用，無法再播放。",
+    "removeAllHiddenConfirm_other": "刪除 {{count}} 個隱藏項目？其來源已被刪除或停用，無法再播放。",
+    "allItemsHidden": "此播放清單中的所有項目均已隱藏 — 其來源已被刪除或停用。",
+    "playlistHiddenCount_one": "{{count}} 個隱藏項目（來源已被刪除或停用）",
+    "playlistHiddenCount_other": "{{count}} 個隱藏項目（來源已被刪除或停用）"
   },
   "dvr": {
     "title": "DVR 與下載",
