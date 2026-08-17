@@ -253,6 +253,17 @@ export function CategoryContextMenu({
                     🖼️ {i18n.t('contextMenu.logoEditor')}
                 </div>
             )}
+            <div
+                className="context-menu-item"
+                onClick={() => {
+                    if (typeof (window as any).openChannelProbe === 'function') {
+                        (window as any).openChannelProbe(sourceId, categoryId);
+                    }
+                    onClose();
+                }}
+            >
+                {i18n.t('contextMenu.probeCategory')}
+            </div>
             <div className="context-menu-item" onClick={() => setCurrentView('playlist_add')}>
                 {i18n.t('contextMenu.addToPlaylist')} →
             </div>

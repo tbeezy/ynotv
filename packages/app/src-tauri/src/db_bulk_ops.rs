@@ -949,3 +949,80 @@ fn update_source_meta_inner(db: &DvrDatabase, meta: SourceMetaUpdate) -> Result<
     tx.commit()?;
     Ok(())
 }
+
+// ============================================================================
+// Channel Metadata Bulk Upsert
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkChannelMetadata {
+    pub stream_id: String,
+    pub source_id: String,
+    pub resolution_width: Option<i64>,
+    pub resolution_height: Option<i64>,
+    pub fps: Option<f64>,
+    pub audio_channels: Option<String>,
+    pub quality_label: Option<String>,
+    pub last_updated: Option<String>,
+}
+
+pub fn bulk_upsert_channel_metadata(
+    db: &DvrDatabase,
+    items: Vec<BulkChannelMetadata>,
+) -> Result<BulkResult> {
+    with_db_retry(|| bulk_upsert_channel_metadata_inner(db, items.clone()))
+}
+
+fn bulk_upsert_channel_metadata_inner(
+    db: &DvrDatabase,
+    items: Vec<BulkChannelMetadata>,
+) -> Result<BulkResult> {
+    let start = std::time::Instant::now();
+    let mut conn = db.get_conn()?;
+    let tx = conn.transaction()?;
+
+    let mut stmt = tx.prepare(
+        "INSERT INTO channelMetadata (
+            stream_id, source_id, resolution_width, resolution_height, fps, audio_channels, quality_label, last_updated
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        ON CONFLICT(stream_id) DO UPDATE SET
+            source_id = excluded.source_id,
+            resolution_width = COALESCE(excluded.resolution_width, channelMetadata.resolution_width),
+            resolution_height = COALESCE(excluded.resolution_height, channelMetadata.resolution_height),
+            fps = COALESCE(excluded.fps, channelMetadata.fps),
+            audio_channels = COALESCE(excluded.audio_channels, channelMetadata.audio_channels),
+            quality_label = COALESCE(excluded.quality_label, channelMetadata.quality_label),
+            last_updated = excluded.last_updated",
+    )?;
+
+    let now_str = chrono::Utc::now().to_rfc3339();
+    let mut upserted = 0;
+
+    for item in items {
+        let updated_time = item.last_updated.unwrap_or_else(|| now_str.clone());
+        stmt.execute(params![
+            item.stream_id,
+            item.source_id,
+            item.resolution_width,
+            item.resolution_height,
+            item.fps,
+            item.audio_channels,
+            item.quality_label,
+            updated_time,
+        ])?;
+        upserted += 1;
+    }
+
+    stmt.finalize()?;
+    tx.commit()?;
+
+    let duration_ms = start.elapsed().as_millis() as u64;
+    info!("[DB] Bulk upserted {} channelMetadata rows in {}ms", upserted, duration_ms);
+
+    Ok(BulkResult {
+        inserted: upserted,
+        updated: 0,
+        deleted: 0,
+        duration_ms,
+    })
+}

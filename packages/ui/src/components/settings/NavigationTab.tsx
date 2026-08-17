@@ -38,6 +38,7 @@ const EPG_BUTTONS = [
   { id: 'epg-shift' },
   { id: 'playlist-editor' },
   { id: 'failover-group' },
+  { id: 'channel-probe' },
 ] as const;
 
 type NavItemId = (typeof NAV_ITEMS)[number]['id'];
@@ -64,6 +65,7 @@ const EPG_BUTTON_LABEL_KEYS = {
   'epg-shift': 'epgButtons.epg-shift',
   'playlist-editor': 'epgButtons.playlist-editor',
   'failover-group': 'epgButtons.failover-group',
+  'channel-probe': 'epgButtons.channel-probe',
 } as const satisfies Record<EpgButtonId, `epgButtons.${EpgButtonId}`>;
 
 export function NavigationTab({

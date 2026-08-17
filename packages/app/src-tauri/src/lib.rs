@@ -270,6 +270,9 @@ mod tray;
 mod db_bulk_ops;
 mod sync_provider;
 
+// Stream probe / IPTV Checker module
+mod stream_probe;
+
 // Streaming EPG parser module
 mod epg_streaming;
 
@@ -2036,6 +2039,16 @@ async fn update_source_meta(
             error!("[update_source_meta] ERROR: {}", e);
             format!("Update source meta failed: {}", e)
         })
+}
+
+/// Bulk upsert channel metadata (resolution, fps, audio layout, quality label)
+#[tauri::command]
+async fn bulk_upsert_channel_metadata(
+    state: tauri::State<'_, DvrState>,
+    items: Vec<db_bulk_ops::BulkChannelMetadata>,
+) -> Result<db_bulk_ops::BulkResult, String> {
+    db_bulk_ops::bulk_upsert_channel_metadata(&state.db, items)
+        .map_err(|e| format!("Bulk upsert channel metadata failed: {}", e))
 }
 
 /// Health check - verifies backend systems are ready
@@ -4845,6 +4858,14 @@ pub fn run() {
             bulk_delete_channels,
             bulk_delete_categories,
             update_source_meta,
+            bulk_upsert_channel_metadata,
+            // Stream probe commands
+            stream_probe::start_channel_probe,
+            stream_probe::pause_channel_probe,
+            stream_probe::resume_channel_probe,
+            stream_probe::cancel_channel_probe,
+            stream_probe::probe_single_stream,
+            stream_probe::check_probe_ffmpeg_status,
             health_check,
             download_media,
             cancel_download,

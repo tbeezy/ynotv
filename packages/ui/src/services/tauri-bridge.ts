@@ -852,6 +852,16 @@ export const Bridge = {
         return { success: true, data: { filePath: path } };
     },
 
+    async saveCsvFile(content: string, defaultName: string) {
+        const path = await dialog.save({
+            defaultPath: `${defaultName}.csv`,
+            filters: [{ name: 'CSV Spreadsheet', extensions: ['csv'] }]
+        });
+        if (!path) return { canceled: true };
+        await fs.writeTextFile(path, content);
+        return { success: true, data: { filePath: path } };
+    },
+
     async importM3UFile() {
         const path = await dialog.open({
             multiple: false,
@@ -1041,6 +1051,7 @@ export async function initPolyfills() {
         getSource: Bridge.getSource,
         saveJsonFile: Bridge.saveJsonFile,
         saveM3UFile: Bridge.saveM3UFile,
+        saveCsvFile: Bridge.saveCsvFile,
         openJsonFile: Bridge.openJsonFile,
         importM3UFile: Bridge.importM3UFile,
         isEncryptionAvailable: () => Promise.resolve({ success: true, data: true })

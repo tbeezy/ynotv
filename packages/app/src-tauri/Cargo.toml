@@ -73,6 +73,10 @@ rust_cast = { version = "0.21", features = ["thread_safe"] }
 mdns-sd = "0.19"
 discord-rich-presence = "1.1"
 
+# Stream Probe dependencies
+regex = "1"
+url = "2"
+
 # FFT dependency for per-process audio visualizer
 rustfft = "6.2"
 

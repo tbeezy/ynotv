@@ -108,6 +108,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { useLayoutPersistence, type LayoutMode } from './hooks/useLayoutPersistence';
 import { useMpvListeners } from './hooks/useMpvListeners';
 import { AdvancedSearchModal, type AdvancedSearchConfig } from './components/AdvancedSearchModal';
+import { ChannelProbeModal } from './components/ChannelProbeModal';
 import { StremioPage } from './components/stremio/StremioPage';
 import { NuvioPage } from './components/nuvio/NuvioPage';
 import { useStremioAddonStore } from './stores/stremioAddonStore';
@@ -2352,6 +2353,26 @@ function useTmdbPresencePoster(
   // Force advanced filters for the current search when triggered from the modal,
   // even if "use for regular" is disabled. Cleared when user manually edits the title bar query.
   const [forceAdvancedFilters, setForceAdvancedFilters] = useState(false);
+
+  // Channel Probe / IPTV Checker State
+  const [showChannelProbeModal, setShowChannelProbeModal] = useState<boolean>(false);
+  const [channelProbeInitialSourceId, setChannelProbeInitialSourceId] = useState<string | null>(null);
+  const [channelProbeInitialCategoryId, setChannelProbeInitialCategoryId] = useState<string | null>(null);
+  const [channelProbeInitialChannels, setChannelProbeInitialChannels] = useState<StoredChannel[] | undefined>(undefined);
+
+  const handleOpenChannelProbe = useCallback((sourceId?: string | null, categoryId?: string | null, channels?: StoredChannel[]) => {
+    setChannelProbeInitialSourceId(sourceId || null);
+    setChannelProbeInitialCategoryId(categoryId || null);
+    setChannelProbeInitialChannels(channels);
+    setShowChannelProbeModal(true);
+  }, []);
+
+  useEffect(() => {
+    (window as any).openChannelProbe = handleOpenChannelProbe;
+    return () => {
+      delete (window as any).openChannelProbe;
+    };
+  }, [handleOpenChannelProbe]);
 
   // Search history for titlebar
   const titlebarSearchHistory = useSearchHistory('titlebar');
@@ -5056,6 +5077,21 @@ function useTmdbPresencePoster(
           }, 50);
         }}
         onClose={() => setShowAdvancedSearch(false)}
+      />
+
+      {/* Channel Stream Probe / IPTV Checker Modal */}
+      <ChannelProbeModal
+        isOpen={showChannelProbeModal}
+        initialSourceId={channelProbeInitialSourceId}
+        initialCategoryId={channelProbeInitialCategoryId}
+        initialChannels={channelProbeInitialChannels}
+        onPlayChannel={(channel) => {
+          handlePlayChannelWrapper(channel);
+        }}
+        onClose={() => {
+          setShowChannelProbeModal(false);
+          setChannelProbeInitialChannels(undefined);
+        }}
       />
 
       {/* V3 Liquid Glass Background */}
