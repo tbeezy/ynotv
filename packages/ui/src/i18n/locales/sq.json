@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Menaxho renditjen e të preferuarave",
     "noChannels": "Asnjë kanal",
     "noChannelsFound": "Nuk u gjetën kanale",
+    "noLivePrograms": "Asnjë program live për momentin",
     "noResultsFound": "Nuk u gjetën rezultate",
+    "noUpcomingPrograms": "Asnjë program i ardhshëm",
     "now": "Tani",
     "playlistEditor": "Redaktuesi i listave të luajtjes",
     "programsCount_one": "{{count}} program",
@@ -221,8 +223,13 @@
     "refreshSource": "Rifresko burimin",
     "resultsCount_one": "{{count}} rezultat",
     "resultsCount_other": "{{count}} rezultate",
+    "scrollToTop": "Lëviz në krye",
     "searchChannelsPlaceholder": "Kërko kanale...",
     "searchResults": "Rezultatet e kërkimit",
+    "searchTabChannels": "Kanalet",
+    "searchTabLive": "Live tani EPG",
+    "searchTabUpcoming": "Në vijim EPG",
+    "searching": "Duke kërkuar…",
     "selectAChannel": "Zgjidh një kanal",
     "shiftHours": "Zhvendos {{hours}}h",
     "showPlaylistName": "Shfaq emrin e listës së luajtjes për çdo kanal",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "U tejkalua numri maksimal i përpjekjeve për operacionet e bazës së të dhënave",
     "epgDownloadInterrupted": "Shkarkimi u ndërpre",
     "epgParseFailed": "Dështoi përpunimi i EPG-së",
-    "watchingYnotv": "Po shikon YnoTV"
+    "watchingYnotv": "Po shikon YnoTV",
+    "scheduled": "I PLANIFIKUAR",
+    "noProgramInfo": "Asnjë informacion për programin",
+    "elapsedPercent": "{{percent}}% i kaluar"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Përfshi emrin e burimit në kërkimin VOD",
         "includeSourceVodSub": "Kur aktivizohet, emri i burimit do të shfaqet në rezultate kur kërkon Filma dhe Seriale VOD. Kjo ndihmon të dallohet përmbajtja VOD me të njëjtin emër nga burime të ndryshme.",
         "maxSearchResults": "Numri maksimal i rezultateve të kërkimit",
-        "default200": "200 (parazgjedhur)",
-        "maxSearchResultsSub": "Numri maksimal i rezultateve të shfaqura në kërkimin e kanaleve, kërkimin e grupeve të personalizuara dhe përzgjedhësin e kanaleve të kalendarit. Vlerat më të larta mund të ndikojnë në performancën.",
+        "default1000": "1000 (parazgjedhur)",
+        "maxSearchResultsSub": "Numri maksimal i rezultateve në kërkimin e kanaleve, kërkimin e grupeve të personalizuara dhe përzgjedhësin e kanaleve të kalendarit. Rezultatet virtualizohen, kështu që vlerat e mëdha mbeten të qeta, të kufizuara në 5000.",
         "searchResultsOrder": "Rendi i rezultateve të kërkimit",
         "alphabetical": "Alfabetik",
         "searchResultsOrderSub": "Zgjidh si të renditen rezultatet e kërkimit. „Parazgjedhur\" tregon rezultatet në rendin e bazës së të dhënave. „Alfabetik\" rendit kanalet dhe programet sipas emrit (A-Z)."
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}}s më parë",
     "mAgo": "{{count}}m më parë",
     "hAgo": "{{count}}h më parë",
-    "dAgo": "{{count}}d më parë"
+    "dAgo": "{{count}}d më parë",
+    "durationHM": "{{hours}}o {{minutes}}m",
+    "durationH": "{{hours}}o",
+    "durationM": "{{minutes}}m",
+    "lessThanMinute": "< 1m",
+    "leftHM": "{{hours}}o {{minutes}}m të mbetura",
+    "leftH": "{{hours}}o të mbetura",
+    "leftM": "{{minutes}}m të mbetura"
   },
   "sports": {
     "tabs": {

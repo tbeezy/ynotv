@@ -26,7 +26,7 @@ import { ProxyTab } from './settings/ProxyTab';
 import { DiscordTab } from './settings/DiscordTab';
 import { useModal } from './Modal';
 import { TmdbTab } from './settings/TmdbTab';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useSettingsStore, DEFAULT_MAX_SEARCH_RESULTS, clampMaxSearchResults } from '../stores/settingsStore';
 import type { ShortcutsMap, ThemeId, CustomThemeConfig } from '../types/app';
 import type { StremioStreamPickerMode, BadgeSource, StreamAutoPlayMode, StreamAutoPlaySourceScope } from '../types/stremio';
 import { DEFAULT_BADGE_SOURCES, mergeDefaultBadgeSources } from '../utils/streamBadges';
@@ -396,7 +396,7 @@ export function Settings({
   const [categorySortOrder, setCategorySortOrder] = useState<'default' | 'alphabetical'>('default');
   const [includeSourceInSearch, setIncludeSourceInSearch] = useState(false);
   const [includeSourceInVodSearch, setIncludeSourceInVodSearch] = useState(false);
-  const [maxSearchResults, setMaxSearchResults] = useState(200);
+  const [maxSearchResults, setMaxSearchResults] = useState(DEFAULT_MAX_SEARCH_RESULTS);
   const [searchResultsOrder, setSearchResultsOrder] = useState<'default' | 'alphabetical'>('default');
 
   // Shortcuts state
@@ -1003,7 +1003,7 @@ export function Settings({
       setCategorySortOrder(settings.categorySortOrder ?? 'default');
       setIncludeSourceInSearch(settings.includeSourceInSearch ?? false);
       setIncludeSourceInVodSearch(settings.includeSourceInVodSearch ?? false);
-      setMaxSearchResults(settings.maxSearchResults ?? 200);
+      setMaxSearchResults(clampMaxSearchResults(settings.maxSearchResults ?? DEFAULT_MAX_SEARCH_RESULTS));
       setSearchResultsOrder(settings.searchResultsOrder ?? 'default');
 
       // Load shortcuts
@@ -2324,9 +2324,10 @@ export function Settings({
   };
 
   const handleMaxSearchResultsChange = async (value: number) => {
-    setMaxSearchResults(value);
+    const clamped = clampMaxSearchResults(value);
+    setMaxSearchResults(clamped);
     if (window.storage) {
-      await window.storage.updateSettings({ maxSearchResults: value });
+      await window.storage.updateSettings({ maxSearchResults: clamped });
     }
   };
 

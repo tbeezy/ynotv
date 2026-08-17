@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type StoredChannel, type StoredCategory } from '../db';
 import { buildSearchQueryClauses } from '../utils/searchNormalization';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useSettingsStore, DEFAULT_MAX_SEARCH_RESULTS } from '../stores/settingsStore';
 import './CustomGroupManager.css'; // Reuse the same styles
 
 interface ChannelSelectorModalProps {
@@ -52,7 +52,7 @@ function SearchResults({ query, selectedChannelId, onSelect, enabledSourceIdsKey
       try {
         // maxSearchResults is a settings-store field — read it synchronously
         // instead of paying an IPC getSettings round-trip.
-        const maxSearchResults = useSettingsStore.getState().maxSearchResults ?? 200;
+        const maxSearchResults = useSettingsStore.getState().maxSearchResults ?? DEFAULT_MAX_SEARCH_RESULTS;
 
         console.log('[ChannelSelectorModal] Searching for:', query);
 

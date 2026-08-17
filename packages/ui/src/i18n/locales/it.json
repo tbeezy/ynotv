@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Gestisci ordine preferiti",
     "noChannels": "Nessun Canale",
     "noChannelsFound": "Nessun Canale Trovato",
+    "noLivePrograms": "Nessun programma in diretta al momento",
     "noResultsFound": "Nessun risultato trovato",
+    "noUpcomingPrograms": "Nessun programma in arrivo",
     "now": "Ora",
     "playlistEditor": "Editor Playlist",
     "programsCount_one": "{{count}} programma",
@@ -221,8 +223,13 @@
     "refreshSource": "Aggiorna Fonte",
     "resultsCount_one": "{{count}} risultato",
     "resultsCount_other": "{{count}} risultati",
+    "scrollToTop": "Scorri in alto",
     "searchChannelsPlaceholder": "Cerca canali...",
     "searchResults": "Risultati di ricerca",
+    "searchTabChannels": "Canali",
+    "searchTabLive": "In diretta ora EPG",
+    "searchTabUpcoming": "In arrivo EPG",
+    "searching": "Ricerca…",
     "selectAChannel": "Seleziona un canale",
     "shiftHours": "Sposta {{hours}}h",
     "showPlaylistName": "Mostra il nome della playlist per ogni canale",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Numero massimo di tentativi superato per l'operazione sul database",
     "epgDownloadInterrupted": "Download interrotto",
     "epgParseFailed": "Impossibile analizzare l'EPG",
-    "watchingYnotv": "Guarda YnoTV"
+    "watchingYnotv": "Guarda YnoTV",
+    "scheduled": "PROGRAMMATO",
+    "noProgramInfo": "Nessuna informazione sul programma",
+    "elapsedPercent": "{{percent}}% trascorso"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Includi nome fonte nella ricerca VOD",
         "includeSourceVodSub": "Quando attivo, il nome della fonte verrà mostrato nei risultati quando cerchi Film e Serie VOD. Aiuta a distinguere contenuti VOD con lo stesso nome da fonti diverse.",
         "maxSearchResults": "Risultati di ricerca massimi",
-        "default200": "200 (predefinito)",
-        "maxSearchResultsSub": "Numero massimo di risultati da mostrare nella ricerca canali, nella ricerca gruppi personalizzati e nel selettore canali del calendario. Valori più alti possono influire sulle prestazioni.",
+        "default1000": "1000 (predefinito)",
+        "maxSearchResultsSub": "Numero massimo di risultati da mostrare nella ricerca canali, nella ricerca gruppi personalizzati e nel selettore canali del calendario. I risultati sono virtualizzati, quindi i valori grandi restano fluidi, con un massimo di 5000.",
         "searchResultsOrder": "Ordine risultati di ricerca",
         "alphabetical": "Alfabetico",
         "searchResultsOrderSub": "Scegli come ordinare i risultati di ricerca. \"Predefinito\" mostra i risultati nell'ordine del database. \"Alfabetico\" ordina canali e programmi per nome (A-Z)."
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}}s fa",
     "mAgo": "{{count}}m fa",
     "hAgo": "{{count}}h fa",
-    "dAgo": "{{count}}g fa"
+    "dAgo": "{{count}}g fa",
+    "durationHM": "{{hours}}h {{minutes}}m",
+    "durationH": "{{hours}}h",
+    "durationM": "{{minutes}}m",
+    "lessThanMinute": "< 1m",
+    "leftHM": "{{hours}}h {{minutes}}m rimanenti",
+    "leftH": "{{hours}}h rimanente",
+    "leftM": "{{minutes}}m rimanenti"
   },
   "sports": {
     "tabs": {

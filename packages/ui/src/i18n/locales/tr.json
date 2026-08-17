@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Favori sırasını yönet",
     "noChannels": "Kanal Yok",
     "noChannelsFound": "Kanal Bulunamadı",
+    "noLivePrograms": "Şu anda canlı program yok",
     "noResultsFound": "Sonuç bulunamadı",
+    "noUpcomingPrograms": "Yaklaşan program yok",
     "now": "Şimdi",
     "playlistEditor": "Oynatma Listesi Düzenleyici",
     "programsCount_one": "{{count}} program",
@@ -221,8 +223,13 @@
     "refreshSource": "Kaynağı Yenile",
     "resultsCount_one": "{{count}} sonuç",
     "resultsCount_other": "{{count}} sonuç",
+    "scrollToTop": "En üste kaydır",
     "searchChannelsPlaceholder": "Kanallarda ara…",
     "searchResults": "Arama Sonuçları",
+    "searchTabChannels": "Kanallar",
+    "searchTabLive": "Şimdi canlı EPG",
+    "searchTabUpcoming": "Yaklaşan EPG",
+    "searching": "Aranıyor…",
     "selectAChannel": "Bir kanal seçin",
     "shiftHours": "{{hours}}sa kaydır",
     "showPlaylistName": "Her kanal için oynatma listesi adını göster",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Veritabanı işlemi için maksimum yeniden deneme sayısı aşıldı",
     "epgDownloadInterrupted": "İndirme kesildi",
     "epgParseFailed": "Rehber ayrıştırılamadı",
-    "watchingYnotv": "YnoTV izleniyor"
+    "watchingYnotv": "YnoTV izleniyor",
+    "scheduled": "PLANLANMIŞ",
+    "noProgramInfo": "Program bilgisi yok",
+    "elapsedPercent": "%{{percent}} geçti"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "VOD aramasına kaynak adını dahil et",
         "includeSourceVodSub": "Etkinleştirildiğinde, VOD Film ve Dizi ararken arama sonuçları için kaynak adı görüntülenir. Bu, farklı kaynaklardan aynı ada sahip VOD içeriğini ayırt etmeye yardımcı olur.",
         "maxSearchResults": "Maksimum arama sonucu",
-        "default200": "200 (varsayılan)",
-        "maxSearchResultsSub": "Kanal araması, özel grup araması ve takvim kanal seçicide gösterilecek maksimum sonuç sayısı. Daha yüksek değerler performansı etkileyebilir.",
+        "default1000": "1000 (varsayılan)",
+        "maxSearchResultsSub": "Kanal aramasında, özel grup aramasında ve takvim kanal seçicide gösterilecek maksimum sonuç sayısı. Sonuçlar sanallaştırılmıştır, bu nedenle büyük değerler akıcı kalır; sınır 5000.",
         "searchResultsOrder": "Arama sonuçları sıralaması",
         "alphabetical": "Alfabetik",
         "searchResultsOrderSub": "Arama sonuçlarının nasıl sıralanacağını seçin. \"Varsayılan\" sonuçları veritabanı sırasında gösterir. \"Alfabetik\" kanalları ve programları ada göre sıralar (A-Z)."
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}}sn önce",
     "mAgo": "{{count}}dk önce",
     "hAgo": "{{count}}sa önce",
-    "dAgo": "{{count}}g önce"
+    "dAgo": "{{count}}g önce",
+    "durationHM": "{{hours}}s {{minutes}}d",
+    "durationH": "{{hours}}s",
+    "durationM": "{{minutes}}d",
+    "lessThanMinute": "< 1d",
+    "leftHM": "{{hours}}s {{minutes}}d kaldı",
+    "leftH": "{{hours}}s kaldı",
+    "leftM": "{{minutes}}d kaldı"
   },
   "sports": {
     "tabs": {

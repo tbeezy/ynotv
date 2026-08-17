@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Gérer l’ordre des favoris",
     "noChannels": "Aucune chaîne",
     "noChannelsFound": "Aucune chaîne trouvée",
+    "noLivePrograms": "Aucun programme en direct pour le moment",
     "noResultsFound": "Aucun résultat trouvé",
+    "noUpcomingPrograms": "Aucun programme à venir",
     "now": "Maintenant",
     "playlistEditor": "Éditeur de playlist",
     "programsCount_one": "{{count}} programme",
@@ -221,8 +223,13 @@
     "refreshSource": "Actualiser la source",
     "resultsCount_one": "{{count}} résultat",
     "resultsCount_other": "{{count}} résultats",
+    "scrollToTop": "Faire défiler vers le haut",
     "searchChannelsPlaceholder": "Rechercher des chaînes...",
     "searchResults": "Résultats de recherche",
+    "searchTabChannels": "Chaînes",
+    "searchTabLive": "En direct EPG",
+    "searchTabUpcoming": "À venir EPG",
+    "searching": "Recherche…",
     "selectAChannel": "Sélectionner une chaîne",
     "shiftHours": "Décalage {{hours}}h",
     "showPlaylistName": "Afficher le nom de la playlist pour chaque chaîne",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Nombre maximal de tentatives dépassé pour l’opération de base de données",
     "epgDownloadInterrupted": "Téléchargement interrompu",
     "epgParseFailed": "Échec de l’analyse de l’EPG",
-    "watchingYnotv": "Regarde YnoTV"
+    "watchingYnotv": "Regarde YnoTV",
+    "scheduled": "PROGRAMMÉ",
+    "noProgramInfo": "Aucune information sur le programme",
+    "elapsedPercent": "{{percent}}% écoulé"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Inclure le nom de la source dans la recherche VOD",
         "includeSourceVodSub": "Lorsqu’il est activé, le nom de la source s’affiche dans les résultats lors de la recherche de films et séries VOD. Cela permet de distinguer des contenus VOD homonymes de sources différentes.",
         "maxSearchResults": "Nombre maximal de résultats",
-        "default200": "200 (par défaut)",
-        "maxSearchResultsSub": "Nombre maximal de résultats affichés dans la recherche de chaînes, la recherche de groupes personnalisés et le sélecteur de chaînes du calendrier. Des valeurs élevées peuvent affecter les performances.",
+        "default1000": "1000 (par défaut)",
+        "maxSearchResultsSub": "Nombre maximal de résultats affichés dans la recherche de chaînes, la recherche de groupes personnalisés et le sélecteur de chaînes du calendrier. Les résultats sont virtualisés pour rester fluides même avec de grandes valeurs, plafonnés à 5000.",
         "searchResultsOrder": "Ordre des résultats de recherche",
         "alphabetical": "Alphabétique",
         "searchResultsOrderSub": "Choisissez le tri des résultats. « Par défaut » affiche les résultats dans l’ordre de la base de données. « Alphabétique » trie les chaînes et programmes par nom (A-Z)."
@@ -2026,7 +2036,14 @@
     "secAgo": "il y a {{count}} s",
     "mAgo": "il y a {{count}} min",
     "hAgo": "il y a {{count}} h",
-    "dAgo": "il y a {{count}} j"
+    "dAgo": "il y a {{count}} j",
+    "durationHM": "{{hours}}h {{minutes}}min",
+    "durationH": "{{hours}}h",
+    "durationM": "{{minutes}}min",
+    "lessThanMinute": "< 1 min",
+    "leftHM": "{{hours}}h {{minutes}}min restantes",
+    "leftH": "{{hours}}h restantes",
+    "leftM": "{{minutes}}min restantes"
   },
   "sports": {
     "tabs": {

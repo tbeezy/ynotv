@@ -33,7 +33,7 @@ interface SearchResultRowProps {
 }
 
 // Channel column width is controlled via CSS custom property for resizability
-const HOUR_WIDTH = 175; // Fixed width per program slot (75% wider than before: 100 * 1.75 = 175)
+const HOUR_WIDTH = 230; // Fixed width per program slot (expanded for time range and status badges)
 
 // Format date for display
 function formatProgramDate(date: Date | string): string {
@@ -45,6 +45,27 @@ function formatProgramDate(date: Date | string): string {
   if (isToday) return i18n.t('time:today');
   if (isTomorrow) return i18n.t('time:tomorrow');
   return formatDate(d, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// Format duration into readable format (e.g. 30m, 1h 15m)
+function formatProgramDuration(startMs: number, endMs: number): string {
+  const totalMins = Math.round((endMs - startMs) / 60000);
+  if (totalMins < 1) return i18n.t('time:lessThanMinute');
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hours > 0 && mins > 0) return i18n.t('time:durationHM', { hours, minutes: mins });
+  if (hours > 0) return i18n.t('time:durationH', { hours });
+  return i18n.t('time:durationM', { minutes: totalMins });
+}
+
+// Format remaining time for live programs (e.g. 24m left)
+function formatProgramRemaining(endMs: number, nowMs: number): string {
+  const remMins = Math.max(1, Math.round((endMs - nowMs) / 60000));
+  const hours = Math.floor(remMins / 60);
+  const mins = remMins % 60;
+  if (hours > 0 && mins > 0) return i18n.t('time:leftHM', { hours, minutes: mins });
+  if (hours > 0) return i18n.t('time:leftH', { hours });
+  return i18n.t('time:leftM', { minutes: remMins });
 }
 
 export const SearchResultRow = memo(function SearchResultRow({
@@ -265,15 +286,20 @@ export const SearchResultRow = memo(function SearchResultRow({
         </div>
       </div>
 
-      {/* Program grid - Fixed hour slots */}
+      {/* Program grid - Fixed slots */}
       <div className="search-programs-container">
         {displayPrograms.length > 0 ? (
-          displayPrograms.map((program, index) => {
+          displayPrograms.map((program) => {
             const progStartMs = program.start instanceof Date ? program.start.getTime() : new Date(program.start).getTime();
             const progEndMs = program.end instanceof Date ? program.end.getTime() : new Date(program.end).getTime();
             const isLive = progStartMs <= now.getTime() && progEndMs > now.getTime();
             const isPast = progEndMs <= now.getTime();
             const isFuture = progStartMs > now.getTime();
+
+            // Progress percentage for live program
+            const totalMs = progEndMs - progStartMs;
+            const elapsedMs = now.getTime() - progStartMs;
+            const progressPercent = totalMs > 0 ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
 
             // Check if this specific program is being recorded or scheduled
             const matchingRecording = activeRecordings.find(r =>
@@ -283,6 +309,10 @@ export const SearchResultRow = memo(function SearchResultRow({
             );
             const isProgramRecording = matchingRecording?.isRecording ?? false;
             const isProgramScheduled = matchingRecording?.isScheduled ?? false;
+
+            const startTimeStr = formatProgramTime(program.start);
+            const endTimeStr = formatProgramTime(program.end);
+            const dateStr = formatProgramDate(program.start);
 
             return (
               <div
@@ -294,28 +324,64 @@ export const SearchResultRow = memo(function SearchResultRow({
                 }}
                 onClick={onPlay}
                 onContextMenu={(e) => handleProgramContextMenu(e, program)}
-                title={`${program.title}${program.subtitle ? ` - ${program.subtitle}` : ''} (${formatProgramTime(program.start)} - ${formatProgramTime(program.end)})`}
+                title={`${program.title}${program.subtitle ? ` - ${program.subtitle}` : ''}\n${dateStr} · ${startTimeStr} – ${endTimeStr}${isLive ? ` (${i18n.t('common:elapsedPercent', { percent: Math.round(progressPercent) })})` : ''}`}
               >
-                <div className="search-program-content">
-                  <div className="search-program-title">{program.title}</div>
-                  {program.subtitle && (
-                    <div className="search-program-subtitle">{program.subtitle}</div>
-                  )}
-                  <div className="search-program-datetime">
-                    {formatProgramDate(program.start)} {formatProgramTime(program.start)}
-                  </div>
+                <div className="search-program-header">
                   <div className="search-program-badge">
-                    {isLive && <span className="live-badge">{i18n.t('common:live')}</span>}
-                    {isPast && <span className="past-badge">{i18n.t('common:ended')}</span>}
-                    {isFuture && <span className="future-badge">{i18n.t('common:upcoming')}</span>}
+                    {isProgramRecording ? (
+                      <span className="rec-badge"><span className="rec-dot" />{i18n.t('common:rec')}</span>
+                    ) : isProgramScheduled ? (
+                      <span className="sched-badge">🗓️ {i18n.t('common:scheduled')}</span>
+                    ) : isLive ? (
+                      <span className="live-badge"><span className="live-dot-pulse" />{i18n.t('common:live')}</span>
+                    ) : isPast ? (
+                      <span className="past-badge">{i18n.t('common:ended')}</span>
+                    ) : (
+                      <span className="future-badge">{i18n.t('common:upcoming')}</span>
+                    )}
+                  </div>
+                  <div className="search-program-duration">
+                    {isLive ? formatProgramRemaining(progEndMs, now.getTime()) : formatProgramDuration(progStartMs, progEndMs)}
                   </div>
                 </div>
+
+                <div className="search-program-body">
+                  <div className="search-program-title" title={program.title}>
+                    {program.title}
+                  </div>
+                  {program.subtitle && (
+                    <div className="search-program-subtitle" title={program.subtitle}>
+                      {program.subtitle}
+                    </div>
+                  )}
+                </div>
+
+                <div className="search-program-footer">
+                  <div className="search-program-datetime">
+                    <svg className="search-program-clock-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <span className="search-program-date-label">{dateStr}</span>
+                    <span className="search-program-time-sep">·</span>
+                    <span className="search-program-time-range">{startTimeStr} – {endTimeStr}</span>
+                  </div>
+                </div>
+
+                {isLive && (
+                  <div className="search-program-progress-bar">
+                    <div
+                      className="search-program-progress-fill"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                )}
               </div>
             );
           })
         ) : (
           <div className="search-empty-programs">
-            No program information
+            {i18n.t('common:noProgramInfo')}
           </div>
         )}
       </div>

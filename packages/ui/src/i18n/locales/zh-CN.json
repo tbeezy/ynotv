@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "管理收藏顺序",
     "noChannels": "无频道",
     "noChannelsFound": "未找到频道",
+    "noLivePrograms": "当前没有直播节目",
     "noResultsFound": "未找到结果",
+    "noUpcomingPrograms": "没有即将播出的节目",
     "now": "现在",
     "playlistEditor": "播放列表编辑器",
     "programsCount_one": "{{count}} 个节目",
@@ -221,8 +223,13 @@
     "refreshSource": "刷新源",
     "resultsCount_one": "{{count}} 个结果",
     "resultsCount_other": "{{count}} 个结果",
+    "scrollToTop": "滚动到顶部",
     "searchChannelsPlaceholder": "搜索频道...",
     "searchResults": "搜索结果",
+    "searchTabChannels": "频道",
+    "searchTabLive": "正在直播 EPG",
+    "searchTabUpcoming": "即将播出 EPG",
+    "searching": "正在搜索…",
     "selectAChannel": "选择一个频道",
     "shiftHours": "时移 {{hours}} 小时",
     "showPlaylistName": "为每个频道显示播放列表名称",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "数据库操作重试次数已达上限",
     "epgDownloadInterrupted": "下载已中断",
     "epgParseFailed": "解析 EPG 失败",
-    "watchingYnotv": "正在观看 YnoTV"
+    "watchingYnotv": "正在观看 YnoTV",
+    "scheduled": "已安排",
+    "noProgramInfo": "没有节目信息",
+    "elapsedPercent": "已播放 {{percent}}%"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "在 VOD 搜索中包含源名称",
         "includeSourceVodSub": "启用后，搜索 VOD 电影和剧集时，搜索结果会显示源名称。这有助于区分来自不同源的同名 VOD 内容。",
         "maxSearchResults": "最大搜索结果数",
-        "default200": "200（默认）",
-        "maxSearchResultsSub": "频道搜索、自定义分组搜索和日历频道选择器中显示的最大结果数。较高的值可能会影响性能。",
+        "default1000": "1000（默认）",
+        "maxSearchResultsSub": "频道搜索、自定义分组搜索和日历频道选择器中显示的最大结果数。结果已虚拟化，因此较大的数值也能保持流畅，上限为 5000。",
         "searchResultsOrder": "搜索结果顺序",
         "alphabetical": "按字母顺序",
         "searchResultsOrderSub": "选择搜索结果的排序方式。\"默认\"按数据库顺序显示结果。\"按字母顺序\"按名称对频道和节目排序（A-Z）。"
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}} 秒前",
     "mAgo": "{{count}} 分钟前",
     "hAgo": "{{count}} 小时前",
-    "dAgo": "{{count}} 天前"
+    "dAgo": "{{count}} 天前",
+    "durationHM": "{{hours}}小时{{minutes}}分",
+    "durationH": "{{hours}}小时",
+    "durationM": "{{minutes}}分钟",
+    "lessThanMinute": "不足 1 分钟",
+    "leftHM": "剩余 {{hours}}小时{{minutes}}分",
+    "leftH": "剩余 {{hours}}小时",
+    "leftM": "剩余 {{minutes}}分钟"
   },
   "sports": {
     "tabs": {
@@ -2543,7 +2560,7 @@
     "editMetadataFieldYear": "年份",
     "editMetadataFieldPoster": "海报 URL",
     "editMetadataFieldPlot": "剧情",
-    "editMetadataTmdbId": "TMDB ID",
+    "editMetadataTmdbId": "TMDB 标识",
     "editMetadataSave": "保存",
     "editMetadataCancel": "取消",
     "editMetadataSaved": "已保存",

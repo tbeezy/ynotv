@@ -1,4 +1,4 @@
-import { useSettingsStore, DEFAULT_SUBTITLE_SETTINGS } from './settingsStore';
+import { useSettingsStore, DEFAULT_SUBTITLE_SETTINGS, DEFAULT_MAX_SEARCH_RESULTS, clampMaxSearchResults } from './settingsStore';
 import type { SettingsState } from './settingsStore';
 import type { SavedLayoutState } from '../hooks/useLayoutPersistence';
 import type { ThemeId } from '../types/app';
@@ -202,7 +202,7 @@ async function hydrateSettingsStore(): Promise<void> {
         liveBufferOffset: data.liveBufferOffset ?? 0,
         includeSourceInSearch: data.includeSourceInSearch ?? false,
         includeSourceInVodSearch: data.includeSourceInVodSearch ?? false,
-        maxSearchResults: data.maxSearchResults ?? 200,
+        maxSearchResults: clampMaxSearchResults(data.maxSearchResults ?? DEFAULT_MAX_SEARCH_RESULTS),
         searchResultsOrder: data.searchResultsOrder ?? 'default',
         sourceFontSize: data.sourceFontSize ?? 12,
         stremioBadgeSize: data.stremioBadgeSize ?? 100,

@@ -594,6 +594,15 @@ function getInitialLanguage(): string {
   return i18n.language || 'en';
 }
 
+// Search result cap — the search result lists are virtualized, so the UI stays
+// smooth well past the old 200 default. 5000 is the hard upper bound.
+export const DEFAULT_MAX_SEARCH_RESULTS = 1000;
+export const MAX_SEARCH_RESULTS_LIMIT = 5000;
+export function clampMaxSearchResults(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_MAX_SEARCH_RESULTS;
+  return Math.min(MAX_SEARCH_RESULTS_LIMIT, Math.max(50, Math.round(value)));
+}
+
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   // i18n / language
   language: getInitialLanguage(),
@@ -617,7 +626,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   // Search
   includeSourceInSearch: false,
   includeSourceInVodSearch: false,
-  maxSearchResults: 200,
+  maxSearchResults: DEFAULT_MAX_SEARCH_RESULTS,
   searchResultsOrder: 'default',
   sourceFontSize: 12,
   setSourceFontSize: (size) => {

@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Kedvencek sorrendjének kezelése",
     "noChannels": "Nincs csatorna",
     "noChannelsFound": "Nem találhatók csatornák",
+    "noLivePrograms": "Jelenleg nincs élő műsor",
     "noResultsFound": "Nincs találat",
+    "noUpcomingPrograms": "Nincs közelgő műsor",
     "now": "Most",
     "playlistEditor": "Lejátszási lista szerkesztő",
     "programsCount_one": "{{count}} program",
@@ -221,8 +223,13 @@
     "refreshSource": "Forrás frissítése",
     "resultsCount_one": "{{count}} találat",
     "resultsCount_other": "{{count}} találat",
+    "scrollToTop": "Görgetés az elejére",
     "searchChannelsPlaceholder": "Csatornák keresése...",
     "searchResults": "Keresési találatok",
+    "searchTabChannels": "Csatornák",
+    "searchTabLive": "Élő most EPG",
+    "searchTabUpcoming": "Közelgő EPG",
+    "searching": "Keresés…",
     "selectAChannel": "Válasszon csatornát",
     "shiftHours": "Eltolás {{hours}} órával",
     "showPlaylistName": "Lejátszási lista nevének megjelenítése minden csatornánál",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Az újrapróbálkozások maximális száma túllépve az adatbázisműveletnél",
     "epgDownloadInterrupted": "A letöltés megszakadt",
     "epgParseFailed": "Az EPG elemzése sikertelen",
-    "watchingYnotv": "YnoTV nézése"
+    "watchingYnotv": "YnoTV nézése",
+    "scheduled": "ÜTEMEZVE",
+    "noProgramInfo": "Nincs műsorinformáció",
+    "elapsedPercent": "{{percent}}% eltelt"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Forrásnév bevonása a VOD-keresésbe",
         "includeSourceVodSub": "Ha engedélyezve van, a forrásnév megjelenik a keresési találatoknál VOD-filmek és -sorozatok keresésekor. Ez segít megkülönböztetni a különböző források azonos nevű VOD-tartalmait.",
         "maxSearchResults": "Maximális keresési találatok",
-        "default200": "200 (alapértelmezett)",
-        "maxSearchResultsSub": "A csatornakeresésben, az egyéni csoportkeresésben és a naptár csatornaválasztójában megjelenő találatok maximális száma. A magasabb értékek befolyásolhatják a teljesítményt.",
+        "default1000": "1000 (alapértelmezett)",
+        "maxSearchResultsSub": "A csatornakeresésben, az egyéni csoportok keresésében és a naptár csatornaválasztójában megjelenő eredmények maximális száma. Az eredmények virtualizáltak, így a nagy értékek is gördülékenyek maradnak, maximum 5000.",
         "searchResultsOrder": "Keresési találatok sorrendje",
         "alphabetical": "Betűrend",
         "searchResultsOrderSub": "Válassza ki a keresési találatok rendezését. Az „Alapértelmezett” adatbázis-sorrendben jeleníti meg a találatokat. A „Betűrend” név szerint (A–Z) rendezi a csatornákat és műsorokat."
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}} mp-vel ezelőtt",
     "mAgo": "{{count}} perccel ezelőtt",
     "hAgo": "{{count}} órával ezelőtt",
-    "dAgo": "{{count}} nappal ezelőtt"
+    "dAgo": "{{count}} nappal ezelőtt",
+    "durationHM": "{{hours}}ó {{minutes}}p",
+    "durationH": "{{hours}}ó",
+    "durationM": "{{minutes}}p",
+    "lessThanMinute": "< 1p",
+    "leftHM": "{{hours}}ó {{minutes}}p van hátra",
+    "leftH": "{{hours}}ó van hátra",
+    "leftM": "{{minutes}}p van hátra"
   },
   "sports": {
     "tabs": {

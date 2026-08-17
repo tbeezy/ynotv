@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "إدارة ترتيب المفضلة",
     "noChannels": "لا توجد قنوات",
     "noChannelsFound": "لا توجد قنوات",
+    "noLivePrograms": "لا توجد برامج مباشرة في الوقت الحالي",
     "noResultsFound": "لا توجد نتائج",
+    "noUpcomingPrograms": "لا توجد برامج قادمة",
     "now": "الآن",
     "playlistEditor": "محرر قوائم التشغيل",
     "programsCount_one": "{{count}} برنامج",
@@ -221,8 +223,13 @@
     "refreshSource": "تحديث المصدر",
     "resultsCount_one": "{{count}} نتيجة",
     "resultsCount_other": "{{count}} نتائج",
+    "scrollToTop": "التمرير إلى الأعلى",
     "searchChannelsPlaceholder": "البحث في القنوات…",
     "searchResults": "نتائج البحث",
+    "searchTabChannels": "القنوات",
+    "searchTabLive": "مباشر الآن EPG",
+    "searchTabUpcoming": "القادمة EPG",
+    "searching": "جارٍ البحث…",
     "selectAChannel": "اختر قناة",
     "shiftHours": "إزاحة {{hours}} ساعة",
     "showPlaylistName": "إظهار اسم قائمة التشغيل لكل قناة",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "تم تجاوز الحد الأقصى لإعادة المحاولة لعملية قاعدة البيانات",
     "epgDownloadInterrupted": "انقطع التنزيل",
     "epgParseFailed": "تعذّر تحليل دليل البرامج",
-    "watchingYnotv": "مشاهدة YnoTV"
+    "watchingYnotv": "مشاهدة YnoTV",
+    "scheduled": "مجدول",
+    "noProgramInfo": "لا توجد معلومات عن البرنامج",
+    "elapsedPercent": "{{percent}}% منقضٍ"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "تضمين اسم المصدر في بحث الفيديو عند الطلب",
         "includeSourceVodSub": "عند التفعيل، يُعرض اسم المصدر لنتائج البحث عند البحث في أفلام ومسلسلات الفيديو عند الطلب. يساعد ذلك في التمييز بين محتوى الفيديو عند الطلب الذي يحمل الاسم نفسه من مصادر مختلفة.",
         "maxSearchResults": "الحد الأقصى لنتائج البحث",
-        "default200": "200 (الافتراضي)",
-        "maxSearchResultsSub": "الحد الأقصى لعدد النتائج التي تظهر في البحث عن القنوات وبحث المجموعات المخصصة ومحدد قنوات التقويم. قد تؤثر القيم الأعلى على الأداء.",
+        "default1000": "1000 (افتراضي)",
+        "maxSearchResultsSub": "الحد الأقصى لعدد النتائج التي تظهر في البحث عن القنوات وبحث المجموعات المخصصة ومحدد قنوات التقويم. النتائج افتراضية بحيث تبقى القيم الكبيرة سلسة، بحد أقصى 5000.",
         "searchResultsOrder": "ترتيب نتائج البحث",
         "alphabetical": "أبجدي",
         "searchResultsOrderSub": "اختر كيفية ترتيب نتائج البحث. «الافتراضي» يعرض النتائج بترتيب قاعدة البيانات. «أبجدي» يرتب القنوات والبرامج حسب الاسم (أ-ي)."
@@ -2026,7 +2036,14 @@
     "secAgo": "قبل {{count}} ثانية",
     "mAgo": "قبل {{count}} دقيقة",
     "hAgo": "قبل {{count}} ساعة",
-    "dAgo": "قبل {{count}} يوم"
+    "dAgo": "قبل {{count}} يوم",
+    "durationHM": "{{hours}}س {{minutes}}د",
+    "durationH": "{{hours}}س",
+    "durationM": "{{minutes}}د",
+    "lessThanMinute": "أقل من دقيقة",
+    "leftHM": "متبقٍ {{hours}}س {{minutes}}د",
+    "leftH": "متبقٍ {{hours}}س",
+    "leftM": "متبقٍ {{minutes}}د"
   },
   "sports": {
     "tabs": {

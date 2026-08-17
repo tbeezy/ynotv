@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Favoritenreihenfolge verwalten",
     "noChannels": "Keine Sender",
     "noChannelsFound": "Keine Sender gefunden",
+    "noLivePrograms": "Derzeit keine Live-Sendungen",
     "noResultsFound": "Keine Ergebnisse gefunden",
+    "noUpcomingPrograms": "Keine kommenden Sendungen",
     "now": "Jetzt",
     "playlistEditor": "Playlist-Editor",
     "programsCount_one": "{{count}} Programm",
@@ -221,8 +223,13 @@
     "refreshSource": "Quelle aktualisieren",
     "resultsCount_one": "{{count}} Ergebnis",
     "resultsCount_other": "{{count}} Ergebnisse",
+    "scrollToTop": "Nach oben scrollen",
     "searchChannelsPlaceholder": "Sender suchen...",
     "searchResults": "Suchergebnisse",
+    "searchTabChannels": "Sender",
+    "searchTabLive": "Jetzt live EPG",
+    "searchTabUpcoming": "Demnächst EPG",
+    "searching": "Suche…",
     "selectAChannel": "Wählen Sie einen Sender",
     "shiftHours": "{{hours}}h verschieben",
     "showPlaylistName": "Playlistnamen für jeden Sender anzeigen",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Maximale Wiederholungsversuche für Datenbankoperation überschritten",
     "epgDownloadInterrupted": "Download unterbrochen",
     "epgParseFailed": "EPG konnte nicht analysiert werden",
-    "watchingYnotv": "YnoTV ansehen"
+    "watchingYnotv": "YnoTV ansehen",
+    "scheduled": "GEPLANT",
+    "noProgramInfo": "Keine Programminformationen",
+    "elapsedPercent": "{{percent}}% vergangen"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Quellnamen in die VOD-Suche einbeziehen",
         "includeSourceVodSub": "Wenn aktiviert, wird der Quellenname bei der Suche nach VOD-Filmen und Serien in den Ergebnissen angezeigt. Hilft, gleichnamige VOD-Inhalte aus verschiedenen Quellen zu unterscheiden.",
         "maxSearchResults": "Maximale Suchergebnisse",
-        "default200": "200 (Standard)",
-        "maxSearchResultsSub": "Maximale Anzahl der Ergebnisse in der Sendersuche, der Suche nach benutzerdefinierten Gruppen und der Senderauswahl des Kalenders. Höhere Werte können die Leistung beeinträchtigen.",
+        "default1000": "1000 (Standard)",
+        "maxSearchResultsSub": "Maximale Anzahl der Ergebnisse in der Sendersuche, der Suche nach benutzerdefinierten Gruppen und der Senderauswahl des Kalenders. Die Ergebnisse werden virtualisiert, sodass große Werte flüssig bleiben; begrenzt auf 5000.",
         "searchResultsOrder": "Reihenfolge der Suchergebnisse",
         "alphabetical": "Alphabetisch",
         "searchResultsOrderSub": "Wählen Sie, wie Suchergebnisse sortiert werden. \"Standard\" zeigt Ergebnisse in Datenbankreihenfolge. \"Alphabetisch\" sortiert Sender und Programme nach Name (A-Z)."
@@ -2026,7 +2036,14 @@
     "secAgo": "vor {{count}}s",
     "mAgo": "vor {{count}}m",
     "hAgo": "vor {{count}}h",
-    "dAgo": "vor {{count}}T"
+    "dAgo": "vor {{count}}T",
+    "durationHM": "{{hours}}h {{minutes}}m",
+    "durationH": "{{hours}}h",
+    "durationM": "{{minutes}}m",
+    "lessThanMinute": "< 1m",
+    "leftHM": "{{hours}}h {{minutes}}m verbleibend",
+    "leftH": "{{hours}}h verbleibend",
+    "leftM": "{{minutes}}m verbleibend"
   },
   "sports": {
     "tabs": {

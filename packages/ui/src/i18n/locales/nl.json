@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Favorieten volgorde beheren",
     "noChannels": "Geen kanalen",
     "noChannelsFound": "Geen kanalen gevonden",
+    "noLivePrograms": "Op dit moment geen live programma's",
     "noResultsFound": "Geen resultaten gevonden",
+    "noUpcomingPrograms": "Geen aankomende programma's",
     "now": "Nu",
     "playlistEditor": "Afspeellijst-editor",
     "programsCount_one": "{{count}} programma",
@@ -221,8 +223,13 @@
     "refreshSource": "Bron vernieuwen",
     "resultsCount_one": "{{count}} resultaat",
     "resultsCount_other": "{{count}} resultaten",
+    "scrollToTop": "Naar boven scrollen",
     "searchChannelsPlaceholder": "Kanalen zoeken...",
     "searchResults": "Zoekresultaten",
+    "searchTabChannels": "Zenders",
+    "searchTabLive": "Nu live EPG",
+    "searchTabUpcoming": "Binnenkort EPG",
+    "searching": "Zoeken…",
     "selectAChannel": "Selecteer een kanaal",
     "shiftHours": "Verschuiven {{hours}}u",
     "showPlaylistName": "Toon afspeellijstnaam voor elk kanaal",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Maximaal aantal pogingen overschreden voor databasebewerking",
     "epgDownloadInterrupted": "Download onderbroken",
     "epgParseFailed": "EPG parseren mislukt",
-    "watchingYnotv": "Kijkt YnoTV"
+    "watchingYnotv": "Kijkt YnoTV",
+    "scheduled": "GEPLAND",
+    "noProgramInfo": "Geen programmainformatie",
+    "elapsedPercent": "{{percent}}% verstreken"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Bronnaam opnemen in VOD-zoekopdracht",
         "includeSourceVodSub": "Wanneer ingeschakeld, wordt de bronnaam weergegeven voor zoekresultaten bij het zoeken van VOD-films en -series. Helpt om VOD-inhoud met dezelfde naam uit verschillende bronnen te onderscheiden.",
         "maxSearchResults": "Maximale zoekresultaten",
-        "default200": "200 (standaard)",
-        "maxSearchResultsSub": "Maximaal aantal resultaten in kanaalzoekopdrachten, aangepaste groepszoekopdrachten en de kanaalkiezer van de kalender. Hogere waarden kunnen de prestaties beïnvloeden.",
+        "default1000": "1000 (standaard)",
+        "maxSearchResultsSub": "Maximaal aantal resultaten in zenderzoekopdracht, zoekopdracht voor aangepaste groepen en de zenderselectie van de kalender. Resultaten worden gevirtualiseerd, zodat grote waarden soepel blijven, met een maximum van 5000.",
         "searchResultsOrder": "Volgorde zoekresultaten",
         "alphabetical": "Alfabetisch",
         "searchResultsOrderSub": "Kies hoe zoekresultaten worden gesorteerd. «Standaard» toont resultaten in databasevolgorde. «Alfabetisch» sorteert kanalen en programma's op naam (A-Z)."
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}}s geleden",
     "mAgo": "{{count}}m geleden",
     "hAgo": "{{count}}u geleden",
-    "dAgo": "{{count}}d geleden"
+    "dAgo": "{{count}}d geleden",
+    "durationHM": "{{hours}}u {{minutes}}m",
+    "durationH": "{{hours}}u",
+    "durationM": "{{minutes}}m",
+    "lessThanMinute": "< 1m",
+    "leftHM": "{{hours}}u {{minutes}}m resterend",
+    "leftH": "{{hours}}u resterend",
+    "leftM": "{{minutes}}m resterend"
   },
   "sports": {
     "tabs": {

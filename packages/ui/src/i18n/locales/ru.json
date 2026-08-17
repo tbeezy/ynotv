@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Управление порядком избранного",
     "noChannels": "Нет каналов",
     "noChannelsFound": "Каналы не найдены",
+    "noLivePrograms": "Сейчас нет прямых эфиров",
     "noResultsFound": "Ничего не найдено",
+    "noUpcomingPrograms": "Нет предстоящих программ",
     "now": "Сейчас",
     "playlistEditor": "Редактор плейлистов",
     "programsCount_one": "{{count}} программа",
@@ -221,8 +223,13 @@
     "refreshSource": "Обновить источник",
     "resultsCount_one": "{{count}} результат",
     "resultsCount_other": "{{count}} результатов",
+    "scrollToTop": "Прокрутить наверх",
     "searchChannelsPlaceholder": "Поиск каналов...",
     "searchResults": "Результаты поиска",
+    "searchTabChannels": "Каналы",
+    "searchTabLive": "Сейчас в эфире EPG",
+    "searchTabUpcoming": "Скоро в эфире EPG",
+    "searching": "Поиск…",
     "selectAChannel": "Выберите канал",
     "shiftHours": "Сдвиг на {{hours}}ч",
     "showPlaylistName": "Показывать название плейлиста для каждого канала",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Превышено максимальное число попыток для операции с базой данных",
     "epgDownloadInterrupted": "Загрузка прервана",
     "epgParseFailed": "Не удалось разобрать EPG",
-    "watchingYnotv": "Смотрит YnoTV"
+    "watchingYnotv": "Смотрит YnoTV",
+    "scheduled": "ЗАПЛАНИРОВАНО",
+    "noProgramInfo": "Нет информации о программе",
+    "elapsedPercent": "{{percent}}% прошло"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Включать название источника в поиск VOD",
         "includeSourceVodSub": "При включении название источника будет отображаться в результатах поиска фильмов и сериалов VOD. Помогает различать контент VOD с одинаковыми названиями из разных источников.",
         "maxSearchResults": "Максимум результатов поиска",
-        "default200": "200 (по умолчанию)",
-        "maxSearchResultsSub": "Максимальное количество результатов в поиске каналов, поиске своих групп и выборе каналов в календаре. Большие значения могут повлиять на производительность.",
+        "default1000": "1000 (по умолчанию)",
+        "maxSearchResultsSub": "Максимальное количество результатов в поиске каналов, поиске пользовательских групп и выборе каналов календаря. Результаты виртуализируются, поэтому большие значения остаются плавными; предел — 5000.",
         "searchResultsOrder": "Порядок результатов поиска",
         "alphabetical": "По алфавиту",
         "searchResultsOrderSub": "Выберите сортировку результатов поиска. «По умолчанию» показывает результаты в порядке базы данных. «По алфавиту» сортирует каналы и программы по названию (А-Я)."
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}}с назад",
     "mAgo": "{{count}}м назад",
     "hAgo": "{{count}}ч назад",
-    "dAgo": "{{count}}д назад"
+    "dAgo": "{{count}}д назад",
+    "durationHM": "{{hours}}ч {{minutes}}м",
+    "durationH": "{{hours}}ч",
+    "durationM": "{{minutes}}м",
+    "lessThanMinute": "< 1 м",
+    "leftHM": "Осталось {{hours}}ч {{minutes}}м",
+    "leftH": "Осталось {{hours}}ч",
+    "leftM": "Осталось {{minutes}}м"
   },
   "sports": {
     "tabs": {

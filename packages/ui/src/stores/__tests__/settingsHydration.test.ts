@@ -99,7 +99,7 @@ describe('settings store hydration', () => {
     expect(s.channelLogoSize).toBe(42);
     expect(s.oledBlack).toBe(false);
     expect(s.timeshiftEnabled).toBe(true);
-    expect(s.maxSearchResults).toBe(200);
+    expect(s.maxSearchResults).toBe(1000);
     expect(s.language).toBe('en');
   });
 

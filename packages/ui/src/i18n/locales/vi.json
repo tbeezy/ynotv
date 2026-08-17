@@ -276,7 +276,9 @@
     "manageFavoritesOrder": "Quản lý thứ tự yêu thích",
     "noChannels": "Không Có Kênh",
     "noChannelsFound": "Không Tìm Thấy Kênh",
+    "noLivePrograms": "Hiện không có chương trình trực tiếp",
     "noResultsFound": "Không tìm thấy kết quả",
+    "noUpcomingPrograms": "Không có chương trình sắp tới",
     "now": "Hiện Tại",
     "playlistEditor": "Trình Chỉnh Sửa Danh Sách Phát",
     "programsCount_one": "{{count}} chương trình",
@@ -284,8 +286,13 @@
     "refreshSource": "Làm Mới Nguồn",
     "resultsCount_one": "{{count}} kết quả",
     "resultsCount_other": "{{count}} kết quả",
+    "scrollToTop": "Cuộn lên đầu",
     "searchChannelsPlaceholder": "Tìm kiếm kênh...",
     "searchResults": "Kết Quả Tìm Kiếm",
+    "searchTabChannels": "Kênh",
+    "searchTabLive": "Trực tiếp ngay EPG",
+    "searchTabUpcoming": "Sắp tới EPG",
+    "searching": "Đang tìm kiếm…",
     "selectAChannel": "Chọn một kênh",
     "shiftHours": "Dịch chuyển {{hours}}h",
     "showPlaylistName": "Hiển thị tên danh sách phát cho từng kênh",
@@ -400,7 +407,10 @@
     "epgMaxRetriesExceeded": "Đã vượt quá số lần thử tối đa cho thao tác cơ sở dữ liệu",
     "epgDownloadInterrupted": "Tải xuống bị gián đoạn",
     "epgParseFailed": "Không phân tích được EPG",
-    "watchingYnotv": "Đang xem YnoTV"
+    "watchingYnotv": "Đang xem YnoTV",
+    "scheduled": "ĐÃ LÊN LỊCH",
+    "noProgramInfo": "Không có thông tin chương trình",
+    "elapsedPercent": "{{percent}}% đã trôi qua"
   },
   "dvr": {
     "title": "DVR & Tải Xuống",
@@ -1347,7 +1357,14 @@
     "secAgo": "{{count}}s trước",
     "mAgo": "{{count}}m trước",
     "hAgo": "{{count}}h trước",
-    "dAgo": "{{count}}d trước"
+    "dAgo": "{{count}}d trước",
+    "durationHM": "{{hours}}g {{minutes}}p",
+    "durationH": "{{hours}}g",
+    "durationM": "{{minutes}}p",
+    "lessThanMinute": "< 1p",
+    "leftHM": "{{hours}}g {{minutes}}p còn lại",
+    "leftH": "{{hours}}g còn lại",
+    "leftM": "{{minutes}}p còn lại"
   },
   "settings": {
     "ui": {
@@ -2035,8 +2052,8 @@
         "includeSourceVod": "Bao gồm tên Nguồn trong Tìm Kiếm VOD",
         "includeSourceVodSub": "Khi bật, tên nguồn sẽ được hiển thị cho kết quả tìm kiếm khi tìm Phim và Phim Bộ VOD. Điều này giúp phân biệt nội dung VOD trùng tên từ các nguồn khác nhau.",
         "maxSearchResults": "Kết quả tìm kiếm tối đa",
-        "default200": "200 (mặc định)",
-        "maxSearchResultsSub": "Số kết quả tối đa hiển thị trong tìm kiếm kênh, tìm kiếm nhóm tùy chỉnh và bộ chọn kênh lịch. Giá trị cao hơn có thể ảnh hưởng đến hiệu suất.",
+        "default1000": "1000 (mặc định)",
+        "maxSearchResultsSub": "Số kết quả tối đa hiển thị trong tìm kiếm kênh, tìm kiếm nhóm tùy chỉnh và bộ chọn kênh lịch. Kết quả được ảo hóa để các giá trị lớn vẫn mượt, giới hạn ở 5000.",
         "searchResultsOrder": "Thứ tự kết quả tìm kiếm",
         "alphabetical": "Thứ Tự Chữ Cái",
         "searchResultsOrderSub": "Chọn cách sắp xếp kết quả tìm kiếm. \"Mặc Định\" hiển thị kết quả theo thứ tự cơ sở dữ liệu. \"Thứ Tự Chữ Cái\" sắp xếp kênh và chương trình theo tên (A-Z)."

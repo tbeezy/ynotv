@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "Upravljanje redoslijedom omiljenih",
     "noChannels": "Nema kanala",
     "noChannelsFound": "Nema pronađenih kanala",
+    "noLivePrograms": "Trenutno nema programa uživo",
     "noResultsFound": "Nema pronađenih rezultata",
+    "noUpcomingPrograms": "Nema nadolazećih programa",
     "now": "Sada",
     "playlistEditor": "Uređivač playlista",
     "programsCount_one": "{{count}} program",
@@ -221,8 +223,13 @@
     "refreshSource": "Osvježi izvor",
     "resultsCount_one": "{{count}} rezultat",
     "resultsCount_other": "{{count}} rezultata",
+    "scrollToTop": "Pomakni na vrh",
     "searchChannelsPlaceholder": "Pretraži kanale...",
     "searchResults": "Rezultati pretrage",
+    "searchTabChannels": "Kanali",
+    "searchTabLive": "Sada uživo EPG",
+    "searchTabUpcoming": "Predstojeći EPG",
+    "searching": "Pretraživanje…",
     "selectAChannel": "Izaberi kanal",
     "shiftHours": "Pomakni {{hours}}h",
     "showPlaylistName": "Prikaži naziv playliste za svaki kanal",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "Prekoračen maksimalni broj pokušaja operacije nad bazom podataka",
     "epgDownloadInterrupted": "Preuzimanje prekinuto",
     "epgParseFailed": "Obrada EPG-a nije uspjela",
-    "watchingYnotv": "Gleda YnoTV"
+    "watchingYnotv": "Gleda YnoTV",
+    "scheduled": "ZAKAZANO",
+    "noProgramInfo": "Nema informacija o programu",
+    "elapsedPercent": "{{percent}}% proteklo"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "Uključi naziv izvora u VOD pretragu",
         "includeSourceVodSub": "Kada je uključeno, naziv izvora će se prikazivati u rezultatima pri pretrazi VOD Filmova i Serija. Ovo pomaže da se razlikuje VOD sadržaj sa istim nazivom iz različitih izvora.",
         "maxSearchResults": "Maksimalni broj rezultata pretrage",
-        "default200": "200 (podrazumijevano)",
-        "maxSearchResultsSub": "Maksimalni broj rezultata prikazanih u pretrazi kanala, pretrazi prilagođenih grupa i biraču kanala kalendara. Veće vrednosti mogu uticati na performanse.",
+        "default1000": "1000 (podrazumijevano)",
+        "maxSearchResultsSub": "Maksimalni broj rezultata u pretrazi kanala, pretrazi prilagođenih grupa i izboru kanala kalendara. Rezultati se virtualiziraju tako da velike vrijednosti ostaju glatke, ograničeno na 5000.",
         "searchResultsOrder": "Redoslijed rezultata pretrage",
         "alphabetical": "Abecedno",
         "searchResultsOrderSub": "Izaberite kako se rezultati pretrage sortiraju. „Podrazumijevano\" prikazuje rezultate u redoslijedu baze podataka. „Abecedno\" sortira kanale i programe po nazivu (A-Z)."
@@ -2026,7 +2036,14 @@
     "secAgo": "pre {{count}}s",
     "mAgo": "pre {{count}}m",
     "hAgo": "pre {{count}}h",
-    "dAgo": "pre {{count}}d"
+    "dAgo": "pre {{count}}d",
+    "durationHM": "{{hours}}h {{minutes}}m",
+    "durationH": "{{hours}}h",
+    "durationM": "{{minutes}}m",
+    "lessThanMinute": "< 1m",
+    "leftHM": "preostalo {{hours}}h {{minutes}}m",
+    "leftH": "preostalo {{hours}}h",
+    "leftM": "preostalo {{minutes}}m"
   },
   "sports": {
     "tabs": {

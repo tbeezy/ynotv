@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "پسندیدہ کی ترتیب کا نظم کریں",
     "noChannels": "کوئی چینل نہیں",
     "noChannelsFound": "کوئی چینل نہیں ملا",
+    "noLivePrograms": "فی الحال کوئی لائیو پروگرام نہیں",
     "noResultsFound": "کوئی نتیجہ نہیں ملا",
+    "noUpcomingPrograms": "کوئی آنے والا پروگرام نہیں",
     "now": "اب",
     "playlistEditor": "پلے لسٹ ایڈیٹر",
     "programsCount_one": "{{count}} پروگرام",
@@ -221,8 +223,13 @@
     "refreshSource": "ماخذ ریفریش کریں",
     "resultsCount_one": "{{count}} نتیجہ",
     "resultsCount_other": "{{count}} نتائج",
+    "scrollToTop": "اوپر سکرول کریں",
     "searchChannelsPlaceholder": "چینلز تلاش کریں...",
     "searchResults": "تلاش کے نتائج",
+    "searchTabChannels": "چینلز",
+    "searchTabLive": "ابھی لائیو EPG",
+    "searchTabUpcoming": "آنے والے EPG",
+    "searching": "تلاش جاری ہے…",
     "selectAChannel": "ایک چینل منتخب کریں",
     "shiftHours": "{{hours}} گھنٹے شفٹ کریں",
     "showPlaylistName": "ہر چینل کے لیے پلے لسٹ کا نام دکھائیں",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "ڈیٹا بیس آپریشن کے لیے زیادہ سے زیادہ کوششیں ختم",
     "epgDownloadInterrupted": "ڈاؤن لوڈ منقطع ہوا",
     "epgParseFailed": "ای پی جی پارس نہیں ہو سکا",
-    "watchingYnotv": "YnoTV دیکھ رہے ہیں"
+    "watchingYnotv": "YnoTV دیکھ رہے ہیں",
+    "scheduled": "طے شدہ",
+    "noProgramInfo": "پروگرام کی معلومات موجود نہیں",
+    "elapsedPercent": "{{percent}}% گزر گیا"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "وی او ڈی تلاش میں ماخذ کا نام شامل کریں",
         "includeSourceVodSub": "فعال ہونے پر، وی او ڈی موویز اور سیریز تلاش کرتے وقت تلاش کے نتائج کے لیے ماخذ کا نام دکھایا جائے گا۔ اس سے مختلف ذرائع کے ایک جیسے نام والے وی او ڈی مواد میں فرق کرنے میں مدد ملتی ہے۔",
         "maxSearchResults": "زیادہ سے زیادہ تلاش کے نتائج",
-        "default200": "200 (ڈیفالٹ)",
-        "maxSearchResultsSub": "چینل تلاش، کسٹم گروپ تلاش اور کیلنڈر چینل سلیکٹر میں دکھائے جانے والے نتائج کی زیادہ سے زیادہ تعداد۔ زیادہ اقدار کارکردگی کو متاثر کر سکتی ہیں۔",
+        "default1000": "1000 (ڈیفالٹ)",
+        "maxSearchResultsSub": "چینل تلاش، حسب ضرورت گروپ تلاش اور کیلنڈر چینل سلیکٹر میں دکھائے جانے والے نتائج کی زیادہ سے زیادہ تعداد۔ نتائج ورچوئلائزڈ ہیں، اس لیے بڑی قدریں ہموار رہتی ہیں، زیادہ سے زیادہ 5000۔",
         "searchResultsOrder": "تلاش کے نتائج کی ترتیب",
         "alphabetical": "حروف تہجی",
         "searchResultsOrderSub": "منتخب کریں کہ تلاش کے نتائج کیسے ترتیب دیے جائیں۔ \"ڈیفالٹ\" نتائج ڈیٹا بیس کی ترتیب میں دکھاتا ہے۔ \"حروف تہجی\" چینلز اور پروگراموں کو نام کے لحاظ سے ترتیب دیتا ہے (A-Z)۔"
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}} سیکنڈ پہلے",
     "mAgo": "{{count}} منٹ پہلے",
     "hAgo": "{{count}} گھنٹے پہلے",
-    "dAgo": "{{count}} دن پہلے"
+    "dAgo": "{{count}} دن پہلے",
+    "durationHM": "{{hours}}گھ {{minutes}}من",
+    "durationH": "{{hours}}گھ",
+    "durationM": "{{minutes}}من",
+    "lessThanMinute": "< 1 من",
+    "leftHM": "{{hours}}گھ {{minutes}}من باقی",
+    "leftH": "{{hours}}گھ باقی",
+    "leftM": "{{minutes}}من باقی"
   },
   "sports": {
     "tabs": {

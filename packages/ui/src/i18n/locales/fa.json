@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "مدیریت ترتیب موردعلاقه‌ها",
     "noChannels": "بدون کانال",
     "noChannelsFound": "کانالی یافت نشد",
+    "noLivePrograms": "در حال حاضر برنامه زنده‌ای وجود ندارد",
     "noResultsFound": "نتیجه‌ای یافت نشد",
+    "noUpcomingPrograms": "برنامه‌ای در پیش نیست",
     "now": "اکنون",
     "playlistEditor": "ویرایشگر لیست پخش",
     "programsCount_one": "{{count}} برنامه",
@@ -221,8 +223,13 @@
     "refreshSource": "به‌روزرسانی منبع",
     "resultsCount_one": "{{count}} نتیجه",
     "resultsCount_other": "{{count}} نتیجه",
+    "scrollToTop": "اسکرول به بالا",
     "searchChannelsPlaceholder": "جستجوی کانال‌ها...",
     "searchResults": "نتایج جستجو",
+    "searchTabChannels": "کانال‌ها",
+    "searchTabLive": "زنده اکنون EPG",
+    "searchTabUpcoming": "در پیش EPG",
+    "searching": "در حال جستجو…",
     "selectAChannel": "یک کانال انتخاب کنید",
     "shiftHours": "جابه‌جایی {{hours}} ساعت",
     "showPlaylistName": "نمایش نام لیست پخش برای هر کانال",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "حداکثر تلاش‌ها برای عملیات پایگاه داده سپری شد",
     "epgDownloadInterrupted": "دانلود قطع شد",
     "epgParseFailed": "تجزیه EPG ناموفق بود",
-    "watchingYnotv": "در حال تماشای YnoTV"
+    "watchingYnotv": "در حال تماشای YnoTV",
+    "scheduled": "زمان‌بندی‌شده",
+    "noProgramInfo": "اطلاعاتی درباره برنامه موجود نیست",
+    "elapsedPercent": "{{percent}}٪ سپری شده"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "شامل منابع VOD",
         "includeSourceVodSub": "هنگام فعال بودن، نام منبع برای نتایج جستجو هنگام جستجوی فیلم‌ها و سریال‌های VOD نمایش داده می‌شود. این به تمایز محتوای VOD هم‌نام از منابع مختلف کمک می‌کند.",
         "maxSearchResults": "حداکثر نتایج جستجو",
-        "default200": "پیش‌فرض ۲۰۰",
-        "maxSearchResultsSub": "حداکثر تعداد نتایج در جستجوی کانال، جستجوی گروه سفارشی و انتخاب‌گر کانال تقویم. مقادیر بالاتر ممکن است بر عملکرد تأثیر بگذارد.",
+        "default1000": "۱۰۰۰ (پیش‌فرض)",
+        "maxSearchResultsSub": "حداکثر تعداد نتایج نمایش داده‌شده در جستجوی کانال‌ها، جستجوی گروه‌های سفارشی و انتخاب‌گر کانال تقویم. نتایج مجازی‌سازی می‌شوند تا مقادیر بزرگ روان بمانند، حداکثر ۵۰۰۰.",
         "searchResultsOrder": "ترتیب نتایج جستجو",
         "alphabetical": "الفبایی",
         "searchResultsOrderSub": "انتخاب نحوه مرتب‌سازی نتایج جستجو. «پیش‌فرض» نتایج را به ترتیب پایگاه داده نشان می‌دهد. «الفبایی» کانال‌ها و برنامه‌ها را بر اساس نام (A-Z) مرتب می‌کند."
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}} ثانیه پیش",
     "mAgo": "{{count}} دقیقه پیش",
     "hAgo": "{{count}} ساعت پیش",
-    "dAgo": "{{count}} روز پیش"
+    "dAgo": "{{count}} روز پیش",
+    "durationHM": "{{hours}}س {{minutes}}د",
+    "durationH": "{{hours}}س",
+    "durationM": "{{minutes}}د",
+    "lessThanMinute": "کمتر از ۱ دقیقه",
+    "leftHM": "{{hours}}س {{minutes}}د مانده",
+    "leftH": "{{hours}}س مانده",
+    "leftM": "{{minutes}}د مانده"
   },
   "sports": {
     "tabs": {

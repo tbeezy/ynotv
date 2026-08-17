@@ -639,6 +639,10 @@ export function ChannelPanel({
   // Active search-result tab (single-select: only one section renders at a time)
   const [searchTab, setSearchTab] = useState<'channels' | 'live' | 'upcoming'>('channels');
 
+  // True while the batched program queries for the search results are running
+  // (drives the "Searching…" indicator in the header)
+  const [searchLoading, setSearchLoading] = useState(false);
+
   // Reset to the Channels tab whenever a new search starts (not on every
   // keystroke, so the user's tab choice survives query refinement)
   const prevSearchMode = useRef(isSearchMode);
@@ -992,6 +996,34 @@ export function ChannelPanel({
   }, []);
   const searchChannelsListHeight = useVirtuosoListHeight(searchScroller);
 
+  // Scroll-to-top button (Nuvio-style) for the virtualized search results:
+  // appears at the bottom-right once the active tab's scroller is scrolled down.
+  const [showSearchScrollTop, setShowSearchScrollTop] = useState(false);
+  const searchScrollRAFRef = useRef(0);
+
+  useEffect(() => {
+    if (!isSearchMode || !searchScroller) {
+      setShowSearchScrollTop(false);
+      return;
+    }
+
+    setShowSearchScrollTop(searchScroller.scrollTop > 400);
+
+    const handleScroll = () => {
+      if (searchScrollRAFRef.current) return;
+      searchScrollRAFRef.current = requestAnimationFrame(() => {
+        searchScrollRAFRef.current = 0;
+        setShowSearchScrollTop(searchScroller.scrollTop > 400);
+      });
+    };
+
+    searchScroller.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      searchScroller.removeEventListener('scroll', handleScroll);
+      if (searchScrollRAFRef.current) cancelAnimationFrame(searchScrollRAFRef.current);
+    };
+  }, [isSearchMode, searchScroller]);
+
   // Keyboard navigation
   useEffect(() => {
     if (!visible) return;
@@ -1023,10 +1055,12 @@ export function ChannelPanel({
     if (!isSearchMode) {
       setSearchChannelPrograms(new Map());
       setSearchProgramChannels(new Map());
+      setSearchLoading(false);
       return;
     }
 
     let cancelled = false;
+    setSearchLoading(true);
 
     async function fetchSearchData() {
       const channelProgramsMap = new Map<string, StoredProgram[]>();
@@ -1095,6 +1129,7 @@ export function ChannelPanel({
       if (cancelled) return;
       setSearchChannelPrograms(channelProgramsMap);
       setSearchProgramChannels(programChannelsMap);
+      setSearchLoading(false);
     }
 
     fetchSearchData();
@@ -2710,6 +2745,13 @@ export function ChannelPanel({
                     return t('resultsCount', { count: channelCount + programCount });
                   })()}
                 </span>
+                {/* "Searching…" indicator while the batched program queries run */}
+                {searchLoading && (
+                  <span className="guide-search-status">
+                    <span className="sync-spinner">⟳</span>
+                    {t('searching')}
+                  </span>
+                )}
                 {/* Search result tabs - single-select; only the picked tab renders
                     below. Channels is the default. Shown when more than one tab. */}
                 {availableSearchTabs.length > 1 && (
@@ -2721,16 +2763,17 @@ export function ChannelPanel({
                           ? liveChannels.length
                           : upcomingChannels.length;
                       const label = tab === 'channels'
-                        ? '📺 Channels'
+                        ? t('searchTabChannels')
                         : tab === 'live'
-                          ? 'Live Now EPG'
-                          : 'Upcoming EPG';
+                          ? t('searchTabLive')
+                          : t('searchTabUpcoming');
                       return (
                         <button
                           key={tab}
                           className={`search-tab ${effectiveSearchTab === tab ? 'active' : ''}`}
                           onClick={() => setSearchTab(tab)}
                         >
+                          {tab === 'channels' && <span className="search-tab-icon">📺</span>}
                           {tab === 'live' && <span className="live-dot"></span>}
                           <span>{label}</span>
                           <span className="search-tab-count">({count})</span>
@@ -3230,6 +3273,7 @@ export function ChannelPanel({
                       key="search-live"
                       data={liveChannels}
                       className="search-virtuoso"
+                      scrollerRef={handleSearchScrollerRef}
                       itemContent={(index, entry, context) => (
                         <SearchResultRowVirtuoso
                           index={index}
@@ -3242,7 +3286,7 @@ export function ChannelPanel({
                   </div>
                 ) : (
                   <div className="guide-empty">
-                    <h3>No live programs right now</h3>
+                    <h3>{t('noLivePrograms')}</h3>
                     <p>{t('tryDifferentTerm')}</p>
                   </div>
                 )
@@ -3256,6 +3300,7 @@ export function ChannelPanel({
                       key="search-upcoming"
                       data={upcomingChannels}
                       className="search-virtuoso"
+                      scrollerRef={handleSearchScrollerRef}
                       itemContent={(index, entry, context) => (
                         <SearchResultRowVirtuoso
                           index={index}
@@ -3268,7 +3313,7 @@ export function ChannelPanel({
                   </div>
                 ) : (
                   <div className="guide-empty">
-                    <h3>No upcoming programs</h3>
+                    <h3>{t('noUpcomingPrograms')}</h3>
                     <p>{t('tryDifferentTerm')}</p>
                   </div>
                 )
@@ -3340,6 +3385,19 @@ export function ChannelPanel({
                 ...(guideListHeight > 0 ? { height: `${guideListHeight}px` } : {}),
               }}
             />
+          )}
+          {/* Scroll to Top button (Nuvio-style) for virtualized search results */}
+          {isSearchMode && (
+            <button
+              className={`guide-scroll-top ${showSearchScrollTop ? 'visible' : ''}`}
+              onClick={() => searchScroller?.scrollTo({ top: 0, behavior: 'smooth' })}
+              aria-label={t('scrollToTop')}
+              title={t('scrollToTop')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 15l-6-6-6 6" />
+              </svg>
+            </button>
           )}
         </div>
       </div>

@@ -213,7 +213,9 @@
     "manageFavoritesOrder": "पसंदीदा क्रम प्रबंधित करें",
     "noChannels": "कोई चैनल नहीं",
     "noChannelsFound": "कोई चैनल नहीं मिला",
+    "noLivePrograms": "अभी कोई लाइव प्रोग्राम नहीं है",
     "noResultsFound": "कोई परिणाम नहीं मिला",
+    "noUpcomingPrograms": "कोई आगामी प्रोग्राम नहीं है",
     "now": "अभी",
     "playlistEditor": "प्लेलिस्ट संपादक",
     "programsCount_one": "{{count}} कार्यक्रम",
@@ -221,8 +223,13 @@
     "refreshSource": "स्रोत रीफ़्रेश करें",
     "resultsCount_one": "{{count}} परिणाम",
     "resultsCount_other": "{{count}} परिणाम",
+    "scrollToTop": "ऊपर स्क्रॉल करें",
     "searchChannelsPlaceholder": "चैनल खोजें...",
     "searchResults": "खोज परिणाम",
+    "searchTabChannels": "चैनल",
+    "searchTabLive": "अभी लाइव EPG",
+    "searchTabUpcoming": "आगामी EPG",
+    "searching": "खोज रहे हैं…",
     "selectAChannel": "एक चैनल चुनें",
     "shiftHours": "{{hours}}घं शिफ्ट करें",
     "showPlaylistName": "प्रत्येक चैनल के लिए प्लेलिस्ट नाम दिखाएँ",
@@ -337,7 +344,10 @@
     "epgMaxRetriesExceeded": "डेटाबेस ऑपरेशन के लिए अधिकतम प्रयास समाप्त",
     "epgDownloadInterrupted": "डाउनलोड बाधित",
     "epgParseFailed": "EPG पार्स करने में विफल",
-    "watchingYnotv": "YnoTV देखा जा रहा है"
+    "watchingYnotv": "YnoTV देखा जा रहा है",
+    "scheduled": "निर्धारित",
+    "noProgramInfo": "प्रोग्राम की कोई जानकारी नहीं",
+    "elapsedPercent": "{{percent}}% बीत गया"
   },
   "nav": {
     "epgButtons": {
@@ -801,8 +811,8 @@
         "includeSourceVod": "VOD स्रोत शामिल करें",
         "includeSourceVodSub": "सक्षम होने पर, VOD फ़िल्में और सीरीज़ खोजते समय खोज परिणामों के लिए स्रोत नाम प्रदर्शित किया जाएगा। इससे विभिन्न स्रोतों के समान नाम वाली VOD सामग्री में अंतर करने में मदद मिलती है।",
         "maxSearchResults": "अधिकतम खोज परिणाम",
-        "default200": "डिफ़ॉल्ट 200",
-        "maxSearchResultsSub": "चैनल खोज, कस्टम समूह खोज और कैलेंडर चैनल चयनकर्ता में दिखाने के लिए अधिकतम परिणाम संख्या। अधिक मान प्रदर्शन को प्रभावित कर सकते हैं।",
+        "default1000": "1000 (डिफ़ॉल्ट)",
+        "maxSearchResultsSub": "चैनल खोज, कस्टम ग्रुप खोज और कैलेंडर चैनल चयनकर्ता में दिखाए जाने वाले परिणामों की अधिकतम संख्या। परिणाम वर्चुअलाइज़्ड हैं, इसलिए बड़ी संख्याएँ सुचारू रहती हैं, अधिकतम 5000।",
         "searchResultsOrder": "खोज परिणाम क्रम",
         "alphabetical": "वर्णानुक्रम",
         "searchResultsOrderSub": "चुनें कि खोज परिणाम कैसे क्रमबद्ध किए जाएँ। \"डिफ़ॉल्ट\" परिणाम डेटाबेस क्रम में दिखाता है। \"वर्णानुक्रम\" चैनलों और कार्यक्रमों को नाम (A-Z) के अनुसार क्रमबद्ध करता है।"
@@ -2026,7 +2036,14 @@
     "secAgo": "{{count}} सेकंड पहले",
     "mAgo": "{{count}} मिन पहले",
     "hAgo": "{{count}} घं पहले",
-    "dAgo": "{{count}} दिन पहले"
+    "dAgo": "{{count}} दिन पहले",
+    "durationHM": "{{hours}}घं {{minutes}}मिन",
+    "durationH": "{{hours}}घं",
+    "durationM": "{{minutes}}मिन",
+    "lessThanMinute": "< 1 मिन",
+    "leftHM": "{{hours}}घं {{minutes}}मिन शेष",
+    "leftH": "{{hours}}घं शेष",
+    "leftM": "{{minutes}}मिन शेष"
   },
   "sports": {
     "tabs": {

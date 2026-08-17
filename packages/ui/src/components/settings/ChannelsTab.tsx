@@ -1,4 +1,5 @@
 import { useSetChannelSortOrder, useSetCategorySortOrder, useSetIncludeAllChannelsToPlaylist, useSidebarDragHotkey, useSetSidebarDragHotkey } from '../../stores/uiStore';
+import { MAX_SEARCH_RESULTS_LIMIT } from '../../stores/settingsStore';
 import './PlaybackTab.css'; // Reuse existing tab styles for toggle
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -265,9 +266,11 @@ export function ChannelsTab({
               >
                 <option value={50}>50</option>
                 <option value={100}>100</option>
-                <option value={200}>{i18n.t('settings:livetv.channels.default200')}</option>
+                <option value={200}>200</option>
                 <option value={500}>500</option>
-                <option value={1000}>1000</option>
+                <option value={1000}>{i18n.t('settings:livetv.channels.default1000')}</option>
+                <option value={2000}>2000</option>
+                <option value={MAX_SEARCH_RESULTS_LIMIT}>{MAX_SEARCH_RESULTS_LIMIT}</option>
               </select>
             </div>
             <p className="form-hint" style={{ marginTop: '0.5rem' }}>
