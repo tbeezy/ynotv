@@ -1,0 +1,384 @@
+/* VodMetadataEditModal — matches the app's modal conventions (see AddToPlaylistModal). */
+.vod-metadata-edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: vod-metadata-fade-in 200ms ease;
+}
+
+@keyframes vod-metadata-fade-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.vod-metadata-edit-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  background: var(--bg-primary, #121526);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #fff;
+}
+
+.vod-metadata-edit-modal__header {
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.vod-metadata-edit-modal__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vod-metadata-edit-modal__close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+
+.vod-metadata-edit-modal__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.vod-metadata-edit-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ─── TMDB search section ──────────────────────────────────────────────── */
+.vod-metadata-tmdb-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.vod-metadata-tmdb-search {
+  display: flex;
+  gap: 10px;
+}
+
+.vod-metadata-tmdb-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.vod-metadata-tmdb-input:focus {
+  border-color: #3b82f6;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.vod-metadata-tmdb-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+
+.vod-metadata-tmdb-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.vod-metadata-tmdb-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.vod-metadata-tmdb-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.vod-metadata-tmdb-empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.vod-metadata-tmdb-hint {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.85rem;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.vod-metadata-tmdb-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.vod-metadata-tmdb-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #fff;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.vod-metadata-tmdb-result:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.vod-metadata-tmdb-result__poster {
+  width: 42px;
+  height: 62px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.vod-metadata-tmdb-result__poster--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.vod-metadata-tmdb-result__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.vod-metadata-tmdb-result__name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vod-metadata-tmdb-result__year {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.vod-metadata-tmdb-result__use {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+/* ─── Manual fields ─────────────────────────────────────────────────────── */
+.vod-metadata-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.vod-metadata-field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.vod-metadata-field-row .vod-metadata-field {
+  flex: 1;
+}
+
+.vod-metadata-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vod-metadata-field__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.vod-metadata-field__input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.vod-metadata-field__input:focus {
+  border-color: #3b82f6;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.vod-metadata-field__textarea {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.vod-metadata-field__textarea:focus {
+  border-color: #3b82f6;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+/* ─── Footer ────────────────────────────────────────────────────────────── */
+.vod-metadata-edit-modal__footer {
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.vod-metadata-edit-footer-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.vod-metadata-edit-reset {
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #f87171;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.vod-metadata-edit-reset:hover {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.vod-metadata-edit-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.vod-metadata-edit-cancel:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.vod-metadata-edit-save {
+  background: #3b82f6;
+  border: none;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.vod-metadata-edit-save:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.vod-metadata-edit-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Themed scrollbars for scrollable regions */
+.vod-metadata-edit-modal__body,
+.vod-metadata-tmdb-results {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-hover, rgba(255, 255, 255, 0.15)) transparent;
+}
+
+.vod-metadata-edit-modal__body::-webkit-scrollbar,
+.vod-metadata-tmdb-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vod-metadata-edit-modal__body::-webkit-scrollbar-track,
+.vod-metadata-tmdb-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vod-metadata-edit-modal__body::-webkit-scrollbar-thumb,
+.vod-metadata-tmdb-results::-webkit-scrollbar-thumb {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.15));
+  border-radius: 3px;
+}

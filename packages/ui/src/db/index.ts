@@ -118,6 +118,22 @@ export interface VodCategory {
   display_order?: number;
 }
 
+// User-corrected VOD metadata (title/year/poster/plot/tmdb_id). Lives in its
+// own table that sync never writes, so provider syncs overwrite vodMovies/
+// vodSeries rows without touching user edits — the same pattern as the EPG
+// override tables. Keyed by `${media_type}:${media_id}`.
+export interface VodMetadataOverride {
+  override_key: string;        // `${media_type}:${media_id}`
+  media_id: string;            // stream_id (movie) / series_id (series)
+  media_type: 'movie' | 'series';
+  title?: string | null;
+  year?: string | null;
+  poster?: string | null;      // Poster URL
+  plot?: string | null;
+  tmdb_id?: number | null;
+  updated_at: number;
+}
+
 // User preferences (last selected category, etc.)
 export interface UserPrefs {
   key: string;
@@ -391,6 +407,7 @@ class YnotvDatabase extends SqliteDatabase {
   vodSeries: SqliteTable<StoredSeries, string>;
   vodEpisodes: SqliteTable<StoredEpisode, string>;
   vodCategories: SqliteTable<VodCategory, string>;
+  vodMetadataOverrides: SqliteTable<VodMetadataOverride, string>;
   channelMetadata: SqliteTable<ChannelMetadata, string>;
   dvrSchedules: SqliteTable<DvrSchedule, number>;
   dvrRecordings: SqliteTable<DvrRecording, number>;
@@ -429,6 +446,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.vodSeries = new SqliteTable('vodSeries', 'series_id', this.dbPromise);
     this.vodEpisodes = new SqliteTable('vodEpisodes', 'id', this.dbPromise);
     this.vodCategories = new SqliteTable('vodCategories', 'category_id', this.dbPromise);
+    this.vodMetadataOverrides = new SqliteTable('vod_metadata_overrides', 'override_key', this.dbPromise);
     this.channelMetadata = new SqliteTable('channelMetadata', 'stream_id', this.dbPromise);
     this.dvrSchedules = new SqliteTable('dvr_schedules', 'id', this.dbPromise);
     this.dvrRecordings = new SqliteTable('dvr_recordings', 'id', this.dbPromise);
@@ -467,6 +485,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.vodSeries.updateDbPromise(this.dbPromise);
     this.vodEpisodes.updateDbPromise(this.dbPromise);
     this.vodCategories.updateDbPromise(this.dbPromise);
+    this.vodMetadataOverrides.updateDbPromise(this.dbPromise);
     this.channelMetadata.updateDbPromise(this.dbPromise);
     this.dvrSchedules.updateDbPromise(this.dbPromise);
     this.dvrRecordings.updateDbPromise(this.dbPromise);
@@ -539,7 +558,7 @@ class YnotvDatabase extends SqliteDatabase {
     // Each version block runs exactly ONCE. To add new columns in the future,
     // increment DB_VERSION and add a new case (do NOT modify existing cases).
     // ─────────────────────────────────────────────────────────────────────────
-    const DB_VERSION = 24;
+    const DB_VERSION = 25;
     const versionResult = await db.select('PRAGMA user_version') as Array<{ user_version: number }>;
     const currentVersion = versionResult[0]?.user_version ?? 0;
 
@@ -942,6 +961,12 @@ class YnotvDatabase extends SqliteDatabase {
         await addColumn('epg_channel_overrides', 'logo_padding', 'TEXT');
       }
 
+      // v25: VOD metadata overrides — user-edited title/year/poster/plot/tmdb_id.
+      // Table is created via CREATE TABLE IF NOT EXISTS below, so this block is minimal.
+      if (currentVersion < 25) {
+        console.log('[DB] v25 migration: VOD metadata overrides table added');
+      }
+
       // Bump the stored version so these migrations never run again
       await db.execute(`PRAGMA user_version = ${DB_VERSION}`);
       console.log(`[DB] Migration to v${DB_VERSION} complete`);
@@ -999,6 +1024,20 @@ class YnotvDatabase extends SqliteDatabase {
     await db.execute(`CREATE TABLE IF NOT EXISTS app_kv (
         key TEXT PRIMARY KEY,
         value TEXT
+      )`);
+
+    // VOD metadata overrides — user-corrected title/year/poster/plot/tmdb_id.
+    // Never touched by sync (see VodMetadataOverride).
+    await db.execute(`CREATE TABLE IF NOT EXISTS vod_metadata_overrides (
+        override_key TEXT PRIMARY KEY,
+        media_id TEXT NOT NULL,
+        media_type TEXT NOT NULL,
+        title TEXT,
+        year TEXT,
+        poster TEXT,
+        plot TEXT,
+        tmdb_id INTEGER,
+        updated_at INTEGER NOT NULL
       )`);
 
     // Team channel links — maps a sports team to a provider channel so games

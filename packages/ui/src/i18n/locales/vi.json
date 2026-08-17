@@ -3862,6 +3862,24 @@
     "seriesNotFound": "Không tìm thấy phim bộ",
     "sourceNotFound": "Không tìm thấy nguồn",
     "failedToFetchEpisodes": "Không tải được các tập",
-    "syncFailed": "Đồng bộ thất bại"
+    "syncFailed": "Đồng bộ thất bại",
+    "editMetadata": "Chỉnh sửa siêu dữ liệu",
+    "editMetadataTitle": "Chỉnh sửa siêu dữ liệu",
+    "editMetadataNoTmdbKey": "Bật TMDB trong Cài đặt → Siêu dữ liệu để tìm kiếm tiêu đề, năm, áp phích và cốt truyện chính xác.",
+    "editMetadataTmdbSearchPlaceholder": "Tìm kiếm TMDB...",
+    "editMetadataTmdbSearchBtn": "Tìm kiếm",
+    "editMetadataSearching": "Đang tìm kiếm TMDB...",
+    "editMetadataSearchError": "Tìm kiếm TMDB thất bại. Kiểm tra khóa API của bạn và thử lại.",
+    "editMetadataNoResults": "Không tìm thấy kết quả nào.",
+    "editMetadataUseResult": "Sử dụng kết quả này",
+    "editMetadataFieldTitle": "Tiêu đề",
+    "editMetadataFieldYear": "Năm",
+    "editMetadataFieldPoster": "URL áp phích",
+    "editMetadataFieldPlot": "Cốt truyện",
+    "editMetadataTmdbId": "ID TMDB",
+    "editMetadataSave": "Lưu",
+    "editMetadataCancel": "Hủy",
+    "editMetadataSaved": "Đã lưu",
+    "editMetadataReset": "Đặt lại về siêu dữ liệu của nhà cung cấp"
   }
 }

@@ -27,6 +27,7 @@ import { StremioHoverCard } from './stremio/StremioHoverCard';
 import './stremio/StremioHome.css';
 import { useEnabledSources } from '../hooks/useChannels';
 import { useVodFavoritesStore } from '../stores/vodFavoritesStore';
+import { useVodMetadataOverridesStore } from '../stores/vodMetadataOverridesStore';
 import {
   useCinemetaPopular,
   useCinemetaNew,
@@ -433,6 +434,12 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
     topRatedItems, topRatedLoading,
     type,
   ]);
+
+  // Load user-corrected VOD metadata once so grids and detail views show
+  // edited titles/posters instead of briefly flashing the provider values.
+  useEffect(() => {
+    void useVodMetadataOverridesStore.getState().hydrate();
+  }, []);
 
   const handleItemClick = useCallback((item: MediaItem) => {
     if (item.source_id === 'tmdb' || item.source_id === 'cinemeta') {

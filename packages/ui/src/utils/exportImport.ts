@@ -25,7 +25,7 @@ export interface ExportData {
     timestamp: string;
     sources: Source[];
     settings: AppSettings;
-    favorites: Array<{ streamId: string; sourceId: string }>;
+    favorites: Array<{ streamId: string; sourceId: string; name?: string; favOrder?: number | null }>;
     categoryPreferences: Array<{
         categoryId: string;
         sourceId: string;
@@ -46,6 +46,19 @@ export interface ExportData {
         sourceId: string;
         enabled?: boolean;
         displayOrder?: number;
+    }>;
+    // User-corrected VOD metadata (title/year/poster/plot/tmdb_id) — survives
+    // provider syncs in a separate table, so it must be backed up/restored too.
+    vodMetadataOverrides?: Array<{
+        overrideKey: string;
+        mediaId: string;
+        mediaType: 'movie' | 'series';
+        title?: string | null;
+        year?: string | null;
+        poster?: string | null;
+        plot?: string | null;
+        tmdbId?: number | null;
+        updatedAt: number;
     }>;
     customGroups: Array<{
         groupId: string;
@@ -221,7 +234,11 @@ async function buildExportData(): Promise<ExportData> {
         const favoriteData = favorites.map(ch => ({
             streamId: ch.stream_id,
             sourceId: ch.source_id,
-            name: ch.name
+            name: ch.name,
+            // Custom favorites order must be exported too — without it, restoring
+            // a backup re-creates favorites with fav_order = null and the manual
+            // arrangement falls back to alphabetical ordering.
+            favOrder: ch.fav_order ?? null
         }));
 
         // 3. Get Category Preferences (including filter words and alias)
@@ -283,7 +300,20 @@ async function buildExportData(): Promise<ExportData> {
                 displayOrder: cat.display_order
             }));
 
-        // 5. Get Custom Groups with their channels
+        // 5. Get VOD metadata overrides (user-corrected titles/posters/years)
+        const vodMetadataOverrides = (await db.vodMetadataOverrides.toArray()).map(o => ({
+            overrideKey: o.override_key,
+            mediaId: o.media_id,
+            mediaType: o.media_type,
+            title: o.title,
+            year: o.year,
+            poster: o.poster,
+            plot: o.plot,
+            tmdbId: o.tmdb_id,
+            updatedAt: o.updated_at
+        }));
+
+        // 6. Get Custom Groups with their channels
         const allCustomGroups = await db.customGroups.toArray();
         const allGroupChannels = await db.customGroupChannels.toArray();
 
@@ -567,6 +597,7 @@ async function buildExportData(): Promise<ExportData> {
             categoryPreferences,
             channelPreferences,
             vodCategoryPreferences,
+            vodMetadataOverrides,
             customGroups,
             watchlist,
             epgChannelOverrides,
@@ -847,6 +878,7 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
                     // 3. Root tables and independent/config tables
                     { name: 'sourcesMeta', table: db.sourcesMeta },
                     { name: 'dvrSettings', table: db.dvrSettings },
+                    { name: 'vodMetadataOverrides', table: db.vodMetadataOverrides },
                     { name: 'vodHistory', table: db.vodHistory },
                     { name: 'episodeHistory', table: db.episodeHistory },
                     { name: 'prefs', table: db.prefs },
@@ -875,7 +907,10 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
                             source_id: fav.sourceId,
                             name: (fav as any).name ?? 'Unknown',
                             category_ids: [],
-                            is_favorite: true
+                            is_favorite: true,
+                            // Restore the custom favorites order so the manual
+                            // arrangement survives a backup restore.
+                            fav_order: (fav as any).favOrder ?? null
                         } as unknown as StoredChannel);
                     }
                 }
@@ -1119,6 +1154,23 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
                             await db.failoverGroupMembers.bulkAdd(members);
                         }
                     }
+                }
+            });
+
+            await restoreStep('VOD Metadata Overrides', async () => {
+                if (data.vodMetadataOverrides && data.vodMetadataOverrides.length > 0) {
+                    const overrides = data.vodMetadataOverrides.map(o => ({
+                        override_key: o.overrideKey,
+                        media_id: o.mediaId,
+                        media_type: o.mediaType,
+                        title: o.title ?? null,
+                        year: o.year ?? null,
+                        poster: o.poster ?? null,
+                        plot: o.plot ?? null,
+                        tmdb_id: o.tmdbId ?? null,
+                        updated_at: o.updatedAt
+                    }));
+                    await db.vodMetadataOverrides.bulkAdd(overrides);
                 }
             });
 

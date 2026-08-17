@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, memo } from 'react';
+import { useState, useCallback, useRef, useEffect, memo, useMemo } from 'react';
 import { getTmdbImageUrl, TMDB_POSTER_SIZES } from '../../services/tmdb';
 import { useRpdbSettings } from '../../hooks/useRpdbSettings';
 import { getRpdbPosterUrl } from '../../services/rpdb';
@@ -6,6 +6,11 @@ import type { StoredMovie, StoredSeries } from '../../db';
 import { getVodDisplayYear } from './vodYear';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+import {
+  useVodMetadataOverridesStore,
+  overrideKey,
+  applyVodMetadataOverride,
+} from '../../stores/vodMetadataOverridesStore';
 import './MediaCard.css';
 
 export interface MediaCardProps {
@@ -36,13 +41,22 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
   const [titleOverflows, setTitleOverflows] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
+  // Merge user-corrected metadata (title/year/poster/plot/tmdb_id) on top of
+  // the provider row. Overrides live in a table sync never writes, so edits
+  // survive provider refreshes.
+  const mediaId = type === 'movie'
+    ? (item as StoredMovie).stream_id
+    : (item as StoredSeries).series_id;
+  const metadataOverride = useVodMetadataOverridesStore((s) => s.overrides[overrideKey(mediaId, type)]);
+  const effItem = useMemo(() => applyVodMetadataOverride(item, metadataOverride), [item, metadataOverride]);
+
   // Check if title overflows (triggers marquee animation on hover)
   useEffect(() => {
     const el = titleRef.current;
     if (el) {
       setTitleOverflows(el.scrollWidth > el.clientWidth);
     }
-  }, [item.title, item.name]);
+  }, [effItem.title, effItem.name]);
 
   // Load RPDB settings
   const { apiKey: rpdbApiKey } = useRpdbSettings();
@@ -51,31 +65,34 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
   // Note: Use 'type' prop to determine which field to use, NOT 'stream_icon' in item
   // because series objects may have stream_icon property (set to null)
   const posterUrl = type === 'movie'
-    ? (item as StoredMovie).stream_icon
-    : (item as StoredSeries).cover;
+    ? (effItem as StoredMovie).stream_icon
+    : (effItem as StoredSeries).cover;
 
   // Use RPDB poster if we have an API key and tmdb_id
-  const rpdbPosterUrl = rpdbApiKey && item.tmdb_id
-    ? getRpdbPosterUrl(rpdbApiKey, item.tmdb_id, type)
+  const rpdbPosterUrl = rpdbApiKey && effItem.tmdb_id
+    ? getRpdbPosterUrl(rpdbApiKey, effItem.tmdb_id, type)
     : null;
 
   // Try TMDB image if we have tmdb_id but no local poster
-  const tmdbPosterPath = (item as StoredMovie | StoredSeries).backdrop_path;
+  const tmdbPosterPath = (effItem as StoredMovie | StoredSeries).backdrop_path;
 
   // Priority: RPDB (if available) > local poster > TMDB fallback
   const displayUrl = rpdbPosterUrl || posterUrl || getTmdbImageUrl(tmdbPosterPath, TMDB_POSTER_SIZES.medium);
 
   // Resolve the year the same way sorting does (year column with quoted-value
   // tolerance, release_date/releaseDate, or a trailing year in the name).
-  const year = getVodDisplayYear(item, type);
+  const year = getVodDisplayYear(effItem, type);
 
   // Use clean title if available, otherwise fall back to name
-  const displayTitle = item.title || item.name;
+  const displayTitle = effItem.title || effItem.name;
 
   // Rating - only show if it's a meaningful value (not 0, not NaN)
-  const parsedRating = item.rating ? parseFloat(item.rating) : NaN;
+  const parsedRating = effItem.rating ? parseFloat(effItem.rating) : NaN;
   const rating = !isNaN(parsedRating) && parsedRating > 0 ? parsedRating : null;
 
+  // Pass the RAW item on click (not the merged one) — the detail views apply
+  // the metadata override themselves, so basing them on already-merged data
+  // would make "Reset to provider metadata" unable to recover the original.
   const handleClick = useCallback(() => {
     onClick?.(item);
   }, [item, onClick]);
@@ -83,8 +100,8 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
   const handleDirectPlay = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    onPlayDirect?.(item);
-  }, [item, onPlayDirect]);
+    onPlayDirect?.(effItem);
+  }, [effItem, onPlayDirect]);
 
   const handleRemove = useCallback((e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
@@ -95,8 +112,8 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
   const handleToggleFav = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    onToggleFavorite?.(item);
-  }, [item, onToggleFavorite]);
+    onToggleFavorite?.(effItem);
+  }, [effItem, onToggleFavorite]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -115,21 +132,21 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"
-      aria-label={`${item.name}${year ? ` (${year})` : ''}`}
+      aria-label={`${effItem.name}${year ? ` (${year})` : ''}`}
       style={style}
     >
       <div className="media-card__poster" title={displayTitle || undefined}>
         {displayUrl && !imageError ? (
           <img
             src={displayUrl}
-            alt={item.name}
+            alt={effItem.name}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageError(true)}
             className={imageLoaded ? 'loaded' : ''}
           />
         ) : (
           <div className="media-card__placeholder">
-            <span>{item.name.charAt(0).toUpperCase()}</span>
+            <span>{effItem.name.charAt(0).toUpperCase()}</span>
           </div>
         )}
 

@@ -98,7 +98,15 @@
 .series-detail__header {
   position: relative;
   z-index: 10;
-  padding: 16px 24px;
+  /* v1/v2 pages span the full window and cover the frameless titlebar with
+     content padding (--page-pad-top = 32px); the detail pages must do the
+     same or the back/action buttons end up clipped behind the titlebar.
+     v3 leaves the token undefined so it stays at the plain 16px. */
+  padding: calc(var(--page-pad-top, 0px) + 16px) 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .series-detail__back {

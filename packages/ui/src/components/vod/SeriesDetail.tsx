@@ -6,7 +6,7 @@
  * Slides in as a full page, not a modal.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getTmdbImageUrl, TMDB_POSTER_SIZES, tmdbPersonIdByName } from '../../services/tmdb';
 import { useLazyBackdrop } from '../../hooks/useLazyBackdrop';
 import { useLazyPlot } from '../../hooks/useLazyPlot';
@@ -27,10 +27,16 @@ import { useActiveTmdbToken } from '../../hooks/useTmdbLists';
 import { useLazyVodTrailer, useTrailerPlayerMode, useTrailerSource } from '../../hooks/useLazyVodTrailer';
 import { SetPlayerDropdown, SplitPlayButton, TrailerSplitButton, type VodPlayerMode } from './SplitPlayButton';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
+import { VodMetadataEditModal } from './VodMetadataEditModal';
 import { useSourceNameMap } from '../../hooks/useChannels';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/dateTime';
 import i18n from '../../i18n';
+import {
+  useVodMetadataOverridesStore,
+  overrideKey,
+  applyVodMetadataOverride,
+} from '../../stores/vodMetadataOverridesStore';
 import './SeriesDetail.css';
 
 export interface SeriesDetailProps {
@@ -44,20 +50,26 @@ export interface SeriesDetailProps {
   onSelectVodPlayerMode?: (mode: VodPlayerMode) => void;
 }
 
-export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSeason, onCastClick, vodPlayerMode, onSelectVodPlayerMode }: SeriesDetailProps) {
+export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKey, initialSeason, onCastClick, vodPlayerMode, onSelectVodPlayerMode }: SeriesDetailProps) {
   useTranslation();
   const sourceNameMap = useSourceNameMap();
-  const seriesProp = series;
   // Read the latest series row from the DB so that enrichment written after
   // episode sync (e.g. tmdb_id backfilled from get_series_info) propagates to
   // the lazy metadata hooks, which re-run when series?.tmdb_id changes.
   const liveSeries = useLiveQuery(async () => {
     return db.vodSeries.get(seriesProp.series_id);
   }, [seriesProp.series_id], undefined, 0, 'vodSeries');
-  series = liveSeries ?? seriesProp;
+  const baseSeries = liveSeries ?? seriesProp;
+
+  // Merge user-corrected metadata (title/year/poster/plot/tmdb_id) on top of
+  // the provider row. The override table is never touched by sync, so edits
+  // survive provider refreshes. Everything below uses the merged series.
+  const metadataOverride = useVodMetadataOverridesStore((s) => s.overrides[overrideKey(baseSeries.series_id, 'series')]);
+  const series = useMemo(() => applyVodMetadataOverride(baseSeries, metadataOverride), [baseSeries, metadataOverride]);
 
   const [selectedSeason, setSelectedSeason] = useState<number>(initialSeason ?? 1);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isMetadataEditOpen, setIsMetadataEditOpen] = useState(false);
   const [preselectedEpisode, setPreselectedEpisode] = useState<StoredEpisode | null>(null);
 
   // Fetch episodes
@@ -462,17 +474,28 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
       >
         {/* Header with back button */}
         <header className="series-detail__header">
-        <button
-          className="series-detail__back"
-          onClick={onClose}
-          aria-label={i18n.t('vod:goBack')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          {i18n.t('vod:back')}
-        </button>
-      </header>
+          <button
+            className="series-detail__back"
+            onClick={onClose}
+            aria-label={i18n.t('vod:goBack')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            {i18n.t('vod:back')}
+          </button>
+
+          <button
+            className="series-detail__fav-btn series-detail__edit-meta"
+            onClick={() => setIsMetadataEditOpen(true)}
+            title={i18n.t('vod:editMetadata')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {i18n.t('vod:editMetadata')}
+          </button>
+        </header>
 
       {/* Content */}
       <div className="series-detail__content">
@@ -825,6 +848,13 @@ export function SeriesDetail({ series, onClose, onPlayEpisode, apiKey, initialSe
       preselectedEpisode={preselectedEpisode}
       sourceName={sourceNameMap?.get(series.source_id)}
       posterUrl={posterUrl}
+    />
+
+    <VodMetadataEditModal
+      isOpen={isMetadataEditOpen}
+      onClose={() => setIsMetadataEditOpen(false)}
+      item={series}
+      type="series"
     />
   </>
 );

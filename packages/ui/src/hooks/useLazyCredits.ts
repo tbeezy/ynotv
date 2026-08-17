@@ -39,15 +39,20 @@ export function useLazyCredits(
     cast: null,
     director: null,
   });
-  const lastItemIdRef = useRef<string | null>(null);
-  const fetchingRef = useRef(false);
-
-  // Get item ID for tracking
+  // Full identity of the item for fetch purposes. A metadata-edit save changes
+  // title/name/tmdb_id/year, which changes this key and triggers a fresh fetch.
   const itemId = item ? (isMovie(item) ? item.stream_id : item.series_id) : null;
+  const fetchKey = item
+    ? `${itemId}|${item.title ?? ''}|${item.name ?? ''}|${item.tmdb_id ?? ''}|${item.year ?? ''}`
+    : null;
+  const lastFetchKeyRef = useRef<string | null>(null);
+  const inFlightKeyRef = useRef<string | null>(null);
+  const fetchedKeyRef = useRef<string | null>(null);
 
-  // Reset fetched credits when item changes
-  if (itemId !== lastItemIdRef.current) {
-    lastItemIdRef.current = itemId;
+  // Reset fetched credits when the item identity changes (new item, or the
+  // user corrected the metadata) so the new fetch's result replaces the old.
+  if (fetchKey !== lastFetchKeyRef.current) {
+    lastFetchKeyRef.current = fetchKey;
     if (fetchedCredits.cast !== null || fetchedCredits.director !== null) {
       setFetchedCredits({ cast: null, director: null });
     }
@@ -56,10 +61,12 @@ export function useLazyCredits(
   useEffect(() => {
     if (!item) return;
 
-    // If we already have both cast and director (for movies), no need to fetch
-    if (hasCast && (hasDirector || !isMovie(item))) {
-      return;
-    }
+    // Don't refetch while the exact same key is in flight or already fetched.
+    // A metadata correction changes the key, so it is never blocked here — and
+    // the old hasCast short-circuit is gone: a provider-supplied cast is a
+    // fallback, not a reason to skip refreshing after the user fixes the title.
+    if (inFlightKeyRef.current === fetchKey) return;
+    if (fetchedKeyRef.current === fetchKey) return;
 
     // For movies, we need TMDB API key (no free fallback with cast data)
     // For series, we can use TVMaze as fallback (no API key needed)
@@ -67,13 +74,10 @@ export function useLazyCredits(
       return;
     }
 
-    // Don't double-fetch
-    if (fetchingRef.current) return;
-
     let cancelled = false;
 
     const fetchCredits = async () => {
-      fetchingRef.current = true;
+      inFlightKeyRef.current = fetchKey;
       try {
         let castString: string | null = null;
         let directorString: string | null = null;
@@ -83,7 +87,7 @@ export function useLazyCredits(
         const searchQuery = cleanTitleForSearch(item.title || item.name);
 
         if (!searchQuery) {
-          fetchingRef.current = false;
+          inFlightKeyRef.current = null;
           return;
         }
 
@@ -113,14 +117,15 @@ export function useLazyCredits(
 
           if (!cancelled) {
             setFetchedCredits({ cast: castString, director: null });
+            if (fetchKey !== null) fetchedKeyRef.current = fetchKey;
           }
-          fetchingRef.current = false;
+          inFlightKeyRef.current = null;
           return;
         }
 
         // TMDB path (requires API key)
         if (!apiKey) {
-          fetchingRef.current = false;
+          inFlightKeyRef.current = null;
           return;
         }
 
@@ -173,14 +178,15 @@ export function useLazyCredits(
 
           if (!cancelled) {
             setFetchedCredits({ cast: castString, director: null });
+            if (fetchKey !== null) fetchedKeyRef.current = fetchKey;
           }
-          fetchingRef.current = false;
+          inFlightKeyRef.current = null;
           return;
         }
 
         // If still no tmdb_id, can't fetch credits from TMDB
         if (!foundTmdbId) {
-          fetchingRef.current = false;
+          inFlightKeyRef.current = null;
           return;
         }
 
@@ -238,13 +244,16 @@ export function useLazyCredits(
             cast: castString,
             director: directorString,
           });
+          if (fetchKey !== null) fetchedKeyRef.current = fetchKey;
         }
       } catch (err) {
         if (!cancelled) {
           console.warn('Failed to fetch TMDB credits:', err);
         }
       } finally {
-        fetchingRef.current = false;
+        if (inFlightKeyRef.current === fetchKey) {
+          inFlightKeyRef.current = null;
+        }
       }
     };
 
@@ -252,14 +261,17 @@ export function useLazyCredits(
 
     return () => {
       cancelled = true;
-      fetchingRef.current = false;
+      if (inFlightKeyRef.current === fetchKey) {
+        inFlightKeyRef.current = null;
+      }
     };
-  }, [item?.tmdb_id, item?.title, item?.name, apiKey, hasCast, hasDirector]);
+  }, [fetchKey, apiKey]);
 
-  // Return existing credits or fetched credits
+  // Prefer freshly fetched credits once we have them; fall back to the
+  // provider's cast/director only before a fetch completes (or if it failed).
   return {
-    cast: (hasCast ? item?.cast : fetchedCredits.cast) ?? null,
-    director: (hasDirector && item && isMovie(item) ? item.director : fetchedCredits.director) ?? null,
+    cast: (fetchedCredits.cast ?? (hasCast ? item?.cast : null)) ?? null,
+    director: (fetchedCredits.director ?? (hasDirector && item && isMovie(item) ? item.director : null)) ?? null,
   };
 }
 

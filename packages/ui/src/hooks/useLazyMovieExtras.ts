@@ -34,7 +34,14 @@ export interface MovieExtras {
 
 export function useLazyMovieExtras(
   movie: StoredMovie | null | undefined,
-  apiKey: string | null | undefined
+  apiKey: string | null | undefined,
+  /** bumped whenever the user saves a metadata override for this movie (the
+      override row's updated_at). Lets the hook detect a metadata edit that
+      didn't change title/tmdb/year so it still refreshes. */
+  metadataVersion = 0,
+  /** the tmdb_id the user explicitly pinned via the metadata override, if any.
+      When set, the hook trusts it instead of re-searching after a title edit. */
+  overrideTmdbId?: number | null
 ): MovieExtras {
   const [cast, setCast] = useState<CastMember[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -42,13 +49,22 @@ export function useLazyMovieExtras(
   const [country, setCountry] = useState<string | null>(null);
   const [language, setLanguage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const lastMovieIdRef = useRef<string | null>(null);
-  const fetchingRef = useRef(false);
 
   const movieId = movie?.stream_id ?? null;
+  // Full identity of the item for fetch purposes. A metadata-edit save changes
+  // title/name/tmdb_id/year (or the override version), which changes this key
+  // and triggers a fresh fetch — the old cast must not persist.
+  const fetchKey = movie
+    ? `${movieId}|${movie.title ?? ''}|${movie.name ?? ''}|${movie.tmdb_id ?? ''}|${movie.year ?? ''}|${metadataVersion}|${overrideTmdbId ?? ''}`
+    : null;
+  const lastFetchKeyRef = useRef<string | null>(null);
+  // Which key the in-flight (or completed) fetch corresponds to.
+  const inFlightKeyRef = useRef<string | null>(null);
+  const fetchedKeyRef = useRef<string | null>(null);
+  const lastMetaVersionRef = useRef(metadataVersion);
 
-  if (movieId !== lastMovieIdRef.current) {
-    lastMovieIdRef.current = movieId;
+  if (fetchKey !== lastFetchKeyRef.current) {
+    lastFetchKeyRef.current = fetchKey;
     setCast([]);
     setLogoUrl(null);
     setImdbId(null);
@@ -58,25 +74,36 @@ export function useLazyMovieExtras(
 
   useEffect(() => {
     if (!movie || !apiKey) return;
-    if (fetchingRef.current) return;
+    // Don't refetch while the exact same key is being fetched, but DO allow a
+    // refetch when the metadata changed mid-flight (e.g. the user saved an
+    // override while the first fetch was still running).
+    if (inFlightKeyRef.current === fetchKey) return;
+    if (fetchedKeyRef.current === fetchKey) return;
+
+    const metaChanged = metadataVersion !== lastMetaVersionRef.current;
+    // A metadata edit without a pinned tmdb_id means the title was corrected,
+    // so re-search TMDB instead of trusting a cached (possibly wrong) match.
+    const forceSearch = metaChanged && !overrideTmdbId;
+    // Remember the version we fetched for so a later save re-runs the search.
+    lastMetaVersionRef.current = metadataVersion;
 
     let cancelled = false;
 
     const fetchExtras = async () => {
-      fetchingRef.current = true;
+      inFlightKeyRef.current = fetchKey;
       setLoading(true);
 
       try {
         const searchQuery = cleanTitleForSearch(movie.title || movie.name);
         const year = movie.year || movie.release_date?.slice(0, 4);
         if (!searchQuery) {
-          fetchingRef.current = false;
+          inFlightKeyRef.current = null;
           setLoading(false);
           return;
         }
 
         const cachedTmdbId = movie.tmdb_id ? Number(movie.tmdb_id) || null : null;
-        const revalidate = isTmdbMatchStale(movie.match_attempted);
+        const revalidate = isTmdbMatchStale(movie.match_attempted) || forceSearch;
         let foundTmdbId: number | null = cachedTmdbId;
         let newCast: CastMember[] = [];
         let newLogo: string | null = null;
@@ -116,7 +143,7 @@ export function useLazyMovieExtras(
         }
 
         if (!foundTmdbId) {
-          fetchingRef.current = false;
+          inFlightKeyRef.current = null;
           setLoading(false);
           return;
         }
@@ -172,6 +199,9 @@ export function useLazyMovieExtras(
             await db.vodMovies.update(movie.stream_id, updates);
           }
 
+          if (fetchKey !== null) {
+            fetchedKeyRef.current = fetchKey;
+          }
           setCast(newCast);
           setLogoUrl(newLogo);
           setImdbId(newImdbId);
@@ -183,7 +213,9 @@ export function useLazyMovieExtras(
           console.warn('[useLazyMovieExtras] Failed:', err);
         }
       } finally {
-        fetchingRef.current = false;
+        if (inFlightKeyRef.current === fetchKey) {
+          inFlightKeyRef.current = null;
+        }
         if (!cancelled) setLoading(false);
       }
     };
@@ -192,9 +224,11 @@ export function useLazyMovieExtras(
 
     return () => {
       cancelled = true;
-      fetchingRef.current = false;
+      if (inFlightKeyRef.current === fetchKey) {
+        inFlightKeyRef.current = null;
+      }
     };
-  }, [movie?.stream_id, movie?.title, movie?.name, movie?.tmdb_id, movie?.imdb_id, movie?.match_attempted, apiKey]);
+  }, [fetchKey, movie?.imdb_id, movie?.match_attempted, apiKey]);
 
   return { cast, logoUrl, imdbId, country, language, loading };
 }

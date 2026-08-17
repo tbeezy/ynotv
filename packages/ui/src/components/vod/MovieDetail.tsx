@@ -5,7 +5,7 @@
  * and play button. Slides in as a full page, not a modal.
  */
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { getTmdbImageUrl, TMDB_POSTER_SIZES } from '../../services/tmdb';
 import { useLazyBackdrop } from '../../hooks/useLazyBackdrop';
 import { useLazyPlot } from '../../hooks/useLazyPlot';
@@ -20,9 +20,15 @@ import { useActiveTmdbToken } from '../../hooks/useTmdbLists';
 import { useLazyVodTrailer, useTrailerPlayerMode, useTrailerSource } from '../../hooks/useLazyVodTrailer';
 import { SplitPlayButton, TrailerSplitButton, type VodPlayerMode } from './SplitPlayButton';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
+import { VodMetadataEditModal } from './VodMetadataEditModal';
 import { useSourceNameMap } from '../../hooks/useChannels';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+import {
+  useVodMetadataOverridesStore,
+  overrideKey,
+  applyVodMetadataOverride,
+} from '../../stores/vodMetadataOverridesStore';
 import './MovieDetail.css';
 
 export interface MovieDetailProps {
@@ -35,9 +41,21 @@ export interface MovieDetailProps {
   onSelectVodPlayerMode?: (mode: VodPlayerMode) => void;
 }
 
-export function MovieDetail({ movie, onClose, onPlay, apiKey, onCastClick, vodPlayerMode, onSelectVodPlayerMode }: MovieDetailProps) {
+export function MovieDetail({ movie: movieProp, onClose, onPlay, apiKey, onCastClick, vodPlayerMode, onSelectVodPlayerMode }: MovieDetailProps) {
   useTranslation();
   const sourceNameMap = useSourceNameMap();
+
+  // Merge user-corrected metadata (title/year/poster/plot/tmdb_id) on top of
+  // the provider row. The override table is never touched by sync, so edits
+  // survive provider refreshes. Everything below uses the merged movie.
+  const metadataOverride = useVodMetadataOverridesStore((s) => s.overrides[overrideKey(movieProp.stream_id, 'movie')]);
+  const movie = useMemo(() => applyVodMetadataOverride(movieProp, metadataOverride), [movieProp, metadataOverride]);
+  // Bumped on every override save so the lazy cast/logo hooks re-fetch even
+  // when the edit didn't change title/tmdb/year. overrideTmdbId tells the hook
+  // to trust the user-pinned TMDB id instead of re-searching after a title fix.
+  const metadataVersion = metadataOverride?.updated_at ?? 0;
+  const overrideTmdbId = metadataOverride?.tmdb_id ?? undefined;
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,7 +73,7 @@ export function MovieDetail({ movie, onClose, onPlay, apiKey, onCastClick, vodPl
   const { plot: lazyPlot, genre: lazyGenre, rating: lazyRating } = useLazyPlot(movie, apiKey);
 
   // Lazy-load cast photos, logo, imdb_id, country, language
-  const { cast, logoUrl, imdbId, country, language, loading: extrasLoading } = useLazyMovieExtras(movie, apiKey);
+  const { cast, logoUrl, imdbId, country, language, loading: extrasLoading } = useLazyMovieExtras(movie, apiKey, metadataVersion, overrideTmdbId);
 
   // Get images - use TMDB backdrop if available, fallback to stream_icon
   const backdropUrl = tmdbBackdropUrl || movie.stream_icon;
@@ -65,6 +83,7 @@ export function MovieDetail({ movie, onClose, onPlay, apiKey, onCastClick, vodPl
   }, [movie, onPlay, lazyPlot, backdropUrl, logoUrl]);
 
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isMetadataEditOpen, setIsMetadataEditOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copying, setCopying] = useState(false);
   const handleCopy = useCallback(async () => {
@@ -203,17 +222,28 @@ export function MovieDetail({ movie, onClose, onPlay, apiKey, onCastClick, vodPl
       <div className="movie-detail">
         {/* Header with back button */}
         <header className="movie-detail__header">
-        <button
-          className="movie-detail__back"
-          onClick={onClose}
-          aria-label={i18n.t('vod:goBack')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          {i18n.t('vod:back')}
-        </button>
-      </header>
+          <button
+            className="movie-detail__back"
+            onClick={onClose}
+            aria-label={i18n.t('vod:goBack')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            {i18n.t('vod:back')}
+          </button>
+
+          <button
+            className="movie-detail__btn movie-detail__btn--secondary movie-detail__edit-meta"
+            onClick={() => setIsMetadataEditOpen(true)}
+            title={i18n.t('vod:editMetadata')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {i18n.t('vod:editMetadata')}
+          </button>
+        </header>
 
       {/* Content */}
       <div className="movie-detail__content">
@@ -419,6 +449,13 @@ export function MovieDetail({ movie, onClose, onPlay, apiKey, onCastClick, vodPl
       movie={movie}
       sourceName={sourceNameMap?.get(movie.source_id)}
       posterUrl={posterUrl}
+    />
+
+    <VodMetadataEditModal
+      isOpen={isMetadataEditOpen}
+      onClose={() => setIsMetadataEditOpen(false)}
+      item={movie}
+      type="movie"
     />
   </>
 );
