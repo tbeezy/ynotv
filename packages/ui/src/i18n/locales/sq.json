@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Ruaj",
     "editMetadataCancel": "Anulo",
     "editMetadataSaved": "U ruajt",
-    "editMetadataReset": "Rikthe meta të dhënat e ofruesit"
+    "editMetadataReset": "Rikthe meta të dhënat e ofruesit",
+    "dragReorderHint": "Mbani {{hotkey}} për të tërhequr dhe rirenditur burimet dhe kategoritë",
+    "dragReorderHintAlways": "Tërhiqni për të rirenditur burimet dhe kategoritë",
+    "dismissDragHint": "Hidhe"
   },
   "dvr": {
     "title": "DVR dhe shkarkimet",

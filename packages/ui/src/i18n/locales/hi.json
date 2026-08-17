@@ -2547,7 +2547,10 @@
     "editMetadataSave": "सहेजें",
     "editMetadataCancel": "रद्द करें",
     "editMetadataSaved": "सहेजा गया",
-    "editMetadataReset": "प्रदाता मेटाडेटा पर रीसेट करें"
+    "editMetadataReset": "प्रदाता मेटाडेटा पर रीसेट करें",
+    "dragReorderHint": "स्रोतों और श्रेणियों को खींचकर पुनर्व्यवस्थित करने के लिए {{hotkey}} दबाए रखें",
+    "dragReorderHintAlways": "स्रोतों और श्रेणियों को पुनर्व्यवस्थित करने के लिए खींचें",
+    "dismissDragHint": "खारिज करें"
   },
   "dvr": {
     "title": "DVR और डाउनलोड",

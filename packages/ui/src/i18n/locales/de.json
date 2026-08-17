@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Speichern",
     "editMetadataCancel": "Abbrechen",
     "editMetadataSaved": "Gespeichert",
-    "editMetadataReset": "Auf Anbieter-Metadaten zurücksetzen"
+    "editMetadataReset": "Auf Anbieter-Metadaten zurücksetzen",
+    "dragReorderHint": "Halte {{hotkey}} gedrückt, um Quellen und Kategorien zu ziehen und neu anzuordnen",
+    "dragReorderHintAlways": "Ziehen zum Neuanordnen von Quellen und Kategorien",
+    "dismissDragHint": "Schließen"
   },
   "dvr": {
     "title": "DVR und Downloads",

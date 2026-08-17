@@ -2547,7 +2547,10 @@
     "editMetadataSave": "حفظ",
     "editMetadataCancel": "إلغاء",
     "editMetadataSaved": "تم الحفظ",
-    "editMetadataReset": "إعادة التعيين إلى بيانات المزود"
+    "editMetadataReset": "إعادة التعيين إلى بيانات المزود",
+    "dragReorderHint": "اضغط مع الاستمرار على {{hotkey}} لسحب وإعادة ترتيب المصادر والفئات",
+    "dragReorderHintAlways": "اسحب لإعادة ترتيب المصادر والفئات",
+    "dismissDragHint": "تجاهل"
   },
   "dvr": {
     "title": "التسجيل والتنزيلات",

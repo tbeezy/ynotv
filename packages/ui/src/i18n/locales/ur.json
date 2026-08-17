@@ -2547,7 +2547,10 @@
     "editMetadataSave": "محفوظ کریں",
     "editMetadataCancel": "منسوخ کریں",
     "editMetadataSaved": "محفوظ ہو گیا",
-    "editMetadataReset": "فراہم کنندہ کے میٹا ڈیٹا پر ری سیٹ کریں"
+    "editMetadataReset": "فراہم کنندہ کے میٹا ڈیٹا پر ری سیٹ کریں",
+    "dragReorderHint": "ذرائع اور زمرے گھسیٹ کر دوبارہ ترتیب دینے کے لیے {{hotkey}} دبائے رکھیں",
+    "dragReorderHintAlways": "ذرائع اور زمرے دوبارہ ترتیب دینے کے لیے گھسیٹیں",
+    "dismissDragHint": "مسترد کریں"
   },
   "dvr": {
     "title": "ڈی وی آر اور ڈاؤن لوڈز",

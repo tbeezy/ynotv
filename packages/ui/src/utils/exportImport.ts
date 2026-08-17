@@ -288,9 +288,12 @@ async function buildExportData(): Promise<ExportData> {
             }));
 
         // 4b. Get VOD Category Preferences (enabled/disabled status and display order)
+        // Note: display_order === 0 IS meaningful (first position after a drag),
+        // so any defined order is backed up — unlike LiveTV categories where 0 is
+        // the unsorted default.
         const allVodCategories = await db.vodCategories.toArray();
         const vodCategoryPreferences = allVodCategories
-            .filter(cat => cat.enabled === false || (cat.display_order !== undefined && cat.display_order !== 0))
+            .filter(cat => cat.enabled === false || cat.display_order !== undefined)
             .map(cat => ({
                 categoryId: cat.category_id,
                 sourceId: cat.source_id,

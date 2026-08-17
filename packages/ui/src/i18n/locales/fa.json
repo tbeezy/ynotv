@@ -2547,7 +2547,10 @@
     "editMetadataSave": "ذخیره",
     "editMetadataCancel": "لغو",
     "editMetadataSaved": "ذخیره شد",
-    "editMetadataReset": "بازگردانی به فرادادهٔ ارائه‌دهنده"
+    "editMetadataReset": "بازگردانی به فرادادهٔ ارائه‌دهنده",
+    "dragReorderHint": "برای کشیدن و مرتب کردن مجدد منابع و دسته‌ها، {{hotkey}} را نگه دارید",
+    "dragReorderHintAlways": "برای مرتب کردن مجدد منابع و دسته‌ها بکشید",
+    "dismissDragHint": "رد کردن"
   },
   "dvr": {
     "title": "DVR و دانلودها",

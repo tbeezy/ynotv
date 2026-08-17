@@ -2547,7 +2547,10 @@
     "editMetadataSave": "保存",
     "editMetadataCancel": "取消",
     "editMetadataSaved": "已保存",
-    "editMetadataReset": "重置为提供商元数据"
+    "editMetadataReset": "重置为提供商元数据",
+    "dragReorderHint": "按住 {{hotkey}} 可拖拽重新排序源和分类",
+    "dragReorderHintAlways": "拖拽可重新排序源和分类",
+    "dismissDragHint": "关闭"
   },
   "dvr": {
     "title": "DVR 与下载",

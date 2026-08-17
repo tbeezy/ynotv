@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Сохранить",
     "editMetadataCancel": "Отмена",
     "editMetadataSaved": "Сохранено",
-    "editMetadataReset": "Вернуть метаданные провайдера"
+    "editMetadataReset": "Вернуть метаданные провайдера",
+    "dragReorderHint": "Удерживайте {{hotkey}}, чтобы перетаскивать источники и категории",
+    "dragReorderHintAlways": "Перетаскивайте, чтобы изменить порядок источников и категорий",
+    "dismissDragHint": "Закрыть"
   },
   "dvr": {
     "title": "DVR и загрузки",

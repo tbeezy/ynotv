@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Opslaan",
     "editMetadataCancel": "Annuleren",
     "editMetadataSaved": "Opgeslagen",
-    "editMetadataReset": "Terugzetten naar provider-metadata"
+    "editMetadataReset": "Terugzetten naar provider-metadata",
+    "dragReorderHint": "Houd {{hotkey}} ingedrukt om bronnen en categorieën te slepen en te herschikken",
+    "dragReorderHintAlways": "Sleep om bronnen en categorieën te herschikken",
+    "dismissDragHint": "Sluiten"
   },
   "dvr": {
     "title": "DVR en downloads",

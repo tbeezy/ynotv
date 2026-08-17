@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Mentés",
     "editMetadataCancel": "Mégse",
     "editMetadataSaved": "Elmentve",
-    "editMetadataReset": "Visszaállítás a szolgáltató metaadataira"
+    "editMetadataReset": "Visszaállítás a szolgáltató metaadataira",
+    "dragReorderHint": "Tartsd lenyomva a(z) {{hotkey}} billentyűt a források és kategóriák átrendezéséhez",
+    "dragReorderHintAlways": "Húzd át a forrásokat és kategóriákat az átrendezéshez",
+    "dismissDragHint": "Elutasítás"
   },
   "dvr": {
     "title": "DVR és letöltések",

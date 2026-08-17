@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Sačuvaj",
     "editMetadataCancel": "Otkaži",
     "editMetadataSaved": "Sačuvano",
-    "editMetadataReset": "Vrati meta podatke pružatelja"
+    "editMetadataReset": "Vrati meta podatke pružatelja",
+    "dragReorderHint": "Držite {{hotkey}} za povlačenje i preuređivanje izvora i kategorija",
+    "dragReorderHintAlways": "Povucite za preuređivanje izvora i kategorija",
+    "dismissDragHint": "Odbaci"
   },
   "dvr": {
     "title": "DVR i preuzimanje",

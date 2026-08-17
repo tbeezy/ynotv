@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Zapisz",
     "editMetadataCancel": "Anuluj",
     "editMetadataSaved": "Zapisano",
-    "editMetadataReset": "Przywróć metadane dostawcy"
+    "editMetadataReset": "Przywróć metadane dostawcy",
+    "dragReorderHint": "Przytrzymaj {{hotkey}}, aby przeciągać i zmieniać kolejność źródeł i kategorii",
+    "dragReorderHintAlways": "Przeciągnij, aby zmienić kolejność źródeł i kategorii",
+    "dismissDragHint": "Odrzuć"
   },
   "dvr": {
     "title": "DVR i pobieranie",

@@ -12,7 +12,68 @@ import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useLiveQuery } from '../../hooks/useSqliteLiveQuery';
+import { db } from '../../db';
+import { useSidebarDragHotkey } from '../../stores/uiStore';
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import './VerticalSidebar.css';
+
+// Sortable button for the VOD sidebar — mirrors the LiveTV sidebar's
+// SortableSidebarItem pattern: the whole button surface is the drag zone, and
+// dragging is only enabled while the configured sidebar drag hotkey is held
+// (or always, when the hotkey is set to 'None'). Used for both category items
+// and source-group headers.
+function SortableVodItem({ id, disabled, className = '', onClick, onContextMenu, dropIndicator = null, children }: {
+  id: string;
+  disabled?: boolean;
+  className?: string;
+  onClick?: (e: React.MouseEvent) => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+  dropIndicator?: 'above' | 'below' | null;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const style: React.CSSProperties = {
+    // Only apply transform while actively dragging — a static transform would
+    // create a new CSS containing block that could trap the sticky source headers.
+    transform: isDragging ? CSS.Transform.toString(transform) : undefined,
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 99 : undefined,
+    touchAction: 'none',
+  };
+  return (
+    <button
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`vod-sortable-item ${className} ${isDragging ? 'dragging' : ''}${dropIndicator ? ` drop-${dropIndicator}` : ''}`}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+    >
+      {children}
+    </button>
+  );
+}
 
 // Chevron Icon for expand/collapse
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
@@ -181,6 +242,164 @@ export function VerticalSidebar({
         }));
     };
 
+    // Drag-and-drop reordering of categories within a source group, gated on
+    // the same configured hotkey as the LiveTV sidebar (Settings > Shortcuts).
+    const sidebarDragHotkey = useSidebarDragHotkey();
+    const [isDragKeyPressed, setIsDragKeyPressed] = useState(false);
+
+    useEffect(() => {
+        if (sidebarDragHotkey === 'None') {
+            setIsDragKeyPressed(true);
+            return;
+        }
+
+        const checkKey = (e: KeyboardEvent) => {
+            let active = false;
+            if (sidebarDragHotkey === 'Control') active = e.ctrlKey;
+            else if (sidebarDragHotkey === 'Alt') active = e.altKey;
+            else if (sidebarDragHotkey === 'Shift') active = e.shiftKey;
+            else if (sidebarDragHotkey === 'Meta') active = e.metaKey;
+            setIsDragKeyPressed(active);
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => checkKey(e);
+        const handleKeyUp = (e: KeyboardEvent) => checkKey(e);
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [sidebarDragHotkey]);
+
+    const isDragActive = sidebarDragHotkey === 'None' || isDragKeyPressed;
+
+    const dndSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // Drag-over tracking for the above/below drop indicator lines.
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
+    const [overDragId, setOverDragId] = useState<string | null>(null);
+
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveDragId(String(event.active.id));
+    };
+
+    const handleDragOver = (event: DragOverEvent) => {
+        if (event.over && event.active.id !== event.over.id) {
+            setOverDragId(String(event.over.id));
+        } else {
+            setOverDragId(null);
+        }
+    };
+
+    const handleDragCancel = () => {
+        setActiveDragId(null);
+        setOverDragId(null);
+    };
+
+    const handleCategoryDragEnd = async (sourceId: string, currentList: Category[], event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveDragId(null);
+        setOverDragId(null);
+        if (!over || active.id === over.id || !currentList) return;
+
+        const oldIndex = currentList.findIndex(c => c.id === active.id);
+        const newIndex = currentList.findIndex(c => c.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reordered = arrayMove(currentList, oldIndex, newIndex);
+        try {
+            // Fetch the full rows for this source so we preserve type/enabled/etc.
+            // while reassigning display_order for the reordered (visible) items.
+            const rows = await db.vodCategories.where('source_id').equals(sourceId).toArray();
+            const rowById = new Map(rows.map(r => [r.category_id, r]));
+            const updates = reordered
+                .map((cat, idx) => {
+                    const row = rowById.get(cat.id);
+                    return row ? { ...row, display_order: idx } : null;
+                })
+                .filter((u): u is NonNullable<typeof u> => u !== null);
+
+            if (updates.length > 0) {
+                await db.vodCategories.bulkPut(updates);
+            }
+        } catch (err) {
+            console.error('Failed to save VOD category drag order:', err);
+        }
+    };
+
+    const handleSourceDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveDragId(null);
+        setOverDragId(null);
+        if (!type || !over || active.id === over.id) return;
+
+        const entries = groupedCategories.entries;
+        const oldIndex = entries.findIndex(([id]) => id === active.id);
+        const newIndex = entries.findIndex(([id]) => id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reordered = arrayMove(entries, oldIndex, newIndex);
+        const orderedIds = reordered.map(([id]) => id);
+        try {
+            const pref = await db.prefs.get('vod_sidebar_sources_order');
+            let orders: Record<string, string[]> = {};
+            if (pref?.value) {
+                try {
+                    orders = JSON.parse(pref.value);
+                } catch {
+                    orders = {};
+                }
+            }
+            orders[type] = orderedIds;
+            await db.prefs.put({ key: 'vod_sidebar_sources_order', value: JSON.stringify(orders) });
+        } catch (err) {
+            console.error('Failed to save VOD sidebar source order:', err);
+        }
+    };
+
+    // One-time drag-reorder hint: shown until dismissed (or auto-hidden after
+    // 10s), then persisted forever so it never appears again.
+    const dragHintPref = useLiveQuery(
+        () => db.prefs.get('vod_drag_hint_dismissed'),
+        []
+    );
+    const dragHintDismissed = dragHintPref?.value === '1';
+    const [dragHintVisible, setDragHintVisible] = useState(false);
+
+    useEffect(() => {
+        if (!dragHintDismissed) {
+            setDragHintVisible(true);
+            const timer = setTimeout(() => {
+                setDragHintVisible(false);
+                db.prefs.put({ key: 'vod_drag_hint_dismissed', value: '1' }).catch(() => {});
+            }, 10000);
+            return () => clearTimeout(timer);
+        }
+        setDragHintVisible(false);
+    }, [dragHintDismissed]);
+
+    const dismissDragHint = useCallback(() => {
+        setDragHintVisible(false);
+        db.prefs.put({ key: 'vod_drag_hint_dismissed', value: '1' }).catch(() => {});
+    }, []);
+
+    const dragHotkeyLabel = sidebarDragHotkey === 'Control'
+        ? 'Ctrl'
+        : sidebarDragHotkey === 'Meta'
+            ? 'Win'
+            : sidebarDragHotkey === 'None'
+                ? null
+                : sidebarDragHotkey;
+
+    const dragHintLabel = dragHotkeyLabel
+        ? i18n.t('vod:dragReorderHint', { hotkey: dragHotkeyLabel })
+        : i18n.t('vod:dragReorderHintAlways');
+
     // Process categories: strip prefixes and preserve database / custom order
     const processedCategories = useMemo(() => {
         return categories
@@ -191,6 +410,23 @@ export function VerticalSidebar({
                     : '', // Handle null/undefined names
             }));
     }, [categories]);
+
+    // Persisted per-type source order (dragged source groups), stored in prefs.
+    const sourceOrderPref = useLiveQuery(
+        () => db.prefs.get('vod_sidebar_sources_order'),
+        []
+    );
+
+    const sourceOrder = useMemo(() => {
+        if (!type || !sourceOrderPref?.value) return null;
+        try {
+            const parsed = JSON.parse(sourceOrderPref.value);
+            const order = parsed?.[type];
+            return Array.isArray(order) ? (order as string[]) : null;
+        } catch {
+            return null;
+        }
+    }, [sourceOrderPref, type]);
 
     // Group categories by source
     const groupedCategories = useMemo(() => {
@@ -208,15 +444,28 @@ export function VerticalSidebar({
             }
         }
 
-        // Sort groups by source name
+        // Sort groups by source name, then apply the user's persisted drag order
+        // (sources in the order list first by index; the rest stay alphabetical).
         const sortedGroupEntries = Object.entries(groups).sort(([aId], [bId]) => {
             const nameA = sources[aId] || '';
             const nameB = sources[bId] || '';
             return nameA.localeCompare(nameB);
         });
 
+        if (sourceOrder && sourceOrder.length > 0) {
+            const orderMap = new Map(sourceOrder.map((id, index) => [id, index]));
+            sortedGroupEntries.sort(([aId], [bId]) => {
+                const orderA = orderMap.has(aId) ? orderMap.get(aId)! : Number.MAX_SAFE_INTEGER;
+                const orderB = orderMap.has(bId) ? orderMap.get(bId)! : Number.MAX_SAFE_INTEGER;
+                if (orderA !== orderB) return orderA - orderB;
+                return (sources[aId] || '').localeCompare(sources[bId] || '');
+            });
+        }
+
         return { entries: sortedGroupEntries, orphans };
-    }, [processedCategories, sources]);
+    }, [processedCategories, sources, sourceOrder]);
+
+    const showDragHint = dragHintVisible && (groupedCategories.entries.length > 0 || groupedCategories.orphans.length > 0);
 
     // Handle search key down
     const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -406,43 +655,83 @@ export function VerticalSidebar({
             </div>
 
             {/* Scrollable Bottom Section: Source Groups */}
-            <div className="vertical-sidebar__scrollable">
-                {/* Categories grouped by Source */}
-                {groupedCategories.entries.map(([sourceId, sourceCats]) => {
-                    const isExpanded = !!expandedSources[sourceId] || searchQuery.trim().length > 0;
-                    return (
-                        <div key={sourceId} className={`vertical-sidebar__source-group ${isExpanded ? 'is-expanded' : ''}`}>
-                            <button
-                                className="vertical-sidebar__source-header"
-                                onClick={() => toggleSource(sourceId)}
-                                onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    onContextMenu?.(e, sourceId, sources[sourceId] || i18n.t('vod:unknownSource'));
-                                }}
-                            >
-                                <div className="source-header-left">
-                                    <ChevronIcon expanded={isExpanded} />
-                                    <span className="source-name">{sources[sourceId] || i18n.t('vod:loadingSource')}</span>
-                                </div>
-                                <span className="source-count">{sourceCats.length}</span>
-                            </button>
+            <div className={`vertical-sidebar__scrollable ${isDragActive ? 'vod-drag-active' : ''}`}>
+                {/* Sources (reorderable with the drag hotkey) each containing their categories */}
+                <DndContext
+                    sensors={dndSensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragCancel={handleDragCancel}
+                    onDragEnd={handleSourceDragEnd}
+                >
+                    <SortableContext items={groupedCategories.entries.map(([id]) => id)} strategy={verticalListSortingStrategy}>
+                        {groupedCategories.entries.map(([sourceId, sourceCats]) => {
+                            const isExpanded = !!expandedSources[sourceId] || searchQuery.trim().length > 0;
+                            const activeIdx = activeDragId ? groupedCategories.entries.findIndex(([id]) => id === activeDragId) : -1;
+                            const overIdx = overDragId ? groupedCategories.entries.findIndex(([id]) => id === overDragId) : -1;
+                            const sourceDropIndicator = overDragId === sourceId && activeDragId !== overDragId
+                                ? (activeIdx < overIdx ? 'below' : 'above')
+                                : null;
+                            return (
+                                <div key={sourceId} className={`vertical-sidebar__source-group ${isExpanded ? 'is-expanded' : ''}`}>
+                                    <SortableVodItem
+                                        id={sourceId}
+                                        disabled={!isDragActive}
+                                        className="vertical-sidebar__source-header"
+                                        onClick={() => toggleSource(sourceId)}
+                                        onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            onContextMenu?.(e, sourceId, sources[sourceId] || i18n.t('vod:unknownSource'));
+                                        }}
+                                        dropIndicator={sourceDropIndicator}
+                                    >
+                                        <div className="source-header-left">
+                                            <ChevronIcon expanded={isExpanded} />
+                                            <span className="source-name">{sources[sourceId] || i18n.t('vod:loadingSource')}</span>
+                                        </div>
+                                        <span className="source-count">{sourceCats.length}</span>
+                                    </SortableVodItem>
 
-                            {isExpanded && (
-                                <div className="vertical-sidebar__source-content">
-                                    {sourceCats.map((cat) => (
-                                        <button
-                                            key={cat.id}
-                                            className={`vertical-sidebar__item nested ${selectedId === cat.id ? 'active' : ''}`}
-                                            onClick={() => onSelect(cat.id)}
-                                        >
-                                            {cat.displayName}
-                                        </button>
-                                    ))}
+                                    {isExpanded && (
+                                        <div className="vertical-sidebar__source-content">
+                                            <DndContext
+                                                sensors={dndSensors}
+                                                collisionDetection={closestCenter}
+                                                onDragStart={handleDragStart}
+                                                onDragOver={handleDragOver}
+                                                onDragCancel={handleDragCancel}
+                                                onDragEnd={(e) => handleCategoryDragEnd(sourceId, sourceCats, e)}
+                                            >
+                                                <SortableContext items={sourceCats.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                                                    {sourceCats.map((cat) => {
+                                                        const catActiveIdx = activeDragId ? sourceCats.findIndex(c => c.id === activeDragId) : -1;
+                                                        const catOverIdx = overDragId ? sourceCats.findIndex(c => c.id === overDragId) : -1;
+                                                        const dropIndicator = overDragId === cat.id && activeDragId !== overDragId
+                                                            ? (catActiveIdx < catOverIdx ? 'below' : 'above')
+                                                            : null;
+                                                        return (
+                                                            <SortableVodItem
+                                                                key={cat.id}
+                                                                id={cat.id}
+                                                                disabled={!isDragActive}
+                                                                className={`vertical-sidebar__item nested ${selectedId === cat.id ? 'active' : ''}`}
+                                                                onClick={() => onSelect(cat.id)}
+                                                                dropIndicator={dropIndicator}
+                                                            >
+                                                                {cat.displayName}
+                                                            </SortableVodItem>
+                                                        );
+                                                    })}
+                                                </SortableContext>
+                                            </DndContext>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-                    );
-                })}
+                            );
+                        })}
+                    </SortableContext>
+                </DndContext>
 
                 {/* Orphan Categories (if any) */}
                 {groupedCategories.orphans.map((cat) => (
@@ -455,6 +744,22 @@ export function VerticalSidebar({
                     </button>
                 ))}
             </div>
+
+            {/* One-time drag-reorder hint */}
+            {showDragHint && (
+                <div className="vertical-sidebar__drag-hint">
+                    <span className="vertical-sidebar__drag-hint-text">
+                        {dragHintLabel}
+                    </span>
+                    <button
+                        className="vertical-sidebar__drag-hint-close"
+                        onClick={dismissDragHint}
+                        aria-label={i18n.t('vod:dismissDragHint')}
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

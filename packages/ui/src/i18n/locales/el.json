@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Αποθήκευση",
     "editMetadataCancel": "Ακύρωση",
     "editMetadataSaved": "Αποθηκεύτηκε",
-    "editMetadataReset": "Επαναφορά στα μεταδεδομένα του παρόχου"
+    "editMetadataReset": "Επαναφορά στα μεταδεδομένα του παρόχου",
+    "dragReorderHint": "Κρατήστε {{hotkey}} για μεταφορά και αναδιάταξη πηγών και κατηγοριών",
+    "dragReorderHintAlways": "Σύρετε για αναδιάταξη πηγών και κατηγοριών",
+    "dismissDragHint": "Απόρριψη"
   },
   "dvr": {
     "title": "DVR & Λήψεις",

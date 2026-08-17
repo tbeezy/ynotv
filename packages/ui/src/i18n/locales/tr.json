@@ -2547,7 +2547,10 @@
     "editMetadataSave": "Kaydet",
     "editMetadataCancel": "İptal",
     "editMetadataSaved": "Kaydedildi",
-    "editMetadataReset": "Sağlayıcı meta verilerine sıfırla"
+    "editMetadataReset": "Sağlayıcı meta verilerine sıfırla",
+    "dragReorderHint": "Kaynakları ve kategorileri sürükleyip yeniden sıralamak için {{hotkey}} tuşunu basılı tutun",
+    "dragReorderHintAlways": "Kaynakları ve kategorileri yeniden sıralamak için sürükleyin",
+    "dismissDragHint": "Kapat"
   },
   "dvr": {
     "title": "DVR ve İndirmeler",
