@@ -45,6 +45,18 @@ case "$OS" in
     cp "$TEMP_DIR/mpv-extract/yt-dlp.exe" "$TAURI_BIN_DIR/" 2>/dev/null || true
     cp "$TEMP_DIR/mpv-extract/youtube-dl.exe" "$TAURI_BIN_DIR/" 2>/dev/null || true
 
+    # Bundle the Vulkan loader (vulkan-1.dll). The shinchiro mpv.exe statically
+    # imports vulkan-1.dll, so Windows' loader requires it to be present even
+    # when mpv would fall back to d3d11/opengl. On machines without a Vulkan
+    # runtime installed, mpv.exe fails with "vulkan-1.dll was not found".
+    # Sourced from the official LunarG Vulkan Runtime (Apache-2.0, see the
+    # VulkanRT-License.txt copied alongside).
+    echo "Downloading Vulkan runtime loader (vulkan-1.dll)..."
+    VULKAN_RT_URL="https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-runtime-components.zip"
+    curl -fsSL -o "$TEMP_DIR/vulkan-runtime.zip" "$VULKAN_RT_URL"
+    7z e -r "$TEMP_DIR/vulkan-runtime.zip" -o"$TEMP_DIR/vulkan-extract" "*/x64/vulkan-1.dll" "VulkanRT-License.txt" -y
+    cp "$TEMP_DIR/vulkan-extract/vulkan-1.dll" "$TAURI_BIN_DIR/vulkan-1.dll"
+    cp "$TEMP_DIR/vulkan-extract/VulkanRT-License.txt" "$TAURI_BIN_DIR/VulkanRT-License.txt" 2>/dev/null || true
     rm -rf "$TEMP_DIR"
 
     # Download latest yt-dlp explicitly (ensures it's named for Tauri externalBin)

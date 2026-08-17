@@ -53,5 +53,9 @@ thoughts/
 **/bin/ffmpeg*
 **/bin/*.7z
 **/bin/*.tar.xz
+
+# Vulkan loader (auto-downloaded during build)
+**/bin/vulkan-1.dll
+**/bin/VulkanRT-License.txt
 nul
 /.freebuff
