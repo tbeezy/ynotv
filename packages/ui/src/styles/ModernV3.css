@@ -1093,6 +1093,8 @@ html.modern-ui-v3 {
   --sm-as-secondary-hover-bg: rgba(255, 255, 255, 0.12);
   --sm-as-secondary-hover-border: rgba(255, 255, 255, 0.2);
   --sm-as-secondary-hover-color: #fff;
+  /* Playlists view — create-playlist button liquid glass (v3 dark only) */
+  --playlists-create-btn-filter: blur(16px) saturate(180%);
   /* Sports game-detail modal (gd) — overlay, chrome separators, tabs, tables,
      channel buttons, scoring plays, UFC fighter imgs; the light block
      redefines the surfaces below */
@@ -2460,11 +2462,6 @@ html.modern-ui-v3[data-theme] .guide-channel-logo.logo-smart-trim img {
   border-color: var(--vod-ep-card-hover-border, rgba(255, 255, 255, 0.15)) !important;
   transform: translateY(-2px) !important;
   box-shadow: var(--vod-ep-card-hover-shadow, 0 8px 24px rgba(0, 0, 0, 0.4)) !important;
-}
-
-.modern-ui-v3 .playlists-view__create-btn {
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
 }
 
 /* 9. DVR Pages Liquid Glass Styling */

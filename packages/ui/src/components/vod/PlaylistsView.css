@@ -80,8 +80,8 @@
   );
   color: #fff;
   border: 1px solid color-mix(in srgb, var(--accent-primary, var(--accent-color, #00d4ff)) 45%, rgba(255, 255, 255, 0.22));
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: var(--playlists-create-btn-filter, blur(16px) saturate(180%));
+  -webkit-backdrop-filter: var(--playlists-create-btn-filter, blur(16px) saturate(180%));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
               0 4px 16px rgba(0, 0, 0, 0.25),
               0 0 14px color-mix(in srgb, var(--accent-primary, var(--accent-color, #00d4ff)) 22%, transparent);
