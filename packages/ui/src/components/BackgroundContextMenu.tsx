@@ -7,6 +7,7 @@ import './BackgroundContextMenu.css';
 interface BackgroundContextMenuProps {
   position: { x: number; y: number };
   sportsWidget: 'autohide' | 'persistent' | null;
+  sportsLiveSidebarWidget?: boolean;
   recentWidget: '5' | '10' | null;
   favoritesWidget: boolean;
   whatsNextWidget: boolean;
@@ -14,6 +15,8 @@ interface BackgroundContextMenuProps {
   onAddSportsAutohide: () => void;
   onAddSportsPersistent: () => void;
   onRemoveSports: () => void;
+  onAddSportsLiveSidebar?: () => void;
+  onRemoveSportsLiveSidebar?: () => void;
   onAddRecent5: () => void;
   onAddRecent10: () => void;
   onRemoveRecent: () => void;
@@ -29,6 +32,7 @@ interface BackgroundContextMenuProps {
 export function BackgroundContextMenu({
   position,
   sportsWidget,
+  sportsLiveSidebarWidget,
   recentWidget,
   favoritesWidget,
   whatsNextWidget,
@@ -36,6 +40,8 @@ export function BackgroundContextMenu({
   onAddSportsAutohide,
   onAddSportsPersistent,
   onRemoveSports,
+  onAddSportsLiveSidebar,
+  onRemoveSportsLiveSidebar,
   onAddRecent5,
   onAddRecent10,
   onRemoveRecent,
@@ -97,7 +103,7 @@ export function BackgroundContextMenu({
   }, [onClose]);
 
   const hasCustomGroups = customGroupIds.length > 0;
-  const hasAnyWidget = sportsWidget !== null || recentWidget !== null || favoritesWidget || whatsNextWidget || hasCustomGroups;
+  const hasAnyWidget = sportsWidget !== null || sportsLiveSidebarWidget || recentWidget !== null || favoritesWidget || whatsNextWidget || hasCustomGroups;
 
   return createPortal(
     <div ref={menuRef} className="background-context-menu">
@@ -117,6 +123,23 @@ export function BackgroundContextMenu({
                 className="context-menu-remove-btn" 
                 onClick={(e) => { e.stopPropagation(); onRemoveSports(); onClose(); }}
                 title={i18n.t('contextMenu.stopLiveSports')}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {sportsLiveSidebarWidget && (
+            <div className="context-menu-item context-menu-item-info" style={{ justifyContent: 'space-between' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                {i18n.t('contextMenu.sportsLiveSidebar', 'Live Game Sidebar')}
+              </span>
+              <button 
+                className="context-menu-remove-btn" 
+                onClick={(e) => { e.stopPropagation(); onRemoveSportsLiveSidebar?.(); onClose(); }}
+                title={i18n.t('contextMenu.stopSportsLiveSidebar', 'Remove Live Game Sidebar')}
               >
                 ✕
               </button>
@@ -215,6 +238,14 @@ export function BackgroundContextMenu({
             <polyline points="12 6 12 12 16 14" />
           </svg>
           {i18n.t('contextMenu.liveSportsPersistent')}
+        </div>
+      )}
+      {!sportsLiveSidebarWidget && onAddSportsLiveSidebar && (
+        <div className="context-menu-item" onClick={() => { onAddSportsLiveSidebar(); onClose(); }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          {i18n.t('contextMenu.sportsLiveSidebar', 'Live Game Sidebar')}
         </div>
       )}
       {!recentWidget && (

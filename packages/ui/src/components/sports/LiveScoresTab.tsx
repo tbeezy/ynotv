@@ -23,6 +23,8 @@ interface LiveScoresTabProps {
   onPlayChannel?: (channel: import('../../db').StoredChannel) => void;
   sportsOverlayWidget?: 'autohide' | 'persistent' | null;
   onSportsOverlayWidgetChange?: (mode: 'autohide' | 'persistent' | null) => void;
+  sportsLiveSidebarWidget?: boolean;
+  onSportsLiveSidebarWidgetChange?: (enabled: boolean) => void;
 }
 
 export function LiveScoresTab({
@@ -30,6 +32,8 @@ export function LiveScoresTab({
   onPlayChannel,
   sportsOverlayWidget,
   onSportsOverlayWidgetChange,
+  sportsLiveSidebarWidget,
+  onSportsLiveSidebarWidgetChange,
 }: LiveScoresTabProps) {
   const [selectedEvent, setSelectedEvent] = useState<SportsEvent | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -201,6 +205,27 @@ export function LiveScoresTab({
               </div>
             </div>
           </>
+        )}
+        {onSportsLiveSidebarWidgetChange && (
+          <button
+            className={`live-header-overlay-btn ${sportsLiveSidebarWidget ? 'active' : ''}`}
+            onClick={() => onSportsLiveSidebarWidgetChange(!sportsLiveSidebarWidget)}
+            title={i18n.t('sports:liveGameSidebarTooltip', 'Toggle Live Game Sidebar')}
+            style={{ marginRight: '8px' }}
+          >
+            <span
+              className="live-count-dot"
+              style={{
+                display: 'inline-block',
+                marginRight: '4px',
+                background: sportsLiveSidebarWidget ? '#00d4ff' : '#6b7280',
+                animation: 'none',
+              }}
+            />
+            {sportsLiveSidebarWidget
+              ? i18n.t('sports:sidebarActive', 'Sidebar: Active')
+              : i18n.t('sports:sidebarEnable', 'Game Sidebar')}
+          </button>
         )}
         <button
           className="live-header-settings-reminder"

@@ -15,6 +15,7 @@ import { SourcePickerModal } from './SourcePickerModal';
 import type { StremioStream, StremioStreamBadge } from '../types/stremio';
 import type { VisualizerMode } from './AudioVisualizer';
 import { useActivePlaylistStore, isActivePlaylistItem } from '../stores/activePlaylistStore';
+import { TeamChannelOverlay } from './sports/TeamChannelOverlay';
 import './NowPlayingBar.css';
 
 interface NowPlayingBarProps {
@@ -86,6 +87,7 @@ interface NowPlayingBarProps {
   isAudioOnly?: boolean;
   audioVisualizerMode?: VisualizerMode;
   onSetAudioVisualizerMode?: (mode: VisualizerMode) => void;
+  onPlayChannel?: (channel: StoredChannel) => void;
 }
 
 // Format seconds to "H:MM:SS" or "M:SS"
@@ -157,6 +159,7 @@ export function NowPlayingBar({
   isAudioOnly,
   audioVisualizerMode = 'spectrum',
   onSetAudioVisualizerMode,
+  onPlayChannel,
 }: NowPlayingBarProps) {
   const { t } = useTranslation('player');
   const showVolumePercentSetting = useSettingsStore((s) => s.showVolumePercent);
@@ -1018,6 +1021,14 @@ export function NowPlayingBar({
                   </button>
                 )}
 
+                {onPlayChannel && !isVod && (
+                  <TeamChannelOverlay
+                    currentChannel={channel}
+                    onChannelClick={onPlayChannel}
+                    isCleanDesign={true}
+                  />
+                )}
+
                 <button
                   className="npb-clean-btn"
                   onClick={onToggleFullscreen}
@@ -1378,6 +1389,13 @@ export function NowPlayingBar({
                   >
                     <SourcePickerIcon />
                   </button>
+                )}
+                {onPlayChannel && !isVod && (
+                  <TeamChannelOverlay
+                    currentChannel={channel}
+                    onChannelClick={onPlayChannel}
+                    isCleanDesign={false}
+                  />
                 )}
                 {!isVod && (
                   <button

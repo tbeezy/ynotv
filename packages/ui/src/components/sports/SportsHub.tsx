@@ -40,6 +40,8 @@ interface SportsHubProps {
   onPreviewVideoRectChange?: (rect: { left: number; top: number; width: number; height: number } | null) => void;
   sportsOverlayWidget?: 'autohide' | 'persistent' | null;
   onSportsOverlayWidgetChange?: (mode: 'autohide' | 'persistent' | null) => void;
+  sportsLiveSidebarWidget?: boolean;
+  onSportsLiveSidebarWidgetChange?: (enabled: boolean) => void;
 }
 
 export function SportsHub({
@@ -59,6 +61,8 @@ export function SportsHub({
   onPreviewVideoRectChange,
   sportsOverlayWidget,
   onSportsOverlayWidgetChange,
+  sportsLiveSidebarWidget,
+  onSportsLiveSidebarWidgetChange,
 }: SportsHubProps) {
   useTranslation();
   const [transitionCompleted, setTransitionCompleted] = useState(visible === undefined);
@@ -541,6 +545,8 @@ export function SportsHub({
               onPlayChannel={onPlayChannel}
               sportsOverlayWidget={sportsOverlayWidget}
               onSportsOverlayWidgetChange={onSportsOverlayWidgetChange}
+              sportsLiveSidebarWidget={sportsLiveSidebarWidget}
+              onSportsLiveSidebarWidgetChange={onSportsLiveSidebarWidgetChange}
             />
           );
         case 'upcoming':

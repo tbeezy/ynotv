@@ -4,6 +4,7 @@ import './HeroWidgetsPanel.css';
 
 interface HeroWidgetsPanelProps {
   sportsWidget: 'autohide' | 'persistent' | null;
+  sportsLiveSidebarWidget?: boolean;
   recentWidget: '5' | '10' | null;
   favoritesWidget: boolean;
   whatsNextWidget: boolean;
@@ -11,6 +12,8 @@ interface HeroWidgetsPanelProps {
   onAddSportsAutohide: () => void;
   onAddSportsPersistent: () => void;
   onRemoveSports: () => void;
+  onAddSportsLiveSidebar?: () => void;
+  onRemoveSportsLiveSidebar?: () => void;
   onAddRecent5: () => void;
   onAddRecent10: () => void;
   onRemoveRecent: () => void;
@@ -25,6 +28,7 @@ interface HeroWidgetsPanelProps {
 
 export function HeroWidgetsPanel({
   sportsWidget,
+  sportsLiveSidebarWidget,
   recentWidget,
   favoritesWidget,
   whatsNextWidget,
@@ -32,6 +36,8 @@ export function HeroWidgetsPanel({
   onAddSportsAutohide,
   onAddSportsPersistent,
   onRemoveSports,
+  onAddSportsLiveSidebar,
+  onRemoveSportsLiveSidebar,
   onAddRecent5,
   onAddRecent10,
   onRemoveRecent,
@@ -45,7 +51,7 @@ export function HeroWidgetsPanel({
 }: HeroWidgetsPanelProps) {
   const { t } = useTranslation('widgets');
   const hasCustomGroups = customGroupIds.length > 0;
-  const hasAnyWidget = sportsWidget !== null || recentWidget !== null || favoritesWidget || whatsNextWidget || hasCustomGroups;
+  const hasAnyWidget = sportsWidget !== null || sportsLiveSidebarWidget || recentWidget !== null || favoritesWidget || whatsNextWidget || hasCustomGroups;
 
   return (
     <div className={`hero-widgets-panel${liveTvDesign === 'v3' ? ' design-v3' : ''}`}>
@@ -66,6 +72,23 @@ export function HeroWidgetsPanel({
                   className="widgets-panel-remove-btn"
                   onClick={(e) => { e.stopPropagation(); onRemoveSports(); }}
                   title={t('stopLiveSports')}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {sportsLiveSidebarWidget && (
+              <div className="widgets-panel-item active-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                  <span>{t('sportsLiveSidebar', 'Live Game Sidebar')}</span>
+                </span>
+                <button
+                  className="widgets-panel-remove-btn"
+                  onClick={(e) => { e.stopPropagation(); onRemoveSportsLiveSidebar?.(); }}
+                  title={t('stopSportsLiveSidebar', 'Remove Live Game Sidebar')}
                 >
                   ✕
                 </button>
@@ -166,6 +189,14 @@ export function HeroWidgetsPanel({
                 <polyline points="12 6 12 12 16 14" />
               </svg>
               <span>{t('liveSportsPersistent')}</span>
+            </div>
+          )}
+          {!sportsLiveSidebarWidget && onAddSportsLiveSidebar && (
+            <div className="widgets-panel-item click-item" onClick={onAddSportsLiveSidebar}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              <span>{t('sportsLiveSidebar', 'Live Game Sidebar')}</span>
             </div>
           )}
           {!recentWidget && (

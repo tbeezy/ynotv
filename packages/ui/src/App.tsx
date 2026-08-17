@@ -28,6 +28,7 @@ import { DvrDashboard } from './components/DvrDashboard';
 import { SportsHub } from './components/sports/SportsHub';
 import { TVCalendarPage } from './components/TVCalendarPage';
 import { LiveSportsOverlay } from './components/LiveSportsOverlay';
+import { SportsLiveGameSidebar } from './components/sports/SportsLiveGameSidebar';
 import { RecentChannelsWidget } from './components/RecentChannelsWidget';
 import { FavoritesWidget } from './components/FavoritesWidget';
 import { WidgetBar } from './components/WidgetBar';
@@ -2121,6 +2122,24 @@ function useTmdbPresencePoster(
   const handleRemoveSportsOverlay = useCallback(() => {
     setSportsOverlayWidget(null);
     localStorage.removeItem('sportsOverlayWidget');
+  }, []);
+
+  // ==========================================================================
+  // Sports Live Game Sidebar Overlay Widget State
+  // ==========================================================================
+  const [sportsLiveSidebarWidget, setSportsLiveSidebarWidget] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sportsLiveSidebarWidget');
+    return saved === 'true';
+  });
+
+  const handleAddSportsLiveSidebar = useCallback(() => {
+    setSportsLiveSidebarWidget(true);
+    localStorage.setItem('sportsLiveSidebarWidget', 'true');
+  }, []);
+
+  const handleRemoveSportsLiveSidebar = useCallback(() => {
+    setSportsLiveSidebarWidget(false);
+    localStorage.removeItem('sportsLiveSidebarWidget');
   }, []);
 
   const handleAddRecent5Overlay = useCallback(() => {
@@ -4609,6 +4628,16 @@ function useTmdbPresencePoster(
         />
       )}
 
+      {/* Sports Live Game Sidebar Widget */}
+      {sportsLiveSidebarWidget && !pipMode && !(currentChannel?.stream_id === 'vod' || currentChannel?.stream_id?.startsWith('recording_')) && multiviewLayout !== 'sbs' && multiviewLayout !== 'bigbottom' && multiviewLayout !== '2x2' && (
+        <SportsLiveGameSidebar
+          showControls={showControls}
+          activeView={activeView}
+          onChannelClick={handlePlayChannelWrapper}
+          currentChannel={currentChannel}
+        />
+      )}
+
       {/* Overlay Widgets — all sit inside a shared WidgetBar flex container.
            The bar owns positioning and scale; widgets are just flex children.
            Adding more widgets here is trivial — they automatically line up. */}
@@ -4706,6 +4735,7 @@ function useTmdbPresencePoster(
         <BackgroundContextMenu
           position={bgContextMenu}
           sportsWidget={sportsOverlayWidget}
+          sportsLiveSidebarWidget={sportsLiveSidebarWidget}
           recentWidget={recentOverlayWidget}
           favoritesWidget={favoritesOverlayWidget}
           whatsNextWidget={whatsNextOverlayWidget}
@@ -4713,6 +4743,8 @@ function useTmdbPresencePoster(
           onAddSportsAutohide={() => handleAddSportsOverlay('autohide')}
           onAddSportsPersistent={() => handleAddSportsOverlay('persistent')}
           onRemoveSports={handleRemoveSportsOverlay}
+          onAddSportsLiveSidebar={handleAddSportsLiveSidebar}
+          onRemoveSportsLiveSidebar={handleRemoveSportsLiveSidebar}
           onAddRecent5={handleAddRecent5Overlay}
           onAddRecent10={handleAddRecent10Overlay}
           onRemoveRecent={handleRemoveRecentOverlay}
@@ -4730,6 +4762,7 @@ function useTmdbPresencePoster(
       {activeView === 'none' && !currentChannel && !error && !isRestoring && multiviewLayout !== 'sbs' && multiviewLayout !== 'bigbottom' && multiviewLayout !== '2x2' && (
         <HeroWidgetsPanel
           sportsWidget={sportsOverlayWidget}
+          sportsLiveSidebarWidget={sportsLiveSidebarWidget}
           recentWidget={recentOverlayWidget}
           favoritesWidget={favoritesOverlayWidget}
           whatsNextWidget={whatsNextOverlayWidget}
@@ -4737,6 +4770,8 @@ function useTmdbPresencePoster(
           onAddSportsAutohide={() => handleAddSportsOverlay('autohide')}
           onAddSportsPersistent={() => handleAddSportsOverlay('persistent')}
           onRemoveSports={handleRemoveSportsOverlay}
+          onAddSportsLiveSidebar={handleAddSportsLiveSidebar}
+          onRemoveSportsLiveSidebar={handleRemoveSportsLiveSidebar}
           onAddRecent5={handleAddRecent5Overlay}
           onAddRecent10={handleAddRecent10Overlay}
           onRemoveRecent={handleRemoveRecentOverlay}
@@ -4848,6 +4883,7 @@ function useTmdbPresencePoster(
         onSetAspectRatio={handleSetAspectRatio}
         onNavigateDvr={() => setActiveView('dvr')}
         onReplayStream={currentChannel ? () => handlePlayChannelWrapper(currentChannel) : undefined}
+        onPlayChannel={handlePlayChannelWrapper}
         onSwitchStream={handleSwitchStream}
         compiledBadgeRules={compiledBadgeRules}
         compiledNuvioBadgeRules={compiledNuvioBadgeRules}
@@ -5411,6 +5447,14 @@ function useTmdbPresencePoster(
               handleRemoveSportsOverlay();
             } else {
               handleAddSportsOverlay(mode);
+            }
+          }}
+          sportsLiveSidebarWidget={sportsLiveSidebarWidget}
+          onSportsLiveSidebarWidgetChange={(enabled) => {
+            if (enabled) {
+              handleAddSportsLiveSidebar();
+            } else {
+              handleRemoveSportsLiveSidebar();
             }
           }}
         />
