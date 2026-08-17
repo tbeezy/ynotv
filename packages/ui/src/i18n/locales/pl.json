@@ -1778,7 +1778,9 @@
       "permissiveHls": "Zezwalaj na niestandardowe rozszerzenia HLS (.jpg / .css)",
       "permissiveHlsSub": "Ignoruje ścisłe kontrole rozszerzeń segmentów FFmpeg (CVE-2023-6602) dla dostawców IPTV, którzy maskują segmenty wideo jako pliki .jpg lub .css. Wyłączone domyślnie, aby zachować domyślne bezpieczeństwo.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} min"
+      "min_other": "{{count}} min",
+      "separateDownloadFolders": "Organizuj pobrane w podfolderach",
+      "separateDownloadFoldersSub": "Zapisuj filmy i seriale w oddzielnych folderach 'Movies' i 'Series' w lokalizacji pobierania."
     },
     "failover": {
       "groups": "Grupy failover",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Usunąć {{count}} ukryte elementy? Ich źródła zostały usunięte lub wyłączone, więc nie można ich już odtwarzać.",
     "allItemsHidden": "Wszystkie elementy tej listy odtwarzania są ukryte — ich źródła zostały usunięte lub wyłączone.",
     "playlistHiddenCount_one": "{{count}} ukryty element (źródło usunięte lub wyłączone)",
-    "playlistHiddenCount_other": "{{count}} ukryte elementy (źródła usunięte lub wyłączone)"
+    "playlistHiddenCount_other": "{{count}} ukryte elementy (źródła usunięte lub wyłączone)",
+    "downloadAllSeasons": "Pobierz wszystkie sezony",
+    "downloadAllSeasonsTitle": "Pobierz wszystkie odcinki ze wszystkich sezonów",
+    "queueingAllSeasons": "Kolejkowanie wszystkich sezonów...",
+    "downloadSeasonModalTitle": "Pobierz sezon {{season}}",
+    "downloadAllModalTitle": "Pobierz wszystkie sezony",
+    "folderOrganization": "Organizacja folderów",
+    "organizeBySeasonOpt": "Organizuj w foldery Serial → Sezon",
+    "organizeBySeasonSubSingle": "Zapisz w '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Zapisz każdy sezon w osobnym folderze ('{{title}} / Season #')",
+    "saveToRootOpt": "Zapisz bezpośrednio w folderze Seriale",
+    "saveToRootSub": "Zapisz wszystkie odcinki bezpośrednio bez podfolderów.",
+    "pathPreview": "Podgląd lokalizacji",
+    "startDownload": "Rozpocznij pobieranie",
+    "singleSeasonSummary": "Sezon {{season}} • {{count}} odcinków",
+    "allSeasonsSummary": "{{seasonCount}} sezonów • {{count}} odcinków",
+    "selectDirectoryAllSeasons": "Wybierz katalog zapisu pobranych seriali"
   },
   "dvr": {
     "title": "DVR i pobieranie",

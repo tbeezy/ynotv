@@ -130,6 +130,7 @@ describe('useSettingsStore consumer contract', () => {
   it('exposes downloadsPath and genre-list fields (regression for the Tier-2 pass)', () => {
     for (const key of [
       'downloadsPath', 'setDownloadsPath',
+      'separateDownloadFolders', 'setSeparateDownloadFolders',
       'movieGenresEnabled', 'setMovieGenresEnabled',
       'seriesGenresEnabled', 'setSeriesGenresEnabled',
     ]) {

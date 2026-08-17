@@ -1778,7 +1778,9 @@
       "permissiveHls": "غیر معیاری HLS ایکسٹینشنز کی اجازت دیں (.jpg / .css)",
       "permissiveHlsSub": "ان آئی پی ٹی وی فراہم کنندگان کے لیے سخت FFmpeg سیگمنٹ ایکسٹینشن چیکس (CVE-2023-6602) کو نظر انداز کرتا ہے جو ویڈیو سیگمنٹس کو .jpg یا .css فائلوں کے طور پر چھپاتے ہیں۔ معیاری سیکیورٹی برقرار رکھنے کے لیے ڈیفالٹ طور پر غیر فعال۔",
       "min_one": "{{count}} منٹ",
-      "min_other": "{{count}} منٹ"
+      "min_other": "{{count}} منٹ",
+      "separateDownloadFolders": "ڈاؤن لوڈز کو ذیلی فولڈرز میں منظم کریں",
+      "separateDownloadFoldersSub": "فلموں اور سیریز کو ڈاؤن لوڈ کے مقام کے اندر الگ الگ 'Movies' اور 'Series' فولڈرز میں محفوظ کریں۔"
     },
     "failover": {
       "groups": "فیل اوور گروپس",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "{{count}} پوشیدہ آئٹمز ہٹائیں؟ ان کے ذرائع حذف یا غیر فعال کر دیے گئے ہیں، اس لیے انہیں مزید نہیں چلایا جا سکتا۔",
     "allItemsHidden": "اس پلے لسٹ کے تمام آئٹمز پوشیدہ ہیں — ان کے ذرائع حذف یا غیر فعال کر دیے گئے ہیں۔",
     "playlistHiddenCount_one": "{{count}} پوشیدہ آئٹم (ذریعہ حذف یا غیر فعال)",
-    "playlistHiddenCount_other": "{{count}} پوشیدہ آئٹمز (ذرائع حذف یا غیر فعال)"
+    "playlistHiddenCount_other": "{{count}} پوشیدہ آئٹمز (ذرائع حذف یا غیر فعال)",
+    "downloadAllSeasons": "تمام سیزن ڈاؤن لوڈ کریں",
+    "downloadAllSeasonsTitle": "تمام سیزن کی تمام اقساط ڈاؤن لوڈ کریں",
+    "queueingAllSeasons": "تمام سیزن قطار میں لگائے جا رہے ہیں...",
+    "downloadSeasonModalTitle": "سیزن {{season}} ڈاؤن لوڈ کریں",
+    "downloadAllModalTitle": "تمام سیزن ڈاؤن لوڈ کریں",
+    "folderOrganization": "فولڈر کی ترتیب",
+    "organizeBySeasonOpt": "سیریز → سیزن فولڈرز میں ترتیب دیں",
+    "organizeBySeasonSubSingle": "'{{title}} / Season {{season}}' میں محفوظ کریں",
+    "organizeBySeasonSubAll": "ہر سیزن کو اس کے اپنے فولڈر میں محفوظ کریں ('{{title}} / Season #')",
+    "saveToRootOpt": "براہ راست سیریز فولڈر میں محفوظ کریں",
+    "saveToRootSub": "ذیلی فولڈرز بنائے بغیر تمام اقساط براہ راست محفوظ کریں۔",
+    "pathPreview": "منزل کا پیش نظارہ",
+    "startDownload": "ڈاؤن لوڈ شروع کریں",
+    "singleSeasonSummary": "سیزن {{season}} • {{count}} اقساط",
+    "allSeasonsSummary": "{{seasonCount}} سیزنز • {{count}} اقساط",
+    "selectDirectoryAllSeasons": "سیریز ڈاؤن لوڈز کو محفوظ کرنے کے لیے ڈائریکٹری منتخب کریں"
   },
   "dvr": {
     "title": "ڈی وی آر اور ڈاؤن لوڈز",

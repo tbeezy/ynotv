@@ -2971,7 +2971,9 @@
       "permissiveHls": "Cho Phép Phần Mở Rộng HLS Không Chuẩn (.jpg / .css)",
       "permissiveHlsSub": "Bỏ qua kiểm tra phần mở rộng phân đoạn FFmpeg nghiêm ngặt (CVE-2023-6602) cho các nhà cung cấp IPTV che giấu phân đoạn video dưới dạng tệp .jpg hoặc .css. Mặc định tắt để giữ bảo mật chuẩn.",
       "min_one": "{{count}} phút",
-      "min_other": "{{count}} phút"
+      "min_other": "{{count}} phút",
+      "separateDownloadFolders": "Sắp xếp tải xuống vào các thư mục con",
+      "separateDownloadFoldersSub": "Lưu phim lẻ và phim bộ vào các thư mục riêng biệt 'Movies' và 'Series' bên trong vị trí tải xuống."
     },
     "failover": {
       "groups": "Nhóm Chuyển Dự Phòng",
@@ -3909,6 +3911,22 @@
     "removeAllHiddenConfirm_other": "Xóa {{count}} mục ẩn? Nguồn của chúng đã bị xóa hoặc vô hiệu hóa, vì vậy không thể phát được nữa.",
     "allItemsHidden": "Tất cả mục trong danh sách phát này đều bị ẩn — nguồn của chúng đã bị xóa hoặc vô hiệu hóa.",
     "playlistHiddenCount_one": "{{count}} mục ẩn (nguồn bị xóa hoặc vô hiệu hóa)",
-    "playlistHiddenCount_other": "{{count}} mục ẩn (nguồn bị xóa hoặc vô hiệu hóa)"
+    "playlistHiddenCount_other": "{{count}} mục ẩn (nguồn bị xóa hoặc vô hiệu hóa)",
+    "downloadAllSeasons": "Tải xuống tất cả các mùa",
+    "downloadAllSeasonsTitle": "Tải xuống tất cả các tập của tất cả các mùa",
+    "queueingAllSeasons": "Đang xếp hàng tất cả các mùa...",
+    "downloadSeasonModalTitle": "Tải xuống Mùa {{season}}",
+    "downloadAllModalTitle": "Tải xuống tất cả các mùa",
+    "folderOrganization": "Sắp xếp thư mục",
+    "organizeBySeasonOpt": "Sắp xếp theo thư mục Phim bộ → Mùa",
+    "organizeBySeasonSubSingle": "Lưu vào '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Lưu mỗi mùa vào thư mục riêng ('{{title}} / Season #')",
+    "saveToRootOpt": "Lưu trực tiếp vào thư mục Phim bộ",
+    "saveToRootSub": "Lưu tất cả các tập trực tiếp mà không tạo thư mục con.",
+    "pathPreview": "Xem trước đích đến",
+    "startDownload": "Bắt đầu tải xuống",
+    "singleSeasonSummary": "Mùa {{season}} • {{count}} Tập",
+    "allSeasonsSummary": "{{seasonCount}} Mùa • {{count}} Tập",
+    "selectDirectoryAllSeasons": "Chọn thư mục lưu phim bộ tải xuống"
   }
 }

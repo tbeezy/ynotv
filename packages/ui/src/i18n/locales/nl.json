@@ -1778,7 +1778,9 @@
       "permissiveHls": "Niet-standaard HLS-extensies toestaan (.jpg / .css)",
       "permissiveHlsSub": "Omzeilt strenge FFmpeg-segmentextensiecontroles (CVE-2023-6602) voor IPTV-providers die videosegmenten vermommen als .jpg- of .css-bestanden. Standaard uitgeschakeld om de standaardbeveiliging te behouden.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} min"
+      "min_other": "{{count}} min",
+      "separateDownloadFolders": "Downloads ordenen in submappen",
+      "separateDownloadFoldersSub": "Films en series opslaan in afzonderlijke mappen 'Movies' en 'Series' binnen de downloadlocatie."
     },
     "failover": {
       "groups": "Failovergroepen",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "{{count}} verborgen items verwijderen? De bronnen zijn verwijderd of uitgeschakeld, dus ze kunnen niet meer worden afgespeeld.",
     "allItemsHidden": "Alle items in deze afspeellijst zijn verborgen — hun bronnen zijn verwijderd of uitgeschakeld.",
     "playlistHiddenCount_one": "{{count}} verborgen item (bron verwijderd of uitgeschakeld)",
-    "playlistHiddenCount_other": "{{count}} verborgen items (bronnen verwijderd of uitgeschakeld)"
+    "playlistHiddenCount_other": "{{count}} verborgen items (bronnen verwijderd of uitgeschakeld)",
+    "downloadAllSeasons": "Alle seizoenen downloaden",
+    "downloadAllSeasonsTitle": "Download alle afleveringen van alle seizoenen",
+    "queueingAllSeasons": "Alle seizoenen in wachtrij plaatsen...",
+    "downloadSeasonModalTitle": "Seizoen {{season}} downloaden",
+    "downloadAllModalTitle": "Alle seizoenen downloaden",
+    "folderOrganization": "Maporganisatie",
+    "organizeBySeasonOpt": "Ordenen in Serie → Seizoen mappen",
+    "organizeBySeasonSubSingle": "Opslaan in '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Elk seizoen in een aparte map opslaan ('{{title}} / Season #')",
+    "saveToRootOpt": "Rechtstreeks opslaan in de map Series",
+    "saveToRootSub": "Sla alle afleveringen rechtstreeks op zonder submappen.",
+    "pathPreview": "Bestemmingsvoorbeeld",
+    "startDownload": "Download starten",
+    "singleSeasonSummary": "Seizoen {{season}} • {{count}} afleveringen",
+    "allSeasonsSummary": "{{seasonCount}} seizoenen • {{count}} afleveringen",
+    "selectDirectoryAllSeasons": "Selecteer map voor serie downloads"
   },
   "dvr": {
     "title": "DVR en downloads",

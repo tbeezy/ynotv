@@ -555,7 +555,18 @@ export function NuvioDetailView({
         } else {
           title = `${effectiveMeta.name}${effectiveMeta.year ? ` (${effectiveMeta.year})` : ''}`;
         }
-        await startDownload(title, stream.url, undefined, undefined, undefined, effectiveMeta.poster);
+        await startDownload(
+          title,
+          stream.url,
+          undefined,
+          undefined,
+          undefined,
+          effectiveMeta.poster,
+          undefined,
+          undefined,
+          undefined,
+          isSeries ? 'Series' : 'Movies'
+        );
       } catch (error) {
         console.error('[NuvioDetailView] Download failed:', error);
         alert(i18n.t('nuvio:failedStartDownload'));

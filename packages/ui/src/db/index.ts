@@ -2246,6 +2246,7 @@ export async function getDvrSettings(): Promise<Record<string, any>> {
     keep_recordings_days: 30,
     default_start_padding_sec: 60,
     default_end_padding_sec: 300,
+    separate_download_folders: true,
   };
 
   settings.forEach(s => {

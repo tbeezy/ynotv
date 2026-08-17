@@ -1778,7 +1778,9 @@
       "permissiveHls": "Lejo zgjerime HLS jo standarde (.jpg / .css)",
       "permissiveHlsSub": "Injoron kontrollet e rrepta të zgjerimeve të segmenteve të FFmpeg (CVE-2023-6602) për ofruesit IPTV që maskojnë segmentet video si skedarë .jpg ose .css. Çaktivizuar si parazgjedhje për të ruajtur sigurinë e parazgjedhur.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} min"
+      "min_other": "{{count}} min",
+      "separateDownloadFolders": "Organizo shkarkimet në nën-dosje",
+      "separateDownloadFoldersSub": "Ruaj filmat dhe serialet në dosje të veçanta 'Movies' dhe 'Series' brenda vendndodhjes së shkarkimit."
     },
     "failover": {
       "groups": "Grupet e rezervës",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Të hiqen {{count}} elementë të fshehur? Burimet e tyre u fshinë ose u çaktivizuan, kështu që nuk mund të luhen më.",
     "allItemsHidden": "Të gjithë elementët në këtë listë janë të fshehur — burimet e tyre u fshinë ose u çaktivizuan.",
     "playlistHiddenCount_one": "{{count}} element i fshehur (burimi u fshi ose u çaktivizua)",
-    "playlistHiddenCount_other": "{{count}} elementë të fshehur (burimet u fshinë ose u çaktivizuan)"
+    "playlistHiddenCount_other": "{{count}} elementë të fshehur (burimet u fshinë ose u çaktivizuan)",
+    "downloadAllSeasons": "Shkarko të gjitha sezonet",
+    "downloadAllSeasonsTitle": "Shkarko të gjitha episodet nga të gjitha sezonet",
+    "queueingAllSeasons": "Duke vendosur të gjitha sezonet në radhë...",
+    "downloadSeasonModalTitle": "Shkarko sezonin {{season}}",
+    "downloadAllModalTitle": "Shkarko të gjitha sezonet",
+    "folderOrganization": "Organizimi i dosjeve",
+    "organizeBySeasonOpt": "Organizo në dosje Serial → Sezon",
+    "organizeBySeasonSubSingle": "Ruaj te '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Ruaj çdo sezon në dosjen e vet ('{{title}} / Season #')",
+    "saveToRootOpt": "Ruaj direkt në dosjen Serialet",
+    "saveToRootSub": "Ruaj të gjitha episodet direkt pa nën-dosje.",
+    "pathPreview": "Pamja paraprake e destinacionit",
+    "startDownload": "Fillo shkarkimin",
+    "singleSeasonSummary": "Sezoni {{season}} • {{count}} Episode",
+    "allSeasonsSummary": "{{seasonCount}} Sezone • {{count}} Episode",
+    "selectDirectoryAllSeasons": "Zgjidhni direktorinë për ruajtjen e serialit"
   },
   "dvr": {
     "title": "DVR dhe shkarkimet",

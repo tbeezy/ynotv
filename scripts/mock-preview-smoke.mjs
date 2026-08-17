@@ -249,6 +249,7 @@ async function exerciseSetters(page) {
     const mod = await import('/src/stores/settingsStore.ts');
     const s = mod.useSettingsStore.getState();
     s.setDownloadsPath('C:\\\\MockDownloads');
+    s.setSeparateDownloadFolders(false);
     s.setSubtitleSettings({ defaultSize: 42 });
     s.setGlobalEpgLinks([{ id: 'smoke-link', name: 'Smoke EPG', url: 'http://example.com/epg.xml', sourceIds: ['mock-source'], saveEntireEpg: false }]);
     s.setTraktSettings({ traktEnabled: true, traktAccessToken: 'smoke-token' });
@@ -261,6 +262,8 @@ async function exerciseSetters(page) {
     return {
       storeDownloadsPath: after.downloadsPath,
       persistedDownloadsPath: persisted.downloadsPath,
+      storeSeparateFolders: after.separateDownloadFolders,
+      persistedSeparateFolders: persisted.separateDownloadFolders,
       persistedSubtitleSize: persisted.subtitleSettings?.defaultSize,
       persistedTraktToken: persisted.traktAccessToken,
       persistedFavoritesMode: persisted.favoritesMode,
@@ -269,6 +272,7 @@ async function exerciseSetters(page) {
     };
   })()`);
   check('Downloads path setter persists', r.storeDownloadsPath === 'C:\\MockDownloads' && r.persistedDownloadsPath === 'C:\\MockDownloads', JSON.stringify(r));
+  check('Separate download folders setter persists', r.storeSeparateFolders === false && r.persistedSeparateFolders === false, JSON.stringify(r));
   check('Subtitle setter persists', r.persistedSubtitleSize === 42);
   check('Trakt setter persists', r.persistedTraktToken === 'smoke-token');
   check('Category setter persists', r.persistedFavoritesMode === 'both');

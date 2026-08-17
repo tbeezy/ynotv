@@ -1778,7 +1778,9 @@
       "permissiveHls": "गैर-मानक HLS एक्सटेंशन की अनुमति दें (.jpg / .css)",
       "permissiveHlsSub": "IPTV प्रदाताओं के लिए सख्त FFmpeg सेगमेंट एक्सटेंशन जाँच (CVE-2023-6602) को बायपास करता है जो वीडियो सेगमेंट को .jpg या .css फ़ाइलों के रूप में छिपाते हैं। मानक सुरक्षा बनाए रखने के लिए डिफ़ॉल्ट रूप से अक्षम।",
       "min_one": "{{count}} मिन",
-      "min_other": "{{count}} मिन"
+      "min_other": "{{count}} मिन",
+      "separateDownloadFolders": "डाउनलोड को उप-फ़ोल्डरों में व्यवस्थित करें",
+      "separateDownloadFoldersSub": "डाउनलोड स्थान के भीतर फिल्मों और श्रृंखलाओं को अलग-अलग 'Movies' और 'Series' फ़ोल्डर में सहेजें।"
     },
     "failover": {
       "groups": "फ़ेलओवर समूह",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "{{count}} छिपी हुई वस्तुएँ हटाएँ? उनके स्रोत हटा दिए गए या अक्षम कर दिए गए हैं, इसलिए उन्हें अब नहीं चलाया जा सकता।",
     "allItemsHidden": "इस प्लेलिस्ट की सभी वस्तुएँ छिपी हुई हैं — उनके स्रोत हटा दिए गए या अक्षम कर दिए गए हैं।",
     "playlistHiddenCount_one": "{{count}} छिपी हुई वस्तु (स्रोत हटाया गया या अक्षम किया गया)",
-    "playlistHiddenCount_other": "{{count}} छिपी हुई वस्तुएँ (स्रोत हटाए गए या अक्षम किए गए)"
+    "playlistHiddenCount_other": "{{count}} छिपी हुई वस्तुएँ (स्रोत हटाए गए या अक्षम किए गए)",
+    "downloadAllSeasons": "सभी सीज़न डाउनलोड करें",
+    "downloadAllSeasonsTitle": "सभी सीज़न के सभी एपिसोड डाउनलोड करें",
+    "queueingAllSeasons": "सभी सीज़न कतार में लगाए जा रहे हैं...",
+    "downloadSeasonModalTitle": "सीज़न {{season}} डाउनलोड करें",
+    "downloadAllModalTitle": "सभी सीज़न डाउनलोड करें",
+    "folderOrganization": "फ़ोल्डर व्यवस्था",
+    "organizeBySeasonOpt": "सीरीज़ → सीज़न फ़ोल्डर में व्यवस्थित करें",
+    "organizeBySeasonSubSingle": "'{{title}} / Season {{season}}' में सहेजें",
+    "organizeBySeasonSubAll": "प्रत्येक सीज़न को अपने स्वयं के फ़ोल्डर में सहेजें ('{{title}} / Season #')",
+    "saveToRootOpt": "सीधे सीरीज़ फ़ोल्डर में सहेजें",
+    "saveToRootSub": "बिना सबफ़ोल्डर बनाए सभी एपिसोड सीधे सहेजें।",
+    "pathPreview": "गंतव्य पूर्वावलोकन",
+    "startDownload": "डाउनलोड शुरू करें",
+    "singleSeasonSummary": "सीज़न {{season}} • {{count}} एपिसोड",
+    "allSeasonsSummary": "{{seasonCount}} सीज़न • {{count}} एपिसोड",
+    "selectDirectoryAllSeasons": "सीरीज़ डाउनलोड सहेजने के लिए निर्देशिका चुनें"
   },
   "dvr": {
     "title": "DVR और डाउनलोड",

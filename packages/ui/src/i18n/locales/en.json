@@ -466,7 +466,7 @@
     },
     "theme": {
       "presetThemes": "Preset Themes",
-      "oledBlack": "True Black (OLED)",
+      "oledBlack": "OLED Black Background",
       "oledBlackSub": "Renders \"{{theme}}\" surfaces as pure black while keeping its accent color. Applies to Dark & Dark Color themes in the V3 UI.",
       "customTheme": "Custom Theme",
       "selectTheme": "Select Theme",
@@ -527,7 +527,6 @@
       "backdropBlur": "Backdrop Blur Effect",
       "backdropSaturation": "Backdrop Color Saturation",
       "overlayOpacity": "Modal Overlay Opacity",
-      "oledBlack": "OLED Black Background",
       "oledBlackDesc": "Forces pure-black surfaces, no backdrop blur, and flattened gradients — matching the built-in OLED mode for dark themes. Great for a dark custom theme with accent colors.",
       "v3Bulbs": "V3 Liquid Glass Bulbs",
       "showBulbs": "Show Background Bulbs",
@@ -1779,7 +1778,9 @@
       "permissiveHls": "Allow Non-Standard HLS Extensions (.jpg / .css)",
       "permissiveHlsSub": "Bypasses strict FFmpeg segment extension checks (CVE-2023-6602) for IPTV providers that disguise video segments as .jpg or .css files. Disabled by default to preserve standard security.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} mins"
+      "min_other": "{{count}} mins",
+      "separateDownloadFolders": "Organize Downloads into Subfolders",
+      "separateDownloadFoldersSub": "Save Movies and Series into separate 'Movies' and 'Series' folders inside the download location."
     },
     "failover": {
       "groups": "Failover Groups",
@@ -2577,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Remove {{count}} hidden items? Their sources were deleted or disabled, so they can no longer be played.",
     "allItemsHidden": "All items in this playlist are hidden — their sources were deleted or disabled.",
     "playlistHiddenCount_one": "{{count}} hidden item (source deleted or disabled)",
-    "playlistHiddenCount_other": "{{count}} hidden items (sources deleted or disabled)"
+    "playlistHiddenCount_other": "{{count}} hidden items (sources deleted or disabled)",
+    "downloadAllSeasons": "Download All Seasons",
+    "downloadAllSeasonsTitle": "Download all episodes across all seasons",
+    "queueingAllSeasons": "Queueing all seasons...",
+    "downloadSeasonModalTitle": "Download Season {{season}}",
+    "downloadAllModalTitle": "Download All Seasons",
+    "folderOrganization": "Folder Organization",
+    "organizeBySeasonOpt": "Organize into Show → Season folders",
+    "organizeBySeasonSubSingle": "Save to '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Save each season into its own folder ('{{title}} / Season #')",
+    "saveToRootOpt": "Save directly to Series folder",
+    "saveToRootSub": "Save all episode files directly without creating show or season subfolders.",
+    "pathPreview": "Destination Preview",
+    "startDownload": "Start Download",
+    "singleSeasonSummary": "Season {{season}} • {{count}} Episodes",
+    "allSeasonsSummary": "{{seasonCount}} Seasons • {{count}} Episodes",
+    "selectDirectoryAllSeasons": "Select Directory to Save Series Downloads"
   },
   "dvr": {
     "title": "DVR & Downloads",

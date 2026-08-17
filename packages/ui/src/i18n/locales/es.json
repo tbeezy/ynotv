@@ -1778,7 +1778,9 @@
       "permissiveHls": "Permitir extensiones HLS no estándar (.jpg / .css)",
       "permissiveHlsSub": "Omite las comprobaciones estrictas de extensión de segmentos de FFmpeg (CVE-2023-6602) para proveedores de IPTV que disfrazan los segmentos de vídeo como archivos .jpg o .css. Desactivado por defecto para preservar la seguridad estándar.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} min"
+      "min_other": "{{count}} min",
+      "separateDownloadFolders": "Organizar descargas en subcarpetas",
+      "separateDownloadFoldersSub": "Guardar películas y series en carpetas separadas 'Movies' y 'Series' dentro de la ubicación de descarga."
     },
     "failover": {
       "groups": "Grupos de conmutación por error",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "¿Eliminar {{count}} elementos ocultos? Sus fuentes se eliminaron o deshabilitaron, por lo que ya no se pueden reproducir.",
     "allItemsHidden": "Todos los elementos de esta lista están ocultos: sus fuentes se eliminaron o deshabilitaron.",
     "playlistHiddenCount_one": "{{count}} elemento oculto (fuente eliminada o deshabilitada)",
-    "playlistHiddenCount_other": "{{count}} elementos ocultos (fuentes eliminadas o deshabilitadas)"
+    "playlistHiddenCount_other": "{{count}} elementos ocultos (fuentes eliminadas o deshabilitadas)",
+    "downloadAllSeasons": "Descargar todas las temporadas",
+    "downloadAllSeasonsTitle": "Descargar todos los episodios de todas las temporadas",
+    "queueingAllSeasons": "Poniendo todas las temporadas en cola...",
+    "downloadSeasonModalTitle": "Descargar temporada {{season}}",
+    "downloadAllModalTitle": "Descargar todas las temporadas",
+    "folderOrganization": "Organización de carpetas",
+    "organizeBySeasonOpt": "Organizar en carpetas Serie → Temporada",
+    "organizeBySeasonSubSingle": "Guardar en '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Guardar cada temporada en su propia carpeta ('{{title}} / Season #')",
+    "saveToRootOpt": "Guardar directamente en la carpeta Series",
+    "saveToRootSub": "Guardar todos los episodios directamente sin subcarpetas.",
+    "pathPreview": "Vista previa del destino",
+    "startDownload": "Iniciar descarga",
+    "singleSeasonSummary": "Temporada {{season}} • {{count}} Episodios",
+    "allSeasonsSummary": "{{seasonCount}} Temporadas • {{count}} Episodios",
+    "selectDirectoryAllSeasons": "Seleccione el directorio para guardar las descargas de series"
   },
   "dvr": {
     "title": "DVR y descargas",

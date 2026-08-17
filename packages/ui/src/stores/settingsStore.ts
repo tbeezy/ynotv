@@ -296,6 +296,8 @@ export interface SettingsState {
   // Downloads default directory (empty = prompt every time)
   downloadsPath: string;
   setDownloadsPath: (path: string) => void;
+  separateDownloadFolders: boolean;
+  setSeparateDownloadFolders: (enabled: boolean) => void;
 
   // TMDB genre carousel enablement (movie + series)
   movieGenresEnabled: number[];
@@ -1285,6 +1287,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setDownloadsPath: (path) => {
     set({ downloadsPath: path });
     persistSettings({ downloadsPath: path });
+  },
+  separateDownloadFolders: true,
+  setSeparateDownloadFolders: (enabled) => {
+    set({ separateDownloadFolders: enabled });
+    persistSettings({ separateDownloadFolders: enabled });
   },
 
   // TMDB genre carousel enablement

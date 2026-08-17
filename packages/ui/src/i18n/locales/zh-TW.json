@@ -1778,7 +1778,9 @@
       "permissiveHls": "允許非標準 HLS 擴展名（.jpg / .css）",
       "permissiveHlsSub": "對於將影片段偽裝為 .jpg 或 .css 檔案的 IPTV 提供商，繞過嚴格的 FFmpeg 段擴展名檢查（CVE-2023-6602）。預設停用以保持標準安全性。",
       "min_one": "{{count}} 分鐘",
-      "min_other": "{{count}} 分鐘"
+      "min_other": "{{count}} 分鐘",
+      "separateDownloadFolders": "將下載項目按子資料夾整理",
+      "separateDownloadFoldersSub": "在下載位置內將電影和影集分別儲存至 'Movies' 與 'Series' 獨立資料夾中。"
     },
     "failover": {
       "groups": "故障轉移組",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "刪除 {{count}} 個隱藏項目？其來源已被刪除或停用，無法再播放。",
     "allItemsHidden": "此播放清單中的所有項目均已隱藏 — 其來源已被刪除或停用。",
     "playlistHiddenCount_one": "{{count}} 個隱藏項目（來源已被刪除或停用）",
-    "playlistHiddenCount_other": "{{count}} 個隱藏項目（來源已被刪除或停用）"
+    "playlistHiddenCount_other": "{{count}} 個隱藏項目（來源已被刪除或停用）",
+    "downloadAllSeasons": "下載全部季度",
+    "downloadAllSeasonsTitle": "下載所有季度的所有劇集",
+    "queueingAllSeasons": "正在將所有季度加入佇列...",
+    "downloadSeasonModalTitle": "下載第 {{season}} 季",
+    "downloadAllModalTitle": "下載全部季度",
+    "folderOrganization": "資料夾整理方式",
+    "organizeBySeasonOpt": "按 劇名 → 季度 資料夾整理",
+    "organizeBySeasonSubSingle": "儲存至 '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "將每個季度儲存至獨立資料夾 ('{{title}} / Season #')",
+    "saveToRootOpt": "直接儲存至影集根目錄",
+    "saveToRootSub": "直接儲存所有劇集檔案，不建立劇名或季度子資料夾。",
+    "pathPreview": "目標路徑預覽",
+    "startDownload": "開始下載",
+    "singleSeasonSummary": "第 {{season}} 季 • {{count}} 集",
+    "allSeasonsSummary": "{{seasonCount}} 個季度 • {{count}} 集",
+    "selectDirectoryAllSeasons": "選擇影集下載儲存目錄"
   },
   "dvr": {
     "title": "DVR 與下載",

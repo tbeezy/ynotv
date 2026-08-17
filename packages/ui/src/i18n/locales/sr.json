@@ -1778,7 +1778,9 @@
       "permissiveHls": "Dozvoli nestandardne HLS ekstenzije (.jpg / .css)",
       "permissiveHlsSub": "Ignoriše stroge provere ekstenzija segmenata FFmpeg-a (CVE-2023-6602) za IPTV provajdere koji maskiraju video segmente kao .jpg ili .css fajlove. Isključeno podrazumevano radi očuvanja podrazumevane bezbednosti.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} min"
+      "min_other": "{{count}} min",
+      "separateDownloadFolders": "Организујте преузимања у потфасцикле",
+      "separateDownloadFoldersSub": "Сачувајте филмове и серије у засебне фасцикле 'Movies' и 'Series' унутар локације преузимања."
     },
     "failover": {
       "groups": "Grupe za prebacivanje",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Уклонити {{count}} скривених ставки? Њихови извори су обрисани или онемогућени, па се више не могу репродуковати.",
     "allItemsHidden": "Све ставке у овој листи су скривене — њихови извори су обрисани или онемогућени.",
     "playlistHiddenCount_one": "{{count}} скривена ставка (извор обрисан или онемогућен)",
-    "playlistHiddenCount_other": "{{count}} скривених ставки (извори обрисани или онемогућени)"
+    "playlistHiddenCount_other": "{{count}} скривених ставки (извори обрисани или онемогућени)",
+    "downloadAllSeasons": "Преузми све сезоне",
+    "downloadAllSeasonsTitle": "Преузмите све епизоде из свих сезона",
+    "queueingAllSeasons": "Стављање свих сезона у ред чекања...",
+    "downloadSeasonModalTitle": "Преузми сезону {{season}}",
+    "downloadAllModalTitle": "Преузми све сезоне",
+    "folderOrganization": "Организација фасцикли",
+    "organizeBySeasonOpt": "Организујте у фасцикле Серија → Сезона",
+    "organizeBySeasonSubSingle": "Сачувај у '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Сачувај сваку сезону у засебну фасциклу ('{{title}} / Season #')",
+    "saveToRootOpt": "Сачувај директно у фасциклу Серије",
+    "saveToRootSub": "Сачувајте све епизоде директно без потфасцикли.",
+    "pathPreview": "Преглед одредишта",
+    "startDownload": "Започни преузимање",
+    "singleSeasonSummary": "Сезона {{season}} • {{count}} епизода",
+    "allSeasonsSummary": "{{seasonCount}} сезона • {{count}} епизода",
+    "selectDirectoryAllSeasons": "Изаберите фасциклу за преузимање серије"
   },
   "dvr": {
     "title": "DVR i preuzimanje",

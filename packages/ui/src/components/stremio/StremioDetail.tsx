@@ -333,7 +333,11 @@ export function StremioDetail({
           undefined,
           undefined,
           undefined,
-          meta?.poster || undefined
+          meta?.poster || undefined,
+          undefined,
+          undefined,
+          undefined,
+          meta.type === 'series' ? 'Series' : 'Movies'
         );
       } catch (error) {
         console.error('[StremioDetail] Stream download failed:', error);

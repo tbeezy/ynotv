@@ -58,7 +58,11 @@ export function StreamPickerModal({
           undefined,
           undefined,
           undefined,
-          meta?.poster || undefined
+          meta?.poster || undefined,
+          undefined,
+          undefined,
+          undefined,
+          meta?.type === 'series' ? 'Series' : 'Movies'
         );
       } catch (error) {
         console.error('[StreamPickerModal] Stream download failed:', error);

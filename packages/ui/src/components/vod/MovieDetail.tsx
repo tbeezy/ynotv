@@ -178,7 +178,9 @@ export function MovieDetail({ movie: movieProp, onClose, onPlay, apiKey, onCastC
         undefined,
         posterUrl || undefined,
         movie.source_id,
-        movie.direct_url
+        movie.direct_url,
+        undefined,
+        'Movies'
       );
     } catch (error) {
       console.error('[MovieDetail] Download failed:', error);

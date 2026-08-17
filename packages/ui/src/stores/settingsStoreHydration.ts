@@ -279,6 +279,7 @@ async function hydrateSettingsStore(): Promise<void> {
         posterDbApiKey: typeof data.posterDbApiKey === 'string' ? data.posterDbApiKey : '',
         rpdbBackdropsEnabled: data.rpdbBackdropsEnabled ?? false,
         downloadsPath: typeof data.downloadsPath === 'string' ? data.downloadsPath : '',
+        separateDownloadFolders: data.separateDownloadFolders ?? true,
         movieGenresEnabled: Array.isArray(data.movieGenresEnabled) ? data.movieGenresEnabled : [],
         seriesGenresEnabled: Array.isArray(data.seriesGenresEnabled) ? data.seriesGenresEnabled : [],
         traktEnabled: data.traktEnabled ?? false,

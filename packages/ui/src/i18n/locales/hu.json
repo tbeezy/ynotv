@@ -1778,7 +1778,9 @@
       "permissiveHls": "Nem szabványos HLS-kiterjesztések engedélyezése (.jpg / .css)",
       "permissiveHlsSub": "Megkerüli a szigorú FFmpeg szegmens-kiterjesztés ellenőrzéseket (CVE-2023-6602) azokhoz az IPTV-szolgáltatókhoz, amelyek a videószegmenseket .jpg vagy .css fájlként álcázzák. Alapértelmezetten letiltva a szabványos biztonság megőrzéséhez.",
       "min_one": "{{count}} perc",
-      "min_other": "{{count}} perc"
+      "min_other": "{{count}} perc",
+      "separateDownloadFolders": "Letöltések rendszerezése almappákba",
+      "separateDownloadFoldersSub": "Filmek és sorozatok mentése külön 'Movies' és 'Series' mappákba a letöltési helyen belül."
     },
     "failover": {
       "groups": "Tartalékcsoportok",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Eltávolítod a(z) {{count}} rejtett elemet? A forrásaik törölve vagy letiltva lettek, így már nem játszhatók le.",
     "allItemsHidden": "Ennek a lejátszási listának az összes eleme rejtett — a forrásaik törölve vagy letiltva lettek.",
     "playlistHiddenCount_one": "{{count}} rejtett elem (a forrás törölve vagy letiltva)",
-    "playlistHiddenCount_other": "{{count}} rejtett elem (a források törölve vagy letiltva)"
+    "playlistHiddenCount_other": "{{count}} rejtett elem (a források törölve vagy letiltva)",
+    "downloadAllSeasons": "Összes évad letöltése",
+    "downloadAllSeasonsTitle": "Az összes évad összes epizódjának letöltése",
+    "queueingAllSeasons": "Összes évad sorba állítása...",
+    "downloadSeasonModalTitle": "{{season}}. évad letöltése",
+    "downloadAllModalTitle": "Összes évad letöltése",
+    "folderOrganization": "Mapparendszerezés",
+    "organizeBySeasonOpt": "Rendszerezés Sorozat → Évad mappákba",
+    "organizeBySeasonSubSingle": "Mentés: '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Minden évad mentése külön mappába ('{{title}} / Season #')",
+    "saveToRootOpt": "Mentés közvetlenül a Sorozatok mappába",
+    "saveToRootSub": "Az összes epizód mentése almappák nélkül.",
+    "pathPreview": "Cél mappa előnézete",
+    "startDownload": "Letöltés indítása",
+    "singleSeasonSummary": "{{season}}. évad • {{count}} epizód",
+    "allSeasonsSummary": "{{seasonCount}} évad • {{count}} epizód",
+    "selectDirectoryAllSeasons": "Válassza ki a sorozatletöltések mentési helyét"
   },
   "dvr": {
     "title": "DVR és letöltések",

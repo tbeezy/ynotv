@@ -11,6 +11,8 @@ export function DvrTab() {
     const [storagePath, setStoragePath] = useState('');
     const downloadsPath = useSettingsStore((s) => s.downloadsPath);
     const setDownloadsPath = useSettingsStore((s) => s.setDownloadsPath);
+    const separateDownloadFolders = useSettingsStore((s) => s.separateDownloadFolders);
+    const setSeparateDownloadFolders = useSettingsStore((s) => s.setSeparateDownloadFolders);
     const [startPadding, setStartPadding] = useState(60);
     const [endPadding, setEndPadding] = useState(300);
     const [customEndPaddingInput, setCustomEndPaddingInput] = useState('');
@@ -40,6 +42,10 @@ export function DvrTab() {
             setMaxDiskUsage(settings.max_disk_usage_percent || 80);
             setKeepDays(settings.keep_recordings_days !== undefined ? settings.keep_recordings_days : 30);
             setAllowPermissiveHls(settings.allow_permissive_hls_extensions === true || settings.allow_permissive_hls_extensions === 'true');
+            // Keep the settings-store toggle in sync with the DVR table so the two
+            // sources cannot drift (the toggle writes both, but the DVR table is the
+            // source the Rust recorder actually reads).
+            setSeparateDownloadFolders(settings.separate_download_folders !== false);
             // downloadsPath is read from the settings store (hydrated at boot),
             // so no IPC round-trip is needed here.
         } catch (error) {
@@ -129,6 +135,11 @@ export function DvrTab() {
         await saveDvrSetting('allow_permissive_hls_extensions', value);
     }
 
+    async function handleSeparateDownloadFoldersChange(value: boolean) {
+        setSeparateDownloadFolders(value);
+        await saveDvrSetting('separate_download_folders', value);
+    }
+
     const formatDuration = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
         if (mins < 1) return `${seconds}s`;
@@ -200,6 +211,40 @@ export function DvrTab() {
                     >
                         {i18n.t('common:browse')}
                     </button>
+                </div>
+
+                {/* Separate Folders Toggle */}
+                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ paddingRight: '16px' }}>
+                        <div className="dvr-setting-label">
+                            {i18n.t('settings:dvr.separateDownloadFolders')}
+                        </div>
+                        <div className="dvr-sublabel" style={{ marginTop: '2px', lineHeight: '1.4' }}>
+                            {i18n.t('settings:dvr.separateDownloadFoldersSub')}
+                        </div>
+                    </div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                        <input
+                            type="checkbox"
+                            id="separateDownloadFolders"
+                            checked={separateDownloadFolders}
+                            onChange={(e) => handleSeparateDownloadFoldersChange(e.target.checked)}
+                            style={{ display: 'none' }}
+                        />
+                        <label
+                            htmlFor="separateDownloadFolders"
+                            className="dvr-toggle-switch"
+                            style={{
+                                background: separateDownloadFolders ? 'linear-gradient(135deg, #00d4ff, #0072ff)' : undefined,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    left: separateDownloadFolders ? '24px' : '2px',
+                                }}
+                            />
+                        </label>
+                    </div>
                 </div>
             </div>
 

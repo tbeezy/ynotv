@@ -814,5 +814,23 @@
   cursor: not-allowed;
 }
 
+.series-detail__season-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.series-detail__download-all-btn {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.35);
+}
+
+.series-detail__download-all-btn:hover:not(:disabled) {
+  background: rgba(124, 58, 237, 0.28);
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.25);
+}
+
 
 

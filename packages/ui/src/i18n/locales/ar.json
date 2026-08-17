@@ -1778,7 +1778,9 @@
       "permissiveHls": "السماح بامتدادات HLS غير القياسية (.jpg / .css)",
       "permissiveHlsSub": "يتجاوز فحوصات امتداد المقاطع الصارمة في FFmpeg (CVE-2023-6602) لمزودي IPTV الذين يخفون مقاطع الفيديو كملفات .jpg أو .css. معطّل افتراضيًا للحفاظ على الأمان القياسي.",
       "min_one": "{{count}} دقيقة",
-      "min_other": "{{count}} دقائق"
+      "min_other": "{{count}} دقائق",
+      "separateDownloadFolders": "تنظيم التنزيلات في مجلدات فرعية",
+      "separateDownloadFoldersSub": "حفظ الأفلام والمسلسلات في مجلدات منفصلة 'Movies' و 'Series' داخل موقع التنزيل."
     },
     "failover": {
       "groups": "مجموعات التبديل الاحتياطي",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "إزالة {{count}} عناصر مخفية؟ تم حذف مصادرها أو تعطيلها، لذا لا يمكن تشغيلها بعد الآن.",
     "allItemsHidden": "جميع العناصر في قائمة التشغيل هذه مخفية — تم حذف مصادرها أو تعطيلها.",
     "playlistHiddenCount_one": "{{count}} عنصر مخفي (المصدر محذوف أو معطل)",
-    "playlistHiddenCount_other": "{{count}} عناصر مخفية (المصادر محذوفة أو معطلة)"
+    "playlistHiddenCount_other": "{{count}} عناصر مخفية (المصادر محذوفة أو معطلة)",
+    "downloadAllSeasons": "تنزيل جميع المواسم",
+    "downloadAllSeasonsTitle": "تنزيل جميع الحلقات عبر جميع المواسم",
+    "queueingAllSeasons": "جارٍ وضع جميع المواسم في قائمة الانتظار...",
+    "downloadSeasonModalTitle": "تنزيل الموسم {{season}}",
+    "downloadAllModalTitle": "تنزيل جميع المواسم",
+    "folderOrganization": "تنظيم المجلدات",
+    "organizeBySeasonOpt": "تنظيم في مجلدات المسلسل → الموسم",
+    "organizeBySeasonSubSingle": "حفظ في '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "حفظ كل موسم في مجلد خاص به ('{{title}} / Season #')",
+    "saveToRootOpt": "حفظ مباشرة في مجلد المسلسلات",
+    "saveToRootSub": "حفظ جميع ملفات الحلقات مباشرة دون إنشاء مجلدات فرعية للمسلسل أو الموسم.",
+    "pathPreview": "معاينة الوجهة",
+    "startDownload": "بدء التنزيل",
+    "singleSeasonSummary": "الموسم {{season}} • {{count}} حلقات",
+    "allSeasonsSummary": "{{seasonCount}} مواسم • {{count}} حلقات",
+    "selectDirectoryAllSeasons": "حدد دليل حفظ تنزيلات المسلسل"
   },
   "dvr": {
     "title": "التسجيل والتنزيلات",

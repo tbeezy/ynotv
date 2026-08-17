@@ -28,6 +28,7 @@ import { useLazyVodTrailer, useTrailerPlayerMode, useTrailerSource } from '../..
 import { SetPlayerDropdown, SplitPlayButton, TrailerSplitButton, type VodPlayerMode } from './SplitPlayButton';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
 import { VodMetadataEditModal } from './VodMetadataEditModal';
+import { SeriesDownloadModal } from './SeriesDownloadModal';
 import { useSourceNameMap } from '../../hooks/useChannels';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/dateTime';
@@ -133,7 +134,9 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
           undefined,
           posterUrl || undefined,
           series.source_id,
-          episode.direct_url
+          episode.direct_url,
+          undefined,
+          'Series'
         );
       } catch (error) {
         console.error('[SeriesDetail] Episode download failed:', error);
@@ -144,18 +147,48 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
     },
     [series, startDownload, posterUrl]
   );
-  const [downloadingSeason, setDownloadingSeason] = useState(false);
+  // Downloads Path & Base Series Path
+  const downloadsPath = useSettingsStore((s) => s.downloadsPath);
+  const separateDownloadFolders = useSettingsStore((s) => s.separateDownloadFolders);
 
-  const handleDownloadSeason = useCallback(async () => {
+  const resolvedBaseSeriesPath = useMemo(() => {
+    if (!downloadsPath) return '';
+    if (separateDownloadFolders === false) return downloadsPath;
+    const sep = downloadsPath.includes('\\') ? '\\' : '/';
+    const clean = downloadsPath.endsWith(sep) ? downloadsPath.slice(0, -1) : downloadsPath;
+    const lower = clean.toLowerCase();
+    if (lower.endsWith(sep + 'series') || lower.endsWith('/series') || lower.endsWith('\\series')) {
+      return clean;
+    }
+    return `${clean}${sep}Series`;
+  }, [downloadsPath, separateDownloadFolders]);
+
+  // Modal & Download states
+  const [downloadModalMode, setDownloadModalMode] = useState<'single_season' | 'all_seasons' | null>(null);
+  const [downloadingSeason, setDownloadingSeason] = useState(false);
+  const [downloadingAllSeasons, setDownloadingAllSeasons] = useState(false);
+
+  // Get sorted season numbers
+  const seasonNumbers = useMemo(() => {
+    return Object.keys(seasons)
+      .map(Number)
+      .sort((a, b) => a - b);
+  }, [seasons]);
+
+  const totalAllEpisodesCount = useMemo(() => {
+    return Object.values(seasons).reduce((acc, eps) => acc + (eps?.length || 0), 0);
+  }, [seasons]);
+
+  const executeDownloadSeason = useCallback(async (organizeByFolder: boolean) => {
     const episodes = seasons[selectedSeason] || [];
     if (episodes.length === 0) return;
 
     setDownloadingSeason(true);
     try {
       // 1. Resolve downloads path (from the settings store — hydrated at boot)
-      const downloadsPath = useSettingsStore.getState().downloadsPath;
+      const { downloadsPath: currentDownloadsPath, separateDownloadFolders: currentSeparate } = useSettingsStore.getState();
 
-      let targetDir = downloadsPath;
+      let targetDir = currentDownloadsPath;
       if (!targetDir) {
         // Prompt user ONCE to pick a directory for the season downloads
         const { open } = await import('@tauri-apps/plugin-dialog');
@@ -165,22 +198,35 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
           title: i18n.t('vod:selectDirectorySeason', { season: selectedSeason }),
         });
         if (!selected || typeof selected !== 'string') {
-          // User canceled picker
           setDownloadingSeason(false);
           return;
         }
         targetDir = selected;
+      } else if (currentSeparate !== false) {
+        const sep = targetDir.includes('\\') ? '\\' : '/';
+        const clean = targetDir.endsWith(sep) ? targetDir.slice(0, -1) : targetDir;
+        const lower = clean.toLowerCase();
+        if (!lower.endsWith(sep + 'series') && !lower.endsWith('/series') && !lower.endsWith('\\series')) {
+          targetDir = `${clean}${sep}Series`;
+        }
+      }
+
+      const separator = targetDir.includes('\\') ? '\\' : '/';
+      const cleanBase = targetDir.endsWith(separator) ? targetDir.slice(0, -1) : targetDir;
+
+      let seasonDir = cleanBase;
+      if (organizeByFolder) {
+        const sanitizedShowTitle = (series.title || series.name).replace(/[<>:"/\\|?*]/g, '_').trim();
+        seasonDir = `${cleanBase}${separator}${sanitizedShowTitle}${separator}Season ${selectedSeason}`;
       }
 
       // 2. Queue all episodes
-      const separator = targetDir.includes('\\') ? '\\' : '/';
-      
       for (const episode of episodes) {
         if (!episode.direct_url) continue;
 
         try {
           const resolved = await resolvePlayUrl(series.source_id, episode.direct_url);
-          
+
           let episodeDuration = episode.duration ?? 0;
           if (!episodeDuration && episode.info?.duration) {
             const parsedDuration = Number(episode.info.duration);
@@ -191,7 +237,7 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
           const isHls = resolved.url.includes('.m3u8') || resolved.url.includes('/mono.m3u8');
           const ext = isHls ? 'ts' : 'mp4';
           const sanitizedTitle = epTitle.replace(/[<>:"/\\|?*]/g, '_').substring(0, 50);
-          const episodeSavePath = `${targetDir}${targetDir.endsWith(separator) ? '' : separator}${sanitizedTitle}.${ext}`;
+          const episodeSavePath = `${seasonDir}${separator}${sanitizedTitle}.${ext}`;
 
           await startDownload(
             epTitle,
@@ -201,7 +247,9 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
             episodeSavePath,
             posterUrl || undefined,
             series.source_id,
-            episode.direct_url
+            episode.direct_url,
+            undefined,
+            'Series'
           );
         } catch (err) {
           console.error(`[SeriesDetail] Failed to queue episode S${episode.season_num}E${episode.episode_num}:`, err);
@@ -215,16 +263,93 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
     }
   }, [series, selectedSeason, seasons, startDownload, posterUrl]);
 
+  const executeDownloadAllSeasons = useCallback(async (organizeByFolder: boolean) => {
+    if (seasonNumbers.length === 0) return;
+
+    setDownloadingAllSeasons(true);
+    try {
+      const { downloadsPath: currentDownloadsPath, separateDownloadFolders: currentSeparate } = useSettingsStore.getState();
+
+      let targetDir = currentDownloadsPath;
+      if (!targetDir) {
+        const { open } = await import('@tauri-apps/plugin-dialog');
+        const selected = await open({
+          directory: true,
+          multiple: false,
+          title: i18n.t('vod:selectDirectoryAllSeasons'),
+        });
+        if (!selected || typeof selected !== 'string') {
+          setDownloadingAllSeasons(false);
+          return;
+        }
+        targetDir = selected;
+      } else if (currentSeparate !== false) {
+        const sep = targetDir.includes('\\') ? '\\' : '/';
+        const clean = targetDir.endsWith(sep) ? targetDir.slice(0, -1) : targetDir;
+        const lower = clean.toLowerCase();
+        if (!lower.endsWith(sep + 'series') && !lower.endsWith('/series') && !lower.endsWith('\\series')) {
+          targetDir = `${clean}${sep}Series`;
+        }
+      }
+
+      const separator = targetDir.includes('\\') ? '\\' : '/';
+      const cleanBase = targetDir.endsWith(separator) ? targetDir.slice(0, -1) : targetDir;
+      const sanitizedShowTitle = (series.title || series.name).replace(/[<>:"/\\|?*]/g, '_').trim();
+
+      for (const seasonNum of seasonNumbers) {
+        const episodes = seasons[seasonNum] || [];
+        const seasonDir = organizeByFolder
+          ? `${cleanBase}${separator}${sanitizedShowTitle}${separator}Season ${seasonNum}`
+          : cleanBase;
+
+        for (const episode of episodes) {
+          if (!episode.direct_url) continue;
+
+          try {
+            const resolved = await resolvePlayUrl(series.source_id, episode.direct_url);
+
+            let episodeDuration = episode.duration ?? 0;
+            if (!episodeDuration && episode.info?.duration) {
+              const parsedDuration = Number(episode.info.duration);
+              episodeDuration = isNaN(parsedDuration) ? 0 : parsedDuration;
+            }
+
+            const epTitle = `${series.title || series.name} - S${episode.season_num}E${episode.episode_num}`;
+            const isHls = resolved.url.includes('.m3u8') || resolved.url.includes('/mono.m3u8');
+            const ext = isHls ? 'ts' : 'mp4';
+            const sanitizedTitle = epTitle.replace(/[<>:"/\\|?*]/g, '_').substring(0, 50);
+            const episodeSavePath = `${seasonDir}${separator}${sanitizedTitle}.${ext}`;
+
+            await startDownload(
+              epTitle,
+              resolved.url,
+              resolved.userAgent,
+              episodeDuration ? episodeDuration * 60 : undefined,
+              episodeSavePath,
+              posterUrl || undefined,
+              series.source_id,
+              episode.direct_url,
+              undefined,
+              'Series'
+            );
+          } catch (err) {
+            console.error(`[SeriesDetail] Failed to queue episode S${episode.season_num}E${episode.episode_num}:`, err);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[SeriesDetail] All seasons download failed:', error);
+      alert(i18n.t('vod:failedToStartSeasonDownload'));
+    } finally {
+      setDownloadingAllSeasons(false);
+    }
+  }, [series, seasonNumbers, seasons, startDownload, posterUrl]);
+
   // Fetch episode progress
   const { episodeProgress, loading: progressLoading } = useSeriesEpisodeProgress(series.series_id);
 
   // Fetch episode extras (images, summaries, air dates, ratings) and series logo
   const { logoUrl, episodeExtras, loading: extrasLoading } = useLazySeriesExtras(series, apiKey);
-
-  // Get sorted season numbers
-  const seasonNumbers = Object.keys(seasons)
-    .map(Number)
-    .sort((a, b) => a - b);
 
   // Set first season as default when loaded
   useEffect(() => {
@@ -648,23 +773,43 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
               ))}
             </div>
 
-            {currentEpisodes.length > 0 && (
-              <button
-                className={`series-detail__download-season-btn ${downloadingSeason ? 'downloading' : ''}`}
-                onClick={handleDownloadSeason}
-                disabled={downloadingSeason}
-                title={i18n.t('vod:downloadSeasonTitle', { season: selectedSeason })}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {downloadingSeason ? (
-                    <circle cx="12" cy="12" r="10" strokeDasharray="31.4" strokeDashoffset="10" style={{ transformOrigin: 'center', animation: 'spin 1.5s linear infinite' }} />
-                  ) : (
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3" strokeLinecap="round" strokeLinejoin="round" />
-                  )}
-                </svg>
-                {downloadingSeason ? i18n.t('vod:queueingSeason') : i18n.t('vod:downloadSeason', { num: selectedSeason })}
-              </button>
-            )}
+            <div className="series-detail__season-actions">
+              {currentEpisodes.length > 0 && (
+                <button
+                  className={`series-detail__download-season-btn ${downloadingSeason ? 'downloading' : ''}`}
+                  onClick={() => setDownloadModalMode('single_season')}
+                  disabled={downloadingSeason || downloadingAllSeasons}
+                  title={i18n.t('vod:downloadSeasonTitle', { season: selectedSeason })}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {downloadingSeason ? (
+                      <circle cx="12" cy="12" r="10" strokeDasharray="31.4" strokeDashoffset="10" style={{ transformOrigin: 'center', animation: 'spin 1.5s linear infinite' }} />
+                    ) : (
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3" strokeLinecap="round" strokeLinejoin="round" />
+                    )}
+                  </svg>
+                  {downloadingSeason ? i18n.t('vod:queueingSeason') : i18n.t('vod:downloadSeason', { num: selectedSeason })}
+                </button>
+              )}
+
+              {seasonNumbers.length > 1 && totalAllEpisodesCount > 0 && (
+                <button
+                  className={`series-detail__download-season-btn series-detail__download-all-btn ${downloadingAllSeasons ? 'downloading' : ''}`}
+                  onClick={() => setDownloadModalMode('all_seasons')}
+                  disabled={downloadingSeason || downloadingAllSeasons}
+                  title={i18n.t('vod:downloadAllSeasonsTitle')}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {downloadingAllSeasons ? (
+                      <circle cx="12" cy="12" r="10" strokeDasharray="31.4" strokeDashoffset="10" style={{ transformOrigin: 'center', animation: 'spin 1.5s linear infinite' }} />
+                    ) : (
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3" strokeLinecap="round" strokeLinejoin="round" />
+                    )}
+                  </svg>
+                  {downloadingAllSeasons ? i18n.t('vod:queueingAllSeasons') : i18n.t('vod:downloadAllSeasons')}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Episode list */}
@@ -855,6 +1000,26 @@ export function SeriesDetail({ series: seriesProp, onClose, onPlayEpisode, apiKe
       onClose={() => setIsMetadataEditOpen(false)}
       item={series}
       type="series"
+    />
+
+    <SeriesDownloadModal
+      isOpen={downloadModalMode !== null}
+      mode={downloadModalMode || 'single_season'}
+      seriesTitle={series.title || series.name}
+      selectedSeason={selectedSeason}
+      totalEpisodesCount={downloadModalMode === 'all_seasons' ? totalAllEpisodesCount : (seasons[selectedSeason] || []).length}
+      totalSeasonsCount={seasonNumbers.length}
+      baseDownloadPath={resolvedBaseSeriesPath}
+      onConfirm={(organizeByFolder) => {
+        const mode = downloadModalMode;
+        setDownloadModalMode(null);
+        if (mode === 'all_seasons') {
+          executeDownloadAllSeasons(organizeByFolder);
+        } else {
+          executeDownloadSeason(organizeByFolder);
+        }
+      }}
+      onCancel={() => setDownloadModalMode(null)}
     />
   </>
 );

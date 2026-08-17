@@ -1778,7 +1778,9 @@
       "permissiveHls": "مجاز کردن پسوندهای HLS غیراستاندارد (.jpg / .css)",
       "permissiveHlsSub": "بررسی‌های سختگیرانه پسوند بخش FFmpeg (CVE-2023-6602) را برای ارائه‌دهندگان IPTV که بخش‌های ویدیو را به‌صورت فایل‌های .jpg یا .css پنهان می‌کنند، دور می‌زند. برای حفظ امنیت استاندارد، به‌طور پیش‌فرض غیرفعال است.",
       "min_one": "{{count}} دقیقه",
-      "min_other": "{{count}} دقیقه"
+      "min_other": "{{count}} دقیقه",
+      "separateDownloadFolders": "سازماندهی دانلودها در پوشه‌های فرعی",
+      "separateDownloadFoldersSub": "ذخیره فیلم‌ها و سریال‌ها در پوشه‌های جداگانه 'Movies' و 'Series' در محل دانلود."
     },
     "failover": {
       "groups": "گروه‌های جایگزین",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "{{count}} مورد پنهان حذف شوند؟ منابع آن‌ها حذف یا غیرفعال شده‌اند و دیگر قابل پخش نیستند.",
     "allItemsHidden": "همه موارد این فهرست پنهان هستند — منابع آن‌ها حذف یا غیرفعال شده‌اند.",
     "playlistHiddenCount_one": "{{count}} مورد پنهان (منبع حذف یا غیرفعال شده)",
-    "playlistHiddenCount_other": "{{count}} مورد پنهان (منابع حذف یا غیرفعال شده‌اند)"
+    "playlistHiddenCount_other": "{{count}} مورد پنهان (منابع حذف یا غیرفعال شده‌اند)",
+    "downloadAllSeasons": "دانلود تمام فصل‌ها",
+    "downloadAllSeasonsTitle": "دانلود تمام قسمت‌های تمام فصل‌ها",
+    "queueingAllSeasons": "در حال قرار دادن تمام فصل‌ها در صف...",
+    "downloadSeasonModalTitle": "دانلود فصل {{season}}",
+    "downloadAllModalTitle": "دانلود تمام فصل‌ها",
+    "folderOrganization": "سازماندهی پوشه‌ها",
+    "organizeBySeasonOpt": "سازماندهی در پوشه‌های سریال → فصل",
+    "organizeBySeasonSubSingle": "ذخیره در '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "ذخیره هر فصل در پوشه جداگانه ('{{title}} / Season #')",
+    "saveToRootOpt": "ذخیره مستقیم در پوشه سریال‌ها",
+    "saveToRootSub": "ذخیره تمام قسمت‌ها به طور مستقیم بدون ایجاد پوشه‌های فرعی.",
+    "pathPreview": "پیش‌نمایش مسیر مقصد",
+    "startDownload": "شروع دانلود",
+    "singleSeasonSummary": "فصل {{season}} • {{count}} قسمت",
+    "allSeasonsSummary": "{{seasonCount}} فصل • {{count}} قسمت",
+    "selectDirectoryAllSeasons": "انتخاب پوشه برای ذخیره دانلودهای سریال"
   },
   "dvr": {
     "title": "DVR و دانلودها",

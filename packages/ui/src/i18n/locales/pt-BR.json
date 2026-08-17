@@ -1778,7 +1778,9 @@
       "permissiveHls": "Permitir extensões HLS não padrão (.jpg / .css)",
       "permissiveHlsSub": "Ignora as verificações estritas de extensão de segmentos do FFmpeg (CVE-2023-6602) para provedores de IPTV que disfarçam segmentos de vídeo como arquivos .jpg ou .css. Desativado por padrão para preservar a segurança padrão.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} min"
+      "min_other": "{{count}} min",
+      "separateDownloadFolders": "Organizar downloads em subpastas",
+      "separateDownloadFoldersSub": "Salvar filmes e séries em pastas separadas 'Movies' e 'Series' dentro do local de download."
     },
     "failover": {
       "groups": "Grupos de failover",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Remover {{count}} itens ocultos? As fontes foram excluídas ou desabilitadas, portanto não podem mais ser reproduzidos.",
     "allItemsHidden": "Todos os itens desta playlist estão ocultos — suas fontes foram excluídas ou desabilitadas.",
     "playlistHiddenCount_one": "{{count}} item oculto (fonte excluída ou desabilitada)",
-    "playlistHiddenCount_other": "{{count}} itens ocultos (fontes excluídas ou desabilitadas)"
+    "playlistHiddenCount_other": "{{count}} itens ocultos (fontes excluídas ou desabilitadas)",
+    "downloadAllSeasons": "Baixar todas as temporadas",
+    "downloadAllSeasonsTitle": "Baixar todos os episódios de todas as temporadas",
+    "queueingAllSeasons": "Enfileirando todas as temporadas...",
+    "downloadSeasonModalTitle": "Baixar temporada {{season}}",
+    "downloadAllModalTitle": "Baixar todas as temporadas",
+    "folderOrganization": "Organização de pastas",
+    "organizeBySeasonOpt": "Organizar em pastas Série → Temporada",
+    "organizeBySeasonSubSingle": "Salvar em '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Salvar cada temporada em sua própria pasta ('{{title}} / Season #')",
+    "saveToRootOpt": "Salvar diretamente na pasta Séries",
+    "saveToRootSub": "Salvar todos os episódios diretamente sem subpastas.",
+    "pathPreview": "Pré-visualização do destino",
+    "startDownload": "Iniciar download",
+    "singleSeasonSummary": "Temporada {{season}} • {{count}} Episódios",
+    "allSeasonsSummary": "{{seasonCount}} Temporadas • {{count}} Episódios",
+    "selectDirectoryAllSeasons": "Selecione o diretório para salvar as séries"
   },
   "dvr": {
     "title": "DVR e Downloads",

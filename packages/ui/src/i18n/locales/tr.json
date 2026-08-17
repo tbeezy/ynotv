@@ -1778,7 +1778,9 @@
       "permissiveHls": "Standart Dışı HLS Uzantılarına İzin Ver (.jpg / .css)",
       "permissiveHlsSub": "Video segmentlerini .jpg veya .css dosyaları olarak gizleyen IPTV sağlayıcıları için katı FFmpeg segment uzantısı kontrollerini (CVE-2023-6602) atlar. Standart güvenliği korumak için varsayılan olarak devre dışıdır.",
       "min_one": "{{count}} dk",
-      "min_other": "{{count}} dk"
+      "min_other": "{{count}} dk",
+      "separateDownloadFolders": "İndirmeleri alt klasörlere düzenle",
+      "separateDownloadFoldersSub": "Filmleri ve dizileri indirme konumu içindeki ayrı 'Movies' ve 'Series' klasörlerine kaydedin."
     },
     "failover": {
       "groups": "Yük Devretme Grupları",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "{{count}} gizli öğe kaldırılsın mı? Kaynakları silindi veya devre dışı bırakıldı, bu yüzden artık oynatılamıyorlar.",
     "allItemsHidden": "Bu oynatma listesindeki tüm öğeler gizli — kaynakları silindi veya devre dışı bırakıldı.",
     "playlistHiddenCount_one": "{{count}} gizli öğe (kaynak silindi veya devre dışı bırakıldı)",
-    "playlistHiddenCount_other": "{{count}} gizli öğe (kaynaklar silindi veya devre dışı bırakıldı)"
+    "playlistHiddenCount_other": "{{count}} gizli öğe (kaynaklar silindi veya devre dışı bırakıldı)",
+    "downloadAllSeasons": "Tüm Sezonları İndir",
+    "downloadAllSeasonsTitle": "Tüm sezonlardaki tüm bölümleri indir",
+    "queueingAllSeasons": "Tüm sezonlar sıraya alınıyor...",
+    "downloadSeasonModalTitle": "Sezon {{season}} İndir",
+    "downloadAllModalTitle": "Tüm Sezonları İndir",
+    "folderOrganization": "Klasör Düzeni",
+    "organizeBySeasonOpt": "Dizi → Sezon klasörlerine düzenle",
+    "organizeBySeasonSubSingle": "'{{title}} / Season {{season}}' içine kaydet",
+    "organizeBySeasonSubAll": "Her sezonu kendi klasörüne kaydet ('{{title}} / Season #')",
+    "saveToRootOpt": "Doğrudan Diziler klasörüne kaydet",
+    "saveToRootSub": "Tüm bölümleri alt klasör oluşturmadan doğrudan kaydet.",
+    "pathPreview": "Hedef Önizlemesi",
+    "startDownload": "İndirmeyi Başlat",
+    "singleSeasonSummary": "Sezon {{season}} • {{count}} Bölüm",
+    "allSeasonsSummary": "{{seasonCount}} Sezon • {{count}} Bölüm",
+    "selectDirectoryAllSeasons": "Dizi indirmelerini kaydetmek için dizin seçin"
   },
   "dvr": {
     "title": "DVR ve İndirmeler",

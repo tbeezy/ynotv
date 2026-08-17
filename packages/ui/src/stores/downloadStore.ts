@@ -37,6 +37,7 @@ export interface PendingStalkerDownload {
   poster?: string;
   sourceId?: string;
   directUrl?: string;
+  category?: 'Movies' | 'Series';
 }
 
 interface DownloadState {
@@ -51,7 +52,8 @@ interface DownloadState {
     poster?: string,
     sourceId?: string,
     directUrl?: string,
-    extractSubtitles?: boolean
+    extractSubtitles?: boolean,
+    category?: 'Movies' | 'Series'
   ) => Promise<void>;
   confirmStalkerDownload: (extractSubtitles: boolean) => Promise<void>;
   cancelStalkerDownload: () => void;
@@ -99,7 +101,8 @@ export const useDownloadStore = create<DownloadState>()(
           pending.poster,
           pending.sourceId,
           pending.directUrl,
-          extractSubtitles
+          extractSubtitles,
+          pending.category
         );
       },
 
@@ -107,7 +110,7 @@ export const useDownloadStore = create<DownloadState>()(
         set({ pendingStalkerDownload: null });
       },
 
-      startDownload: async (title, url, userAgent, durationSecs, preResolvedSavePath, poster, sourceId, directUrl, extractSubtitles) => {
+      startDownload: async (title, url, userAgent, durationSecs, preResolvedSavePath, poster, sourceId, directUrl, extractSubtitles, category) => {
         const isStalker = (directUrl && (directUrl.startsWith('stalker_') || directUrl.startsWith('stalker'))) ||
                           (url && (url.startsWith('stalker_') || url.includes('stalker')));
 
@@ -122,6 +125,7 @@ export const useDownloadStore = create<DownloadState>()(
               poster,
               sourceId,
               directUrl,
+              category,
             }
           });
           return;
@@ -133,7 +137,7 @@ export const useDownloadStore = create<DownloadState>()(
           if (preResolvedSavePath) {
             savePath = preResolvedSavePath;
           } else {
-            const downloadsPath = useSettingsStore.getState().downloadsPath;
+            const { downloadsPath, separateDownloadFolders } = useSettingsStore.getState();
 
             const isHls = url.includes('.m3u8') || url.includes('/mono.m3u8');
             const ext = isHls ? 'mkv' : 'mp4';
@@ -141,7 +145,31 @@ export const useDownloadStore = create<DownloadState>()(
 
             if (downloadsPath) {
               const separator = downloadsPath.includes('\\') ? '\\' : '/';
-              savePath = `${downloadsPath}${downloadsPath.endsWith(separator) ? '' : separator}${sanitizedTitle}.${ext}`;
+              let targetDir = downloadsPath;
+              if (targetDir.endsWith(separator)) {
+                targetDir = targetDir.slice(0, -1);
+              }
+
+              if (separateDownloadFolders !== false) {
+                let subfolder = 'Movies';
+                if (category) {
+                  subfolder = category === 'Series' ? 'Series' : 'Movies';
+                } else if (title.match(/ - S\d+E\d+/i)) {
+                  subfolder = 'Series';
+                }
+
+                const lowerTarget = targetDir.toLowerCase();
+                const lowerSub = subfolder.toLowerCase();
+                if (
+                  !lowerTarget.endsWith(separator + lowerSub) &&
+                  !lowerTarget.endsWith('/' + lowerSub) &&
+                  !lowerTarget.endsWith('\\' + lowerSub)
+                ) {
+                  targetDir = `${targetDir}${separator}${subfolder}`;
+                }
+              }
+
+              savePath = `${targetDir}${separator}${sanitizedTitle}.${ext}`;
             } else {
               // Prompt save dialog
               const selected = await save({

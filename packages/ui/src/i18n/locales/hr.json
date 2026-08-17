@@ -1778,7 +1778,9 @@
       "permissiveHls": "Dozvoli nestandardne HLS ekstenzije (.jpg / .css)",
       "permissiveHlsSub": "Ignoriše stroge provere ekstenzija segmenata FFmpeg-a (CVE-2023-6602) za IPTV provajdere koji maskiraju video segmente kao .jpg ili .css datoteke. Isključeno podrazumijevano radi očuvanja podrazumijevane bezbednosti.",
       "min_one": "{{count}} min",
-      "min_other": "{{count}} min"
+      "min_other": "{{count}} min",
+      "separateDownloadFolders": "Organizirajte preuzimanja u podmape",
+      "separateDownloadFoldersSub": "Spremite filmove i serije u zasebne mape 'Movies' i 'Series' unutar lokacije preuzimanja."
     },
     "failover": {
       "groups": "Grupe za prebacivanje",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Ukloniti {{count}} skrivenih stavki? Njihovi izvori su obrisani ili onemogućeni pa se više ne mogu reproducirati.",
     "allItemsHidden": "Sve stavke u ovoj listi su skrivene — njihovi izvori su obrisani ili onemogućeni.",
     "playlistHiddenCount_one": "{{count}} skrivena stavka (izvor obrisan ili onemogućen)",
-    "playlistHiddenCount_other": "{{count}} skrivenih stavki (izvori obrisani ili onemogućeni)"
+    "playlistHiddenCount_other": "{{count}} skrivenih stavki (izvori obrisani ili onemogućeni)",
+    "downloadAllSeasons": "Preuzmi sve sezone",
+    "downloadAllSeasonsTitle": "Preuzmite sve epizode iz svih sezona",
+    "queueingAllSeasons": "Stavljanje svih sezona u red čekanja...",
+    "downloadSeasonModalTitle": "Preuzmi sezonu {{season}}",
+    "downloadAllModalTitle": "Preuzmi sve sezone",
+    "folderOrganization": "Organizacija mapa",
+    "organizeBySeasonOpt": "Organizirajte u mape Serija → Sezona",
+    "organizeBySeasonSubSingle": "Spremi u '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Spremi svaku sezonu u zasebnu mapu ('{{title}} / Season #')",
+    "saveToRootOpt": "Spremi izravno u mapu Serije",
+    "saveToRootSub": "Spremite sve epizode izravno bez podmapa.",
+    "pathPreview": "Pregled odredišta",
+    "startDownload": "Pokreni preuzimanje",
+    "singleSeasonSummary": "Sezona {{season}} • {{count}} epizoda",
+    "allSeasonsSummary": "{{seasonCount}} sezona • {{count}} epizoda",
+    "selectDirectoryAllSeasons": "Odaberite mapu za spremanje preuzimanja serije"
   },
   "dvr": {
     "title": "DVR i preuzimanje",

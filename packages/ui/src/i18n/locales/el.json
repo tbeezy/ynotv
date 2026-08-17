@@ -1778,7 +1778,9 @@
       "permissiveHls": "Να επιτρέπονται Μη Τυπικές Επεκτάσεις HLS (.jpg / .css)",
       "permissiveHlsSub": "Παρακάμπτει τους αυστηρούς ελέγχους επεκτάσεων τμημάτων FFmpeg (CVE-2023-6602) για παρόχους IPTV που αποκρύπτουν τμήματα βίντεο ως αρχεία .jpg ή .css. Απενεργοποιημένο από προεπιλογή για διατήρηση τυπικής ασφάλειας.",
       "min_one": "{{count}} λεπ",
-      "min_other": "{{count}} λεπτά"
+      "min_other": "{{count}} λεπτά",
+      "separateDownloadFolders": "Οργάνωση λήψεων σε υποφακέλους",
+      "separateDownloadFoldersSub": "Αποθήκευση ταινιών και σειρών σε ξεχωριστούς φακέλους 'Movies' και 'Series' στη θέση λήψης."
     },
     "failover": {
       "groups": "Ομάδες Εναλλαγής",
@@ -2576,7 +2578,23 @@
     "removeAllHiddenConfirm_other": "Να καταργηθούν {{count}} κρυφά στοιχεία; Οι πηγές τους διαγράφηκαν ή απενεργοποιήθηκαν, οπότε δεν μπορούν να αναπαραχθούν πλέον.",
     "allItemsHidden": "Όλα τα στοιχεία αυτής της λίστας αναπαραγωγής είναι κρυφά — οι πηγές τους διαγράφηκαν ή απενεργοποιήθηκαν.",
     "playlistHiddenCount_one": "{{count}} κρυφό στοιχείο (η πηγή διαγράφηκε ή απενεργοποιήθηκε)",
-    "playlistHiddenCount_other": "{{count}} κρυφά στοιχεία (οι πηγές διαγράφηκαν ή απενεργοποιήθηκαν)"
+    "playlistHiddenCount_other": "{{count}} κρυφά στοιχεία (οι πηγές διαγράφηκαν ή απενεργοποιήθηκαν)",
+    "downloadAllSeasons": "Λήψη όλων των κύκλων",
+    "downloadAllSeasonsTitle": "Λήψη όλων των επεισοδίων από όλους τους κύκλους",
+    "queueingAllSeasons": "Προσθήκη όλων των κύκλων στην ουρά...",
+    "downloadSeasonModalTitle": "Λήψη κύκλου {{season}}",
+    "downloadAllModalTitle": "Λήψη όλων των κύκλων",
+    "folderOrganization": "Οργάνωση φακέλων",
+    "organizeBySeasonOpt": "Οργάνωση σε φακέλους Σειρά → Κύκλος",
+    "organizeBySeasonSubSingle": "Αποθήκευση σε '{{title}} / Season {{season}}'",
+    "organizeBySeasonSubAll": "Αποθήκευση κάθε κύκλου σε ξεχωριστό φάκελο ('{{title}} / Season #')",
+    "saveToRootOpt": "Αποθήκευση απευθείας στον φάκελο Σειρών",
+    "saveToRootSub": "Αποθήκευση όλων των αρχείων απευθείας χωρίς υποφακέλους.",
+    "pathPreview": "Προεπισκόπηση προορισμού",
+    "startDownload": "Έναρξη λήψης",
+    "singleSeasonSummary": "Κύκλος {{season}} • {{count}} Επεισόδια",
+    "allSeasonsSummary": "{{seasonCount}} Κύκλοι • {{count}} Επεισόδια",
+    "selectDirectoryAllSeasons": "Επιλέξτε κατάλογο για αποθήκευση λήψεων σειράς"
   },
   "dvr": {
     "title": "DVR & Λήψεις",

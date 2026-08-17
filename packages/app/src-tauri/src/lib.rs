@@ -3267,6 +3267,11 @@ async fn download_media(
     let app_handle_clone = app_handle.clone();
     
     tokio::spawn(async move {
+        // Ensure parent directory exists (e.g. Movies, Series, Recordings subfolders)
+        if let Some(parent) = std::path::Path::new(&save_path).parent() {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
+
         // Use a temporary TS path for HLS-to-MKV so subtitles can be remuxed cleanly.
         let is_hls = url.contains(".m3u8") || url.contains("/mono.m3u8");
         let use_temp_ts = is_hls && save_path.ends_with(".mkv");
