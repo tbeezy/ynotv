@@ -6,6 +6,7 @@ import { useChannels, useCategories, useAllPrograms, useProgramsInRange, parseCa
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLiveQuery } from '../hooks/useSqliteLiveQuery';
 import { useTimeGrid } from '../hooks/useTimeGrid';
+import { useVirtuosoListHeight } from '../hooks/useVirtuosoListHeight';
 import { useActiveRecordings } from '../hooks/useActiveRecordings';
 import { ChannelRow } from './ChannelRow';
 import { SearchResultRow } from './SearchResultRow';
@@ -22,6 +23,7 @@ import { AudioVisualizer, type VisualizerMode } from './AudioVisualizer';
 import type { StoredChannel, StoredProgram, WatchlistItem } from '../db';
 import { db } from '../db';
 import { matchesSearch } from '../utils/searchNormalization';
+import { decompressEpgDescription } from '../utils/compression';
 import { formatTime, formatDate } from '../utils/dateTime';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
@@ -172,6 +174,87 @@ const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
          prevData.epgMetadataBadgeSound === nextData.epgMetadataBadgeSound &&
          !recordingsChanged &&
          !programsChanged;
+});
+
+// Shared context for the virtualized EPG tabs (Live Now / Upcoming) of search results
+interface SearchProgramRowData {
+  windowStart: Date;
+  windowEnd: Date;
+  pixelsPerHour: number;
+  visibleHours: number;
+  handleSearchChannelClick: (channel: StoredChannel) => void;
+  refreshSearchResults: () => void;
+  activeRecordings: import('../hooks/useActiveRecordings').RecordingInfo[];
+  currentLayout?: string;
+  onSendToSlot?: (slotId: 2 | 3 | 4, channelName: string, channelUrl: string, sourceName?: string | null) => void;
+  onPlayInPopout?: (channel: StoredChannel) => void;
+  onPlayInExternal?: (channel: StoredChannel) => void;
+  includeSourceInSearch?: boolean;
+  currentChannel?: StoredChannel | null;
+}
+
+// Memoized Virtuoso row for Live Now / Upcoming EPG search tabs
+const SearchResultRowVirtuoso = memo(function SearchResultRowVirtuoso({
+  index,
+  entry,
+  data,
+}: {
+  index: number;
+  entry: { channel: StoredChannel; programs: StoredProgram[] };
+  data: SearchProgramRowData;
+}) {
+  const handlePlay = useCallback(() => {
+    data.handleSearchChannelClick(entry.channel);
+  }, [entry.channel, data.handleSearchChannelClick]);
+
+  return (
+    <SearchResultRow
+      channel={entry.channel}
+      programs={entry.programs}
+      windowStart={data.windowStart}
+      windowEnd={data.windowEnd}
+      pixelsPerHour={data.pixelsPerHour}
+      visibleHours={data.visibleHours}
+      onPlay={handlePlay}
+      onFavoriteToggle={data.refreshSearchResults}
+      activeRecordings={data.activeRecordings}
+      currentLayout={data.currentLayout}
+      onSendToSlot={data.onSendToSlot}
+      onPlayInPopout={data.onPlayInPopout}
+      onPlayInExternal={data.onPlayInExternal}
+      includeSourceInSearch={data.includeSourceInSearch}
+      currentChannel={data.currentChannel}
+    />
+  );
+}, (prevProps, nextProps) => {
+  const prevData = prevProps.data;
+  const nextData = nextProps.data;
+  const prevProgs = prevProps.entry.programs;
+  const nextProgs = nextProps.entry.programs;
+
+  const prevRecs = prevData.activeRecordings ?? [];
+  const nextRecs = nextData.activeRecordings ?? [];
+  const prevChannelRec = prevRecs.some(r => r.channelId === prevProps.entry.channel.stream_id);
+  const nextChannelRec = nextRecs.some(r => r.channelId === nextProps.entry.channel.stream_id);
+  const recordingsChanged = prevChannelRec !== nextChannelRec;
+
+  return prevProps.index === nextProps.index &&
+         prevProps.entry.channel.stream_id === nextProps.entry.channel.stream_id &&
+         prevProps.entry.channel.is_favorite === nextProps.entry.channel.is_favorite &&
+         prevProps.entry.channel.name === nextProps.entry.channel.name &&
+         prevProps.entry.channel.stream_icon === nextProps.entry.channel.stream_icon &&
+         prevProps.entry.channel.alias === nextProps.entry.channel.alias &&
+         prevProps.entry.channel.source_id === nextProps.entry.channel.source_id &&
+         prevProps.entry.channel.tv_archive === nextProps.entry.channel.tv_archive &&
+         prevData.windowStart.getTime() === nextData.windowStart.getTime() &&
+         prevData.windowEnd.getTime() === nextData.windowEnd.getTime() &&
+         prevData.pixelsPerHour === nextData.pixelsPerHour &&
+         prevData.visibleHours === nextData.visibleHours &&
+         prevData.currentLayout === nextData.currentLayout &&
+         prevData.includeSourceInSearch === nextData.includeSourceInSearch &&
+         prevData.currentChannel?.stream_id === nextData.currentChannel?.stream_id &&
+         prevProgs === nextProgs &&
+         !recordingsChanged;
 });
 
 interface ChannelPanelProps {
@@ -891,62 +974,23 @@ export function ChannelPanel({
     return position;
   }, [currentTime, windowStart, pixelsPerHour, availableWidth]);
 
-  // ── Current-time indicator height (normal grid) ───────────────────────────
-  // The indicator line should stop at the last rendered channel row instead of
-  // spanning the whole content area (e.g. when a category has only a few
-  // channels that don't fill the panel). We measure the Virtuoso list element,
-  // whose height equals the total height of all rows.
+  // ── Current-time indicator height ─────────────────────────────────────────
+  // The indicator line should stop at the last rendered row instead of spanning
+  // the whole content area (e.g. when a category/search has only a few channels
+  // that don't fill the panel). We measure the Virtuoso list element, whose
+  // height equals the total height of all rows.
   const [guideScroller, setGuideScroller] = useState<HTMLElement | null>(null);
-  const [guideListHeight, setGuideListHeight] = useState(0);
-
   const handleGuideScrollerRef = useCallback((node: HTMLElement | Window | null) => {
     if (node instanceof HTMLElement) setGuideScroller(node);
   }, []);
+  const guideListHeight = useVirtuosoListHeight(guideScroller);
 
-  useEffect(() => {
-    if (!guideScroller) return;
-
-    // The Virtuoso list element holds the total height of all channel rows.
-    // It only exists once there is at least one row and can be (re)created by
-    // Virtuoso, so watch the scroller subtree and (re)attach a ResizeObserver
-    // whenever the list appears or is replaced.
-    let listEl: HTMLElement | null = null;
-    let ro: ResizeObserver | null = null;
-
-    const measure = () => {
-      if (listEl) setGuideListHeight(listEl.getBoundingClientRect().height);
-    };
-
-    const attach = () => {
-      const el = guideScroller.querySelector('[data-testid="virtuoso-item-list"]');
-      if (!(el instanceof HTMLElement)) {
-        // List removed (e.g. no channels) -> fall back to full-height line
-        if (listEl) {
-          if (ro) ro.disconnect();
-          ro = null;
-          listEl = null;
-          setGuideListHeight(0);
-        }
-        return;
-      }
-      if (el === listEl) return; // already attached; ResizeObserver handles size changes
-      if (ro) ro.disconnect();
-      listEl = el;
-      ro = new ResizeObserver(measure);
-      ro.observe(listEl);
-      measure();
-    };
-
-    attach();
-    const mo = new MutationObserver(() => attach());
-    mo.observe(guideScroller, { childList: true, subtree: true });
-
-    return () => {
-      mo.disconnect();
-      if (ro) ro.disconnect();
-      setGuideListHeight(0);
-    };
-  }, [guideScroller]);
+  // Same measurement for the virtualized Channels tab of search results
+  const [searchScroller, setSearchScroller] = useState<HTMLElement | null>(null);
+  const handleSearchScrollerRef = useCallback((node: HTMLElement | Window | null) => {
+    if (node instanceof HTMLElement) setSearchScroller(node);
+  }, []);
+  const searchChannelsListHeight = useVirtuosoListHeight(searchScroller);
 
   // Keyboard navigation
   useEffect(() => {
@@ -972,6 +1016,9 @@ export function ChannelPanel({
   }, [visible, goBack, goForward]);
 
   // Fetch programs for search results
+  // Channel matches are batched into a handful of IN queries (instead of one
+  // query per channel) and follow the navigated time window, so large result
+  // sets load fast and back/forward on the Channels tab shows real programs.
   useEffect(() => {
     if (!isSearchMode) {
       setSearchChannelPrograms(new Map());
@@ -979,35 +1026,44 @@ export function ChannelPanel({
       return;
     }
 
+    let cancelled = false;
+
     async function fetchSearchData() {
       const channelProgramsMap = new Map<string, StoredProgram[]>();
       const programChannelsMap = new Map<string, StoredChannel>();
 
-      // Fetch programs for channel search results
+      // Fetch programs for channel search results (batched, window-aware)
       if (searchChannels && searchChannels.length > 0) {
-        const now = new Date();
-        const windowStart = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 hours ago
-        const windowEnd = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours ahead
+        const startIso = loadStart.toISOString();
+        const endIso = loadEnd.toISOString();
+        const streamIds = searchChannels.map((ch) => ch.stream_id);
+        for (const id of streamIds) channelProgramsMap.set(id, []);
 
-        for (const channel of searchChannels) {
-          const channelProgs = await db.programs
-            .where('stream_id')
-            .equals(channel.stream_id)
-            .filter((p) => {
-              const start = p.start instanceof Date ? p.start : new Date(p.start);
-              const end = p.end instanceof Date ? p.end : new Date(p.end);
-              return start < windowEnd && end > windowStart;
-            })
-            .toArray();
+        // Query programs_effective in chunks to respect SQLite variable limit
+        const dbInstance = await (db as any).dbPromise;
+        const allPrograms: StoredProgram[] = [];
+        const CHUNK = 500;
+        for (let i = 0; i < streamIds.length; i += CHUNK) {
+          const chunk = streamIds.slice(i, i + CHUNK);
+          const placeholders = chunk.map(() => '?').join(',');
+          const rows = await dbInstance.select(
+            `SELECT * FROM programs_effective
+             WHERE stream_id IN (${placeholders})
+               AND start < ? AND end > ?
+             ORDER BY start ASC`,
+            [...chunk, endIso, startIso]
+          ) as StoredProgram[];
+          allPrograms.push(...rows);
+        }
 
-          // Sort by start time
-          channelProgs.sort((a, b) => {
-            const aStart = a.start instanceof Date ? a.start.getTime() : new Date(a.start).getTime();
-            const bStart = b.start instanceof Date ? b.start.getTime() : new Date(b.start).getTime();
-            return aStart - bStart;
-          });
-
-          channelProgramsMap.set(channel.stream_id, channelProgs);
+        for (const prog of allPrograms) {
+          const list = channelProgramsMap.get(prog.stream_id);
+          if (list) {
+            list.push({
+              ...prog,
+              description: decompressEpgDescription(prog.description) ?? prog.description,
+            });
+          }
         }
       }
 
@@ -1036,12 +1092,14 @@ export function ChannelPanel({
         }
       }
 
+      if (cancelled) return;
       setSearchChannelPrograms(channelProgramsMap);
       setSearchProgramChannels(programChannelsMap);
     }
 
     fetchSearchData();
-  }, [isSearchMode, searchChannels, searchPrograms, includeSourceInSearch]);
+    return () => { cancelled = true; };
+  }, [isSearchMode, searchChannels, searchPrograms, includeSourceInSearch, loadStart, loadEnd]);
 
   // Fetch data for watchlist
   useEffect(() => {
@@ -1500,7 +1558,7 @@ export function ChannelPanel({
   }, [previewMuted, previewVolume]);
 
   // Handle search result click - same logic as regular channel click
-  const handleSearchChannelClick = (channel: StoredChannel) => {
+  const handleSearchChannelClick = useCallback((channel: StoredChannel) => {
     blockAutoScrollRef.current = true;
     if (selectedChannel?.stream_id === channel.stream_id) {
       // Already selected/previewing -> check for double click to close guide
@@ -1522,7 +1580,7 @@ export function ChannelPanel({
       lastChannelIdRef.current = channel.stream_id;
       onPlayChannel(channel);
     }
-  };
+  }, [selectedChannel?.stream_id, onClose, onPlayChannel]);
 
   // Handle search program click - find channel and use same logic
   const handleSearchProgramClick = async (program: StoredProgram) => {
@@ -2199,6 +2257,56 @@ export function ChannelPanel({
   }, [visible, onPreviewVideoRectChange]);
 
 
+  // ── Virtualized search result row contexts ────────────────────────────────
+  // Memoized so Virtuoso only re-renders rows when their actual inputs change.
+  const searchChannelRowContext = useMemo<ChannelRowData>(() => ({
+    channelSortOrder,
+    programs: searchChannelPrograms,
+    windowStart,
+    windowEnd,
+    pixelsPerHour,
+    visibleHours,
+    handleChannelClick: handleSearchChannelClick,
+    onPlayCatchup,
+    handleFavoriteToggle: refreshSearchResults,
+    categoryId,
+    activeRecordings,
+    currentLayout,
+    onSendToSlot,
+    onPlayInPopout,
+    onPlayInExternal,
+    currentChannel,
+    showPlaylistName: includeSourceInSearch ?? false,
+    sourceNames,
+    epgMetadataBadgeResolution,
+    epgMetadataBadgeFps,
+    epgMetadataBadgeSound,
+  }), [
+    channelSortOrder, searchChannelPrograms, windowStart, windowEnd, pixelsPerHour, visibleHours,
+    handleSearchChannelClick, onPlayCatchup, refreshSearchResults, categoryId, activeRecordings,
+    currentLayout, onSendToSlot, onPlayInPopout, onPlayInExternal, currentChannel,
+    includeSourceInSearch, sourceNames, epgMetadataBadgeResolution, epgMetadataBadgeFps, epgMetadataBadgeSound,
+  ]);
+
+  const searchProgramRowContext = useMemo<SearchProgramRowData>(() => ({
+    windowStart,
+    windowEnd,
+    pixelsPerHour,
+    visibleHours,
+    handleSearchChannelClick,
+    refreshSearchResults,
+    activeRecordings,
+    currentLayout,
+    onSendToSlot,
+    onPlayInPopout,
+    onPlayInExternal,
+    includeSourceInSearch,
+    currentChannel,
+  }), [
+    windowStart, windowEnd, pixelsPerHour, visibleHours, handleSearchChannelClick, refreshSearchResults,
+    activeRecordings, currentLayout, onSendToSlot, onPlayInPopout, onPlayInExternal,
+    includeSourceInSearch, currentChannel,
+  ]);
 
   const renderPreviewPane = () => (
     <div
@@ -2602,6 +2710,35 @@ export function ChannelPanel({
                     return t('resultsCount', { count: channelCount + programCount });
                   })()}
                 </span>
+                {/* Search result tabs - single-select; only the picked tab renders
+                    below. Channels is the default. Shown when more than one tab. */}
+                {availableSearchTabs.length > 1 && (
+                  <div className="guide-search-tabs">
+                    {availableSearchTabs.map((tab) => {
+                      const count = tab === 'channels'
+                        ? (searchChannels?.length || 0)
+                        : tab === 'live'
+                          ? liveChannels.length
+                          : upcomingChannels.length;
+                      const label = tab === 'channels'
+                        ? '📺 Channels'
+                        : tab === 'live'
+                          ? 'Live Now EPG'
+                          : 'Upcoming EPG';
+                      return (
+                        <button
+                          key={tab}
+                          className={`search-tab ${effectiveSearchTab === tab ? 'active' : ''}`}
+                          onClick={() => setSearchTab(tab)}
+                        >
+                          {tab === 'live' && <span className="live-dot"></span>}
+                          <span>{label}</span>
+                          <span className="search-tab-count">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -2851,7 +2988,7 @@ export function ChannelPanel({
                 </span>
               </button>
             )}
-            {!isSearchMode && (
+            {(!isSearchMode || (effectiveSearchTab === 'channels' && searchScope !== 'epg')) && (
               <div className="guide-nav">
                 <button className="guide-nav-btn" onClick={goBack} title={t('previousHour')}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
@@ -2865,36 +3002,6 @@ export function ChannelPanel({
             <button className="guide-close" onClick={onClose}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
           </div>
         </div>
-
-        {/* Search result tabs - single-select; only the picked tab renders below.
-            Channels is the default. Only shown when there is more than one tab. */}
-        {isSearchMode && availableSearchTabs.length > 1 && (
-          <div className="search-tabs">
-            {availableSearchTabs.map((tab) => {
-              const count = tab === 'channels'
-                ? (searchChannels?.length || 0)
-                : tab === 'live'
-                  ? liveChannels.length
-                  : upcomingChannels.length;
-              const label = tab === 'channels'
-                ? '📺 Channels'
-                : tab === 'live'
-                  ? 'Live Now EPG'
-                  : 'Upcoming EPG';
-              return (
-                <button
-                  key={tab}
-                  className={`search-tab ${effectiveSearchTab === tab ? 'active' : ''}`}
-                  onClick={() => setSearchTab(tab)}
-                >
-                  {tab === 'live' && <span className="live-dot"></span>}
-                  <span>{label}</span>
-                  <span className="search-tab-count">({count})</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         {/* Time Scale - hidden in watchlist mode; in search mode only shown when the
             Channels tab is active and channel matches are present (EPG program
@@ -3067,43 +3174,42 @@ export function ChannelPanel({
                 Upcoming EPG. Only the picked tab renders (Channels is the default). */
             <div className="guide-search-results guide-channels">
               {/* Channels tab - rendered like the regular EPG grid with a timeline
-                  and the current-time indicator line */}
+                  and the current-time indicator line. Virtualized so searches with
+                  hundreds of matches stay smooth. */}
               {effectiveSearchTab === 'channels' && searchScope !== 'epg' && (
                 searchChannels && searchChannels.length > 0 ? (
                   <div className="search-section search-channels-section">
                     <div className="search-channels-timeline">
-                      {searchChannels.map((channel, index) => (
-                        <ChannelRow
-                          key={channel.stream_id}
-                          channel={channel}
-                          index={index}
-                          sortOrder={channelSortOrder}
-                          programs={searchChannelPrograms.get(channel.stream_id) ?? []}
-                          windowStart={windowStart}
-                          windowEnd={windowEnd}
-                          pixelsPerHour={pixelsPerHour}
-                          visibleHours={visibleHours}
-                          onPlay={() => handleSearchChannelClick(channel)}
-                          onPlayCatchup={onPlayCatchup}
-                          onFavoriteToggle={refreshSearchResults}
-                          activeRecordings={activeRecordings}
-                          currentLayout={currentLayout}
-                          onSendToSlot={onSendToSlot}
-                          onPlayInPopout={onPlayInPopout}
-                          onPlayInExternal={onPlayInExternal}
-                          isCurrentlyPlaying={currentChannel?.stream_id === channel.stream_id}
-                          showPlaylistName={includeSourceInSearch}
-                          sourceNames={sourceNames}
-                          epgMetadataBadgeResolution={epgMetadataBadgeResolution}
-                          epgMetadataBadgeFps={epgMetadataBadgeFps}
-                          epgMetadataBadgeSound={epgMetadataBadgeSound}
-                        />
-                      ))}
+                      <Virtuoso
+                        key="search-channels"
+                        data={searchChannels}
+                        className="search-virtuoso"
+                        scrollerRef={handleSearchScrollerRef}
+                        itemContent={(index, channel, context) => (
+                          <ChannelRowVirtuoso
+                            index={index}
+                            channel={channel}
+                            data={context}
+                          />
+                        )}
+                        context={searchChannelRowContext}
+                        components={{
+                          EmptyPlaceholder: () => (
+                            <div className="guide-empty">
+                              <h3>{t('noResultsFound')}</h3>
+                              <p>{t('tryDifferentTerm')}</p>
+                            </div>
+                          ),
+                        }}
+                      />
                       {/* Current time indicator - spans the channel rows only */}
                       {currentTimeIndicatorPosition !== null && (
                         <div
                           className="guide-current-time-indicator"
-                          style={{ left: `calc(${currentTimeIndicatorPosition}px + var(--epg-channel-column-width, 264px))` }}
+                          style={{
+                            left: `calc(${currentTimeIndicatorPosition}px + var(--epg-channel-column-width, 264px))`,
+                            ...(searchChannelsListHeight > 0 ? { height: `${searchChannelsListHeight}px` } : {}),
+                          }}
                         />
                       )}
                     </div>
@@ -3116,30 +3222,23 @@ export function ChannelPanel({
                 )
               )}
 
-              {/* Live Now EPG tab */}
+              {/* Live Now EPG tab - virtualized card rows, no timeline */}
               {effectiveSearchTab === 'live' && searchScope !== 'channels' && (
                 liveChannels.length > 0 ? (
                   <div className="search-section search-programs-section">
-                    {liveChannels.map(({ channel, programs }) => (
-                      <SearchResultRow
-                        key={`live-${channel.stream_id}`}
-                        channel={channel}
-                        programs={programs}
-                        windowStart={windowStart}
-                        windowEnd={windowEnd}
-                        pixelsPerHour={pixelsPerHour}
-                        visibleHours={visibleHours}
-                        onPlay={() => handleSearchChannelClick(channel)}
-                        onFavoriteToggle={refreshSearchResults}
-                        activeRecordings={activeRecordings}
-                        currentLayout={currentLayout}
-                        onSendToSlot={onSendToSlot}
-                        onPlayInPopout={onPlayInPopout}
-                        onPlayInExternal={onPlayInExternal}
-                        includeSourceInSearch={includeSourceInSearch}
-                        currentChannel={currentChannel}
-                      />
-                    ))}
+                    <Virtuoso
+                      key="search-live"
+                      data={liveChannels}
+                      className="search-virtuoso"
+                      itemContent={(index, entry, context) => (
+                        <SearchResultRowVirtuoso
+                          index={index}
+                          entry={entry}
+                          data={context}
+                        />
+                      )}
+                      context={searchProgramRowContext}
+                    />
                   </div>
                 ) : (
                   <div className="guide-empty">
@@ -3149,30 +3248,23 @@ export function ChannelPanel({
                 )
               )}
 
-              {/* Upcoming EPG tab */}
+              {/* Upcoming EPG tab - virtualized card rows, no timeline */}
               {effectiveSearchTab === 'upcoming' && searchScope !== 'channels' && (
                 upcomingChannels.length > 0 ? (
                   <div className="search-section search-programs-section">
-                    {upcomingChannels.map(({ channel, programs }) => (
-                      <SearchResultRow
-                        key={`upcoming-${channel.stream_id}`}
-                        channel={channel}
-                        programs={programs}
-                        windowStart={windowStart}
-                        windowEnd={windowEnd}
-                        pixelsPerHour={pixelsPerHour}
-                        visibleHours={visibleHours}
-                        onPlay={() => handleSearchChannelClick(channel)}
-                        onFavoriteToggle={refreshSearchResults}
-                        activeRecordings={activeRecordings}
-                        currentLayout={currentLayout}
-                        onSendToSlot={onSendToSlot}
-                        onPlayInPopout={onPlayInPopout}
-                        onPlayInExternal={onPlayInExternal}
-                        includeSourceInSearch={includeSourceInSearch}
-                        currentChannel={currentChannel}
-                      />
-                    ))}
+                    <Virtuoso
+                      key="search-upcoming"
+                      data={upcomingChannels}
+                      className="search-virtuoso"
+                      itemContent={(index, entry, context) => (
+                        <SearchResultRowVirtuoso
+                          index={index}
+                          entry={entry}
+                          data={context}
+                        />
+                      )}
+                      context={searchProgramRowContext}
+                    />
                   </div>
                 ) : (
                   <div className="guide-empty">
