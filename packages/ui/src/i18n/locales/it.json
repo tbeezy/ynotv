@@ -1745,7 +1745,11 @@
       "yesClear": "Sì, svuota",
       "simSyncsHintPre": "Quante fonti sincronizzare in parallelo. ",
       "simSyncsHintStrong": "0 = tutte in una volta",
-      "simSyncsHintPost": " (più veloce — consigliato quando ogni fonte è un provider diverso)."
+      "simSyncsHintPost": " (più veloce — consigliato quando ogni fonte è un provider diverso).",
+      "clearEpgCache": "Clear EPG Cache",
+      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
+      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
+      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
     },
     "dvr": {
       "selectStorageDir": "Seleziona directory di archiviazione DVR",

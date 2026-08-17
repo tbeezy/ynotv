@@ -1745,7 +1745,11 @@
       "yesClear": "是，清除",
       "simSyncsHintPre": "並行同步多少個源。 ",
       "simSyncsHintStrong": "0 = 一次全部",
-      "simSyncsHintPost": "（最快——當每個源是不同的提供商時推薦）。"
+      "simSyncsHintPost": "（最快——當每個源是不同的提供商時推薦）。",
+      "clearEpgCache": "Clear EPG Cache",
+      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
+      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
+      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
     },
     "dvr": {
       "selectStorageDir": "選擇 DVR 存儲目錄",

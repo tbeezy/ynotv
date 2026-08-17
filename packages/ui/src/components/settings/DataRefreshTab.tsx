@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { clearAllCachedData } from '../../db';
-import { syncAllSources } from '../../db/sync';
+import { syncAllSources, clearEpgCacheOnly } from '../../db/sync';
 import { useCacheClearing, useSetCacheClearing, useSetChannelSyncing, useSetSyncStatusMessage } from '../../stores/uiStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -24,6 +24,9 @@ export function DataRefreshTab({
 }: DataRefreshTabProps) {
   useTranslation();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showEpgConfirm, setShowEpgConfirm] = useState(false);
+  const [isClearingEpg, setIsClearingEpg] = useState(false);
+  const [epgCleared, setEpgCleared] = useState(false);
   const isClearing = useCacheClearing();
   const setCacheClearing = useSetCacheClearing();
   const setChannelSyncing = useSetChannelSyncing();
@@ -51,6 +54,20 @@ export function DataRefreshTab({
       setCacheClearing(false);
       setChannelSyncing(false);
       setSyncStatusMessage(null);
+    }
+  }
+
+  async function handleClearEpgCache() {
+    setIsClearingEpg(true);
+    setShowEpgConfirm(false);
+    setEpgCleared(false);
+    try {
+      await clearEpgCacheOnly();
+      setEpgCleared(true);
+    } catch (error) {
+      console.error('[Settings] Failed to clear EPG cache:', error);
+    } finally {
+      setIsClearingEpg(false);
     }
   }
 
@@ -174,6 +191,56 @@ export function DataRefreshTab({
                   className="sync-btn"
                   onClick={() => setShowConfirm(false)}
                   disabled={isClearing}
+                >
+                  {i18n.t('common:cancel')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="settings-section" style={{ marginTop: '1.5rem' }}>
+        <div className="section-header">
+          <h3>{i18n.t('settings:dataRefresh.clearEpgCache')}</h3>
+        </div>
+        <p className="section-description">
+          {i18n.t('settings:dataRefresh.clearEpgCacheSub')}
+        </p>
+
+        <div style={{ marginTop: '0.75rem' }}>
+          {isClearingEpg ? (
+            <button className="sync-btn danger" disabled>
+              {i18n.t('common:clearing')}
+            </button>
+          ) : epgCleared ? (
+            <span style={{ color: '#4ade80', fontSize: '0.85rem' }}>
+              {i18n.t('settings:dataRefresh.epgCacheCleared')}
+            </span>
+          ) : !showEpgConfirm ? (
+            <button
+              className="sync-btn"
+              onClick={() => setShowEpgConfirm(true)}
+            >
+              {i18n.t('settings:dataRefresh.clearEpgCache')}
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <span style={{ color: '#ff9900', fontSize: '0.85rem' }}>
+                {i18n.t('settings:dataRefresh.clearEpgCacheConfirm')}
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="sync-btn danger"
+                  onClick={handleClearEpgCache}
+                  disabled={isClearingEpg}
+                >
+                  {i18n.t('settings:dataRefresh.yesClear')}
+                </button>
+                <button
+                  className="sync-btn"
+                  onClick={() => setShowEpgConfirm(false)}
+                  disabled={isClearingEpg}
                 >
                   {i18n.t('common:cancel')}
                 </button>

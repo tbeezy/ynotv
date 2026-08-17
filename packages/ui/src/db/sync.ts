@@ -1608,8 +1608,10 @@ async function syncGlobalEpgLinkStandaloneImpl(
 
   if (epgLink.saveEntireEpg) {
     onProgress?.(`Caching entire EPG database locally...`);
+
+    // 1. Refresh the local cache DB (best effort). If the remote EPG is
+    // unreachable we still fall back to the last-known-good cached copy below.
     try {
-      // 1. Rust syncs and caches EPG XML to local cache DB
       await invoke('cache_entire_epg_db', {
         epgUrl: url,
         epgLinkId: epgLink.id,
@@ -1617,8 +1619,14 @@ async function syncGlobalEpgLinkStandaloneImpl(
       });
       syncSucceeded = true;
       console.log(`[Global EPG] Entire EPG cached locally for link ${epgLink.id}`);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Global EPG] Failed to refresh EPG cache for ${epgLink.name}; will try existing cache: ${errMsg}`);
+      debugLog(`Cache refresh failed, will try existing cache: ${errMsg}`, 'epg');
+    }
 
-      // 2. Load the SQLite cache database
+    // 2. Load the SQLite cache database (freshly written or last-known-good)
+    try {
       const cacheDbName = `epg_cache_${epgLink.id}`;
       const Database = (await import('@tauri-apps/plugin-sql')).default;
       const cacheDb = await Database.load(`sqlite:${cacheDbName}.db`);
@@ -1763,10 +1771,16 @@ async function syncGlobalEpgLinkStandaloneImpl(
           totalChannelsMatched += channelsMatchedCount;
         }
       }
+
+      // Applied EPG from the cache (even when the refresh above failed), so mark
+      // the link as synced to avoid re-downloading a down URL every cycle.
+      if (totalInserted > 0) {
+        syncSucceeded = true;
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[Global EPG] Cache sync failed: ${errMsg}`);
-      debugLog(`Cache sync failed: ${errMsg}`, 'epg');
+      console.error(`[Global EPG] Failed to read EPG cache: ${errMsg}`);
+      debugLog(`Failed to read EPG cache: ${errMsg}`, 'epg');
     }
   } else {
     try {
@@ -3902,6 +3916,45 @@ export async function cleanupGlobalEpgCache(epgLinkId: string): Promise<void> {
     console.log(`[Global EPG] Cleaned up cache database for link ${epgLinkId}`);
   } catch (err) {
     console.warn(`[Global EPG] Failed to cleanup cache database ${epgLinkId}:`, err);
+  }
+}
+
+/**
+ * Clear only EPG data (program listings, EPG channel metadata, and the
+ * full-EPG offline caches for Global EPG links) without touching the channel
+ * list, categories, VOD, or user settings. Sources are re-fetched on the next
+ * sync; Global EPG links are marked stale so they re-download their cache.
+ */
+export async function clearEpgCacheOnly(): Promise<void> {
+  // 1. Clear live EPG data from the main database.
+  await db.programs.clear();
+  await db.epgChannels.clear();
+  dbEvents.notify('programs', 'clear');
+
+  // 2. Clear offline full-EPG caches and reset their freshness so they are
+  //    re-downloaded on the next global EPG sync.
+  try {
+    const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
+    for (const link of globalEpgLinks) {
+      await cleanupGlobalEpgCache(link.id);
+    }
+    if (globalEpgLinks.length > 0) {
+      const resetLinks = globalEpgLinks.map((link) => ({
+        ...link,
+        lastSynced: undefined,
+        lastSyncResult: undefined,
+      }));
+      useSettingsStore.getState().setGlobalEpgLinks(resetLinks);
+    }
+  } catch (err) {
+    console.warn('[Global EPG] Failed to clear global EPG caches:', err);
+  }
+
+  // 3. Reclaim disk space.
+  try {
+    await db.checkpoint('TRUNCATE');
+  } catch (err) {
+    console.warn('[Sync] EPG cache checkpoint failed:', err);
   }
 }
 

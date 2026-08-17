@@ -1745,7 +1745,11 @@
       "yesClear": "نعم، امسح",
       "simSyncsHintPre": "عدد المصادر المراد مزامنتها بالتوازي. ",
       "simSyncsHintStrong": "0 = الكل دفعة واحدة",
-      "simSyncsHintPost": " (الأسرع — موصى به عندما يكون كل مصدر مزودًا مختلفًا)."
+      "simSyncsHintPost": " (الأسرع — موصى به عندما يكون كل مصدر مزودًا مختلفًا).",
+      "clearEpgCache": "Clear EPG Cache",
+      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
+      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
+      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
     },
     "dvr": {
       "selectStorageDir": "اختيار مجلد تخزين التسجيلات",
