@@ -55,6 +55,7 @@ import type { StoredMovie, StoredSeries, StoredEpisode } from '../db';
 import { removeFromRecentlyWatched, recordVodWatch, recordEpisodeWatch, getEpisodeProgress, type EpisodeWatchHistory, db } from '../db';
 import { type MediaItem, type VodType, type VodPlayInfo } from '../types/media';
 import { type VodPlayerMode } from './vod/SplitPlayButton';
+import { LocalTab } from './local/LocalTab';
 import './VodPage.css';
 
 // Carousel row type for virtualization (all data pre-fetched)
@@ -885,6 +886,12 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
           />
         ) : selectedCategoryId === 'playlists' ? (
           <PlaylistsView onPlayPlaylistItem={handlePlayPlaylistItem} />
+        ) : selectedCategoryId === 'local' ? (
+          <LocalTab
+            initialFilter={type === 'movie' ? 'movies' : 'series'}
+            lockFilter={true}
+            onPlayVod={(info) => handlePlay(info, vodPlayerMode)}
+          />
         ) : selectedCategoryId && selectedCategory ? (
           // Category view: Virtualized grid filtered by category
           <VodBrowse

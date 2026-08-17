@@ -8,6 +8,7 @@ import { useStremioAddonStore } from '../../stores/stremioAddonStore';
 import { fetchMeta } from '../../services/stremio-addon';
 import { useStremioHover } from '../../contexts/StremioHoverContext';
 import type { StremioMetaPreview } from '../../types/stremio';
+import { LocalTab } from '../local/LocalTab';
 import './StremioLibrary.css';
 
 interface StremioLibraryProps {
@@ -32,7 +33,7 @@ export function StremioLibrary({ onItemClick }: StremioLibraryProps) {
   const [selectedType, setSelectedType] = useState('All');
   const [sortBy, setSortBy] = useState<'added' | 'name' | 'rating' | 'year'>('added');
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'watchlist' | 'history'>('watchlist');
+  const [activeTab, setActiveTab] = useState<'watchlist' | 'history' | 'local'>('watchlist');
 
   const history = useStremioWatchStore((s) => s.history || []);
 
@@ -98,7 +99,10 @@ export function StremioLibrary({ onItemClick }: StremioLibraryProps) {
             poster: i.poster,
             posterShape: i.posterShape,
             imdbRating: local?.imdbRating,
+            genres: local?.genres,
             year: local?.year,
+            releaseInfo: local?.releaseInfo,
+            description: local?.description,
             videos: local?.videos,
             videoCount: local?.videoCount,
             lastChecked: local?.lastChecked,
@@ -111,111 +115,118 @@ export function StremioLibrary({ onItemClick }: StremioLibraryProps) {
     if (selectedType !== 'All') {
       const typeLower = selectedType.toLowerCase();
       if (typeLower === 'movies') {
-        items = items.filter((x) => x.type === 'movie');
+        items = items.filter((item) => item.type === 'movie');
       } else if (typeLower === 'series') {
-        items = items.filter((x) => x.type === 'series');
+        items = items.filter((item) => item.type === 'series');
       } else {
-        items = items.filter((x) => x.type !== 'movie' && x.type !== 'series');
+        items = items.filter((item) => item.type !== 'movie' && item.type !== 'series');
       }
     }
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      items = items.filter((x) => x.name.toLowerCase().includes(q));
+      items = items.filter((item) => item.name.toLowerCase().includes(q));
     }
 
     items.sort((a, b) => {
-      if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'rating': {
+          const rA = a.imdbRating ? parseFloat(a.imdbRating) : 0;
+          const rB = b.imdbRating ? parseFloat(b.imdbRating) : 0;
+          return rB - rA;
+        }
+        case 'year': {
+          const yA = a.year ? parseInt(String(a.year), 10) : (a.releaseInfo ? parseInt(String(a.releaseInfo), 10) : 0);
+          const yB = b.year ? parseInt(String(b.year), 10) : (b.releaseInfo ? parseInt(String(b.releaseInfo), 10) : 0);
+          return yB - yA;
+        }
+        case 'added':
+        default:
+          return 0;
       }
-      if (sortBy === 'rating') {
-        const rA = parseFloat(a.imdbRating || '0');
-        const rB = parseFloat(b.imdbRating || '0');
-        return rB - rA;
-      }
-      if (sortBy === 'year') {
-        return (b.year || 0) - (a.year || 0);
-      }
-      return 0;
     });
 
     return items;
-  }, [library, search, selectedType, sortBy, isSyncActive, cloudLibraryItems]);
+  }, [library, selectedType, search, sortBy, isSyncActive, cloudLibraryItems]);
 
   const filteredHistory = useMemo(() => {
-    let items: any[] = [];
+    let items: any[] = [...history];
+
     if (isSyncActive) {
-      items = cloudLibraryItems
-        .filter((i) => {
-          if (i.removed && !i.temp) return false;
-          return i.state?.flaggedWatched === 1 || (i.state?.timeOffset ?? 0) > 0;
-        })
-        .map((i) => {
-          const local = library.find((x) => x.id === i._id);
-          const progressFraction = i.state.duration && i.state.timeOffset ? Math.min(1.0, i.state.timeOffset / i.state.duration) : 0;
-          
-          let lastSeason = i.state.season;
-          let lastEpisode = i.state.episode;
-          let nextVideoId: string | undefined;
-          let nextSeason: number | undefined;
-          let nextEpisode: number | undefined;
-          
-          if (i.type === 'series') {
-            if (i.state.video_id) {
-              const parts = i.state.video_id.split(':');
-              if (parts.length >= 3) {
-                lastSeason = parseInt(parts[parts.length - 2], 10);
-                lastEpisode = parseInt(parts[parts.length - 1], 10);
-              }
-            }
-            
-            if (lastSeason !== undefined && lastEpisode !== undefined && local?.videos) {
-              const sorted = [...local.videos].sort((a, b) => {
-                if ((a.season ?? 0) !== (b.season ?? 0)) return (a.season ?? 0) - (b.season ?? 0);
-                return (a.episode ?? 0) - (b.episode ?? 0);
-              });
-              const idx = sorted.findIndex((v) => v.id === i.state.video_id);
-              const isFinished = progressFraction >= 0.9;
-              if (isFinished && idx >= 0 && idx < sorted.length - 1) {
-                const nxt = sorted[idx + 1];
-                nextVideoId = nxt.id;
-                nextSeason = nxt.season;
-                nextEpisode = nxt.episode;
-              }
+      const existingIds = new Set(items.map((i) => i.metaId));
+      for (const cItem of cloudLibraryItems) {
+        if (cItem.removed && !cItem.temp) continue;
+        if (cItem.state?.flaggedWatched !== 1 && (cItem.state?.timeOffset ?? 0) <= 0) continue;
+        if (existingIds.has(cItem._id)) continue;
+
+        const local = library.find((x) => x.id === cItem._id);
+        const progressFraction =
+          cItem.state?.duration && cItem.state?.timeOffset
+            ? Math.min(1.0, cItem.state.timeOffset / cItem.state.duration)
+            : 0;
+
+        let lastSeason = cItem.state?.season;
+        let lastEpisode = cItem.state?.episode;
+        let nextVideoId: string | undefined;
+        let nextSeason: number | undefined;
+        let nextEpisode: number | undefined;
+
+        if (cItem.type === 'series') {
+          if (cItem.state?.video_id) {
+            const parts = cItem.state.video_id.split(':');
+            if (parts.length >= 3) {
+              lastSeason = parseInt(parts[parts.length - 2], 10);
+              lastEpisode = parseInt(parts[parts.length - 1], 10);
             }
           }
-          
-          return {
-            metaId: i._id,
-            type: i.type as 'movie' | 'series',
-            name: i.name,
-            poster: i.poster,
-            progressFraction,
-            lastWatchedVideoId: i.state.video_id,
-            lastSeason,
-            lastEpisode,
-            nextVideoId,
-            nextSeason,
-            nextEpisode,
-            watchedAt: i._mtime ? Date.parse(i._mtime) : Date.now(),
-          };
+
+          if (lastSeason !== undefined && lastEpisode !== undefined && local?.videos) {
+            const sorted = [...local.videos].sort((a, b) => {
+              if ((a.season ?? 0) !== (b.season ?? 0)) return (a.season ?? 0) - (b.season ?? 0);
+              return (a.episode ?? 0) - (b.episode ?? 0);
+            });
+            const idx = sorted.findIndex((v) => v.id === cItem.state?.video_id);
+            const isFinished = progressFraction >= 0.9;
+            if (isFinished && idx >= 0 && idx < sorted.length - 1) {
+              const nxt = sorted[idx + 1];
+              nextVideoId = nxt.id;
+              nextSeason = nxt.season;
+              nextEpisode = nxt.episode;
+            }
+          }
+        }
+
+        items.push({
+          metaId: cItem._id,
+          type: cItem.type,
+          name: cItem.name,
+          poster: cItem.poster || null,
+          progressFraction,
+          lastWatchedVideoId: cItem.state?.video_id,
+          lastSeason,
+          lastEpisode,
+          nextVideoId,
+          nextSeason,
+          nextEpisode,
+          watchedAt: cItem._mtime ? Date.parse(cItem._mtime) : Date.now(),
         });
-    } else {
-      items = [...history];
+      }
     }
 
     if (selectedType !== 'All') {
-      const typeLower = selectedType.toLowerCase();
-      if (typeLower === 'movies') {
-        items = items.filter((x) => x.type === 'movie');
-      } else if (typeLower === 'series') {
-        items = items.filter((x) => x.type === 'series');
-      }
+      const typeMap: Record<string, string> = {
+        Movies: 'movie',
+        Series: 'series',
+      };
+      const mappedType = typeMap[selectedType] || selectedType.toLowerCase();
+      items = items.filter((item) => item.type === mappedType);
     }
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      items = items.filter((x) => x.name.toLowerCase().includes(q));
+      items = items.filter((item) => item.name.toLowerCase().includes(q));
     }
 
     items.sort((a, b) => {
@@ -242,10 +253,14 @@ export function StremioLibrary({ onItemClick }: StremioLibraryProps) {
       const meta = await fetchMeta([addon], entry.type, entry.metaId);
       if (meta) {
         import('../../stores/uiStore').then(({ useUIStore }) => {
-          if (entry.type === 'series' && entry.lastSeason != null) {
-            useUIStore.getState().setStremioSelectedSeason(entry.lastSeason);
-            if (entry.lastWatchedVideoId) {
-              useUIStore.getState().setStremioPreselectVideoId(entry.lastWatchedVideoId);
+          if (entry.type === 'series') {
+            const targetSeason = entry.nextSeason != null ? entry.nextSeason : entry.lastSeason;
+            if (targetSeason != null) {
+              useUIStore.getState().setStremioSelectedSeason(targetSeason);
+            }
+            const targetVideoId = entry.nextVideoId || entry.lastWatchedVideoId;
+            if (targetVideoId) {
+              useUIStore.getState().setStremioPreselectVideoId(targetVideoId);
             }
           }
         });
@@ -274,50 +289,75 @@ export function StremioLibrary({ onItemClick }: StremioLibraryProps) {
             >
               History
             </button>
+            <button
+              className={`stremio-library-tab ${activeTab === 'local' ? 'active' : ''}`}
+              onClick={() => setActiveTab('local')}
+            >
+              {t('local', 'Local')}
+            </button>
           </div>
           {refreshing && <span className="stremio-library-refreshing"> Refreshing...</span>}
         </div>
-        <div className="stremio-library-controls">
-          <input
-            className="stremio-library-search"
-            type="text"
-            placeholder={t('searchLibrary')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            className="stremio-library-select"
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-          >
-            <option value="All">{t('allTypes')}</option>
-            <option value="Movies">{t('movies')}</option>
-            <option value="Series">{t('series')}</option>
-            {activeTab === 'watchlist' && <option value="Other">{t('other')}</option>}
-          </select>
-          <select
-            className="stremio-library-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-          >
-            {activeTab === 'watchlist' ? (
-              <>
-                <option value="added">{t('recentlyAdded')}</option>
-                <option value="name">A-Z</option>
-                <option value="rating">{t('imdbRating')}</option>
-                <option value="year">{t('releaseYear')}</option>
-              </>
-            ) : (
-              <>
-                <option value="recent">{t('recentlyWatched')}</option>
-                <option value="name">A-Z</option>
-              </>
-            )}
-          </select>
-        </div>
+        {activeTab !== 'local' && (
+          <div className="stremio-library-controls">
+            <input
+              className="stremio-library-search"
+              type="text"
+              placeholder={t('searchLibrary')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className="stremio-library-select"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+            >
+              <option value="All">{t('allTypes')}</option>
+              <option value="Movies">{t('movies')}</option>
+              <option value="Series">{t('series')}</option>
+              {activeTab === 'watchlist' && <option value="Other">{t('other')}</option>}
+            </select>
+            <select
+              className="stremio-library-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+            >
+              {activeTab === 'watchlist' ? (
+                <>
+                  <option value="added">{t('recentlyAdded')}</option>
+                  <option value="name">A-Z</option>
+                  <option value="rating">{t('imdbRating')}</option>
+                  <option value="year">{t('releaseYear')}</option>
+                </>
+              ) : (
+                <>
+                  <option value="recent">{t('recentlyWatched')}</option>
+                  <option value="name">A-Z</option>
+                </>
+              )}
+            </select>
+          </div>
+        )}
       </div>
 
-      {activeTab === 'watchlist' ? (
+      {activeTab === 'local' ? (
+        <LocalTab
+          initialFilter="all"
+          lockFilter={false}
+          onOpenDetail={(item) => {
+            const tmdbOrImdb = item.imdbId || (item.tmdbId ? `tmdb:${item.tmdbId}` : null);
+            if (tmdbOrImdb) {
+              const itemType = item.type === 'show' ? 'series' : 'movie';
+              const addon = addons.find((a) => a.manifest.catalogs?.some((c) => c.type === itemType));
+              if (addon) {
+                fetchMeta([addon], itemType, tmdbOrImdb).then((meta) => {
+                  if (meta) onItemClick(meta);
+                });
+              }
+            }
+          }}
+        />
+      ) : activeTab === 'watchlist' ? (
         filteredItems.length === 0 ? (
           <div className="stremio-library-empty">
             {library.length === 0

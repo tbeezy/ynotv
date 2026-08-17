@@ -85,7 +85,9 @@
       "cast_set_volume",
       "cast_toggle_mute",
       "cast_resolve_url",
-      "cast_stop"
+      "cast_stop",
+      "scan_local_folder",
+      "open_file_location"
     ]
   }
 }

@@ -545,6 +545,14 @@ class ScrobblerService {
     }
   }
 
+  async markAsWatched(media: PlaybackMediaInfo): Promise<void> {
+    const fullMedia: PlaybackMediaInfo = { ...media, progressPercent: 100 };
+    await Promise.allSettled([
+      this.sendTraktScrobble('stop', fullMedia),
+      this.sendSimklScrobble('stop', fullMedia),
+    ]);
+  }
+
   // --------------------------------------------------------------------------
   // Trakt Internal Scrobbler Request
   // --------------------------------------------------------------------------

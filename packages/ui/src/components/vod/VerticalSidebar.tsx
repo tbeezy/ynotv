@@ -593,6 +593,21 @@ export function VerticalSidebar({
                             </div>
                         </button>
 
+                        {/* Local Link */}
+                        <button
+                            className={`vertical-sidebar__item category-list-bar ${selectedId === 'local' ? 'active' : ''}`}
+                            onClick={() => onSelect('local')}
+                        >
+                            <div className="category-item-left">
+                                <span className="category-icon local-icon">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                </span>
+                                <span className="category-name">{i18n.t('vod:local')}</span>
+                            </div>
+                        </button>
+
                         {/* Recent Link */}
                         <button
                             className={`vertical-sidebar__item category-list-bar ${selectedId === 'recent' ? 'active' : ''}`}
@@ -641,6 +656,14 @@ export function VerticalSidebar({
                             onClick={() => onSelect('playlists')}
                         >
                             {i18n.t('vod:playlists')}
+                        </button>
+
+                        {/* Local Link */}
+                        <button
+                            className={`vertical-sidebar__item ${selectedId === 'local' ? 'active' : ''}`}
+                            onClick={() => onSelect('local')}
+                        >
+                            {i18n.t('vod:local')}
                         </button>
 
                         {/* Recent Link */}

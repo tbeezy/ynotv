@@ -1,0 +1,248 @@
+import type { LocalEntry, ParsedFilename, ScannedFile } from './types';
+import {
+  findLocalArt,
+  findNfo,
+  findShowArt,
+  findShowNfo,
+  readNfo,
+} from './sidecars';
+
+export type TmdbLookup = {
+  tmdbId?: number;
+  imdbId?: string;
+  poster?: string;
+  backdrop?: string;
+  matchedTitle?: string;
+  matchedYear?: number | null;
+  overview?: string;
+  rating?: number;
+  runtime?: number;
+};
+
+export function hashPath(path: string): string {
+  let hash = 5381;
+  for (let i = 0; i < path.length; i++) {
+    hash = ((hash << 5) + hash + path.charCodeAt(i)) | 0;
+  }
+  return `local-${(hash >>> 0).toString(36)}`;
+}
+
+export async function buildTmdbEntry(
+  f: ScannedFile,
+  parsed: ParsedFilename,
+  tmdbToken: string | null,
+): Promise<LocalEntry> {
+  let tmdb: TmdbLookup = {};
+  if (tmdbToken) {
+    tmdb = await tmdbLookup(tmdbToken, parsed.title, parsed.year, parsed.type).catch(() => ({}));
+  }
+  const needsReview = tmdbToken ? lowConfidence(parsed, tmdb) : false;
+  const identified = tmdb.tmdbId != null && !needsReview;
+  return {
+    id: hashPath(f.path),
+    path: f.path,
+    filename: f.filename,
+    title: identified ? tmdb.matchedTitle?.trim() || parsed.title : parsed.title,
+    year: (identified ? tmdb.matchedYear : null) ?? parsed.year,
+    type: parsed.type,
+    resolution: parsed.resolution,
+    rating: tmdb.rating ?? null,
+    runtime: tmdb.runtime ?? null,
+    poster: tmdb.poster ?? null,
+    backdrop: tmdb.backdrop ?? null,
+    overview: tmdb.overview ?? null,
+    tmdbId: tmdb.tmdbId ?? null,
+    imdbId: tmdb.imdbId ?? null,
+    season: parsed.season,
+    episode: parsed.episode,
+    addedAt: Date.now(),
+    source: 'tmdb',
+    needsReview: needsReview || undefined,
+  };
+}
+
+export async function buildNfoEntry(
+  f: ScannedFile,
+  parsed: ParsedFilename,
+  tmdbToken: string | null,
+): Promise<LocalEntry> {
+  const nfoPath = await findNfo(f.path);
+  const nfo = nfoPath ? await readNfo(nfoPath) : null;
+
+  const isShow = parsed.type === 'show';
+  let seriesNfo: Awaited<ReturnType<typeof readNfo>> = null;
+  if (isShow) {
+    const showNfoPath = await findShowNfo(f.path);
+    seriesNfo = showNfoPath ? await readNfo(showNfoPath) : null;
+  }
+  const meta = isShow ? seriesNfo : nfo;
+
+  const files = isShow ? await findShowArt(f.path, parsed.season) : await findLocalArt(f.path);
+
+  const art = {
+    poster: files.poster ?? meta?.art?.poster,
+    logo: files.logo ?? meta?.art?.logo,
+    backdrop: files.backdrop ?? meta?.art?.backdrop,
+  };
+
+  let title = (
+    isShow ? meta?.title || nfo?.showTitle || parsed.title : nfo?.title || parsed.title
+  ).trim();
+  const year = meta?.year ?? parsed.year;
+  let tmdbId = meta?.tmdbId ?? null;
+  let imdbId = meta?.imdbId ?? null;
+  let poster: string | null = null;
+  let backdrop: string | null = null;
+  let overview = meta?.plot ?? null;
+  let rating = meta?.rating ?? null;
+  let runtime = meta?.runtime ?? null;
+
+  if (tmdbToken && !tmdbId) {
+    const look = await tmdbLookup(tmdbToken, title, year, parsed.type).catch(() => ({} as TmdbLookup));
+    if (look.tmdbId) tmdbId = look.tmdbId;
+    if (!imdbId && look.imdbId) imdbId = look.imdbId;
+    if (!art.poster && look.poster) poster = look.poster;
+    if (!art.backdrop && look.backdrop) backdrop = look.backdrop;
+    if (!overview && look.overview) overview = look.overview;
+    if (rating == null && look.rating != null) rating = look.rating;
+    if (runtime == null && look.runtime != null) runtime = look.runtime;
+    const hadNfoTitle = isShow ? !!(meta?.title || nfo?.showTitle) : !!nfo?.title;
+    if (!hadNfoTitle && look.matchedTitle) title = look.matchedTitle.trim();
+  }
+
+  const localArt = art.poster || art.logo || art.backdrop ? art : undefined;
+  const needsReview = !tmdbId && !imdbId && !art.poster;
+
+  return {
+    id: hashPath(f.path),
+    path: f.path,
+    filename: f.filename,
+    title,
+    year,
+    type: parsed.type,
+    resolution: parsed.resolution,
+    rating,
+    runtime,
+    poster,
+    backdrop,
+    overview,
+    tmdbId,
+    imdbId,
+    season: parsed.season,
+    episode: parsed.episode,
+    addedAt: Date.now(),
+    source: 'nfo',
+    localArt,
+    needsReview: needsReview || undefined,
+  };
+}
+
+function lowConfidence(parsed: ParsedFilename, tmdb: TmdbLookup): boolean {
+  if (!tmdb.tmdbId) return true;
+  if (
+    parsed.year != null &&
+    tmdb.matchedYear != null &&
+    Math.abs(parsed.year - tmdb.matchedYear) > 1
+  ) {
+    return true;
+  }
+  if (tmdb.matchedTitle) {
+    const a = tokenize(parsed.title);
+    const b = tokenize(tmdb.matchedTitle);
+    if (a.length && b.length && !a.some((w) => b.includes(w))) return true;
+  }
+  return false;
+}
+
+function tokenize(s: string): string[] {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(' ')
+    .filter((w) => w.length > 1);
+}
+
+function getTmdbHeadersAndParams(token: string): { headers: Record<string, string>; queryParam?: { key: string; value: string } } {
+  const isBearer = token.length > 40 && token.includes('.');
+  if (isBearer) {
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    };
+  }
+  return {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    queryParam: { key: 'api_key', value: token },
+  };
+}
+
+export async function tmdbLookup(
+  token: string,
+  title: string,
+  year: number | null,
+  type: 'movie' | 'show',
+): Promise<TmdbLookup> {
+  const path = type === 'movie' ? 'movie' : 'tv';
+  const { headers, queryParam } = getTmdbHeadersAndParams(token);
+  const params = new URLSearchParams({ query: title, include_adult: 'false' });
+  if (queryParam) params.set(queryParam.key, queryParam.value);
+  if (year && type === 'movie') params.set('year', String(year));
+  if (year && type === 'show') params.set('first_air_date_year', String(year));
+
+  const r = await fetch(`https://api.themoviedb.org/3/search/${path}?${params}`, { headers });
+  if (!r.ok) return {};
+  const json = await r.json();
+  const top = json.results?.[0];
+  if (!top) return {};
+
+  let imdbId: string | undefined;
+  let rating: number | undefined;
+  let runtime: number | undefined;
+  let backdrop: string | undefined;
+
+  if (top.backdrop_path) {
+    backdrop = `https://image.tmdb.org/t/p/w1280${top.backdrop_path}`;
+  }
+
+  try {
+    const dparams = new URLSearchParams({ append_to_response: 'external_ids' });
+    if (queryParam) dparams.set(queryParam.key, queryParam.value);
+    const dr = await fetch(`https://api.themoviedb.org/3/${path}/${top.id}?${dparams}`, { headers });
+    if (dr.ok) {
+      const dj = await dr.json();
+      const imdb = dj.imdb_id ?? dj.external_ids?.imdb_id;
+      if (typeof imdb === 'string' && imdb.startsWith('tt')) imdbId = imdb;
+      if (typeof dj.vote_average === 'number' && dj.vote_average > 0) rating = dj.vote_average;
+      if (type === 'movie' && typeof dj.runtime === 'number' && dj.runtime > 0) runtime = dj.runtime;
+      if (type === 'show' && Array.isArray(dj.episode_run_time) && dj.episode_run_time[0] > 0) {
+        runtime = dj.episode_run_time[0];
+      }
+      if (dj.backdrop_path) {
+        backdrop = `https://image.tmdb.org/t/p/w1280${dj.backdrop_path}`;
+      }
+    }
+  } catch {
+    /* noop */
+  }
+
+  if (rating == null && typeof top.vote_average === 'number' && top.vote_average > 0) {
+    rating = top.vote_average;
+  }
+  const date: string | undefined = top.release_date ?? top.first_air_date;
+
+  return {
+    tmdbId: top.id,
+    imdbId,
+    poster: top.poster_path ? `https://image.tmdb.org/t/p/w342${top.poster_path}` : undefined,
+    backdrop,
+    matchedTitle: top.title ?? top.name,
+    matchedYear: date ? parseInt(date.slice(0, 4), 10) : null,
+    overview: top.overview ?? undefined,
+    rating,
+    runtime,
+  };
+}

@@ -295,6 +295,7 @@ use cast::{
 };
 
 mod discord_rp;
+mod local_lib;
 
 
 // Bulk insert structures
@@ -4958,7 +4959,9 @@ pub fn run() {
             prefetch_logos,
             prune_logo_cache,
             // Database health / recovery
-            db_health
+            db_health,
+            // Local folder scanner
+            local_lib::scan_local_folder
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
