@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "چند منبع به‌طور موازی همگام شوند. ",
       "simSyncsHintStrong": "۰ = همه به‌یک‌بار",
       "simSyncsHintPost": " (سریع‌ترین — وقتی هر منبع ارائه‌دهنده متفاوتی است توصیه می‌شود).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "پاک کردن کش EPG",
+      "clearEpgCacheSub": "همه داده‌های ذخیره‌شده راهنمای تلویزیون (فهرست برنامه‌ها و آیکون‌های کانال) و کش‌های EPG جهانی را بدون دست زدن به فهرست کانال‌ها، منابع یا تنظیمات حذف می‌کند. داده‌های EPG در همگام‌سازی بعدی دوباره دانلود خواهند شد.",
+      "clearEpgCacheConfirm": "همه داده‌های EPG پاک شوند؟ فهرست کانال‌ها و منابع شما حفظ خواهند شد.",
+      "epgCacheCleared": "کش EPG پاک شد. در همگام‌سازی بعدی دوباره دانلود خواهد شد."
     },
     "dvr": {
       "selectStorageDir": "انتخاب پوشه ذخیره‌سازی DVR",

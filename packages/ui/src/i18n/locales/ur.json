@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "ایک ساتھ کتنے ذرائع سنک ہوں۔ ",
       "simSyncsHintStrong": "0 = سب ایک ساتھ",
       "simSyncsHintPost": " (تیز ترین — تجویز کردہ جب ہر ماخذ ایک مختلف فراہم کنندہ ہو)۔",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "ای پی جی کیش صاف کریں",
+      "clearEpgCacheSub": "ٹی وی گائیڈ کا تمام کیشڈ ڈیٹا (پروگرام لسٹنگ اور چینل آئیکنز) اور آف لائن گلوبل ای پی جی کیشز کو ہٹاتا ہے، بغیر آپ کی چینل فہرست، ذرائع یا ترتیبات کو چھوئے۔ ای پی جی ڈیٹا اگلے سنک پر دوبارہ ڈاؤن لوڈ ہوگا۔",
+      "clearEpgCacheConfirm": "تمام ای پی جی ڈیٹا صاف کریں؟ آپ کی چینل فہرست اور ذرائع محفوظ رہیں گے۔",
+      "epgCacheCleared": "ای پی جی کیش صاف ہو گیا۔ اگلے سنک پر دوبارہ ڈاؤن لوڈ ہوگا۔"
     },
     "dvr": {
       "selectStorageDir": "ڈی وی آر اسٹوریج ڈائریکٹری منتخب کریں",

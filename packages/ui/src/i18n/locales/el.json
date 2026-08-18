@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "Πόσες πηγές να συγχρονίζονται παράλληλα. ",
       "simSyncsHintStrong": "0 = όλες ταυτόχρονα",
       "simSyncsHintPost": " (ταχύτερο — συνιστάται όταν κάθε πηγή είναι διαφορετικός πάροχος).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "Εκκαθάριση Προσωρινής Μνήμης EPG",
+      "clearEpgCacheSub": "Καταργεί όλα τα προσωρινά αποθηκευμένα δεδομένα του τηλεοπτικού οδηγού (λίστες προγραμμάτων και εικονίδια καναλιών) καθώς και τις προσωρινές μνήμες Global EPG, χωρίς να αγγίξει τη λίστα καναλιών, τις πηγές ή τις ρυθμίσεις σας. Τα δεδομένα EPG θα ληφθούν ξανά στον επόμενο συγχρονισμό.",
+      "clearEpgCacheConfirm": "Να εκκαθαριστούν όλα τα δεδομένα EPG; Η λίστα καναλιών και οι πηγές σας θα διατηρηθούν.",
+      "epgCacheCleared": "Η προσωρινή μνήμη EPG εκκαθαρίστηκε. Θα ληφθεί ξανά στον επόμενο συγχρονισμό."
     },
     "dvr": {
       "selectStorageDir": "Επιλογή Καταλόγου Αποθήκευσης DVR",

@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "Sa burime të sinkronizohen paralelisht. ",
       "simSyncsHintStrong": "0 = të gjitha njëherësh",
       "simSyncsHintPost": " (më e shpejta — rekomandohet kur çdo burim është një ofrues tjetër).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "Pastro cache-në e EPG-së",
+      "clearEpgCacheSub": "Heq të gjitha të dhënat e ruajtura në cache të udhëzuesit TV (listat e programeve dhe ikonat e kanaleve) dhe cache-et offline Global EPG, pa prekur listën e kanaleve, burimet ose cilësimet. Të dhënat EPG do të shkarkohen përsëri në sinkronizimin tjetër.",
+      "clearEpgCacheConfirm": "Të pastrohen të gjitha të dhënat EPG? Lista e kanaleve dhe burimet do të ruhen.",
+      "epgCacheCleared": "Cache-ja e EPG-së u pastrua. Do të shkarkohet përsëri në sinkronizimin tjetër."
     },
     "dvr": {
       "selectStorageDir": "Zgjidh dosjen e ruajtjes së DVR",

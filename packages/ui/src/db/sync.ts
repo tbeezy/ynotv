@@ -3951,10 +3951,19 @@ export async function clearEpgCacheOnly(): Promise<void> {
   }
 
   // 3. Reclaim disk space.
+  // TRUNCATE checkpoint copies WAL pages into the main DB and resets the WAL to 0 bytes.
   try {
     await db.checkpoint('TRUNCATE');
   } catch (err) {
     console.warn('[Sync] EPG cache checkpoint failed:', err);
+  }
+
+  // 4. Vacuum the database to reclaim disk space from the cleared rows.
+  // VACUUM rebuilds the database file, repacking it into a minimal amount of disk space.
+  try {
+    await db.execute('VACUUM');
+  } catch (err) {
+    console.warn('[Sync] EPG cache vacuum failed:', err);
   }
 }
 

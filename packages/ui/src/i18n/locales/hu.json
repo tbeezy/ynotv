@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "Hány forrás szinkronizálódjon párhuzamosan. ",
       "simSyncsHintStrong": "0 = mind egyszerre",
       "simSyncsHintPost": " (leggyorsabb — akkor ajánlott, ha minden forrás különböző szolgáltató).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "EPG-gyorsítótár törlése",
+      "clearEpgCacheSub": "Eltávolítja a TV-útmutató összes gyorsítótárazott adatát (műsorkínálat és csatornaikonok) és az offline globális EPG-gyorsítótárakat, anélkül hogy hozzányúlna a csatornalistához, a forrásokhoz vagy a beállításokhoz. Az EPG-adatok a következő szinkronizáláskor újra letöltődnek.",
+      "clearEpgCacheConfirm": "Törli az összes EPG-adatot? A csatornalistája és a forrásai megmaradnak.",
+      "epgCacheCleared": "Az EPG-gyorsítótár törölve. A következő szinkronizáláskor újra letöltődik."
     },
     "dvr": {
       "selectStorageDir": "DVR-tárolási mappa kiválasztása",

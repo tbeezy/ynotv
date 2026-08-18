@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "Сколько источников синхронизировать параллельно. ",
       "simSyncsHintStrong": "0 = все сразу",
       "simSyncsHintPost": " (быстрее всего — рекомендуется, когда каждый источник — от другого провайдера).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "Очистить кэш EPG",
+      "clearEpgCacheSub": "Удаляет все кэшированные данные ТВ-гида (списки программ и значки каналов), а также автономные кэши Global EPG, не затрагивая список каналов, источники или настройки. Данные EPG будут заново загружены при следующей синхронизации.",
+      "clearEpgCacheConfirm": "Очистить все данные EPG? Список каналов и источники будут сохранены.",
+      "epgCacheCleared": "Кэш EPG очищен. Он будет заново загружен при следующей синхронизации."
     },
     "dvr": {
       "selectStorageDir": "Выберите каталог хранения DVR",

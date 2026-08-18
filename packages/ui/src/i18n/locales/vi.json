@@ -2226,10 +2226,10 @@
       "simSyncsHintPre": "Số nguồn đồng bộ song song. ",
       "simSyncsHintStrong": "0 = tất cả cùng lúc",
       "simSyncsHintPost": " (nhanh nhất — khuyến nghị khi mỗi nguồn là một nhà cung cấp khác nhau).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "Xóa Bộ Nhớ Đệm EPG",
+      "clearEpgCacheSub": "Xóa tất cả dữ liệu TV Guide đã lưu trong bộ nhớ đệm (danh sách chương trình và biểu tượng kênh) và bộ nhớ đệm EPG toàn cầu ngoại tuyến, mà không ảnh hưởng đến danh sách kênh, nguồn hoặc cài đặt của bạn. Dữ liệu EPG sẽ được tải lại trong lần đồng bộ tiếp theo.",
+      "clearEpgCacheConfirm": "Xóa tất cả dữ liệu EPG? Danh sách kênh và nguồn của bạn sẽ được giữ nguyên.",
+      "epgCacheCleared": "Đã xóa bộ nhớ đệm EPG. Nó sẽ được tải lại trong lần đồng bộ tiếp theo."
     },
     "sources": {
       "tabs": {

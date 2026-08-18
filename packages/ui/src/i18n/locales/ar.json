@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "عدد المصادر المراد مزامنتها بالتوازي. ",
       "simSyncsHintStrong": "0 = الكل دفعة واحدة",
       "simSyncsHintPost": " (الأسرع — موصى به عندما يكون كل مصدر مزودًا مختلفًا).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "مسح ذاكرة دليل البرامج المؤقتة",
+      "clearEpgCacheSub": "إزالة جميع بيانات دليل البرامج المخزنة مؤقتًا (برامج القنوات وأيقوناتها) وذاكرات دليل البرامج العالمية غير المتصلة، دون المساس بقائمة القنوات أو المصادر أو الإعدادات. ستُعاد تنزيل بيانات دليل البرامج في المزامنة التالية.",
+      "clearEpgCacheConfirm": "مسح جميع بيانات دليل البرامج؟ سيتم الحفاظ على قائمة القنوات والمصادر.",
+      "epgCacheCleared": "تم مسح ذاكرة دليل البرامج المؤقتة. ستُعاد تنزيلها في المزامنة التالية."
     },
     "dvr": {
       "selectStorageDir": "اختيار مجلد تخزين التسجيلات",

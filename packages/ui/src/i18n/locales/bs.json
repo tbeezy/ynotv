@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "Koliko izvora sinhronizovati paralelno. ",
       "simSyncsHintStrong": "0 = sve odjednom",
       "simSyncsHintPost": " (najbrže — preporučljivo kada je svaki izvor drugi provajder).",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "Očisti EPG keš",
+      "clearEpgCacheSub": "Ukloni sve keširane podatke TV vodiča (popis programa i ikone kanala) i offline Global EPG keševe, bez diranja liste kanala, izvora ili postavki. EPG podaci će se ponovo preuzeti pri sljedećoj sinhronizaciji.",
+      "clearEpgCacheConfirm": "Očistiti sve EPG podatke? Lista kanala i izvori bit će sačuvani.",
+      "epgCacheCleared": "EPG keš je očišćen. Bit će ponovo preuzet pri sljedećoj sinhronizaciji."
     },
     "dvr": {
       "selectStorageDir": "Izaberi DVR direktorij za skladištenje",

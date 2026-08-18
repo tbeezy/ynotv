@@ -1746,10 +1746,10 @@
       "simSyncsHintPre": "कितने स्रोत समानांतर में सिंक करें। ",
       "simSyncsHintStrong": "0 = सभी एक साथ",
       "simSyncsHintPost": " (सबसे तेज़ — जब प्रत्येक स्रोत एक अलग प्रदाता हो तो अनुशंसित)।",
-      "clearEpgCache": "Clear EPG Cache",
-      "clearEpgCacheSub": "Remove all cached TV guide data (program listings and channel icons) and offline Global EPG caches, without touching your channel list, sources, or settings. EPG data will be re-downloaded on the next sync.",
-      "clearEpgCacheConfirm": "Clear all EPG data? Your channel list and sources will be preserved.",
-      "epgCacheCleared": "EPG cache cleared. It will be re-downloaded on the next sync."
+      "clearEpgCache": "EPG कैश साफ़ करें",
+      "clearEpgCacheSub": "टीवी गाइड का सभी कैश्ड डेटा (प्रोग्राम सूची और चैनल आइकन) और ऑफ़लाइन ग्लोबल EPG कैश हटाता है, बिना आपकी चैनल सूची, स्रोतों या सेटिंग्स को छुए। EPG डेटा अगले सिंक पर फिर से डाउनलोड किया जाएगा।",
+      "clearEpgCacheConfirm": "सभी EPG डेटा साफ़ करें? आपकी चैनल सूची और स्रोत संरक्षित रहेंगे।",
+      "epgCacheCleared": "EPG कैश साफ़ हो गया। अगले सिंक पर फिर से डाउनलोड किया जाएगा।"
     },
     "dvr": {
       "selectStorageDir": "DVR स्टोरेज निर्देशिका चुनें",
