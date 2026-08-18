@@ -49,7 +49,7 @@ const cachedSettings = getInitialSettingsFromStorage();
 /* ---------------------------------------------------------------------------
    Persistence — every write goes through the serialized queue.
    --------------------------------------------------------------------------- */
-function persistSettings(patch: Record<string, any>, debounced = false): void {
+function persistSettings(patch: Record<string, any>, debounced = false): Promise<void> | void {
   if (typeof window === 'undefined' || !window.storage) return;
   if (debounced) {
     try {
@@ -59,9 +59,15 @@ function persistSettings(patch: Record<string, any>, debounced = false): void {
     }
     return;
   }
-  window.storage.updateSettings(patch).catch((e) => {
-    console.error('[settingsStore] Failed to save:', e);
-  });
+  // Return the write promise so callers can await actual persistence — e.g.
+  // the Optimization restart flow must not relaunch before the disk write
+  // completes, or the user's toggle choice is lost.
+  return window.storage.updateSettings(patch).then(
+    () => undefined,
+    (e) => {
+      console.error('[settingsStore] Failed to save:', e);
+    },
+  );
 }
 
 export function dispatchAppEvent(name: string, detail: Record<string, any>) {
@@ -422,7 +428,7 @@ export interface SettingsState {
 
   // Theme Optimization
   hardwareAcceleration: boolean;
-  setHardwareAcceleration: (enabled: boolean) => void;
+  setHardwareAcceleration: (enabled: boolean) => Promise<void> | void;
   disableThemeBackdropBlur: boolean;
   setDisableThemeBackdropBlur: (disabled: boolean) => void;
   reduceEffectsWhileScrolling: boolean;
@@ -1023,7 +1029,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   hardwareAcceleration: true,
   setHardwareAcceleration: (enabled) => {
     set({ hardwareAcceleration: enabled });
-    persistSettings({ hardwareAcceleration: enabled });
+    return persistSettings({ hardwareAcceleration: enabled });
   },
   disableThemeBackdropBlur: false,
   setDisableThemeBackdropBlur: (disabled) => {

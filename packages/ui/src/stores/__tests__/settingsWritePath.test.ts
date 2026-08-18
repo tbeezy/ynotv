@@ -98,6 +98,33 @@ describe('settings store write path', () => {
     });
   });
 
+  it('setHardwareAcceleration awaits persistence (restart-safe save)', async () => {
+    const store = useSettingsStore;
+    // Defer the bridge write so we can prove the setter's returned promise
+    // does NOT settle before the write lands — the Optimization restart flow
+    // relies on this to avoid relaunching before the disk save completes.
+    let resolveWrite!: () => void;
+    mockUpdate.mockImplementationOnce(async (patch: Record<string, unknown>) => {
+      Object.assign(storageBackend, patch);
+      await new Promise<void>((r) => (resolveWrite = r));
+    });
+
+    const pending = store.getState().setHardwareAcceleration(false);
+
+    // State updates optimistically...
+    expect(store.getState().hardwareAcceleration).toBe(false);
+
+    // ...but the returned promise stays pending until the write resolves.
+    let settled = false;
+    void Promise.resolve(pending).then(() => (settled = true));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(settled).toBe(false);
+
+    resolveWrite();
+    await pending;
+    expect(storageBackend.hardwareAcceleration).toBe(false);
+  });
+
   it('setShortcuts persists through the queue (Phase 4 fix)', async () => {
     const store = useSettingsStore;
     const shortcuts = { togglePlay: { key: 'Space' } };
