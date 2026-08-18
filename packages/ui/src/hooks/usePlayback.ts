@@ -1276,15 +1276,22 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       retryFailedDuringLoadRef.current = true;
       return;
     }
-    if (failoverSwitchingRef.current) {
-      failoverFailedDuringSwitchRef.current = true;
-      return;
-    }
     if (!recoveryArmedRef.current) {
       logInfo('[Retry] Ignoring stream failure before playback was established');
       return;
     }
+    // The global re-entrancy guard must win over failoverSwitchingRef: a single
+    // death can arrive through multiple paths (mpv-stream-ended, mpv-http-error,
+    // mpv-error, mpv-end-file-error). If a redundant signal lands while the
+    // first is mid-switch, it must NOT mark the in-flight switch as failed —
+    // that burns a healthy backup. failoverSwitchingRef is always true inside a
+    // running handleStreamDied, so a genuine new death during a manual switch
+    // still reaches the failoverSwitching branch below.
     if (streamFailureHandlingRef.current) return;
+    if (failoverSwitchingRef.current) {
+      failoverFailedDuringSwitchRef.current = true;
+      return;
+    }
     streamFailureHandlingRef.current = true;
 
     try {
@@ -1557,50 +1564,10 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       }
 
       if (!stallDetectionEnabledRef.current) {
-        // Stall-detection heuristics are off, but a killed stream often never
-        // emits an end-file event with a usable reason (e.g. a proxy kill that
-        // leaves MPV idle) — so event-based reconnect alone would be blind to
-        // it. When event-based is enabled, keep polling just the death signals
-        // (idle/eof) cheaply so a genuinely dead stream still fails over. This
-        // is the same idle/eof branch the full watchdog uses, minus the
-        // buffering/cache-growth heuristics the toggle is meant to disable.
-        if (useEventBasedReconnectRef.current) {
-          healthCheckInFlightRef.current = true;
-          try {
-            const [
-              timePosResult,
-              eofReachedResult,
-              coreIdleResult,
-              idleActiveResult,
-            ] = await Promise.allSettled([
-              Bridge.getProperty('time-pos'),
-              Bridge.getProperty('eof-reached'),
-              Bridge.getProperty('core-idle'),
-              Bridge.getProperty('idle-active'),
-            ]);
-
-            const getValue = (result: PromiseSettledResult<any>) =>
-              result.status === 'fulfilled' ? result.value : null;
-
-            const sampledPosition = mpvNumber(getValue(timePosResult)) ?? positionRef.current;
-            const eofReached = mpvBoolean(getValue(eofReachedResult)) === true;
-            const coreIdle = mpvBoolean(getValue(coreIdleResult)) === true;
-            const idleActive = mpvBoolean(getValue(idleActiveResult)) === true;
-            const positionAdvanced = sampledPosition > lastHealthPositionRef.current + 1;
-            if (sampledPosition > lastHealthPositionRef.current) {
-              lastHealthPositionRef.current = sampledPosition;
-            }
-
-            if (eofReached || ((coreIdle || idleActive) && !positionAdvanced)) {
-              logWarn('[Health] Event-based death detected (idle/eof with no progress), triggering failover/retry');
-              handleStreamDied();
-            }
-          } catch (e) {
-            logWarn('[Health] Event-based death check failed:', e);
-          } finally {
-            healthCheckInFlightRef.current = false;
-          }
-        }
+        // With stall detection off, event-based reconnect is fully event-driven:
+        // the Rust side now synthesizes mpv-stream-ended on the eof-reached
+        // rising edge (see mpv_windows.rs), so no polling is needed here.
+        healthCheckInFlightRef.current = false;
         return;
       }
 

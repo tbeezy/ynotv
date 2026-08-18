@@ -447,6 +447,16 @@ async fn connect_ipc<R: Runtime>(
             video_track_id: None,
         };
 
+        // Track the previous eof-reached value so we synthesize mpv-end-file
+        // exactly once per file that reaches EOF. mpv runs with --keep-open=yes
+        // (both platforms): at EOF it pauses on the last frame instead of
+        // unloading, so the real end-file event is deferred until the file is
+        // replaced or stopped — a killed live stream therefore never surfaces
+        // an end-file with reason eof/network/error to the frontend. macOS
+        // already compensates by polling eof-reached in its status monitor;
+        // here the observed property delivers the same signal event-driven.
+        let mut last_eof_reached = false;
+
         loop {
             line.clear();
             match buf_reader.read_line(&mut line).await {
@@ -483,6 +493,33 @@ async fn connect_ipc<R: Runtime>(
                                             "duration" => status.duration = data.as_f64().unwrap_or(0.0),
                                             "paused-for-cache" => status.paused_for_cache = data.as_bool().unwrap_or(false),
                                             "core-idle" => status.core_idle = data.as_bool().unwrap_or(false),
+                                            "eof-reached" => {
+                                                let eof = data.as_bool().unwrap_or(false);
+                                                if eof && !last_eof_reached {
+                                                    // EOF while the file is still loaded (keep-open
+                                                    // holds it) — the real end-file event is
+                                                    // deferred until unload, so a killed live
+                                                    // stream never surfaces end-file with reason
+                                                    // eof/network/error. Surface both signals the
+                                                    // real end-file handler would have emitted:
+                                                    //  1) mpv-end-file (reason "eof") so VOD
+                                                    //     natural-end detection / series advance
+                                                    //     works without relying on heuristics;
+                                                    //  2) mpv-stream-ended so the frontend's
+                                                    //     event-based reconnect reacts to the death
+                                                    //     (the mpv-end-file alone is ignored for
+                                                    //     Live TV — its consumer is vodInfo-gated).
+                                                    let _ = app_handle.emit("mpv-end-file", json!({
+                                                        "reason": "eof",
+                                                        "fileError": "",
+                                                        "position": status.position,
+                                                        "duration": status.duration,
+                                                    }));
+                                                    log::info!("[MPV] EOF reached (keep-open holding file), emitting mpv-stream-ended");
+                                                    let _ = app_handle.emit("mpv-stream-ended", ());
+                                                }
+                                                last_eof_reached = eof;
+                                            }
                                             "vid" => status.video_track_id = Some(data.clone()),
                                             "video-format" => status.video_format = data.as_str().map(|s| s.to_string()),
                                             "demuxer-cache-state" => {
@@ -583,6 +620,7 @@ async fn connect_ipc<R: Runtime>(
     let _ = send_command_internal(state, "observe_property", vec![json!(8), json!("core-idle")]).await;
     let _ = send_command_internal(state, "observe_property", vec![json!(9), json!("vid")]).await;
     let _ = send_command_internal(state, "observe_property", vec![json!(10), json!("video-format")]).await;
+    let _ = send_command_internal(state, "observe_property", vec![json!(11), json!("eof-reached")]).await;
 
     let _ = app.emit("mpv-ready", true);
     Ok(())
