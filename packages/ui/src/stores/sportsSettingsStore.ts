@@ -75,12 +75,14 @@ interface SportsSettingsState {
   newsLeagues: string[];
   enabledLeagues: string[];
   showWorldCupTab: boolean;
+  autoSwapDeadStreams: boolean;
   loaded: boolean;
   loadSettings: () => Promise<void>;
   setLiveLeagues: (leagues: string[]) => Promise<void>;
   setUpcomingLeagues: (leagues: string[]) => Promise<void>;
   setNewsLeagues: (leagues: string[]) => Promise<void>;
   setShowWorldCupTab: (show: boolean) => Promise<void>;
+  setAutoSwapDeadStreams: (enabled: boolean) => Promise<void>;
   toggleLeague: (section: 'live' | 'upcoming' | 'news', leagueId: string) => Promise<void>;
   toggleLeagueAll: (leagueId: string) => Promise<void>;
   setCategorySection: (section: 'live' | 'upcoming' | 'news', category: string, checked: boolean) => Promise<void>;
@@ -94,6 +96,7 @@ export const useSportsSettingsStore = create<SportsSettingsState>()((set, get) =
   newsLeagues: DEFAULT_ENABLED_LEAGUES,
   enabledLeagues: DEFAULT_ENABLED_LEAGUES,
   showWorldCupTab: false,
+  autoSwapDeadStreams: false,
   loaded: false,
 
   loadSettings: async () => {
@@ -129,12 +132,19 @@ export const useSportsSettingsStore = create<SportsSettingsState>()((set, get) =
         showWorldCup = JSON.parse(showWorldCupPref.value);
       }
 
+      let autoSwap = false;
+      const autoSwapPref = await db.prefs.get('sports_autoswap_dead_streams');
+      if (autoSwapPref?.value) {
+        autoSwap = JSON.parse(autoSwapPref.value);
+      }
+
       set({
         enabledLeagues: enabledList,
         liveLeagues: enabledList,
         upcomingLeagues: enabledList,
         newsLeagues: enabledList,
         showWorldCupTab: showWorldCup,
+        autoSwapDeadStreams: autoSwap,
         loaded: true,
       });
     } catch (err) {
@@ -161,6 +171,11 @@ export const useSportsSettingsStore = create<SportsSettingsState>()((set, get) =
   setShowWorldCupTab: async (show: boolean) => {
     set({ showWorldCupTab: show });
     await db.prefs.put({ key: 'sports_show_worldcup', value: JSON.stringify(show) });
+  },
+
+  setAutoSwapDeadStreams: async (enabled: boolean) => {
+    set({ autoSwapDeadStreams: enabled });
+    await db.prefs.put({ key: 'sports_autoswap_dead_streams', value: JSON.stringify(enabled) });
   },
 
   toggleLeague: async (section: 'live' | 'upcoming' | 'news', leagueId: string) => {

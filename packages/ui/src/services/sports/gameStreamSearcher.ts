@@ -1,6 +1,90 @@
 import { db, type StoredChannel } from '../../db';
 import { buildSearchQueryClauses } from '../../utils/searchNormalization';
 import { useLeagueSearchConfigStore } from '../../stores/leagueSearchConfigStore';
+import { useUIStore } from '../../stores/uiStore';
+
+interface CacheEntry {
+  channels: StoredChannel[];
+  timestamp: number;
+}
+
+// In-memory cache for game streams (persists throughout session until sources re-sync)
+const streamSearchCache = new Map<string, CacheEntry>();
+
+export function getCachedGameStreams(cacheKey: string): StoredChannel[] | null {
+  const entry = streamSearchCache.get(cacheKey);
+  if (!entry) return null;
+  return entry.channels;
+}
+
+export function setCachedGameStreams(cacheKey: string, channels: StoredChannel[]): void {
+  streamSearchCache.set(cacheKey, {
+    channels,
+    timestamp: Date.now(),
+  });
+}
+
+export function clearCachedGameStreams(): void {
+  streamSearchCache.clear();
+}
+
+// Invalidate stream search cache whenever a source sync completes so fresh channels/EPG are queried
+if (typeof window !== 'undefined') {
+  useUIStore.subscribe((state, prev) => {
+    if (prev.channelSyncing && !state.channelSyncing) {
+      clearCachedGameStreams();
+    }
+  });
+}
+
+// Background prefetch queue: runs 1 game search at a time with 60ms polite yielding
+let isPrefetching = false;
+const prefetchQueue: Array<{ eventId: string; query: string; leagueId: string; limit: number }> = [];
+
+export function queuePrefetchGameStreams(
+  eventId: string,
+  query: string,
+  leagueId: string,
+  limit = 15
+): void {
+  const cacheKey = `${eventId}_${query}_${leagueId}`;
+  if (getCachedGameStreams(cacheKey)) return;
+  if (prefetchQueue.some((item) => item.eventId === eventId)) return;
+
+  prefetchQueue.push({ eventId, query, leagueId, limit });
+  processPrefetchQueue();
+}
+
+async function processPrefetchQueue(): Promise<void> {
+  if (isPrefetching) return;
+  isPrefetching = true;
+
+  while (prefetchQueue.length > 0) {
+    // If a channel sync is currently running, pause and wait for it to complete
+    if (useUIStore.getState().channelSyncing) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      continue;
+    }
+
+    const item = prefetchQueue.shift();
+    if (!item) break;
+
+    const cacheKey = `${item.eventId}_${item.query}_${item.leagueId}`;
+    if (!getCachedGameStreams(cacheKey)) {
+      try {
+        const results = await searchGameStreams(item.query, item.leagueId, item.limit);
+        setCachedGameStreams(cacheKey, results);
+      } catch (err) {
+        console.error('[gameStreamSearcher] Background prefetch failed for', item.eventId, err);
+      }
+    }
+
+    // Yield 60ms between game searches so database and UI thread remain silky smooth
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  }
+
+  isPrefetching = false;
+}
 
 /**
  * Searches local channels database and EPG programs for matching matchup query,
@@ -13,6 +97,12 @@ export async function searchGameStreams(
 ): Promise<StoredChannel[]> {
   const queryWords = query.trim().toLowerCase().split(/\s+/).filter((w) => w.length > 0);
   if (queryWords.length === 0) return [];
+
+  const cacheKey = `${query}_${leagueId || 'all'}_${limit}`;
+  const cached = getCachedGameStreams(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
   try {
     const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
@@ -70,7 +160,9 @@ export async function searchGameStreams(
     for (const ch of channelMatches) mergedMap.set(ch.stream_id, ch);
     for (const ch of programMatches) mergedMap.set(ch.stream_id, ch);
 
-    return Array.from(mergedMap.values()).slice(0, limit);
+    const results = Array.from(mergedMap.values()).slice(0, limit);
+    setCachedGameStreams(cacheKey, results);
+    return results;
   } catch (err) {
     console.error('[gameStreamSearcher] Stream search error:', err);
     return [];

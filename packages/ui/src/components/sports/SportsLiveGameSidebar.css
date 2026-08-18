@@ -1,6 +1,6 @@
 /* Sports Live Game Sidebar & Floating Tab Trigger */
 
-/* Floating Tab Trigger on Middle Right */
+/* Floating Tab Trigger on Middle Right (Vertical, Slim) */
 .slg-tab-trigger {
   position: fixed;
   right: 0;
@@ -8,20 +8,22 @@
   transform: translateY(-50%);
   z-index: 9990;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   background: rgba(16, 18, 27, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-right: none;
-  border-radius: 10px 0 0 10px;
-  padding: 10px 14px;
+  border-radius: 8px 0 0 8px;
+  padding: 12px 6px;
   color: var(--text-primary, #fff);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
@@ -29,8 +31,8 @@
 .slg-tab-trigger:hover {
   background: rgba(26, 30, 44, 0.95);
   border-color: rgba(0, 212, 255, 0.4);
-  padding-right: 18px;
-  box-shadow: -6px 0 25px rgba(0, 212, 255, 0.2);
+  padding-left: 8px;
+  box-shadow: -6px 0 20px rgba(0, 212, 255, 0.2);
   color: #fff;
 }
 
@@ -46,40 +48,59 @@
   color: var(--accent-primary, #00d4ff);
 }
 
-.slg-tab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-}
-
 .slg-tab-label {
-  letter-spacing: 0.02em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  font-size: 0.72rem;
 }
 
 .slg-tab-count {
+  writing-mode: horizontal-tb;
   background: var(--accent-primary, #00d4ff);
   color: #000;
   font-size: 0.65rem;
   font-weight: 800;
-  padding: 1px 6px;
-  border-radius: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
   line-height: 1.2;
 }
 
-/* Pulsing live dot */
+/* Live status dot */
 .slg-live-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: #10b981;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+}
+
+.slg-live-dot.pulsing {
+  opacity: 1;
   box-shadow: 0 0 6px #10b981;
   animation: slg-pulse 1.8s infinite;
 }
 
+.slg-live-dot.idle {
+  animation: none;
+  box-shadow: none;
+  opacity: 0.45;
+}
+
 .slg-live-dot.active-red {
   background: #ef4444;
+}
+
+.slg-live-dot.active-red.pulsing {
   box-shadow: 0 0 6px #ef4444;
+}
+
+.slg-live-dot.active-red.idle {
+  animation: none;
+  box-shadow: none;
+  opacity: 0.45;
 }
 
 @keyframes slg-pulse {
@@ -241,6 +262,12 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-hover, rgba(255, 255, 255, 0.18)) transparent;
+}
+
+.slg-body:hover {
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) transparent;
 }
 
 .slg-body::-webkit-scrollbar {
@@ -248,16 +275,19 @@
 }
 
 .slg-body::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
 }
 
 .slg-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--surface-hover, rgba(255, 255, 255, 0.18));
   border-radius: 3px;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
+.slg-body:hover::-webkit-scrollbar-thumb,
 .slg-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
+  box-shadow: 0 0 8px var(--accent-primary, rgba(0, 212, 255, 0.6));
 }
 
 /* Empty State */
@@ -316,6 +346,50 @@
   font-size: 0.72rem;
 }
 
+.slg-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slg-card-hover-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slg-card:hover .slg-card-hover-search,
+.slg-card-hover-search.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.slg-card-hover-search:hover {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: rgba(0, 212, 255, 0.45);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.25);
+}
+
+.slg-card-hover-search.active {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: var(--accent-primary, #00d4ff);
+}
+
 .slg-card-league {
   font-weight: 700;
   text-transform: uppercase;
@@ -343,6 +417,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .slg-team-info {
@@ -351,6 +426,222 @@
   gap: 8px;
   min-width: 0;
   flex: 1;
+}
+
+/* Combined Team Play Control (Single Pill) */
+.slg-team-play-control {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 0.65;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.slg-team-play-control:hover,
+.slg-team-play-control.menu-open {
+  opacity: 1;
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #00d4ff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+}
+
+.slg-team-play-control.is-playing {
+  opacity: 0.9;
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.slg-team-play-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.slg-team-play-main:hover {
+  color: #fff;
+}
+
+.slg-team-play-main svg {
+  margin-left: 1px;
+}
+
+.slg-team-play-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 18px;
+  padding: 0 2px 0 0;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.slg-team-play-caret:hover,
+.slg-team-play-caret.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.slg-team-unlinked-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+  opacity: 0.5;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.slg-team-unlinked-btn:hover {
+  opacity: 1;
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.35);
+  color: #00d4ff;
+}
+
+/* Portaled Stream Dropdown Menu */
+.slg-team-play-menu {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 100005;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 190px;
+  max-width: 240px;
+  padding: 6px;
+  border-radius: 10px;
+  background: #12151e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+  animation: slg-menu-pop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slg-menu-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.slg-team-play-menu-header {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 3px 6px 2px;
+}
+
+.slg-team-play-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+  font-size: 0.75rem;
+  font-family: inherit;
+  width: 100%;
+}
+
+.slg-team-play-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.slg-team-play-menu-item.active {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.slg-menu-priority-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.slg-menu-priority-badge.primary {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.slg-menu-priority-badge.backup {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.slg-menu-channel-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.slg-menu-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 3px 2px;
+}
+
+.slg-team-play-menu-item.search-item {
+  color: var(--accent-primary, #00d4ff);
+  font-weight: 500;
+}
+
+.slg-team-play-menu-item.search-item:hover {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+.slg-menu-search-icon {
+  flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .slg-team-logo {
@@ -401,96 +692,6 @@
   color: var(--accent-primary, #00d4ff);
 }
 
-/* Bottom Action Row (Watch button / Stream link / Details) */
-.slg-card-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  gap: 6px;
-}
-
-.slg-watch-btn {
-  background: rgba(0, 212, 255, 0.12);
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  border-radius: 6px;
-  padding: 4px 10px;
-  color: var(--accent-primary, #00d4ff);
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.15s;
-  max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.slg-watch-btn:hover {
-  background: rgba(0, 212, 255, 0.25);
-  border-color: rgba(0, 212, 255, 0.6);
-  color: #fff;
-}
-
-.slg-watch-btn.is-playing {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #10b981;
-  cursor: default;
-}
-
-.slg-detail-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 4px 8px;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 0.72rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.slg-detail-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.slg-search-streams-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 4px 8px;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 0.72rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.slg-search-streams-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.slg-search-streams-btn.active {
-  background: rgba(0, 212, 255, 0.15);
-  border-color: rgba(0, 212, 255, 0.4);
-  color: var(--accent-primary, #00d4ff);
-}
-
 .slg-spin {
   display: inline-block;
   animation: slg-spinning 0.8s linear infinite;
@@ -519,11 +720,37 @@
 }
 
 .slg-inline-streams-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: rgba(255, 255, 255, 0.45);
+}
+
+.slg-inline-close-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  line-height: 1;
+  border-radius: 3px;
+  transition: all 0.12s ease;
+}
+
+.slg-inline-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.slg-searching-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .slg-inline-streams-list {
@@ -532,6 +759,33 @@
   gap: 4px;
   max-height: 160px;
   overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-hover, rgba(255, 255, 255, 0.18)) transparent;
+}
+
+.slg-inline-streams-list:hover {
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) transparent;
+}
+
+.slg-inline-streams-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.slg-inline-streams-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.slg-inline-streams-list::-webkit-scrollbar-thumb {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.18));
+  border-radius: 3px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.slg-inline-streams-list:hover::-webkit-scrollbar-thumb,
+.slg-inline-streams-list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
+  box-shadow: 0 0 8px var(--accent-primary, rgba(0, 212, 255, 0.6));
 }
 
 .slg-stream-pill {

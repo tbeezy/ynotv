@@ -313,6 +313,78 @@
   align-self: flex-end;
 }
 
+/* ─── Autoswap Dead Streams Toggle ────────────────────────────────────────── */
+.tcs-autoswap-toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tcs-autoswap-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+
+.tcs-autoswap-label:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.tcs-autoswap-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  white-space: nowrap;
+}
+
+.tcs-autoswap-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.tcs-autoswap-slider {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.tcs-autoswap-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.tcs-autoswap-checkbox:checked + .tcs-autoswap-slider {
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+}
+
+.tcs-autoswap-checkbox:checked + .tcs-autoswap-slider::after {
+  transform: translateX(14px);
+}
+
 .tcs-autolink-btn-group {
   display: inline-flex;
   align-items: center;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { SportsEvent } from '@ynotv/core';
 import type { StoredChannel, TeamChannelLink } from '../../db';
@@ -9,7 +10,13 @@ import { useTeamChannelLinks, useTeamLinks } from '../../stores/teamChannelLinks
 import { isEventLiveOrPastStart } from '../../services/sports';
 import { getStatusDisplay } from '../../services/sports/utils';
 import { buildTeamSearchQuery } from '../../services/sports/teamChannelMatcher';
-import { searchGameStreams } from '../../services/sports/gameStreamSearcher';
+import {
+  searchGameStreams,
+  getCachedGameStreams,
+  setCachedGameStreams,
+  queuePrefetchGameStreams,
+} from '../../services/sports/gameStreamSearcher';
+import { useUIStore } from '../../stores/uiStore';
 import { GameDetail } from './GameDetail';
 import './SportsLiveGameSidebar.css';
 
@@ -63,6 +70,219 @@ function MiniTeamLogo({ name, logo }: { name: string; logo?: string }) {
   );
 }
 
+interface SidebarTeamPlayButtonProps {
+  teamName: string;
+  links: TeamChannelLink[];
+  onPlay: (link: TeamChannelLink) => void;
+  onSearchOtherStreams?: () => void;
+  currentStreamId?: string;
+}
+
+function SidebarTeamPlayButton({
+  teamName,
+  links,
+  onPlay,
+  onSearchOtherStreams,
+  currentStreamId,
+}: SidebarTeamPlayButtonProps) {
+  const { t } = useTranslation('sports');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const controlRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (controlRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
+  // Position portaled menu under the control
+  useEffect(() => {
+    if (!menuOpen) return;
+    const update = () => {
+      const el = controlRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const menuW = menuRef.current?.offsetWidth ?? 210;
+      const menuH = menuRef.current?.offsetHeight ?? 0;
+      const gap = 6;
+      let top = rect.bottom + gap;
+      if (menuH > 0 && top + menuH > window.innerHeight - 8) {
+        top = rect.top - menuH - gap;
+      }
+      if (top < 8) top = 8;
+      let left = rect.left + rect.width / 2;
+      left = Math.min(Math.max(left, menuW / 2 + 8), window.innerWidth - menuW / 2 - 8);
+      setMenuPos({ top, left });
+    };
+    update();
+    const raf = requestAnimationFrame(update);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [menuOpen]);
+
+  if (links.length === 0) {
+    if (!onSearchOtherStreams) return null;
+    return (
+      <button
+        className="slg-team-unlinked-btn"
+        title={t('findStreams', 'Find Streams')}
+        aria-label={t('findStreams', 'Find Streams')}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSearchOtherStreams();
+        }}
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+      </button>
+    );
+  }
+
+  const primary = links[0];
+  const hasBackups = links.length > 1;
+  const isPlayingPrimary = primary.stream_id === currentStreamId;
+
+  return (
+    <>
+      <div
+        ref={controlRef}
+        className={`slg-team-play-control ${hasBackups ? 'has-backups' : ''} ${menuOpen ? 'menu-open' : ''} ${isPlayingPrimary ? 'is-playing' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Main play action */}
+        <button
+          className="slg-team-play-main"
+          title={`${t('watchOn', 'Watch on')}: ${primary.channel_name}`}
+          aria-label={`${t('watchOn', 'Watch on')}: ${primary.channel_name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay(primary);
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </button>
+
+        {/* Integrated caret for backups & search dropdown */}
+        {hasBackups ? (
+          <button
+            className={`slg-team-play-caret ${menuOpen ? 'active' : ''}`}
+            title={`${primary.channel_name} (+${links.length - 1} ${t('backupChannels', 'backup channels')})`}
+            aria-label={`${links.length - 1} ${t('backupChannels', 'backup channels')}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((prev) => !prev);
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        ) : onSearchOtherStreams ? (
+          <button
+            className={`slg-team-play-caret ${menuOpen ? 'active' : ''}`}
+            title={t('findStreams', 'Find Streams')}
+            aria-label={t('findStreams', 'Find Streams')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((prev) => !prev);
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        ) : null}
+      </div>
+
+      {menuOpen &&
+        menuPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="slg-team-play-menu"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="slg-team-play-menu-header">
+              {teamName} {t('streams', 'Streams')} ({links.length})
+            </div>
+
+            {links.map((l, idx) => {
+              const isPrimary = idx === 0;
+              const isPlaying = l.stream_id === currentStreamId;
+              return (
+                <button
+                  key={l.stream_id}
+                  className={`slg-team-play-menu-item ${isPrimary ? 'primary' : 'backup'} ${isPlaying ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    onPlay(l);
+                  }}
+                >
+                  <span className={`slg-menu-priority-badge ${isPrimary ? 'primary' : 'backup'}`}>
+                    {isPrimary ? t('primaryChannel', 'Primary') : t('backupChannel', { num: idx, defaultValue: `Backup ${idx}` })}
+                  </span>
+                  <span className="slg-menu-channel-name" title={l.channel_name}>
+                    {l.channel_name}
+                  </span>
+                  {isPlaying ? (
+                    <span className="slg-stream-playing">●</span>
+                  ) : (
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+
+            {onSearchOtherStreams && (
+              <>
+                <div className="slg-menu-separator" />
+                <button
+                  className="slg-team-play-menu-item search-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    onSearchOtherStreams();
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="slg-menu-search-icon">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                  </svg>
+                  <span className="slg-menu-channel-name">
+                    {t('findStreams', 'Search for other streams')}
+                  </span>
+                </button>
+              </>
+            )}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 interface MiniGameCardProps {
   event: SportsEvent;
   onPlayChannel: (channel: StoredChannel) => void;
@@ -83,15 +303,12 @@ function MiniGameCard({
   const [isSearching, setIsSearching] = useState(false);
   const [localSearchChannels, setLocalSearchChannels] = useState<StoredChannel[] | null>(null);
 
-  const bestLink: TeamChannelLink | undefined = homeLinks[0] || awayLinks[0];
-  const isPlayingThisStream = bestLink && bestLink.stream_id === currentStreamId;
-
   const awayWinning = (event.awayScore ?? 0) > (event.homeScore ?? 0);
   const homeWinning = (event.homeScore ?? 0) > (event.awayScore ?? 0);
   const statusText = getStatusDisplay(event);
 
-  const toggleLocalSearch = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleLocalSearch = useCallback(async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (localSearchChannels && localSearchChannels.length > 0) {
       setLocalSearchChannels(null);
       return;
@@ -100,7 +317,16 @@ function MiniGameCard({
     setIsSearching(true);
     try {
       const query = buildTeamSearchQuery(event.homeTeam.name, event.awayTeam.name, event.league.id, event.title);
+      const cacheKey = `${event.id}_${query}_${event.league.id}`;
+      const cached = getCachedGameStreams(cacheKey) || getCachedGameStreams(`${query}_${event.league.id}_15`);
+      if (cached) {
+        setLocalSearchChannels(cached);
+        setIsSearching(false);
+        return;
+      }
+
       const results = await searchGameStreams(query, event.league.id, 15);
+      setCachedGameStreams(cacheKey, results);
       setLocalSearchChannels(results);
     } catch (err) {
       console.error('[SportsLiveGameSidebar] Inline stream search failed:', err);
@@ -108,12 +334,9 @@ function MiniGameCard({
     } finally {
       setIsSearching(false);
     }
-  }, [event.homeTeam.name, event.awayTeam.name, event.league.id, event.title, localSearchChannels]);
+  }, [event.id, event.homeTeam.name, event.awayTeam.name, event.league.id, event.title, localSearchChannels]);
 
-  const handleWatch = useCallback(async (e: React.MouseEvent, link: TeamChannelLink) => {
-    e.stopPropagation();
-    if (isPlayingThisStream) return;
-
+  const handlePlayLinked = useCallback(async (link: TeamChannelLink) => {
     try {
       const channel = await db.channels.get(link.stream_id);
       if (channel) {
@@ -134,17 +357,34 @@ function MiniGameCard({
     } catch (err) {
       console.error('[SportsLiveGameSidebar] Failed to resolve channel:', err);
     }
-  }, [isPlayingThisStream, onPlayChannel]);
+  }, [onPlayChannel]);
 
   return (
     <div className="slg-card" onClick={() => onOpenDetails(event)}>
-      {/* Card Header: League & Live Clock */}
+      {/* Card Header: League & Live Clock with Hover Search */}
       <div className="slg-card-header">
         <span className="slg-card-league">{event.league.name}</span>
-        <span className="slg-card-status">
-          <span className="slg-live-dot" />
-          {statusText || t('live', 'LIVE')}
-        </span>
+        <div className="slg-card-header-right">
+          <button
+            className={`slg-card-hover-search ${localSearchChannels !== null ? 'active' : ''}`}
+            onClick={toggleLocalSearch}
+            title={localSearchChannels !== null ? t('hideSearchResults', 'Hide Streams') : t('findStreams', 'Find Streams')}
+          >
+            {isSearching ? (
+              <span className="slg-spin">⟳</span>
+            ) : (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+            )}
+            <span>{localSearchChannels !== null ? t('hide', 'Hide') : t('findStreams', 'Find Streams')}</span>
+          </button>
+          <span className="slg-card-status">
+            <span className="slg-live-dot" />
+            {statusText || t('live', 'LIVE')}
+          </span>
+        </div>
       </div>
 
       {/* Teams and live scores */}
@@ -156,6 +396,13 @@ function MiniGameCard({
             <span className={`slg-team-name ${awayWinning ? 'winning' : ''}`} title={event.awayTeam.name}>
               {event.awayTeam.shortName || event.awayTeam.name}
             </span>
+            <SidebarTeamPlayButton
+              teamName={event.awayTeam.shortName || event.awayTeam.name}
+              links={awayLinks}
+              onPlay={handlePlayLinked}
+              onSearchOtherStreams={toggleLocalSearch}
+              currentStreamId={currentStreamId}
+            />
           </div>
           <span className={`slg-team-score ${awayWinning ? 'winning' : ''}`}>
             {event.awayScore ?? 0}
@@ -169,6 +416,13 @@ function MiniGameCard({
             <span className={`slg-team-name ${homeWinning ? 'winning' : ''}`} title={event.homeTeam.name}>
               {event.homeTeam.shortName || event.homeTeam.name}
             </span>
+            <SidebarTeamPlayButton
+              teamName={event.homeTeam.shortName || event.homeTeam.name}
+              links={homeLinks}
+              onPlay={handlePlayLinked}
+              onSearchOtherStreams={toggleLocalSearch}
+              currentStreamId={currentStreamId}
+            />
           </div>
           <span className={`slg-team-score ${homeWinning ? 'winning' : ''}`}>
             {event.homeScore ?? 0}
@@ -176,61 +430,19 @@ function MiniGameCard({
         </div>
       </div>
 
-      {/* Card Actions: Watch stream, Search Streams & Details button */}
-      <div className="slg-card-actions">
-        {bestLink ? (
-          <button
-            className={`slg-watch-btn ${isPlayingThisStream ? 'is-playing' : ''}`}
-            onClick={(e) => handleWatch(e, bestLink)}
-            disabled={isPlayingThisStream}
-            title={isPlayingThisStream ? t('currentlyPlaying', 'Playing') : t('watchStream', 'Watch Stream')}
-          >
-            {isPlayingThisStream ? (
-              <>
-                <span>●</span>
-                <span>{t('playing', 'Playing')}</span>
-              </>
-            ) : (
-              <>
-                <span>▶</span>
-                <span>{bestLink.channel_name || t('watch', 'Watch')}</span>
-              </>
-            )}
-          </button>
-        ) : (
-          <div style={{ flex: 1 }} />
-        )}
-
-        <button
-          className={`slg-search-streams-btn ${localSearchChannels !== null ? 'active' : ''}`}
-          onClick={toggleLocalSearch}
-          title={localSearchChannels !== null ? t('hideSearchResults', 'Hide Streams') : t('listStreamsHere', 'Find Streams')}
-        >
-          {isSearching ? (
-            <span className="slg-spin">⟳</span>
-          ) : (
-            <span>🔍</span>
-          )}
-          <span>{localSearchChannels !== null ? t('hide', 'Hide') : t('streams', 'Streams')}</span>
-        </button>
-
-        <button
-          className="slg-detail-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetails(event);
-          }}
-          title={t('gameDetails', 'Game Details')}
-        >
-          <span>{t('stats', 'Stats')}</span>
-          <span>→</span>
-        </button>
-      </div>
-
       {/* Inline Search Results */}
       {localSearchChannels !== null && (
         <div className="slg-inline-streams" onClick={(e) => e.stopPropagation()}>
-          <div className="slg-inline-streams-header">{t('availableStreams', 'Available Streams')}:</div>
+          <div className="slg-inline-streams-header">
+            <span>{t('availableStreams', 'Available Streams')}:</span>
+            <button
+              className="slg-inline-close-btn"
+              onClick={toggleLocalSearch}
+              title={t('hide', 'Hide')}
+            >
+              ✕
+            </button>
+          </div>
           {localSearchChannels.length > 0 ? (
             <div className="slg-inline-streams-list">
               {localSearchChannels.map((channel, idx) => {
@@ -253,7 +465,15 @@ function MiniGameCard({
               })}
             </div>
           ) : (
-            <div className="slg-inline-no-streams">{t('noStreamsFound', 'No streams found')}</div>
+            <div className="slg-inline-no-streams">
+              {isSearching ? (
+                <span className="slg-searching-text">
+                  <span className="slg-spin">⟳</span> {t('searchingStreams', 'Searching streams...')}
+                </span>
+              ) : (
+                t('noStreamsFound', 'No streams found')
+              )}
+            </div>
           )}
         </div>
       )}
@@ -292,6 +512,48 @@ export function SportsLiveGameSidebar({
     leagues: loaded ? liveLeagues : undefined,
   });
 
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnterTrigger = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setIsOpen(true);
+  }, []);
+
+  const handleMouseEnterDrawer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
+    closeTimerRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 200);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setIsOpen(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
   // Filter to active live events only
   const liveEvents = useMemo(() => {
     return events.filter(isEventLiveOrPastStart);
@@ -317,17 +579,68 @@ export function SportsLiveGameSidebar({
     return liveEvents.filter((e) => e.league.id === selectedLeague);
   }, [liveEvents, selectedLeague]);
 
+  const appStartedAt = useRef(Date.now());
+  const [startupReady, setStartupReady] = useState(false);
+
+  // Initial startup delay (15s) + wait for auto-sync to be idle
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let unsub: (() => void) | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const checkReady = () => {
+      const isSyncing = useUIStore.getState().channelSyncing;
+      if (!isSyncing) {
+        setStartupReady(true);
+        if (pollTimer) clearInterval(pollTimer);
+      }
+    };
+
+    const remainingMs = Math.max(0, 15000 - (Date.now() - appStartedAt.current));
+    timer = setTimeout(() => {
+      const isSyncing = useUIStore.getState().channelSyncing;
+      if (!isSyncing) {
+        setStartupReady(true);
+      } else {
+        // Wait for sync to complete
+        unsub = useUIStore.subscribe((state, prev) => {
+          if (prev.channelSyncing && !state.channelSyncing) {
+            setStartupReady(true);
+          }
+        });
+        // Safety poll every 2s in case event is missed
+        pollTimer = setInterval(checkReady, 2000);
+      }
+    }, remainingMs);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (pollTimer) clearInterval(pollTimer);
+      if (unsub) unsub();
+    };
+  }, []);
+
+  // Background pre-fetch streams for all currently live games sequentially (1 by 1)
+  // Only runs after 15s startup delay and once auto-sync is completely idle
+  useEffect(() => {
+    if (!startupReady || liveEvents.length === 0) return;
+    for (const e of liveEvents) {
+      const query = buildTeamSearchQuery(e.homeTeam.name, e.awayTeam.name, e.league.id, e.title);
+      queuePrefetchGameStreams(e.id, query, e.league.id, 15);
+    }
+  }, [startupReady, liveEvents]);
+
   // Close with escape key
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsOpen(false);
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   const isMainScreen = activeView === 'none';
   if (!isMainScreen) return null;
@@ -337,11 +650,12 @@ export function SportsLiveGameSidebar({
       {/* Middle Right Tab Trigger */}
       <div
         className={`slg-tab-trigger ${showControls ? '' : 'controls-hidden'} ${isOpen ? 'open' : ''}`}
+        onMouseEnter={handleMouseEnterTrigger}
+        onMouseLeave={handleMouseLeave}
         onClick={() => setIsOpen((prev) => !prev)}
         title={t('liveGamesSidebar', 'Live Games Sidebar')}
       >
-        <span className="slg-live-dot" />
-        <span className="slg-tab-icon">⚡</span>
+        <span className={`slg-live-dot ${liveEvents.length > 0 ? 'pulsing' : 'idle'}`} />
         <span className="slg-tab-label">{t('liveGames', 'Live Games')}</span>
         {liveEvents.length > 0 && (
           <span className="slg-tab-count">{liveEvents.length}</span>
@@ -352,27 +666,27 @@ export function SportsLiveGameSidebar({
       {isOpen && (
         <div
           className="slg-backdrop"
-          onClick={() => setIsOpen(false)}
+          onClick={handleClose}
         />
       )}
 
       {/* Sliding Sidebar Drawer */}
       <div
         className={`slg-drawer ${isOpen ? 'open' : ''}`}
-        onMouseEnter={(e) => e.stopPropagation()}
-        onMouseLeave={(e) => e.stopPropagation()}
+        onMouseEnter={handleMouseEnterDrawer}
+        onMouseLeave={handleMouseLeave}
       >
         {/* Drawer Header */}
         <div className="slg-header">
           <div className="slg-header-top">
             <div className="slg-title-row">
-              <span className="slg-live-dot active-red" />
+              <span className={`slg-live-dot active-red ${liveEvents.length > 0 ? 'pulsing' : 'idle'}`} />
               <span className="slg-title">{t('liveGames', 'Live Games')}</span>
               <span className="slg-tab-count">{liveEvents.length}</span>
             </div>
             <button
               className="slg-close-btn"
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               title={t('close', 'Close')}
             >
               ✕

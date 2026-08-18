@@ -14,6 +14,7 @@ import {
   type TeamChannelCandidate,
 } from '../../services/sports/teamChannelMatcher';
 import { ALL_LEAGUES, useSportsSettingsStore } from '../../stores/sportsSettingsStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import {
   useTeamChannelLinksStore,
   getTeamLinks,
@@ -755,6 +756,8 @@ export function TeamChannelSettings() {
   const reorderTeamLinks = useTeamChannelLinksStore((s) => s.reorderTeamLinks);
 
   const enabledLeagues = useSportsSettingsStore((s) => s.enabledLeagues);
+  const autoSwapDeadStreams = useSportsSettingsStore((s) => s.autoSwapDeadStreams);
+  const setAutoSwapDeadStreams = useSportsSettingsStore((s) => s.setAutoSwapDeadStreams);
 
   // Filter available leagues: only enabled team leagues!
   const enabledTeamLeagues = useMemo(() => {
@@ -1071,6 +1074,33 @@ export function TeamChannelSettings() {
     showToast(t('unlinkedAllTeamsForLeague'), 'info');
   }, [selectedLeagueId, unlinkLeague, showToast, t]);
 
+  const handleToggleAutoSwap = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const enabled = e.target.checked;
+      if (enabled) {
+        const useEventBased = useSettingsStore.getState().useEventBasedReconnect;
+        const stallDetection = useSettingsStore.getState().stallDetectionEnabled;
+        if (!useEventBased && !stallDetection) {
+          // Don't flip the toggle on — auto-swap can't do anything without a
+          // detection method, and the error toast should match the switch state.
+          showToast(
+            t(
+              'autoSwapRequiresDetection',
+              'Auto-swap requires at least one detection method to be enabled. Please enable Event-based reconnect or Stall detection in Settings -> Playback -> Auto-Reconnect.'
+            ),
+            'error'
+          );
+          return;
+        }
+        showToast(t('autoSwapEnabled', 'Autoswap dead streams enabled'), 'success');
+      } else {
+        showToast(t('autoSwapDisabled', 'Autoswap dead streams disabled'), 'info');
+      }
+      await setAutoSwapDeadStreams(enabled);
+    },
+    [setAutoSwapDeadStreams, showToast, t]
+  );
+
   // Categories for sports filter
   const categories = useMemo(() => {
     const map = new Map<string, number>();
@@ -1202,6 +1232,23 @@ export function TeamChannelSettings() {
         </div>
 
         <div className="tcs-header-actions">
+          {/* Autoswap dead streams toggle */}
+          <div
+            className="tcs-autoswap-toggle-wrap"
+            title={t('autoSwapDeadStreamsDesc', 'Automatically switch to backup streams when the current team stream drops or stalls')}
+          >
+            <label className="tcs-autoswap-label">
+              <span className="tcs-autoswap-text">{t('autoSwapDeadStreams', 'Autoswap dead streams')}</span>
+              <input
+                type="checkbox"
+                className="tcs-autoswap-checkbox"
+                checked={autoSwapDeadStreams}
+                onChange={handleToggleAutoSwap}
+              />
+              <span className="tcs-autoswap-slider" />
+            </label>
+          </div>
+
           <div className="tcs-autolink-btn-group">
             <button
               className="tcs-btn-autolink"

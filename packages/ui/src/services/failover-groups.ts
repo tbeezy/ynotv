@@ -1,6 +1,8 @@
 import { db, updateFailoverMembersBatch } from '../db';
 import i18n from '../i18n';
 import type { FailoverGroup, StoredChannel } from '../db';
+import { useSportsSettingsStore } from '../stores/sportsSettingsStore';
+import { useTeamChannelLinksStore, getTeamLinks } from '../stores/teamChannelLinksStore';
 
 /** Get the full ordered member list for a group, with channel data joined */
 export async function getFailoverGroupMembers(
@@ -36,8 +38,99 @@ export async function getFailoverGroupMembers(
   return result;
 }
 
+/** Given a stream_id linked to a sports team, return ordered candidate backup channels after it */
+export async function getTeamFailoverCandidatesAfter(
+  startStreamId: string
+): Promise<StoredChannel[]> {
+  await useTeamChannelLinksStore.getState().ensureLoaded();
+  const links = useTeamChannelLinksStore.getState().links;
 
-/** Given a stream_id in a failover group, return ordered enabled candidates after it */
+  // Find link matching startStreamId
+  const match = links.find((l) => l.stream_id === startStreamId);
+  if (!match) return [];
+
+  const teamLinks = getTeamLinks(links, match.league_id, match.team_id);
+  if (teamLinks.length <= 1) return [];
+
+  const startIndex = teamLinks.findIndex((l) => l.stream_id === startStreamId);
+  if (startIndex === -1) return [];
+
+  const candidateLinks = teamLinks.slice(startIndex + 1);
+  if (candidateLinks.length === 0) return [];
+
+  const streamIds = candidateLinks.map((l) => l.stream_id);
+  const channels = await db.channels.where('stream_id').anyOf(streamIds).toArray();
+  const channelMap = new Map(channels.map((c) => [c.stream_id, c]));
+
+  // Load enabled sources to filter
+  const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
+  const enabledSourceIds = new Set(
+    sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []
+  );
+
+  const result: StoredChannel[] = [];
+  for (const link of candidateLinks) {
+    const ch = channelMap.get(link.stream_id);
+    if (ch && ch.enabled !== false && (!ch.source_id || enabledSourceIds.has(ch.source_id))) {
+      result.push(ch);
+    } else if (!ch && link.stream_id && (!link.source_id || enabledSourceIds.has(link.source_id))) {
+      // Fallback synthetic channel if not found in db.channels table
+      result.push({
+        stream_id: link.stream_id,
+        name: link.channel_name,
+        source_id: link.source_id || '',
+        stream_icon: '',
+        epg_channel_id: '',
+        category_ids: [],
+        direct_url: '',
+        stream_type: 'live',
+      });
+    }
+  }
+
+  return result;
+}
+
+/** Given a stream_id linked to a sports team, return the primary (priority=0) channel of that team */
+export async function getTeamPrimaryChannel(
+  anyStreamId: string
+): Promise<StoredChannel | null> {
+  await useTeamChannelLinksStore.getState().ensureLoaded();
+  const links = useTeamChannelLinksStore.getState().links;
+
+  const match = links.find((l) => l.stream_id === anyStreamId);
+  if (!match) return null;
+
+  const teamLinks = getTeamLinks(links, match.league_id, match.team_id);
+  const primaryLink = teamLinks[0];
+  if (!primaryLink) return null;
+
+  const channel = await db.channels.where('stream_id').equals(primaryLink.stream_id).first();
+  const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
+  const enabledSourceIds = new Set(
+    sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []
+  );
+  if (channel) {
+    if (!channel.source_id || enabledSourceIds.has(channel.source_id)) {
+      return channel;
+    }
+  } else if (primaryLink.stream_id && (!primaryLink.source_id || enabledSourceIds.has(primaryLink.source_id))) {
+    return {
+      stream_id: primaryLink.stream_id,
+      name: primaryLink.channel_name,
+      source_id: primaryLink.source_id || '',
+      stream_icon: '',
+      epg_channel_id: '',
+      category_ids: [],
+      direct_url: '',
+      stream_type: 'live',
+    };
+  }
+
+  return null;
+}
+
+/** Given a stream_id in a failover group or team channel links, return ordered enabled candidates after it */
 export async function getFailoverCandidatesAfter(
   startStreamId: string
 ): Promise<StoredChannel[]> {
@@ -45,38 +138,46 @@ export async function getFailoverCandidatesAfter(
     .where('stream_id')
     .equals(startStreamId)
     .first();
-  if (!membership) return [];
+  if (membership) {
+    const allMembers = await db.failoverGroupMembers
+      .where('group_id')
+      .equals(membership.group_id)
+      .toArray();
 
-  const allMembers = await db.failoverGroupMembers
-    .where('group_id')
-    .equals(membership.group_id)
-    .toArray();
+    allMembers.sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return (a.id ?? 0) - (b.id ?? 0);
+    });
 
-  allMembers.sort((a, b) => {
-    if (a.priority !== b.priority) return a.priority - b.priority;
-    return (a.id ?? 0) - (b.id ?? 0);
-  });
+    const startIndex = allMembers.findIndex(m => m.stream_id === startStreamId);
+    if (startIndex === -1) return [];
 
-  const startIndex = allMembers.findIndex(m => m.stream_id === startStreamId);
-  if (startIndex === -1) return [];
+    const candidateMembers = allMembers.slice(startIndex + 1);
+    if (candidateMembers.length === 0) return [];
 
-  const candidateMembers = allMembers.slice(startIndex + 1);
-  if (candidateMembers.length === 0) return [];
+    const streamIds = candidateMembers.map(m => m.stream_id);
+    const channels = await db.channels.where('stream_id').anyOf(streamIds).toArray();
+    const channelMap = new Map(channels.map(c => [c.stream_id, c]));
 
-  const streamIds = candidateMembers.map(m => m.stream_id);
-  const channels = await db.channels.where('stream_id').anyOf(streamIds).toArray();
-  const channelMap = new Map(channels.map(c => [c.stream_id, c]));
+    // Load enabled sources to filter
+    const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
+    const enabledSourceIds = new Set(sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []);
 
-  // Load enabled sources to filter
-  const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
-  const enabledSourceIds = new Set(sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []);
+    return candidateMembers
+      .map(m => channelMap.get(m.stream_id))
+      .filter((channel): channel is StoredChannel => !!channel && channel.enabled !== false && enabledSourceIds.has(channel.source_id));
+  }
 
-  return candidateMembers
-    .map(m => channelMap.get(m.stream_id))
-    .filter((channel): channel is StoredChannel => !!channel && channel.enabled !== false && enabledSourceIds.has(channel.source_id));
+  // If not in a standard failover group, check team channel links if autoSwapDeadStreams is enabled
+  const autoSwap = useSportsSettingsStore.getState().autoSwapDeadStreams;
+  if (autoSwap) {
+    return getTeamFailoverCandidatesAfter(startStreamId);
+  }
+
+  return [];
 }
 
-/** Given a stream_id, return the primary (priority=0) channel of its group, or null */
+/** Given a stream_id, return the primary (priority=0) channel of its group or team, or null */
 export async function getPrimaryChannelForGroup(
   anyStreamId: string
 ): Promise<StoredChannel | null> {
@@ -84,24 +185,32 @@ export async function getPrimaryChannelForGroup(
     .where('stream_id')
     .equals(anyStreamId)
     .first();
-  if (!membership) return null;
+  if (membership) {
+    const primary = await db.failoverGroupMembers
+      .where('group_id')
+      .equals(membership.group_id)
+      .filter(m => m.priority === 0)
+      .first();
+    if (!primary) return null;
 
-  const primary = await db.failoverGroupMembers
-    .where('group_id')
-    .equals(membership.group_id)
-    .filter(m => m.priority === 0)
-    .first();
-  if (!primary) return null;
-
-  const channel = await db.channels.where('stream_id').equals(primary.stream_id).first();
-  if (channel) {
-    // Load enabled sources to filter
-    const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
-    const enabledSourceIds = new Set(sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []);
-    if (enabledSourceIds.has(channel.source_id)) {
-      return channel;
+    const channel = await db.channels.where('stream_id').equals(primary.stream_id).first();
+    if (channel) {
+      // Load enabled sources to filter
+      const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
+      const enabledSourceIds = new Set(sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []);
+      if (enabledSourceIds.has(channel.source_id)) {
+        return channel;
+      }
     }
+    return null;
   }
+
+  // If not in a standard failover group, check team channel links if autoSwapDeadStreams is enabled
+  const autoSwap = useSportsSettingsStore.getState().autoSwapDeadStreams;
+  if (autoSwap) {
+    return getTeamPrimaryChannel(anyStreamId);
+  }
+
   return null;
 }
 

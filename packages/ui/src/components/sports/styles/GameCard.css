@@ -228,7 +228,7 @@
 .gc-team-play-menu {
   position: fixed;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: 100005;
   display: flex;
   flex-direction: column;
   gap: 3px;
