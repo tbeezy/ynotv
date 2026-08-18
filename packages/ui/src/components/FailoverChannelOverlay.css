@@ -203,6 +203,18 @@
   box-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
 }
 
+/* Sortable wrapper — full-surface card dragging */
+.fco-sortable-item {
+  width: 100%;
+  cursor: grab;
+  user-select: none;
+}
+
+.fco-sortable-item:active,
+.fco-sortable-item.dragging {
+  cursor: grabbing;
+}
+
 .fco-item {
   display: flex;
   align-items: center;
@@ -212,7 +224,6 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.9);
-  cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
   width: 100%;
@@ -230,7 +241,6 @@
   background: rgba(0, 212, 255, 0.18);
   border-color: var(--accent-primary, #00d4ff);
   box-shadow: 0 0 14px rgba(0, 212, 255, 0.2), inset 0 0 8px rgba(0, 212, 255, 0.15);
-  cursor: default;
 }
 
 .fco-item-logo {

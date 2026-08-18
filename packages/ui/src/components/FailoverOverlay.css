@@ -12,6 +12,12 @@
   border-radius: inherit;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  animation: failover-overlay-in 0.25s ease-out;
+}
+
+@keyframes failover-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .failover-content {
@@ -27,6 +33,12 @@
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  animation: failover-pop-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes failover-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ── Icon ─────────────────────────────────────────────────── */
@@ -67,6 +79,17 @@
   font-weight: 600;
   color: rgba(255, 255, 255, 0.92);
   letter-spacing: 0.01em;
+}
+
+.failover-ellipsis {
+  display: inline-block;
+  margin-left: 2px;
+  animation: failover-ellipsis-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes failover-ellipsis-pulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
 }
 
 .failover-from {

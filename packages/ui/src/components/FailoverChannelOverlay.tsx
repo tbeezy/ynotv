@@ -1,12 +1,29 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from 'react';
 import type { StoredChannel } from '../db';
 import { db } from '../db';
-import { getFailoverGroupMembers } from '../services/failover-groups';
+import { getFailoverGroupMembers, reorderFailoverGroupChannels } from '../services/failover-groups';
 import { useSourceNameMap } from '../hooks/useChannels';
 import { useSettingsStore } from '../stores/settingsStore';
 import { MetadataBadge } from './MetadataBadge';
 import { useTranslation } from 'react-i18next';
 import './FailoverChannelOverlay.css';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface FailoverChannelOverlayProps {
   currentChannel: StoredChannel | null;
@@ -64,6 +81,105 @@ function TvSvgIcon() {
   );
 }
 
+// ── Sortable Failover Channel Item with Full-Surface Card Dragging ────────────
+
+function SortableFailoverItem({
+  member,
+  isActive,
+  sourceName,
+  isPrimary,
+  onSelect,
+}: {
+  member: MemberChannel;
+  isActive: boolean;
+  sourceName?: string;
+  isPrimary: boolean;
+  onSelect: () => void;
+}) {
+  const { t } = useTranslation('player');
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: member.stream_id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 99 : 1,
+    touchAction: 'none',
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`fco-sortable-item${isDragging ? ' dragging' : ''}`}
+    >
+      <button
+        className={`fco-item ${isActive ? 'fco-active' : ''}`}
+        onClick={onSelect}
+        disabled={isActive}
+        title={
+          isActive
+            ? t('currentlyPlaying')
+            : t('switchTo', { name: member.name })
+        }
+      >
+        {member.stream_icon ? (
+          <img
+            src={member.stream_icon}
+            alt=""
+            className="fco-item-logo"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <span className="fco-item-logo-placeholder">
+            <TvSvgIcon />
+          </span>
+        )}
+
+        <div className="fco-item-info">
+          <span className="fco-item-name" title={member.name}>
+            {member.name}
+          </span>
+          {sourceName && (
+            <span className="fco-item-source" title={sourceName}>
+              {sourceName}
+            </span>
+          )}
+        </div>
+
+        <div className="fco-item-tags">
+          <MetadataBadge
+            streamId={member.stream_id}
+            variant="compact"
+          />
+          <span className={`fco-priority-pill ${isPrimary ? 'primary' : ''}`}>
+            {isPrimary
+              ? t('primary', 'Primary')
+              : t('backup', {
+                  defaultValue: 'Backup {{num}}',
+                  num: member.priority,
+                })}
+          </span>
+          {isActive && (
+            <span className="fco-pulse-dot" />
+          )}
+        </div>
+      </button>
+    </div>
+  );
+}
+
 export function FailoverChannelOverlay({
   currentChannel,
   onChannelClick,
@@ -76,8 +192,36 @@ export function FailoverChannelOverlay({
   const { t } = useTranslation('player');
   const [isOpen, setIsOpen] = useState(false);
   const [groupName, setGroupName] = useState<string>('');
+  const [groupId, setGroupId] = useState<string>('');
   const [members, setMembers] = useState<MemberChannel[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // @dnd-kit sensors: 5px activation distance so row clicks don't start drags
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // @dnd-kit DragEnd handler: persist new primary/backup order to the group
+  const handleReorder = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !groupId) return;
+
+    const oldIndex = members.findIndex((m) => m.stream_id === active.id);
+    const newIndex = members.findIndex((m) => m.stream_id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(members, oldIndex, newIndex).map((m, idx) => ({
+      ...m,
+      priority: idx,
+    }));
+    setMembers(reordered);
+    try {
+      await reorderFailoverGroupChannels(groupId, reordered.map((m) => m.stream_id));
+    } catch (e) {
+      console.error('[FailoverChannelOverlay] Failed to reorder failover channels:', e);
+    }
+  }, [members, groupId]);
 
   const appSettingShowSource = useSettingsStore((s) => s.failoverGroupShowSource);
   const sourceNameMap = useSourceNameMap();
@@ -93,6 +237,7 @@ export function FailoverChannelOverlay({
     if (!currentChannel?.stream_id) {
       setMembers([]);
       setGroupName('');
+      setGroupId('');
       setIsOpen(false);
       return;
     }
@@ -102,6 +247,7 @@ export function FailoverChannelOverlay({
     if (isVod) {
       setMembers([]);
       setGroupName('');
+      setGroupId('');
       setIsOpen(false);
       return;
     }
@@ -119,6 +265,7 @@ export function FailoverChannelOverlay({
           if (isMounted) {
             setMembers([]);
             setGroupName('');
+            setGroupId('');
             setIsOpen(false);
           }
           return;
@@ -133,6 +280,7 @@ export function FailoverChannelOverlay({
 
         if (isMounted) {
           setGroupName(group?.name || 'Failover Group');
+          setGroupId(membership.group_id);
           setMembers(groupMembers);
         }
       } catch (err) {
@@ -251,74 +399,38 @@ export function FailoverChannelOverlay({
             </span>
           </div>
 
-          {/* List (Max 5 items with Nuvio-styled glowing scrollbar) */}
+          {/* List (Max 5 items with Nuvio-styled glowing scrollbar) — full-surface drag to reorder */}
           <div className="fco-list">
-            {members.map((member) => {
-              const isActive = member.stream_id === currentStreamId;
-              const sourceName =
-                showSource && sourceNameMap && member.source_id
-                  ? sourceNameMap.get(member.source_id)
-                  : undefined;
-              const isPrimary = member.priority === 0;
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleReorder}
+            >
+              <SortableContext
+                items={members.map((m) => m.stream_id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {members.map((member) => {
+                  const isActive = member.stream_id === currentStreamId;
+                  const sourceName =
+                    showSource && sourceNameMap && member.source_id
+                      ? sourceNameMap.get(member.source_id)
+                      : undefined;
+                  const isPrimary = member.priority === 0;
 
-              return (
-                <button
-                  key={member.stream_id}
-                  className={`fco-item ${isActive ? 'fco-active' : ''}`}
-                  onClick={() => handleChannelSelect(member)}
-                  disabled={isActive}
-                  title={
-                    isActive
-                      ? t('currentlyPlaying')
-                      : t('switchTo', { name: member.name })
-                  }
-                >
-                  {member.stream_icon ? (
-                    <img
-                      src={member.stream_icon}
-                      alt=""
-                      className="fco-item-logo"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                      }}
+                  return (
+                    <SortableFailoverItem
+                      key={member.stream_id}
+                      member={member}
+                      isActive={isActive}
+                      sourceName={sourceName}
+                      isPrimary={isPrimary}
+                      onSelect={() => handleChannelSelect(member)}
                     />
-                  ) : (
-                    <span className="fco-item-logo-placeholder">
-                      <TvSvgIcon />
-                    </span>
-                  )}
-
-                  <div className="fco-item-info">
-                    <span className="fco-item-name" title={member.name}>
-                      {member.name}
-                    </span>
-                    {sourceName && (
-                      <span className="fco-item-source" title={sourceName}>
-                        {sourceName}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="fco-item-tags">
-                    <MetadataBadge
-                      streamId={member.stream_id}
-                      variant="compact"
-                    />
-                    <span className={`fco-priority-pill ${isPrimary ? 'primary' : ''}`}>
-                      {isPrimary
-                        ? t('primary', 'Primary')
-                        : t('backup', {
-                            defaultValue: 'Backup {{num}}',
-                            num: member.priority,
-                          })}
-                    </span>
-                    {isActive && (
-                      <span className="fco-pulse-dot" />
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
       )}

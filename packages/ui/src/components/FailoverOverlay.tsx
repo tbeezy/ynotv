@@ -23,7 +23,10 @@ export function FailoverOverlay({ state, isSmall = false }: Props) {
           </svg>
         </div>
         <div className="failover-text">
-          <span className="failover-title">{t('switchingToBackup')}</span>
+          <span className="failover-title">
+            {t('switchingToBackup')}
+            <span className="failover-ellipsis" aria-hidden="true">…</span>
+          </span>
           <span className="failover-from">&#x21b3; {state.toChannelName}</span>
           {state.attempt > 1 && (
             <span className="failover-attempt">{t('backupAttempt', { number: state.attempt })}</span>

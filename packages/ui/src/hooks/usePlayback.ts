@@ -511,9 +511,14 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
   const catchupEndPaddingRef = useRef(0);
   const catchupContinuePlayingRef = useRef(false);
 
-  // Load retry & catchup settings once on mount — all fields live in the
-  // settings store (hydrated at boot), so no IPC round-trip.
-  useEffect(() => {
+  // Apply retry/catchup settings from the store to the live refs. Called at
+  // mount AND on every store change. This must NOT be a one-shot read: boot
+  // hydration is async (see settingsStoreHydration), so the store is still at
+  // its seed defaults when this hook mounts — a saved "stall detection off"
+  // would otherwise never reach these refs (the watchdog silently stayed on
+  // in "event-based only" sessions), and Settings.tsx toggles write to the
+  // DB + legacy event but not to the zustand store.
+  const applyPlaybackSettingsFromStore = useCallback(() => {
     const s = useSettingsStore.getState();
     if (typeof s.streamMaxRetries === 'number' && s.streamMaxRetries > 0) {
       maxRetriesRef.current = s.streamMaxRetries;
@@ -540,6 +545,14 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       catchupContinuePlayingRef.current = s.catchupContinuePlaying;
     }
   }, []);
+
+  // Sync refs at mount and re-apply whenever the store changes so async boot
+  // hydration reconciles them with the persisted settings.
+  useEffect(() => {
+    applyPlaybackSettingsFromStore();
+    const unsubscribe = useSettingsStore.subscribe(applyPlaybackSettingsFromStore);
+    return unsubscribe;
+  }, [applyPlaybackSettingsFromStore]);
 
   // Listen for real-time changes dispatched by Settings.tsx — no restart required
   useEffect(() => {
@@ -995,6 +1008,12 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         setCurrentChannel(resolvedChannel);
         setPlaying(true);
         resetHealthTracking();
+        // Arm recovery as soon as the live load succeeds so both event-based
+        // reconnect AND stall detection can react to a later death. Previously
+        // this was only armed by the stall-detection watchdog after observing
+        // progress — with stall detection disabled, recovery never armed and
+        // event-based reconnect silently ignored every stream death.
+        recoveryArmedRef.current = true;
         // Explicitly force MPV to unpause after loading.
         // If a previous stream ended/was interrupted, MPV may hold pause=true,
         // causing the new stream to load but not start playing.
@@ -1199,8 +1218,8 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     // Clear the frozen frame immediately
     Bridge.stop().catch(() => {});
 
-    // Brief pause so the overlay is visible, then switch
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Switch immediately — the failover overlay stays visible until the new
+    // stream finishes loading, so no artificial pause is needed.
 
     // Treat the candidate as current while loading so immediate failures can
     // advance to the next group member instead of retrying the previous stream.
@@ -1293,39 +1312,40 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         if (loaded) return;
       }
 
-      if (failoverAttemptRef.current > 0) {
-        // We were in a failover cycle and just exhausted the tail of the group.
-        // Failover groups are circular: after the last backup, rotate back to
-        // the primary channel and start a fresh pass through the group.
-        const primary = await getPrimaryChannelForGroup(
-          failoverCycleStartStreamIdRef.current ?? currentChannelRef.current.stream_id
-        );
-        if (primary) {
-          logWarn('[Failover] End of group reached, rotating back to primary');
-          failoverCycleStartStreamIdRef.current = primary.stream_id;
-          failoverAttemptedStreamIdsRef.current = new Set();
-          failoverCursorStreamIdRef.current = null;
-          failoverFailedDuringSwitchRef.current = false;
-          setFailoverState(null);
+      // Failover groups are circular: when the tail of the group is exhausted,
+      // rotate back to the primary channel and start a fresh pass. This must
+      // NOT be gated on failoverAttemptRef — a channel that is the LAST member
+      // of its group has zero untried candidates, so handleFailover never runs
+      // and failoverAttemptRef stays 0, yet it should still roll over to the
+      // first stream instead of retrying the dead channel.
+      const primary = await getPrimaryChannelForGroup(
+        failoverCycleStartStreamIdRef.current ?? currentChannelRef.current.stream_id
+      );
+      if (primary) {
+        logWarn('[Failover] End of group reached, rotating back to primary');
+        failoverCycleStartStreamIdRef.current = primary.stream_id;
+        failoverAttemptedStreamIdsRef.current = new Set();
+        failoverCursorStreamIdRef.current = null;
+        failoverFailedDuringSwitchRef.current = false;
+        setFailoverState(null);
 
-          const loadedPrimary = await handleFailover(primary);
-          if (loadedPrimary) return;
+        const loadedPrimary = await handleFailover(primary);
+        if (loadedPrimary) return;
 
-          // If the primary fails immediately, continue through the rest of the
-          // fresh cycle instead of falling into retry on the last backup.
-          while (currentChannelRef.current && failoverCycleStartStreamIdRef.current) {
-            const candidates = await getFailoverCandidatesAfter(failoverCycleStartStreamIdRef.current);
-            const nextChannel = candidates.find(
-              candidate => !failoverAttemptedStreamIdsRef.current.has(candidate.stream_id)
-            );
-            if (!nextChannel) break;
+        // If the primary fails immediately, continue through the rest of the
+        // fresh cycle instead of falling into retry on the last backup.
+        while (currentChannelRef.current && failoverCycleStartStreamIdRef.current) {
+          const candidates = await getFailoverCandidatesAfter(failoverCycleStartStreamIdRef.current);
+          const nextChannel = candidates.find(
+            candidate => !failoverAttemptedStreamIdsRef.current.has(candidate.stream_id)
+          );
+          if (!nextChannel) break;
 
-            const loaded = await handleFailover(nextChannel);
-            if (loaded) return;
-          }
+          const loaded = await handleFailover(nextChannel);
+          if (loaded) return;
         }
 
-        logWarn('[Failover] Could not rotate failover group, falling back to retry on current stream');
+        logWarn('[Failover] All backups exhausted, falling back to retry on current stream');
         failoverActiveRef.current = false;
         failoverSwitchingRef.current = false;
         failoverAttemptRef.current = 0;
@@ -1334,7 +1354,6 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         failoverAttemptedStreamIdsRef.current = new Set();
         failoverFailedDuringSwitchRef.current = false;
         setFailoverState(null);
-        logWarn('[Failover] All backups exhausted, falling back to retry on current stream');
         startRetryCountdown();
         return;
       }
@@ -1538,7 +1557,50 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       }
 
       if (!stallDetectionEnabledRef.current) {
-        healthCheckInFlightRef.current = false;
+        // Stall-detection heuristics are off, but a killed stream often never
+        // emits an end-file event with a usable reason (e.g. a proxy kill that
+        // leaves MPV idle) — so event-based reconnect alone would be blind to
+        // it. When event-based is enabled, keep polling just the death signals
+        // (idle/eof) cheaply so a genuinely dead stream still fails over. This
+        // is the same idle/eof branch the full watchdog uses, minus the
+        // buffering/cache-growth heuristics the toggle is meant to disable.
+        if (useEventBasedReconnectRef.current) {
+          healthCheckInFlightRef.current = true;
+          try {
+            const [
+              timePosResult,
+              eofReachedResult,
+              coreIdleResult,
+              idleActiveResult,
+            ] = await Promise.allSettled([
+              Bridge.getProperty('time-pos'),
+              Bridge.getProperty('eof-reached'),
+              Bridge.getProperty('core-idle'),
+              Bridge.getProperty('idle-active'),
+            ]);
+
+            const getValue = (result: PromiseSettledResult<any>) =>
+              result.status === 'fulfilled' ? result.value : null;
+
+            const sampledPosition = mpvNumber(getValue(timePosResult)) ?? positionRef.current;
+            const eofReached = mpvBoolean(getValue(eofReachedResult)) === true;
+            const coreIdle = mpvBoolean(getValue(coreIdleResult)) === true;
+            const idleActive = mpvBoolean(getValue(idleActiveResult)) === true;
+            const positionAdvanced = sampledPosition > lastHealthPositionRef.current + 1;
+            if (sampledPosition > lastHealthPositionRef.current) {
+              lastHealthPositionRef.current = sampledPosition;
+            }
+
+            if (eofReached || ((coreIdle || idleActive) && !positionAdvanced)) {
+              logWarn('[Health] Event-based death detected (idle/eof with no progress), triggering failover/retry');
+              handleStreamDied();
+            }
+          } catch (e) {
+            logWarn('[Health] Event-based death check failed:', e);
+          } finally {
+            healthCheckInFlightRef.current = false;
+          }
+        }
         return;
       }
 

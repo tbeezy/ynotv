@@ -10,12 +10,30 @@ import {
     renameFailoverGroup,
     getFailoverGroupMembers,
     removeChannelFromFailoverGroup,
+    reorderFailoverGroupChannels,
 } from '../services/failover-groups';
 import { FailoverGroupManager } from './FailoverGroupManager';
 import { FailoverAutoClusterModal } from './FailoverAutoClusterModal';
 import { useSourceNameMap } from '../hooks/useChannels';
 import { useSettingsStore } from '../stores/settingsStore';
 import './FailoverGroupListModal.css';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface FailoverGroupListModalProps {
     onClose: () => void;
@@ -112,6 +130,74 @@ function SettingsSvg({ size = 14 }: { size?: number }) {
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
+    );
+}
+
+// ── Sortable Failover Member Row with Full-Surface Card Dragging ──────────────
+
+function SortableFailoverMemberRow({
+    member,
+    sourceName,
+    isPrimary,
+    onRemove,
+}: {
+    member: MemberDetail;
+    sourceName?: string;
+    isPrimary: boolean;
+    onRemove: () => void;
+}) {
+    const { t } = useTranslation('settings');
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: member.stream_id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 99 : 1,
+        touchAction: 'none',
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className={`fgl-member-row${isDragging ? ' dragging' : ''}`}
+        >
+            <div className="fgl-member-left">
+                <span className={`fgl-priority-badge ${isPrimary ? 'primary' : ''}`}>
+                    {isPrimary
+                        ? t('failover.primaryLabel', { defaultValue: 'Primary' })
+                        : t('failover.backupNum', { defaultValue: 'Backup {{num}}', num: member.priority })}
+                </span>
+                {member.stream_icon ? (
+                    <img src={member.stream_icon} className="fgl-member-logo" alt="" />
+                ) : (
+                    <TvSvg size={14} />
+                )}
+                <span className="fgl-member-name">{member.name}</span>
+                {sourceName && (
+                    <span className="fgl-member-source">{sourceName}</span>
+                )}
+            </div>
+
+            <button
+                className="fgl-member-remove-btn"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={onRemove}
+                title={t('failover.removeChannelFromGroup', { defaultValue: 'Remove channel from group' })}
+            >
+                <CrossSvg size={12} />
+            </button>
+        </div>
     );
 }
 
@@ -222,6 +308,31 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
             console.error('Failed to remove channel:', e);
         }
     };
+
+    // @dnd-kit sensors: 5px activation distance so button clicks don't start drags
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // @dnd-kit DragEnd handler for expanded member rows (primary/backup order)
+    const handleReorderMembers = useCallback(async (groupId: string, event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const current = groupMembersMap.get(groupId) || [];
+        const oldIndex = current.findIndex((m) => m.stream_id === active.id);
+        const newIndex = current.findIndex((m) => m.stream_id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reordered = arrayMove(current, oldIndex, newIndex).map((m, idx) => ({ ...m, priority: idx }));
+        setGroupMembersMap((m) => new Map(m).set(groupId, reordered));
+        try {
+            await reorderFailoverGroupChannels(groupId, reordered.map((m) => m.stream_id));
+        } catch (e) {
+            console.error('Failed to reorder failover members:', e);
+        }
+    }, [groupMembersMap]);
 
 
     const handleCreate = async () => {
@@ -534,38 +645,30 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
                                                             {t('failover.noChannelsInGroup', { defaultValue: 'No channels in this group yet. Click "Manage Channels" to add streams.' })}
                                                         </div>
                                                     ) : (
-                                                        members.map((m) => {
-                                                            const isPrimary = m.priority === 0;
-                                                            const sourceName = m.source_id && sourceNameMap ? sourceNameMap.get(m.source_id) : undefined;
-                                                            return (
-                                                                <div key={m.stream_id} className="fgl-member-row">
-                                                                    <div className="fgl-member-left">
-                                                                        <span className={`fgl-priority-badge ${isPrimary ? 'primary' : ''}`}>
-                                                                            {isPrimary
-                                                                                ? t('failover.primaryLabel', { defaultValue: 'Primary' })
-                                                                                : t('failover.backupNum', { defaultValue: 'Backup {{num}}', num: m.priority })}
-                                                                        </span>
-                                                                        {m.stream_icon ? (
-                                                                            <img src={m.stream_icon} className="fgl-member-logo" alt="" />
-                                                                        ) : (
-                                                                            <TvSvg size={14} />
-                                                                        )}
-                                                                        <span className="fgl-member-name">{m.name}</span>
-                                                                        {sourceName && (
-                                                                            <span className="fgl-member-source">{sourceName}</span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <button
-                                                                        className="fgl-member-remove-btn"
-                                                                        onClick={() => handleRemoveMember(group.group_id, m.stream_id)}
-                                                                        title={t('failover.removeChannelFromGroup', { defaultValue: 'Remove channel from group' })}
-                                                                    >
-                                                                        <CrossSvg size={12} />
-                                                                    </button>
-                                                                </div>
-                                                            );
-                                                        })
+                                                        <DndContext
+                                                            sensors={sensors}
+                                                            collisionDetection={closestCenter}
+                                                            onDragEnd={(e) => handleReorderMembers(group.group_id, e)}
+                                                        >
+                                                            <SortableContext
+                                                                items={members.map((m) => m.stream_id)}
+                                                                strategy={verticalListSortingStrategy}
+                                                            >
+                                                                {members.map((m) => {
+                                                                    const isPrimary = m.priority === 0;
+                                                                    const sourceName = m.source_id && sourceNameMap ? sourceNameMap.get(m.source_id) : undefined;
+                                                                    return (
+                                                                        <SortableFailoverMemberRow
+                                                                            key={m.stream_id}
+                                                                            member={m}
+                                                                            sourceName={sourceName}
+                                                                            isPrimary={isPrimary}
+                                                                            onRemove={() => handleRemoveMember(group.group_id, m.stream_id)}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </SortableContext>
+                                                        </DndContext>
                                                     )}
                                                 </div>
                                             )}

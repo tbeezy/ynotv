@@ -1320,84 +1320,51 @@ export function Settings({
     }
   };
 
+  // The retry toggles go through the zustand store's setRetrySettings so the
+  // store, the persisted settings, and the legacy ynotv:retry-settings-changed
+  // event all agree. Previously these wrote to the DB + dispatched the event
+  // from local React state only — the store never saw the change, so at boot
+  // (before async hydration) usePlayback read the store's seed defaults and a
+  // saved "stall detection off" never reached the playback refs. Local state
+  // is still updated for immediate UI feedback in PlaybackTab.
   const handleStreamWatchdogSecondsChange = async (seconds: number) => {
     setStreamWatchdogSeconds(seconds);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ streamWatchdogSeconds: seconds });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:retry-settings-changed', {
-      detail: { streamWatchdogSeconds: seconds }
-    }));
+    useSettingsStore.getState().setRetrySettings({ streamWatchdogSeconds: seconds });
   };
 
   const handleStreamMaxRetriesChange = async (retries: number) => {
     setStreamMaxRetries(retries);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ streamMaxRetries: retries });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:retry-settings-changed', {
-      detail: { streamMaxRetries: retries }
-    }));
+    useSettingsStore.getState().setRetrySettings({ streamMaxRetries: retries });
   };
 
   const handleUseEventBasedReconnectChange = async (enabled: boolean) => {
     setUseEventBasedReconnect(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ useEventBasedReconnect: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:retry-settings-changed', {
-      detail: { useEventBasedReconnect: enabled }
-    }));
+    useSettingsStore.getState().setRetrySettings({ useEventBasedReconnect: enabled });
   };
 
   const handleStallDetectionEnabledChange = async (enabled: boolean) => {
     setStallDetectionEnabled(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ stallDetectionEnabled: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:retry-settings-changed', {
-      detail: { stallDetectionEnabled: enabled }
-    }));
+    useSettingsStore.getState().setRetrySettings({ stallDetectionEnabled: enabled });
   };
 
   const handleShowLoadingScreenChange = async (enabled: boolean) => {
     setShowLoadingScreen(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ showLoadingScreen: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:retry-settings-changed', {
-      detail: { showLoadingScreen: enabled }
-    }));
+    useSettingsStore.getState().setRetrySettings({ showLoadingScreen: enabled });
   };
 
   const handleCatchupStartPaddingChange = async (padding: number) => {
     setCatchupStartPadding(padding);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ catchupStartPadding: padding });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:catchup-settings-changed', {
-      detail: { catchupStartPadding: padding }
-    }));
+    useSettingsStore.getState().setCatchupStartPadding(padding);
   };
 
   const handleCatchupEndPaddingChange = async (padding: number) => {
     setCatchupEndPadding(padding);
-    if (window.storage) {
-      window.storage.debouncedUpdateSettings({ catchupEndPadding: padding });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:catchup-settings-changed', {
-      detail: { catchupEndPadding: padding }
-    }));
+    useSettingsStore.getState().setCatchupEndPadding(padding);
   };
 
   const handleCatchupContinuePlayingChange = async (enabled: boolean) => {
     setCatchupContinuePlaying(enabled);
-    if (window.storage) {
-      await window.storage.updateSettings({ catchupContinuePlaying: enabled });
-    }
-    window.dispatchEvent(new CustomEvent('ynotv:catchup-settings-changed', {
-      detail: { catchupContinuePlaying: enabled }
-    }));
+    useSettingsStore.getState().setCatchupContinuePlaying(enabled);
   };
 
   const handleVodAutoPlayNextEpisodeChange = async (enabled: boolean) => {
