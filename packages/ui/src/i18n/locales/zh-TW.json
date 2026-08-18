@@ -138,6 +138,8 @@
       "minShort": "分",
       "noCustomGroupsYet": "還沒有自訂分組",
       "noFailoverGroupsYet": "還沒有故障轉移組",
+      "noMatchingGroups": "沒有相符的群組",
+      "searchGroupsPlaceholder": "搜尋群組...",
       "noPlaylistsYet": "還沒有播放列表",
       "once": "一次",
       "oneConnectionLimit": "單連接限制",

@@ -138,6 +138,8 @@
       "minShort": "dk",
       "noCustomGroupsYet": "Henüz özel grup yok",
       "noFailoverGroupsYet": "Henüz yük devretme grubu yok",
+      "noMatchingGroups": "Eşleşen grup yok",
+      "searchGroupsPlaceholder": "Grupları ara...",
       "noPlaylistsYet": "Henüz oynatma listesi yok",
       "once": "Bir Kez",
       "oneConnectionLimit": "Tek bağlantı sınırı",

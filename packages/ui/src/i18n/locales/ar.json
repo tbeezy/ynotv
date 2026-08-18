@@ -138,6 +138,8 @@
       "minShort": "د",
       "noCustomGroupsYet": "لا توجد مجموعات مخصصة بعد",
       "noFailoverGroupsYet": "لا توجد مجموعات تبديل احتياطي بعد",
+      "noMatchingGroups": "لا توجد مجموعات مطابقة",
+      "searchGroupsPlaceholder": "ابحث في المجموعات...",
       "noPlaylistsYet": "لا توجد قوائم تشغيل بعد",
       "once": "مرة واحدة",
       "oneConnectionLimit": "حد اتصال واحد",

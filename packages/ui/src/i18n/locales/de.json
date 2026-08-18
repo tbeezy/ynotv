@@ -138,6 +138,8 @@
       "minShort": "M",
       "noCustomGroupsYet": "Noch keine benutzerdefinierten Gruppen",
       "noFailoverGroupsYet": "Noch keine Failover-Gruppen",
+      "noMatchingGroups": "Keine passenden Gruppen",
+      "searchGroupsPlaceholder": "Gruppen suchen...",
       "noPlaylistsYet": "Noch keine Playlists",
       "once": "Einmalig",
       "oneConnectionLimit": "Ein-Verbindungs-Limit",

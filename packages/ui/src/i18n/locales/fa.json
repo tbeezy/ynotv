@@ -138,6 +138,8 @@
       "minShort": "د",
       "noCustomGroupsYet": "هنوز گروه سفارشی وجود ندارد",
       "noFailoverGroupsYet": "هنوز گروه جایگزین وجود ندارد",
+      "noMatchingGroups": "گروهی مطابقت ندارد",
+      "searchGroupsPlaceholder": "جستجوی گروه‌ها...",
       "noPlaylistsYet": "هنوز لیست پخشی وجود ندارد",
       "once": "یک‌بار",
       "oneConnectionLimit": "محدودیت یک اتصال",

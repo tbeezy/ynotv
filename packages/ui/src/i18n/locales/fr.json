@@ -138,6 +138,8 @@
       "minShort": "m",
       "noCustomGroupsYet": "Aucun groupe personnalisé pour l’instant",
       "noFailoverGroupsYet": "Aucun groupe de bascule pour l’instant",
+      "noMatchingGroups": "Aucun groupe correspondant",
+      "searchGroupsPlaceholder": "Rechercher des groupes...",
       "noPlaylistsYet": "Aucune playlist pour l’instant",
       "once": "Une fois",
       "oneConnectionLimit": "Limite d’une connexion",

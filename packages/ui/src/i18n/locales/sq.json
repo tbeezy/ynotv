@@ -138,6 +138,8 @@
       "minShort": "m",
       "noCustomGroupsYet": "Ende pa grupe të personalizuara",
       "noFailoverGroupsYet": "Ende pa grupe rezerve",
+      "noMatchingGroups": "Nuk ka grupe që përputhen",
+      "searchGroupsPlaceholder": "Kërko grupe...",
       "noPlaylistsYet": "Ende pa lista luajtjeje",
       "once": "Një herë",
       "oneConnectionLimit": "Kufiri i një lidhjeje",

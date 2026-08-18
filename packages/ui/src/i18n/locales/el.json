@@ -138,6 +138,8 @@
       "minShort": "λ",
       "noCustomGroupsYet": "Δεν υπάρχουν προσαρμοσμένες ομάδες ακόμα",
       "noFailoverGroupsYet": "Δεν υπάρχουν ομάδες εναλλαγής ακόμα",
+      "noMatchingGroups": "Δεν υπάρχουν αντίστοιχες ομάδες",
+      "searchGroupsPlaceholder": "Αναζήτηση ομάδων...",
       "noPlaylistsYet": "Δεν υπάρχουν λίστες αναπαραγωγής ακόμα",
       "once": "Μία φορά",
       "oneConnectionLimit": "Όριο μίας σύνδεσης",

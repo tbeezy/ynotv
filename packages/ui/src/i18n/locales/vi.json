@@ -201,6 +201,8 @@
       "minShort": "ph",
       "noCustomGroupsYet": "Chưa có nhóm tùy chỉnh nào",
       "noFailoverGroupsYet": "Chưa có nhóm chuyển dự phòng nào",
+      "noMatchingGroups": "Không có nhóm phù hợp",
+      "searchGroupsPlaceholder": "Tìm nhóm...",
       "noPlaylistsYet": "Chưa có danh sách phát nào",
       "once": "Một Lần",
       "oneConnectionLimit": "Giới hạn một kết nối",

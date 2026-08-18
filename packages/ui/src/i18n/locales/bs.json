@@ -138,6 +138,8 @@
       "minShort": "m",
       "noCustomGroupsYet": "Nema prilagođenih grupa",
       "noFailoverGroupsYet": "Nema grupa za prebacivanje",
+      "noMatchingGroups": "Nema odgovarajućih grupa",
+      "searchGroupsPlaceholder": "Pretraži grupe...",
       "noPlaylistsYet": "Nema playlista",
       "once": "Jednom",
       "oneConnectionLimit": "Ograničenje od jedne veze",

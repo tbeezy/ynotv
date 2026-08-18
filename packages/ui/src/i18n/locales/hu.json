@@ -138,6 +138,8 @@
       "minShort": "p",
       "noCustomGroupsYet": "Még nincsenek egyéni csoportok",
       "noFailoverGroupsYet": "Még nincsenek tartalékcsoportok",
+      "noMatchingGroups": "Nincs megfelelő csoport",
+      "searchGroupsPlaceholder": "Csoportok keresése...",
       "noPlaylistsYet": "Még nincsenek lejátszási listák",
       "once": "Egyszer",
       "oneConnectionLimit": "Egykapcsolatos korlát",

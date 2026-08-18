@@ -138,6 +138,8 @@
       "minShort": "م",
       "noCustomGroupsYet": "ابھی کوئی کسٹم گروپ نہیں",
       "noFailoverGroupsYet": "ابھی کوئی فیل اوور گروپ نہیں",
+      "noMatchingGroups": "کوئی مماثل گروپ نہیں",
+      "searchGroupsPlaceholder": "گروپ تلاش کریں...",
       "noPlaylistsYet": "ابھی کوئی پلے لسٹ نہیں",
       "once": "ایک بار",
       "oneConnectionLimit": "ایک کنکشن کی حد",

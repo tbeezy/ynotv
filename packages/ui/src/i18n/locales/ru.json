@@ -138,6 +138,8 @@
       "minShort": "м",
       "noCustomGroupsYet": "Своих групп пока нет",
       "noFailoverGroupsYet": "Групп переключения пока нет",
+      "noMatchingGroups": "Нет подходящих групп",
+      "searchGroupsPlaceholder": "Поиск групп...",
       "noPlaylistsYet": "Плейлистов пока нет",
       "once": "Один раз",
       "oneConnectionLimit": "Лимит одного подключения",

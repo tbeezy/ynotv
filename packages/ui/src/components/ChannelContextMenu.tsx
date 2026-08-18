@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { scheduleRecording, detectScheduleConflicts, type DvrSchedule, db, updateChannelAlias, getDvrSettings } from '../db';
 import type { StoredChannel } from '../db';
@@ -85,6 +85,30 @@ export function ChannelContextMenu({
     const [creatingFailoverGroup, setCreatingFailoverGroup] = useState(false);
     const [newFailoverGroupName, setNewFailoverGroupName] = useState('');
     const failoverNameInputRef = useRef<HTMLInputElement>(null);
+
+    // Submenu group search filters
+    const [customGroupSearch, setCustomGroupSearch] = useState('');
+    const [failoverGroupSearch, setFailoverGroupSearch] = useState('');
+
+    // Reset submenu searches when leaving their views
+    useEffect(() => {
+        if (currentView !== 'group') setCustomGroupSearch('');
+        if (currentView !== 'failover') setFailoverGroupSearch('');
+    }, [currentView]);
+
+    // Shared style for the group-submenu search inputs
+    const groupSearchInputStyle: CSSProperties = {
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '5px 8px',
+        borderRadius: '4px',
+        border: '1px solid rgba(255,255,255,0.2)',
+        background: 'rgba(0,0,0,0.3)',
+        color: 'var(--text-primary, #fff)',
+        fontSize: '0.85rem',
+        fontFamily: 'inherit',
+        outline: 'none',
+    };
 
     // Custom date/time state
     const now = new Date();
@@ -623,13 +647,32 @@ export function ChannelContextMenu({
                     {i18n.t('contextMenu.addToGroup')}
                 </div>
                 <div className="context-menu-separator" />
+                <div style={{ padding: '6px 12px' }}>
+                    <input
+                        type="text"
+                        placeholder={i18n.t('contextMenu.searchGroupsPlaceholder')}
+                        value={customGroupSearch}
+                        onChange={e => setCustomGroupSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Escape') setCustomGroupSearch(''); }}
+                        style={groupSearchInputStyle}
+                    />
+                </div>
                 <div className="context-menu-scrollable-container">
                     {customGroups.length === 0 && (
                         <div style={{ padding: '10px 16px', opacity: 0.5, fontSize: '0.85rem' }}>
                             {i18n.t('contextMenu.noCustomGroupsYet')}
                         </div>
                     )}
-                    {customGroups.map(group => (
+                    {customGroups.length > 0 && customGroups.filter(g =>
+                        g.name.toLowerCase().includes(customGroupSearch.trim().toLowerCase())
+                    ).length === 0 && (
+                        <div style={{ padding: '10px 16px', opacity: 0.5, fontSize: '0.85rem' }}>
+                            {i18n.t('contextMenu.noMatchingGroups')}
+                        </div>
+                    )}
+                    {customGroups.filter(g =>
+                        !customGroupSearch.trim() || g.name.toLowerCase().includes(customGroupSearch.trim().toLowerCase())
+                    ).map(group => (
                         <div
                             key={group.group_id}
                             className="context-menu-item"
@@ -662,6 +705,16 @@ export function ChannelContextMenu({
                     {i18n.t('contextMenu.addToFailoverGroup')}
                 </div>
                 <div className="context-menu-separator" />
+                <div style={{ padding: '6px 12px' }}>
+                    <input
+                        type="text"
+                        placeholder={i18n.t('contextMenu.searchGroupsPlaceholder')}
+                        value={failoverGroupSearch}
+                        onChange={e => setFailoverGroupSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Escape') setFailoverGroupSearch(''); }}
+                        style={groupSearchInputStyle}
+                    />
+                </div>
                 <div className="context-menu-scrollable-container">
                     {!creatingFailoverGroup ? (
                         <div
@@ -739,7 +792,16 @@ export function ChannelContextMenu({
                             {i18n.t('contextMenu.noFailoverGroupsYet')}
                         </div>
                     )}
-                    {failoverGroups.map(group => (
+                    {failoverGroups.length > 0 && !creatingFailoverGroup && failoverGroups.filter(g =>
+                        g.name.toLowerCase().includes(failoverGroupSearch.trim().toLowerCase())
+                    ).length === 0 && (
+                        <div style={{ padding: '10px 16px', opacity: 0.5, fontSize: '0.85rem' }}>
+                            {i18n.t('contextMenu.noMatchingGroups')}
+                        </div>
+                    )}
+                    {failoverGroups.filter(g =>
+                        !failoverGroupSearch.trim() || g.name.toLowerCase().includes(failoverGroupSearch.trim().toLowerCase())
+                    ).map(group => (
                         <div
                             key={group.group_id}
                             className="context-menu-item"

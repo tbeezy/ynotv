@@ -138,6 +138,8 @@
       "minShort": "m",
       "noCustomGroupsYet": "Nog geen aangepaste groepen",
       "noFailoverGroupsYet": "Nog geen failovergroepen",
+      "noMatchingGroups": "Geen overeenkomende groepen",
+      "searchGroupsPlaceholder": "Groepen zoeken...",
       "noPlaylistsYet": "Nog geen afspeellijsten",
       "once": "Eenmalig",
       "oneConnectionLimit": "Limiet van één verbinding",

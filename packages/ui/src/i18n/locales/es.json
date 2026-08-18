@@ -138,6 +138,8 @@
       "minShort": "min",
       "noCustomGroupsYet": "Aún no hay grupos personalizados",
       "noFailoverGroupsYet": "Aún no hay grupos de conmutación por error",
+      "noMatchingGroups": "No hay grupos coincidentes",
+      "searchGroupsPlaceholder": "Buscar grupos...",
       "noPlaylistsYet": "Aún no hay listas de reproducción",
       "once": "Una vez",
       "oneConnectionLimit": "Límite de una conexión",

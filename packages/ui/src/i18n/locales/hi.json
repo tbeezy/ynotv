@@ -138,6 +138,8 @@
       "minShort": "मि",
       "noCustomGroupsYet": "अभी कोई कस्टम समूह नहीं",
       "noFailoverGroupsYet": "अभी कोई फ़ेलओवर समूह नहीं",
+      "noMatchingGroups": "कोई मिलता-जुलता समूह नहीं",
+      "searchGroupsPlaceholder": "समूह खोजें...",
       "noPlaylistsYet": "अभी कोई प्लेलिस्ट नहीं",
       "once": "एक बार",
       "oneConnectionLimit": "एक कनेक्शन सीमा",
