@@ -4150,13 +4150,34 @@ html[data-oled="true"][data-theme^="dark"] .vertical-sidebar,
 
 html[data-oled="true"][data-theme^="dark"] .guide-grid-section,
 html[data-oled="true"][data-theme^="dark"] .guide-info-pane,
-html[data-oled="true"][data-theme^="dark"] .guide-preview-pane,
 [data-oled="true"][data-theme^="dark"] .guide-grid-section,
-[data-oled="true"][data-theme^="dark"] .guide-info-pane,
-[data-oled="true"][data-theme^="dark"] .guide-preview-pane {
+[data-oled="true"][data-theme^="dark"] .guide-info-pane {
   background: #000000 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* The preview pane is the MPV video host: it must stay transparent so the
+   video shows through (the liquid-glass background behind it already paints
+   pure black in OLED, with a clip-path hole over the video rect). Painting
+   the pane opaque black here covered that hole and made the preview go black
+   while a channel was playing. Mirrors the light theme, which also forces the
+   pane transparent for the same reason. */
+html[data-oled="true"][data-theme^="dark"] .guide-preview-pane,
+[data-oled="true"][data-theme^="dark"] .guide-preview-pane {
+  background: transparent !important;
+}
+
+/* The Sports Hub is also a video host: when its preview pane is hidden the
+   main MPV goes fullscreen behind the hub (v3 keeps .sports-hub and
+   .sports-main transparent for exactly this hole-punching behavior). The
+   OLED token --glass-sports-bg: #000000 would otherwise make the hub opaque
+   black and cover that fullscreen video. Keep it transparent — the pure-black
+   backdrop still comes from the liquid-glass background when nothing is
+   playing. Scoped to the v3 UI (OLED is a v3-only setting). */
+html.modern-ui-v3[data-oled="true"][data-theme^="dark"] .sports-hub,
+.modern-ui-v3[data-oled="true"][data-theme^="dark"] .sports-hub {
+  background: transparent !important;
 }
 
 /* Video preview resizer hover behavior in OLED mode */
