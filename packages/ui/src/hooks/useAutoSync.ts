@@ -3,6 +3,7 @@ import i18n from '../i18n';
 import { syncSource, syncVodForSource, isEpgStale, isVodStale, syncAllStaleGlobalEpgLinks } from '../db/sync';
 import { bulkOps } from '../services/bulk-ops';
 import { getCachedSettings } from '../services/settings-cache';
+import { pruneLogoCache } from '../services/logoCache';
 import { useToastStore } from '../stores/toastStore';
 import {
     useSetChannelSyncing,
@@ -22,6 +23,24 @@ interface AutoSyncSettings {
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 let hasInitialSyncTriggered = false;
+
+/**
+ * Evict expired (TTL) / over-limit (max-size) logo cache entries using the
+ * persisted logo-cache settings. Runs on the auto-sync cadence so the TTL and
+ * max-size settings actually do something at runtime.
+ */
+async function pruneLogoCacheFromSettings() {
+  try {
+    const settingsResult = await getCachedSettings();
+    const s = settingsResult?.data;
+    if (!s?.logoCacheEnabled) return;
+    const maxBytes = s.logoCacheMaxMb && s.logoCacheMaxMb > 0 ? s.logoCacheMaxMb * 1024 * 1024 : 0;
+    const ttlDays = s.logoCacheTtlDays ?? 30;
+    await pruneLogoCache(maxBytes, ttlDays);
+  } catch (err) {
+    console.error('[AutoSync] Logo cache prune failed:', err);
+  }
+}
 
 /**
  * Runs the startup sync check once on mount:
@@ -73,6 +92,9 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
 
         // Perform periodic check for stale sources
         const checkAndSyncStaleSources = async () => {
+            // Prune the logo cache on the same runtime cadence (independent of sync state)
+            await pruneLogoCacheFromSettings();
+
             // Skip if already syncing
             if (isSyncingRef.current) {
                 console.log('[AutoSync] Periodic check skipped - sync already in progress');
@@ -203,6 +225,9 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
             // This keeps the JS thread free during the critical first-paint window
             // and avoids racing with the settings store / the channel live-query.
             await new Promise<void>(resolve => setTimeout(resolve, 2000));
+
+            // Prune the logo cache at startup with persisted TTL / max-size settings
+            await pruneLogoCacheFromSettings();
 
             // Health check — ensure backend bulk-ops plugin is ready
             const healthy = await bulkOps.healthCheck();

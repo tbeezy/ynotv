@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { clearLogoCache, getLogoCacheStats, LogoCacheStats } from '../../services/logoCache';
+import { clearLogoCache, getLogoCacheStats, pruneLogoCache, LogoCacheStats } from '../../services/logoCache';
 import './PlaybackTab.css';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -103,6 +103,23 @@ export function LogosTab({
       });
     }
   }, [loadStats]);
+
+  // Evict entries immediately whenever the user changes the TTL / max-size
+  // settings (or enables caching), then refresh the usage stats.
+  useEffect(() => {
+    if (!logoCacheEnabled) return;
+    let cancelled = false;
+    (async () => {
+      await pruneLogoCache(
+        logoCacheMaxMb > 0 ? logoCacheMaxMb * 1024 * 1024 : 0,
+        logoCacheTtlDays
+      );
+      if (!cancelled) loadStats();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [logoCacheEnabled, logoCacheMaxMb, logoCacheTtlDays, loadStats]);
 
   const handleClearCache = async () => {
     if (isClearing) return;

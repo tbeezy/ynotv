@@ -139,19 +139,14 @@ impl LogoCacheManager {
             .optional()?
         };
 
-        if let Some((ext, _file_size, fail_count, last_failed_at)) = &meta_opt {
-            // Negative cache check: if fail_count >= 3 and within backoff window, skip network call
-            if *fail_count >= MAX_FAIL_COUNT {
-                if let Some(failed_time) = last_failed_at {
-                    if (now - failed_time) < BACKOFF_WINDOW_SECS {
-                        anyhow::bail!("Logo URL is marked dead in negative cache backoff window");
-                    }
-                }
-            }
-
-            // Check if file already exists on disk
+        if let Some((ext, file_size, fail_count, last_failed_at)) = &meta_opt {
+            // Serve the already-downloaded copy from disk whenever it exists — even
+            // if the URL has since failed (fail_count > 0) or the entry is inside
+            // the negative-cache backoff window. The negative cache only gates
+            // *network retries*; a good file on disk is never worse than showing a
+            // letter placeholder, and TTL pruning handles eventual revalidation.
             let file_path = self.cache_dir.join(format!("{}.{}", hash, ext));
-            if file_path.exists() && *fail_count == 0 {
+            if file_path.exists() && *file_size > 0 {
                 if let Ok(bytes) = fs::read(&file_path).await {
                     let mime = match ext.as_str() {
                         "jpg" | "jpeg" => "image/jpeg",
@@ -162,6 +157,15 @@ impl LogoCacheManager {
                     use base64::Engine;
                     let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
                     return Ok(format!("data:{};base64,{}", mime, b64));
+                }
+            }
+
+            // Negative cache check: if fail_count >= 3 and within backoff window, skip network call
+            if *fail_count >= MAX_FAIL_COUNT {
+                if let Some(failed_time) = last_failed_at {
+                    if (now - failed_time) < BACKOFF_WINDOW_SECS {
+                        anyhow::bail!("Logo URL is marked dead in negative cache backoff window");
+                    }
                 }
             }
         }

@@ -276,16 +276,12 @@ mod stream_probe;
 // Streaming EPG parser module
 mod epg_streaming;
 
-// TMDB caching module
-mod tmdb_cache;
-
 // Channel Logo Caching module
 mod logo_cache;
 use logo_cache::{LogoCacheManager, LogoCacheStats};
 
 // TVMaze module for TV Calendar
 mod tvmaze;
-use tmdb_cache::{TmdbCache, MatchResult, CacheStats};
 
 mod cast;
 use cast::{
@@ -2123,21 +2119,6 @@ async fn cache_entire_epg_db(
 }
 
 // =============================================================================
-// TMDB Cache State (managed, lives for the app lifetime)
-// =============================================================================
-
-/// Thread-safe wrapper around TmdbCache so it can be managed as Tauri state.
-/// Using tokio::sync::Mutex (async-aware) because TmdbCache methods are async.
-pub struct TmdbCacheState(pub tokio::sync::Mutex<TmdbCache>);
-
-impl TmdbCacheState {
-    /// Create with the given cache directory.
-    pub fn new(cache_dir: std::path::PathBuf) -> Self {
-        Self(tokio::sync::Mutex::new(TmdbCache::new(cache_dir)))
-    }
-}
-
-// =============================================================================
 // Logo Cache State & Commands
 // =============================================================================
 
@@ -2202,73 +2183,6 @@ async fn prune_logo_cache(
     mgr.prune(max_bytes, ttl_days)
         .await
         .map_err(|e| format!("Failed to prune logo cache: {}", e))
-}
-
-// =============================================================================
-// TMDB Cache Commands
-// =============================================================================
-
-/// Get TMDB cache statistics
-#[tauri::command]
-async fn get_tmdb_cache_stats(
-    state: tauri::State<'_, TmdbCacheState>,
-) -> Result<CacheStats, String> {
-    let cache = state.0.lock().await;
-    cache.get_stats().await
-        .map_err(|e| format!("Failed to get cache stats: {}", e))
-}
-
-/// Update TMDB movies cache
-#[tauri::command]
-async fn update_tmdb_movies_cache(
-    state: tauri::State<'_, TmdbCacheState>,
-) -> Result<usize, String> {
-    let mut cache = state.0.lock().await;
-    cache.update_movies_cache().await
-        .map_err(|e| format!("Failed to update movies cache: {}", e))
-}
-
-/// Update TMDB series cache
-#[tauri::command]
-async fn update_tmdb_series_cache(
-    state: tauri::State<'_, TmdbCacheState>,
-) -> Result<usize, String> {
-    let mut cache = state.0.lock().await;
-    cache.update_series_cache().await
-        .map_err(|e| format!("Failed to update series cache: {}", e))
-}
-
-/// Find movies by title
-#[tauri::command]
-async fn find_tmdb_movies(
-    state: tauri::State<'_, TmdbCacheState>,
-    title: String,
-) -> Result<Vec<MatchResult>, String> {
-    let mut cache = state.0.lock().await;
-    cache.find_movies(&title).await
-        .map_err(|e| format!("Failed to find movies: {}", e))
-}
-
-/// Find series by title
-#[tauri::command]
-async fn find_tmdb_series(
-    state: tauri::State<'_, TmdbCacheState>,
-    title: String,
-) -> Result<Vec<MatchResult>, String> {
-    let mut cache = state.0.lock().await;
-    cache.find_series(&title).await
-        .map_err(|e| format!("Failed to find series: {}", e))
-}
-
-/// Clear TMDB cache
-#[tauri::command]
-async fn clear_tmdb_cache(
-    state: tauri::State<'_, TmdbCacheState>,
-) -> Result<(), String> {
-    // clear_cache takes &self (not &mut self), but we lock for consistency
-    let cache = state.0.lock().await;
-    cache.clear_cache().await
-        .map_err(|e| format!("Failed to clear cache: {}", e))
 }
 
 // =============================================================================
@@ -4699,18 +4613,15 @@ pub fn run() {
                 error!("[Tray] Failed to set up system tray: {}", e);
             }
 
-            // Register TmdbCacheState as managed state so the cache is shared
-            // across all TMDB commands instead of being re-created each call.
+            // Register the logo cache as managed state so it's shared across all
+            // logo cache commands instead of being re-created each call.
             match app.path().app_cache_dir() {
                 Ok(cache_dir) => {
-                    app.manage(TmdbCacheState::new(cache_dir.clone()));
-                    info!("[TMDB] Cache state initialized");
                     app.manage(LogoCacheState::new(cache_dir.join("logo_cache")));
                     info!("[LogoCache] Logo cache state initialized");
                 }
                 Err(e) => {
-                    error!("[TMDB] Failed to get cache dir for TmdbCacheState: {}", e);
-                    // App can still run without TMDB (VOD matching degrades gracefully)
+                    error!("[LogoCache] Failed to get cache dir for LogoCacheState: {}", e);
                 }
             }
             // On macOS, initialize MPV after a short delay to ensure window is ready
@@ -4900,13 +4811,6 @@ pub fn run() {
             run_cleanup_now,
             // Tray / minimize-to-tray commands
             tray::set_minimize_to_tray,
-            // TMDB cache commands
-            get_tmdb_cache_stats,
-            update_tmdb_movies_cache,
-            update_tmdb_series_cache,
-            find_tmdb_movies,
-            find_tmdb_series,
-            clear_tmdb_cache,
             // TVMaze / TV Calendar commands
             search_tvmaze,
             add_tv_favorite,

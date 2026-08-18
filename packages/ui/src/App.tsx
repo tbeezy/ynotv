@@ -9,6 +9,7 @@ import type { StremioStream, StremioStreamPickerMode, StremioMeta, StremioVideo,
 import { checkForUpdates, checkForUpdatesSilent } from './services/updater';
 import { getCachedSettings } from './services/settings-cache';
 import { startAutoBackupScheduler, stopAutoBackupScheduler } from './services/autoBackup';
+import { pruneLogoCache } from './services/logoCache';
 import { Settings } from './components/Settings';
 import type { SettingsTabId } from './components/settings/SettingsSidebar';
 import { useModal } from './components/Modal';
@@ -503,6 +504,25 @@ function App() {
   useEffect(() => {
     startAutoBackupScheduler();
     return () => stopAutoBackupScheduler();
+  }, []);
+
+  // Prune the logo cache on startup so the TTL / max-size settings actually evict
+  // entries (the Rust prune_logo_cache command is otherwise never invoked), and
+  // sweep any expired TMDB export cache rows left by older sessions.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getCachedSettings();
+        const s = res?.data;
+        if (s?.logoCacheEnabled) {
+          const maxBytes = s.logoCacheMaxMb && s.logoCacheMaxMb > 0 ? s.logoCacheMaxMb * 1024 * 1024 : 0;
+          const ttlDays = s.logoCacheTtlDays ?? 30;
+          await pruneLogoCache(maxBytes, ttlDays);
+        }
+      } catch (err) {
+        console.error('[App] Logo cache prune failed on startup:', err);
+      }
+    })();
   }, []);
 
   // Load stremioStreamPickerMode from storage

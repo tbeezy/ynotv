@@ -89,6 +89,24 @@ export async function getLogoCacheStats(
 }
 
 /**
+ * Prune expired (TTL) and over-limit (max size) logo cache entries.
+ * Pass 0 for ttlDays to skip TTL eviction, 0 for maxBytes to skip size eviction.
+ */
+export async function pruneLogoCache(maxBytes: number, ttlDays: number): Promise<boolean> {
+  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+    return false;
+  }
+
+  try {
+    await invoke('prune_logo_cache', { maxBytes, ttlDays });
+    return true;
+  } catch (e) {
+    console.error('[logoCache] Failed to prune cache:', e);
+    return false;
+  }
+}
+
+/**
  * Clear all cached logo files from disk and reset in-memory cache
  */
 export async function clearLogoCache(): Promise<boolean> {

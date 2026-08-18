@@ -1189,15 +1189,6 @@ class YnotvDatabase extends SqliteDatabase {
         type TEXT
       )`);
 
-    // TMDB Export Cache - for persisting export data across restarts
-    await db.execute(`CREATE TABLE IF NOT EXISTS tmdbExportCache (
-        cache_key TEXT PRIMARY KEY,
-        data TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        expires_at INTEGER NOT NULL
-      )`);
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_tmdb_cache_expires ON tmdbExportCache(expires_at)`);
-
     // Channel Metadata - for storing video properties
     await db.execute(`CREATE TABLE IF NOT EXISTS channelMetadata (
         stream_id TEXT PRIMARY KEY,
@@ -1974,54 +1965,6 @@ export async function updateChannelsBatch(
   const { dbEvents } = await import('./sqlite-adapter');
   dbEvents.notify('channels', 'update');
   return totalUpdated;
-}
-
-// ============================================================================
-// TMDB Export Cache Functions
-// ============================================================================
-
-const TMDB_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-/** Save TMDB export data to persistent cache */
-export async function saveTmdbExportCache(cacheKey: string, data: any): Promise<void> {
-  const now = Date.now();
-  const expiresAt = now + TMDB_CACHE_TTL_MS;
-
-  const dbInstance = await (db as any).dbPromise;
-  await dbInstance.execute(
-    `INSERT OR REPLACE INTO tmdbExportCache (cache_key, data, created_at, expires_at) VALUES (?, ?, ?, ?)`,
-    [cacheKey, JSON.stringify(data), now, expiresAt]
-  );
-}
-
-/** Load TMDB export data from persistent cache */
-export async function loadTmdbExportCache(cacheKey: string): Promise<any | null> {
-  const dbInstance = await (db as any).dbPromise;
-  const now = Date.now();
-
-  const result = await dbInstance.select(
-    `SELECT data, expires_at FROM tmdbExportCache WHERE cache_key = ? AND expires_at > ?`,
-    [cacheKey, now]
-  );
-
-  if (result && result.length > 0) {
-    try {
-      return JSON.parse(result[0].data);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-/** Clean up expired TMDB cache entries */
-export async function cleanupTmdbExportCache(): Promise<void> {
-  const dbInstance = await (db as any).dbPromise;
-  const now = Date.now();
-  await dbInstance.execute(
-    `DELETE FROM tmdbExportCache WHERE expires_at <= ?`,
-    [now]
-  );
 }
 
 /** Batch update categories (enabled state and/or display order) in a single SQL statement */
