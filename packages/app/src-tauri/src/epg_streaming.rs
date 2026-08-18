@@ -622,6 +622,20 @@ pub async fn stream_parse_epg_multi<R: tauri::Runtime>(
 
     // Extract EPG channel metadata once, insert for all sources
     let epg_channels = extract_epg_channels(&xml_data);
+
+    // Guard against applying an empty/garbage response (e.g. an HTTP error page
+    // served with status 200) which would otherwise wipe per-source epg_channels
+    // and report a bogus success. Keep existing EPG data intact instead.
+    let has_programmes = xml_data
+        .windows(b"<programme".len())
+        .any(|w| w == b"<programme");
+    if epg_channels.is_empty() && !has_programmes {
+        return Err(anyhow::anyhow!(
+            "EPG response from {} contained no channels or programmes; keeping existing EPG data",
+            epg_url
+        ));
+    }
+
     for config in &source_configs {
         if let Err(e) = insert_epg_channels(db, &config.source_id, &epg_channels) {
             warn!("[EPG] Failed to insert epg_channels for source {}: {}", config.source_id, e);
@@ -1924,6 +1938,11 @@ pub async fn cache_entire_epg_db<R: tauri::Runtime>(
         .map_err(|e| e.to_string())?;
 
     let response = client.get(&epg_url).send().await.map_err(|e| e.to_string())?;
+    // Reject HTTP error responses (404/503/...) before their body can be parsed
+    // as empty XML and overwrite the existing cache below.
+    let response = response
+        .error_for_status()
+        .map_err(|e| format!("HTTP error from EPG URL {}: {}", epg_url, e))?;
     let is_response_gzipped = response.headers()
         .get("content-encoding")
         .and_then(|v| v.to_str().ok())
@@ -2008,6 +2027,7 @@ pub async fn cache_entire_epg_db<R: tauri::Runtime>(
     let mut current_program: Option<EpgProgram> = None;
     let mut current_element: Option<String> = None;
     let mut current_text = String::new();
+    let mut program_count: usize = 0;
 
     loop {
         match reader.read_event_into(&mut buf) {
@@ -2051,6 +2071,7 @@ pub async fn cache_entire_epg_db<R: tauri::Runtime>(
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
                 if name == "programme" {
                     if let Some(program) = current_program.take() {
+                        program_count += 1;
                         let id = format!("{}_{}", program.channel_id, program.start);
                         let title = &program.title;
                         let sub = program.sub_title.as_deref().unwrap_or("");
@@ -2095,6 +2116,18 @@ pub async fn cache_entire_epg_db<R: tauri::Runtime>(
     }
 
     prog_stmt.finalize().map_err(|e| e.to_string())?;
+
+    // Guard against replacing a good cache with an empty/garbage parse (e.g. an
+    // HTTP error page served with status 200). Returning Err drops the
+    // transaction, rolling back the DROP/CREATE above so the existing cache
+    // survives intact.
+    if epg_channels.is_empty() && program_count == 0 {
+        return Err(format!(
+            "EPG response from {} contained no channels or programmes; preserving existing cache",
+            epg_url
+        ));
+    }
+
     tx.commit().map_err(|e| e.to_string())?;
 
     // Compact database file size
