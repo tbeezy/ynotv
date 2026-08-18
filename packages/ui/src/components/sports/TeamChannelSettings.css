@@ -314,6 +314,24 @@
 }
 
 /* ─── Autoswap Dead Streams Toggle ────────────────────────────────────────── */
+.tcs-autoswap-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.tcs-autoswap-warning svg {
+  flex-shrink: 0;
+}
+
 .tcs-autoswap-toggle-wrap {
   display: inline-flex;
   align-items: center;

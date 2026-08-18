@@ -18,6 +18,7 @@ import { ensureSettingsHydration } from './stores/settingsStoreHydration';
 // import deadlock that a store-side import would cause (the applier reads
 // useSettingsStore at module scope).
 import './stores/settingsDomApplier';
+import { useSportsSettingsStore } from './stores/sportsSettingsStore';
 // Side-effect import AFTER the settings store + applier: self-initializes the
 // scroll listener that toggles the `scroll-turbo` class (drops backdrop blur
 // and blob blending while scrolling, restores on idle). Reads the
@@ -32,6 +33,16 @@ installSafeStorage();
 // from localStorage for first paint; this reconciles the authoritative values
 // from the Tauri store in the background — exactly once per run).
 ensureSettingsHydration();
+
+// Boot-time sports settings load. The sports settings store (live leagues,
+// autoSwapDeadStreams, …) previously hydrated only when a Sports-view
+// component mounted (SportsHub, tabs, or the overlay widget). That left the
+// "Autoswap dead streams" toggle at its default OFF whenever a team-linked
+// channel was played from Live TV before ever visiting Sports — so team
+// failover silently never fired. Loading here makes the persisted value
+// authoritative from startup; the components' `if (!loaded)` guards keep
+// their later calls no-ops.
+useSportsSettingsStore.getState().loadSettings().catch(() => {});
 
 /**
  * Checks the database before mounting the main app. If the database is

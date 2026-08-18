@@ -759,6 +759,12 @@ export function TeamChannelSettings() {
   const autoSwapDeadStreams = useSportsSettingsStore((s) => s.autoSwapDeadStreams);
   const setAutoSwapDeadStreams = useSportsSettingsStore((s) => s.setAutoSwapDeadStreams);
 
+  // Reactive read of the Playback detection toggles so the persistent warning
+  // below stays accurate even when they change elsewhere (Settings → Playback).
+  const useEventBasedReconnect = useSettingsStore((s) => s.useEventBasedReconnect);
+  const stallDetectionEnabled = useSettingsStore((s) => s.stallDetectionEnabled);
+  const autoswapHasNoDetection = autoSwapDeadStreams && !useEventBasedReconnect && !stallDetectionEnabled;
+
   // Filter available leagues: only enabled team leagues!
   const enabledTeamLeagues = useMemo(() => {
     const valid = ALL_LEAGUES.filter(
@@ -1232,6 +1238,23 @@ export function TeamChannelSettings() {
         </div>
 
         <div className="tcs-header-actions">
+          {/* Persistent warning: autoswap is ON but no detection method is active.
+              Shown whenever the Playback detection toggles end up both off while
+              autoswap is enabled — even if they were changed after this screen
+              was last open. */}
+          {autoswapHasNoDetection && (
+            <div className="tcs-autoswap-warning" role="alert">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>
+                {t('autoSwapNeedsDetectionBanner', 'Autoswap dead streams is ON, but no detection method is active — it will not switch streams. Enable “Event-based reconnect” or “Stall detection” in Settings → Playback → Auto-Reconnect.')}
+              </span>
+            </div>
+          )}
+
           {/* Autoswap dead streams toggle */}
           <div
             className="tcs-autoswap-toggle-wrap"

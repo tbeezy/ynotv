@@ -9,6 +9,8 @@ import { PopoutTab } from './PopoutTab';
 import { SkipIntroTab } from './SkipIntroTab';
 import { CatchupTab } from './CatchupTab';
 import { VodTab } from './VodTab';
+import { useToastStore } from '../../stores/toastStore';
+import { useSportsSettingsStore } from '../../stores/sportsSettingsStore';
 
 export type PlaybackSubTabId = 'mpv' | 'reconnect' | 'cast' | 'popout' | 'skipintro' | 'catchup' | 'vod';
 
@@ -161,6 +163,25 @@ export function PlaybackTab({
   const handleChange = (value: string) => {
     setLocalParams(value);
     setHasChanges(value !== mpvParams);
+  };
+
+  // Reverse guard for sports team autoswap: if the user tries to turn off the
+  // LAST remaining detection method (Event-based reconnect / Stall detection)
+  // while "Autoswap dead streams" is enabled, team failover would silently
+  // stop working. Block the change and point them at the autoswap toggle —
+  // symmetric with the forward guard in TeamChannelSettings.
+  const warnIfAutoswapLosesDetection = (turningOff: boolean, otherStillOn: boolean): boolean => {
+    if (turningOff && !otherStillOn && useSportsSettingsStore.getState().autoSwapDeadStreams) {
+      useToastStore.getState().addToast(
+        i18n.t(
+          'settings:playback.detectionRequiredForAutoSwap',
+          'Cannot disable the last detection method while "Autoswap dead streams" is enabled. Disable it in Sports → Team Channels first, or keep a detection method on.'
+        ),
+        'error'
+      );
+      return false;
+    }
+    return true;
   };
 
   const [pendingHwdec, setPendingHwdec] = useState<boolean | null>(null);
@@ -431,8 +452,10 @@ export function PlaybackTab({
                     type="checkbox"
                     checked={localUseEventBased}
                     onChange={(e) => {
-                      setLocalUseEventBased(e.target.checked);
-                      onUseEventBasedReconnectChange(e.target.checked);
+                      const next = e.target.checked;
+                      if (!warnIfAutoswapLosesDetection(!next, localStallDetection)) return;
+                      setLocalUseEventBased(next);
+                      onUseEventBasedReconnectChange(next);
                     }}
                   />
                   <span className="toggle-slider" />
@@ -452,8 +475,10 @@ export function PlaybackTab({
                     type="checkbox"
                     checked={localStallDetection}
                     onChange={(e) => {
-                      setLocalStallDetection(e.target.checked);
-                      onStallDetectionEnabledChange(e.target.checked);
+                      const next = e.target.checked;
+                      if (!warnIfAutoswapLosesDetection(!next, localUseEventBased)) return;
+                      setLocalStallDetection(next);
+                      onStallDetectionEnabledChange(next);
                     }}
                   />
                   <span className="toggle-slider" />

@@ -111,7 +111,9 @@ export async function getTeamPrimaryChannel(
     sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []
   );
   if (channel) {
-    if (!channel.source_id || enabledSourceIds.has(channel.source_id)) {
+    // Match the candidate-walk filter (getTeamFailoverCandidatesAfter): skip
+    // channels that are individually disabled or whose source is disabled.
+    if (channel.enabled !== false && (!channel.source_id || enabledSourceIds.has(channel.source_id))) {
       return channel;
     }
   } else if (primaryLink.stream_id && (!primaryLink.source_id || enabledSourceIds.has(primaryLink.source_id))) {
