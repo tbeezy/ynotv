@@ -281,7 +281,7 @@
     "exitFullscreen": "Volledig scherm afsluiten",
     "reminderMinutesBefore": "Herinnering: {{minutes}} min vóór",
     "autoSwitchSecondsBefore": "Auto-schakelen {{seconds}}s vóór",
-    "searchPlaceholder": "Zoeken...",
+    "searchPlaceholder": "Kanalen en EPG zoeken",
     "rec": "OPNAME",
     "live": "LIVE",
     "ended": "GESTOPT",

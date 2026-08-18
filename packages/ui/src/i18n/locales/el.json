@@ -281,7 +281,7 @@
     "exitFullscreen": "Έξοδος από πλήρη οθόνη",
     "reminderMinutesBefore": "Υπενθύμιση: {{minutes}} λεπτά πριν",
     "autoSwitchSecondsBefore": "Αυτόματη εναλλαγή {{seconds}}δ πριν",
-    "searchPlaceholder": "Αναζήτηση...",
+    "searchPlaceholder": "Αναζήτηση καναλιών και EPG",
     "rec": "ΕΓΓΡΑΦΗ",
     "live": "ΖΩΝΤΑΝΑ",
     "ended": "ΟΛΟΚΛΗΡΩΘΗΚΕ",

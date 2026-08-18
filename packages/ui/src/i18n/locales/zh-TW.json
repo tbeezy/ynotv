@@ -281,7 +281,7 @@
     "exitFullscreen": "退出全屏",
     "reminderMinutesBefore": "提醒：開始前 {{minutes}} 分鐘",
     "autoSwitchSecondsBefore": "開始前 {{seconds}} 秒自動切換",
-    "searchPlaceholder": "搜尋...",
+    "searchPlaceholder": "搜尋頻道與 EPG",
     "rec": "錄製",
     "live": "直播",
     "ended": "已結束",

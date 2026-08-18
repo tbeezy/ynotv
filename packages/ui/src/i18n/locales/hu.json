@@ -281,7 +281,7 @@
     "exitFullscreen": "Kilépés a teljes képernyőből",
     "reminderMinutesBefore": "Emlékeztető: {{minutes}} perccel előtte",
     "autoSwitchSecondsBefore": "Automatikus váltás {{seconds}} mp-vel előtte",
-    "searchPlaceholder": "Keresés...",
+    "searchPlaceholder": "Csatornák és EPG keresése",
     "rec": "FELV",
     "live": "ÉLŐ",
     "ended": "VÉGET ÉRT",

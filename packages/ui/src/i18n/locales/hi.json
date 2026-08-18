@@ -281,7 +281,7 @@
     "exitFullscreen": "फ़ुलस्क्रीन से बाहर",
     "reminderMinutesBefore": "रिमाइंडर: शुरुआत से {{minutes}} मिनट पहले",
     "autoSwitchSecondsBefore": "स्वतः-स्विच {{seconds}} सेकंड पहले",
-    "searchPlaceholder": "खोजें...",
+    "searchPlaceholder": "चैनल और EPG खोजें",
     "rec": "रिकॉर्ड",
     "live": "लाइव",
     "ended": "समाप्त",

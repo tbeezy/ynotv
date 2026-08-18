@@ -281,7 +281,7 @@
     "exitFullscreen": "Изађи из целог екрана",
     "reminderMinutesBefore": "Подсетник: {{minutes}} мин пре",
     "autoSwitchSecondsBefore": "Аутоматско пребацивање {{seconds}}с пре",
-    "searchPlaceholder": "Претражи...",
+    "searchPlaceholder": "Претражи канале и EPG",
     "rec": "РЕЦ",
     "live": "УЖИВО",
     "ended": "ЗАВРШЕНО",

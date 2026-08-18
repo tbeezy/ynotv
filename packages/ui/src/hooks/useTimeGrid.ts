@@ -37,6 +37,7 @@ function getNow(): Date {
 function floorToHour(date: Date): Date {
   const result = new Date(date);
   result.setMinutes(0, 0, 0);
+  result.setMilliseconds(0);
   return result;
 }
 
@@ -69,8 +70,8 @@ export function useTimeGrid({
   preloadAfter = 4,
 }: UseTimeGridOptions): TimeGridState & TimeGridActions {
   // Current anchor point (left edge of visible window)
-  // When isAtNow=true, anchor is current time (now at left edge)
-  const [anchor, setAnchor] = useState<Date>(() => getNow());
+  // When isAtNow=true, anchor is current time (now at left edge, snapped to hour)
+  const [anchor, setAnchor] = useState<Date>(() => floorToHour(getNow()));
   const [isAtNow, setIsAtNow] = useState(true);
 
   // Calculate visible hours and pixels per hour based on available width
@@ -140,7 +141,7 @@ export function useTimeGrid({
   // Navigation: return to current time
   const goToNow = useCallback(() => {
     setIsAtNow(true);
-    setAnchor(getNow());
+    setAnchor(floorToHour(getNow()));
   }, []);
 
   return {

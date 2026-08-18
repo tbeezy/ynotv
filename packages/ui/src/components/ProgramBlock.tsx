@@ -30,7 +30,7 @@ interface ProgramStyle {
 // Gap between program blocks in pixels
 const PROGRAM_GAP = 2;
 
-function getProgramStyle(
+export function getProgramStyle(
   program: StoredProgram,
   windowStart: Date,
   windowEnd: Date,
@@ -47,9 +47,26 @@ function getProgramStyle(
     return { left: 0, width: 0, visible: false };
   }
 
+  // If the program started before the visible window and only overlaps into the window
+  // by a negligible amount (less than 1 minute), it belongs to the previous timeslot
+  // and must not render as an overlapping sliver.
+  if (progStartMs < windowStartMs && progEndMs - windowStartMs < 60000) {
+    return { left: 0, width: 0, visible: false };
+  }
+
+  // If the program ends after the visible window and only overlaps into the window
+  // by a negligible amount (less than 1 minute), it belongs to the next timeslot.
+  if (progEndMs > windowEndMs && windowEndMs - progStartMs < 60000) {
+    return { left: 0, width: 0, visible: false };
+  }
+
   // Clamp to visible window
   const visibleStart = Math.max(progStartMs, windowStartMs);
   const visibleEnd = Math.min(progEndMs, windowEndMs);
+
+  if (visibleEnd <= visibleStart) {
+    return { left: 0, width: 0, visible: false };
+  }
 
   // Calculate position and width in pixels
   const startOffsetHours = (visibleStart - windowStartMs) / 3600000;
@@ -57,7 +74,15 @@ function getProgramStyle(
 
   // Subtract gap from width to create visual separation
   const rawWidth = durationHours * pixelsPerHour;
-  const width = Math.max(rawWidth - PROGRAM_GAP, 20); // Minimum 20px to stay readable
+  if (rawWidth <= PROGRAM_GAP) {
+    return { left: 0, width: 0, visible: false };
+  }
+
+  // Apply minimum width only to programs starting in this window, preventing
+  // clamped left-edge slices from expanding into adjacent blocks.
+  const width = progStartMs < windowStartMs
+    ? Math.max(rawWidth - PROGRAM_GAP, 1)
+    : Math.max(rawWidth - PROGRAM_GAP, 20);
 
   return {
     left: startOffsetHours * pixelsPerHour,

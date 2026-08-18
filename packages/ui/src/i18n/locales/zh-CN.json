@@ -281,7 +281,7 @@
     "exitFullscreen": "退出全屏",
     "reminderMinutesBefore": "提醒：开始前 {{minutes}} 分钟",
     "autoSwitchSecondsBefore": "开始前 {{seconds}} 秒自动切换",
-    "searchPlaceholder": "搜索...",
+    "searchPlaceholder": "搜索频道和 EPG",
     "rec": "录制",
     "live": "直播",
     "ended": "已结束",

@@ -281,7 +281,7 @@
     "exitFullscreen": "Salir de pantalla completa",
     "reminderMinutesBefore": "Recordatorio: {{minutes}} min antes",
     "autoSwitchSecondsBefore": "Cambiar automáticamente {{seconds}} s antes",
-    "searchPlaceholder": "Buscar…",
+    "searchPlaceholder": "Buscar canales y EPG",
     "rec": "REC",
     "live": "EN VIVO",
     "ended": "FINALIZADO",

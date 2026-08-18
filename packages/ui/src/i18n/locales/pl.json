@@ -281,7 +281,7 @@
     "exitFullscreen": "Zamknij pełny ekran",
     "reminderMinutesBefore": "Przypomnienie: {{minutes}} min przed",
     "autoSwitchSecondsBefore": "Automatyczne przełączanie {{seconds}}s przed",
-    "searchPlaceholder": "Szukaj...",
+    "searchPlaceholder": "Szukaj kanałów i EPG",
     "rec": "REC",
     "live": "NA ŻYWO",
     "ended": "ZAKOŃCZONY",

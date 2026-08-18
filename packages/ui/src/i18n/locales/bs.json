@@ -281,7 +281,7 @@
     "exitFullscreen": "Izađi iz celog ekrana",
     "reminderMinutesBefore": "Podsetnik: {{minutes}} min pre",
     "autoSwitchSecondsBefore": "Automatsko prebacivanje {{seconds}}s pre",
-    "searchPlaceholder": "Pretraži...",
+    "searchPlaceholder": "Pretraži kanale i EPG",
     "rec": "REC",
     "live": "UŽIVO",
     "ended": "ZAVRŠENO",

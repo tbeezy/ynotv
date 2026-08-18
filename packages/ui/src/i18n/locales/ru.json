@@ -281,7 +281,7 @@
     "exitFullscreen": "Выйти из полноэкранного режима",
     "reminderMinutesBefore": "Напоминание: за {{minutes}} мин",
     "autoSwitchSecondsBefore": "Автопереключение за {{seconds}}с",
-    "searchPlaceholder": "Поиск...",
+    "searchPlaceholder": "Поиск каналов и EPG",
     "rec": "ЗАПИСЬ",
     "live": "ЭФИР",
     "ended": "ЗАВЕРШЕНО",

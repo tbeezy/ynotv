@@ -281,7 +281,7 @@
     "exitFullscreen": "Dil nga ekrani i plotë",
     "reminderMinutesBefore": "Kujtesë: {{minutes}} min para",
     "autoSwitchSecondsBefore": "Kalim automatik {{seconds}}s para",
-    "searchPlaceholder": "Kërko...",
+    "searchPlaceholder": "Kërko kanale dhe EPG",
     "rec": "REC",
     "live": "LIVE",
     "ended": "PËRFUNDOI",

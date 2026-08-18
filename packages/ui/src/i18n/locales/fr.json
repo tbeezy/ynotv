@@ -281,7 +281,7 @@
     "exitFullscreen": "Quitter le plein écran",
     "reminderMinutesBefore": "Rappel : {{minutes}} min avant",
     "autoSwitchSecondsBefore": "Bascule automatique {{seconds}}s avant",
-    "searchPlaceholder": "Rechercher…",
+    "searchPlaceholder": "Rechercher des chaînes et l'EPG",
     "rec": "ENREG",
     "live": "EN DIRECT",
     "ended": "TERMINÉ",

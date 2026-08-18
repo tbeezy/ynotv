@@ -281,7 +281,7 @@
     "exitFullscreen": "Exit Fullscreen",
     "reminderMinutesBefore": "Reminder: {{minutes}} min before",
     "autoSwitchSecondsBefore": "Auto-switch {{seconds}}s before",
-    "searchPlaceholder": "Search...",
+    "searchPlaceholder": "Search Channels & EPG",
     "rec": "REC",
     "live": "LIVE",
     "ended": "ENDED",

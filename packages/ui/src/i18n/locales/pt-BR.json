@@ -281,7 +281,7 @@
     "exitFullscreen": "Sair da tela cheia",
     "reminderMinutesBefore": "Lembrete: {{minutes}} min antes",
     "autoSwitchSecondsBefore": "Trocar automaticamente {{seconds}} s antes",
-    "searchPlaceholder": "Pesquisar…",
+    "searchPlaceholder": "Buscar canais e EPG",
     "rec": "REC",
     "live": "AO VIVO",
     "ended": "ENCERRADO",
