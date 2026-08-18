@@ -36,9 +36,6 @@ export async function upsertChannelOverride(override: EpgChannelOverride): Promi
   dbEvents.notify('channels', 'update');
 }
 
-export async function deleteChannelOverride(streamId: string): Promise<void> {
-  await db.epgChannelOverrides.delete(streamId);
-}
 
 export async function batchUpsertLogoOverrides(
   updates: Array<{
@@ -100,21 +97,9 @@ export async function batchUpsertLogoOverrides(
   dbEvents.notify('channels', 'update');
 }
 
-export async function batchUpsertLogoBackground(
-  updates: Array<{ streamId: string; logoBackground: 'auto' | 'light' | 'dark' }>
-): Promise<void> {
-  return batchUpsertLogoOverrides(updates);
-}
 
 // ─── Program Override CRUD ────────────────────────────────────────────────────
 
-/**
- * Load all override rows (including tombstones) for a given stream.
- * Used by the editor to show deleted programs as strikethrough.
- */
-export async function getProgramOverridesForStream(streamId: string): Promise<EpgProgramOverride[]> {
-  return db.epgProgramOverrides.where('stream_id').equals(streamId).toArray();
-}
 
 /**
  * Load raw synced programs + override metadata for the editor.

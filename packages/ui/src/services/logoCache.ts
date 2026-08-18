@@ -124,19 +124,3 @@ export async function clearLogoCache(): Promise<boolean> {
   }
 }
 
-/**
- * Batch pre-fetch missing logos in background
- */
-export async function prefetchLogos(urls: string[]): Promise<number> {
-  if (!urls || urls.length === 0 || typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
-    return 0;
-  }
-
-  try {
-    const count = await invoke<number>('prefetch_logos', { urls });
-    return count;
-  } catch (e) {
-    console.error('[logoCache] Failed to prefetch logos:', e);
-    return 0;
-  }
-}

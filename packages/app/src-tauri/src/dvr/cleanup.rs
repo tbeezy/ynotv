@@ -54,11 +54,6 @@ impl CleanupManager {
         Ok(())
     }
 
-    /// Run cleanup immediately (for manual trigger)
-    pub async fn run_now(&self
-    ) -> Result<()> {
-        run_cleanup(&self.db).await
-    }
 }
 
 /// Run cleanup operations

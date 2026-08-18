@@ -36,42 +36,6 @@ export async function getFailoverGroupMembers(
   return result;
 }
 
-/** Given a currently playing stream_id, return the next backup channel or null */
-export async function getNextFailoverChannel(
-  currentStreamId: string
-): Promise<StoredChannel | null> {
-  // Find which group this channel is in
-  const membership = await db.failoverGroupMembers
-    .where('stream_id')
-    .equals(currentStreamId)
-    .first();
-  if (!membership) return null;
-
-  // Get all members of that group ordered by priority
-  const allMembers = await db.failoverGroupMembers
-    .where('group_id')
-    .equals(membership.group_id)
-    .sortBy('priority');
-
-  const currentIndex = allMembers.findIndex(m => m.stream_id === currentStreamId);
-  if (currentIndex === -1) return null;
-
-  // Load enabled sources to filter
-  const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
-  const enabledSourceIds = new Set(sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []);
-
-  // Try each subsequent member in priority order
-  for (let i = currentIndex + 1; i < allMembers.length; i++) {
-    const candidate = await db.channels
-      .where('stream_id')
-      .equals(allMembers[i].stream_id)
-      .first();
-    if (candidate && candidate.enabled !== false && enabledSourceIds.has(candidate.source_id)) {
-      return candidate;
-    }
-  }
-  return null; // All backups exhausted
-}
 
 /** Given a stream_id in a failover group, return ordered enabled candidates after it */
 export async function getFailoverCandidatesAfter(

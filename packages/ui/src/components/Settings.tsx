@@ -595,8 +595,6 @@ export function Settings({
   const setLogoCacheMaxMb = useSettingsStore((s) => s.setLogoCacheMaxMb);
   const logoCacheTtlDays = useSettingsStore((s) => s.logoCacheTtlDays);
   const setLogoCacheTtlDays = useSettingsStore((s) => s.setLogoCacheTtlDays);
-  const logoCachePrefetch = useSettingsStore((s) => s.logoCachePrefetch);
-  const setLogoCachePrefetch = useSettingsStore((s) => s.setLogoCachePrefetch);
   const sourceLogoDisplayOverrides = useSettingsStore((s) => s.sourceLogoDisplayOverrides);
   const setSourceLogoDisplayOverride = useSettingsStore((s) => s.setSourceLogoDisplayOverride);
   const channelLogoSize = useSettingsStore((s) => s.channelLogoSize);
@@ -2680,8 +2678,6 @@ export function Settings({
             onLogoCacheMaxMbChange={setLogoCacheMaxMb}
             logoCacheTtlDays={logoCacheTtlDays}
             onLogoCacheTtlDaysChange={setLogoCacheTtlDays}
-            logoCachePrefetch={logoCachePrefetch}
-            onLogoCachePrefetchChange={setLogoCachePrefetch}
             epgDarkenCurrent={epgDarkenCurrent}
             onEpgDarkenCurrentChange={handleEpgDarkenCurrentChange}
             epgHighlightBorderCurrent={epgHighlightBorderCurrent}

@@ -104,10 +104,6 @@ export function removeLocalEntries(ids: string[]): void {
   write(read().filter((e) => !idSet.has(e.id)));
 }
 
-export function updateLocalEntry(id: string, patch: Partial<LocalEntry>): void {
-  updateLocalEntries([id], patch);
-}
-
 export function updateLocalEntries(ids: string[], patch: Partial<LocalEntry>): void {
   if (ids.length === 0) return;
   const idSet = new Set(ids);
@@ -120,53 +116,6 @@ export function updateLocalEntries(ids: string[], patch: Partial<LocalEntry>): v
   if (changed) write(next);
 }
 
-export function clearLocalLibrary(): void {
-  write([]);
-}
-
-export function findLocalMovie(
-  tmdbId?: number | null,
-  imdbId?: string | null,
-): LocalEntry | null {
-  return (
-    read().find(
-      (e) =>
-        e.type === 'movie' &&
-        ((tmdbId != null && e.tmdbId === tmdbId) || (imdbId != null && e.imdbId === imdbId)),
-    ) ?? null
-  );
-}
-
-export function findLocalEpisodeByIds(
-  season: number,
-  episode: number,
-  tmdbId?: number | null,
-  imdbId?: string | null,
-): LocalEntry | null {
-  return (
-    read().find(
-      (e) =>
-        e.type === 'show' &&
-        e.season === season &&
-        e.episode === episode &&
-        ((tmdbId != null && e.tmdbId === tmdbId) || (imdbId != null && e.imdbId === imdbId)),
-    ) ?? null
-  );
-}
-
-export function findLocalSeriesEpisodes(
-  tmdbId?: number | null,
-  imdbId?: string | null,
-): LocalEntry[] {
-  if (tmdbId == null && imdbId == null) return [];
-  return read()
-    .filter(
-      (e) =>
-        e.type === 'show' &&
-        ((tmdbId != null && e.tmdbId === tmdbId) || (imdbId != null && e.imdbId === imdbId)),
-    )
-    .sort((a, b) => (a.season ?? 0) - (b.season ?? 0) || (a.episode ?? 0) - (b.episode ?? 0));
-}
 
 export function useLocalLibrary(): LocalEntry[] {
   const [items, setItems] = useState<LocalEntry[]>(() => read());

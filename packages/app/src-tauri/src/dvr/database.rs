@@ -663,26 +663,6 @@ impl DvrDatabase {
         Ok(())
     }
 
-    /// Update schedule padding times
-    pub fn update_schedule_paddings(
-        &self,
-        id: i64,
-        start_padding_sec: i64,
-        end_padding_sec: i64,
-    ) -> Result<()> {
-        let conn = self.get_conn()?;
-
-        conn.execute(
-            "UPDATE dvr_schedules SET start_padding_sec = ?1, end_padding_sec = ?2 WHERE id = ?3",
-            params![start_padding_sec, end_padding_sec, id],
-        )?;
-
-        info!(
-            "Updated padding for schedule {}: start={}, end={}",
-            id, start_padding_sec, end_padding_sec
-        );
-        Ok(())
-    }
 
     /// Update schedule settings including paddings and recurrence
     pub fn update_schedule_settings(
@@ -1021,19 +1001,6 @@ impl DvrDatabase {
         }
 
         Ok(settings)
-    }
-
-    /// Save DVR setting
-    pub fn save_setting(&self, key: &str, value: &str) -> Result<()> {
-        let conn = self.get_conn()?;
-
-        conn.execute(
-            "INSERT INTO dvr_settings (key, value) VALUES (?1, ?2)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            params![key, value],
-        )?;
-
-        Ok(())
     }
 
     /// Check for scheduling conflicts with connection limit awareness

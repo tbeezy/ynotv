@@ -471,8 +471,6 @@ export interface SettingsState {
   setLogoCacheMaxMb: (mb: number) => void;
   logoCacheTtlDays: number;
   setLogoCacheTtlDays: (days: number) => void;
-  logoCachePrefetch: boolean;
-  setLogoCachePrefetch: (enabled: boolean) => void;
 
   // Catch-up
   catchupStartPadding: number;
@@ -1149,11 +1147,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setLogoCacheTtlDays: (days) => {
     set({ logoCacheTtlDays: days });
     persistSettings({ logoCacheTtlDays: days });
-  },
-  logoCachePrefetch: (cachedSettings?.logoCachePrefetch as boolean) ?? false,
-  setLogoCachePrefetch: (enabled) => {
-    set({ logoCachePrefetch: enabled });
-    persistSettings({ logoCachePrefetch: enabled });
   },
 
   // Catch-up

@@ -40,12 +40,3 @@ export function getCachedSettings(): Promise<any> {
     return _cachedPromise;
 }
 
-/**
- * Invalidate the settings cache immediately.
- * Call this after a successful updateSettings() so the next getCachedSettings()
- * fetches fresh data rather than returning stale values.
- */
-export function invalidateSettingsCache(): void {
-    _cachedPromise = null;
-    _cacheTimestamp = 0;
-}

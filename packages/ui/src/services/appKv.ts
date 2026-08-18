@@ -99,23 +99,3 @@ export async function loadAppKv(key: string): Promise<string | null> {
   return null;
 }
 
-/** Remove a key from both SQLite and localStorage. */
-export async function removeAppKv(key: string): Promise<void> {
-  memoryCache.delete(key);
-  removeLocalStorage(key);
-  try {
-    await db.appKv.delete(key);
-  } catch (e) {
-    console.warn(`[appKv] Failed to delete "${key}":`, e);
-  }
-}
-
-/** Whether all store keys have been persisted to SQLite (for export readiness). */
-export async function appKvReady(): Promise<void> {
-  await migrationPromise;
-}
-
-/** Force pending in-flight writes to settle (call before app close). */
-export async function flushAppKv(): Promise<void> {
-  await migrationPromise;
-}

@@ -76,30 +76,6 @@ export async function renameCategoryLink(linkId: number, customName: string | nu
   await db.playlistCategoryLinks.update(linkId, { custom_name: customName ?? undefined });
 }
 
-export async function reorderPlaylistCategories(
-  playlistId: string,
-  orderedLinkIds: number[]
-): Promise<void> {
-  const links = await db.playlistCategoryLinks.where('playlist_id').equals(playlistId).toArray();
-  const linkMap = new Map(links.map(l => [l.id as number, l]));
-
-  const updates = orderedLinkIds
-    .map((id, i) => {
-      const link = linkMap.get(id);
-      return link ? { id, displayOrder: i } : null;
-    })
-    .filter(Boolean) as Array<{ id: number; displayOrder: number }>;
-
-  const bulkItems = updates
-    .map(u => {
-      const link = linkMap.get(u.id);
-      return link ? { ...link, display_order: u.displayOrder } : null;
-    })
-    .filter(Boolean) as PlaylistCategoryLink[];
-  if (bulkItems.length > 0) {
-    await db.playlistCategoryLinks.bulkPut(bulkItems);
-  }
-}
 
 // ── Individual Channel CRUD ───────────────────────────────────────────────────
 
@@ -254,26 +230,6 @@ export async function removeChannelFromCategory(
   }
 }
 
-export async function reorderCategoryChannels(
-  playlistId: string,
-  parentCategoryId: string,
-  orderedStreamIds: string[]
-): Promise<void> {
-  const items = await db.playlistIndividualChannels
-    .whereRaw('playlist_id = ? AND parent_category_id = ?', [playlistId, parentCategoryId])
-    .toArray();
-  const itemMap = new Map(items.map(i => [i.stream_id, i]));
-
-  const bulkItems = orderedStreamIds
-    .map((streamId, i) => {
-      const item = itemMap.get(streamId);
-      return item && item.id !== undefined ? { ...item, display_order: i } : null;
-    })
-    .filter(Boolean) as PlaylistIndividualChannel[];
-  if (bulkItems.length > 0) {
-    await db.playlistIndividualChannels.bulkPut(bulkItems);
-  }
-}
 
 export async function addCustomCategoryToPlaylist(
   playlistId: string,

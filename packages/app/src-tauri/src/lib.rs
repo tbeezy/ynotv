@@ -247,7 +247,6 @@ mod mpv_windows;
 mod mpv_secondary;
 mod mpv_popout;
 mod audio_capture;
-use audio_capture::{start_audio_capture, stop_audio_capture};
 
 // Re-export the MPV state and functions based on platform
 #[cfg(target_os = "macos")]
@@ -1574,19 +1573,6 @@ async fn update_dvr_stream_url(
     Ok(())
 }
 
-/// Get all scheduled recordings
-#[tauri::command]
-async fn get_scheduled_recordings(
-    state: tauri::State<'_, DvrState>,
-) -> Result<Vec<Schedule>, String> {
-    let now = chrono::Utc::now().timestamp();
-
-    let schedules = state.db.get_scheduled_recordings(now, 86400, 3600)
-        .map_err(|e| format!("Failed to get recordings: {}", e))?;
-
-    Ok(schedules)
-}
-
 /// Cancel a scheduled/recording item
 #[tauri::command]
 async fn cancel_recording(
@@ -1613,44 +1599,6 @@ async fn cancel_recording(
 
     debug!("[DVR Command] Recording {} canceled successfully", id);
     Ok(())
-}
-
-/// Delete a recording (file + thumbnail + database)
-#[tauri::command]
-async fn delete_recording(
-    state: tauri::State<'_, DvrState>,
-    id: i64,
-) -> Result<(), String> {
-    // Get file path and thumbnail path first
-    let paths = state.db.delete_recording(id)
-        .map_err(|e| format!("Failed to delete recording: {}", e))?;
-
-    // Delete video file if it exists
-    if let Some((file_path, thumbnail_path)) = paths {
-        if std::path::Path::new(&file_path).exists() {
-            let _ = tokio::fs::remove_file(file_path).await;
-        }
-
-        // Delete thumbnail if it exists
-        if let Some(thumb_path) = thumbnail_path {
-            if std::path::Path::new(&thumb_path).exists() {
-                let _ = tokio::fs::remove_file(thumb_path).await;
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Get all completed recordings
-#[tauri::command]
-async fn get_completed_recordings(
-    state: tauri::State<'_, DvrState>,
-) -> Result<Vec<Recording>, String> {
-    let recordings = state.db.get_completed_recordings()
-        .map_err(|e| format!("Failed to get recordings: {}", e))?;
-
-    Ok(recordings)
 }
 
 /// Get active recordings with live progress
@@ -1691,23 +1639,6 @@ async fn get_recording_thumbnail(
         // Recording not found
         Err("Recording not found".to_string())
     }
-}
-
-/// Update schedule padding times
-#[tauri::command]
-async fn update_schedule_paddings(
-    state: tauri::State<'_, DvrState>,
-    id: i64,
-    #[allow(non_snake_case)] startPaddingSec: i64,
-    #[allow(non_snake_case)] endPaddingSec: i64,
-) -> Result<(), String> {
-    debug!("[DVR Command] Updating padding for schedule {}: start={}, end={}", id, startPaddingSec, endPaddingSec);
-
-    state.db.update_schedule_paddings(id, startPaddingSec, endPaddingSec)
-        .map_err(|e| format!("Failed to update schedule paddings: {}", e))?;
-
-    debug!("[DVR Command] Schedule {} padding updated successfully", id);
-    Ok(())
 }
 
 /// Update schedule settings including paddings and recurrence
@@ -1794,30 +1725,6 @@ async fn update_playing_stream(
     };
     
     state.set_playing_stream(stream).await;
-    Ok(())
-}
-
-/// Get DVR settings
-#[tauri::command]
-async fn get_dvr_settings(
-    state: tauri::State<'_, DvrState>,
-) -> Result<DvrSettings, String> {
-    let settings = state.db.get_settings()
-        .map_err(|e| format!("Failed to get settings: {}", e))?;
-
-    Ok(settings)
-}
-
-/// Save DVR setting
-#[tauri::command]
-async fn save_dvr_setting(
-    state: tauri::State<'_, DvrState>,
-    key: String,
-    value: String,
-) -> Result<(), String> {
-    state.db.save_setting(&key, &value)
-        .map_err(|e| format!("Failed to save setting: {}", e))?;
-
     Ok(())
 }
 
@@ -1930,17 +1837,6 @@ async fn open_file_location(file_path: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("Failed to open file location: {}", e))?;
     }
-
-    Ok(())
-}
-
-/// Run cleanup now (manual trigger)
-#[tauri::command]
-async fn run_cleanup_now(
-    state: tauri::State<'_, DvrState>,
-) -> Result<(), String> {
-    state.cleanup.run_now().await
-        .map_err(|e| format!("Cleanup failed: {}", e))?;
 
     Ok(())
 }
@@ -2162,15 +2058,6 @@ async fn clear_logo_cache(
     mgr.clear_cache()
         .await
         .map_err(|e| format!("Failed to clear logo cache: {}", e))
-}
-
-#[tauri::command]
-async fn prefetch_logos(
-    state: tauri::State<'_, LogoCacheState>,
-    urls: Vec<String>,
-) -> Result<usize, String> {
-    let mgr = state.0.lock().await;
-    Ok(mgr.prefetch_logos(urls).await)
 }
 
 #[tauri::command]
@@ -2478,12 +2365,6 @@ async fn clear_show_watchlist_tracking(
 ) -> Result<usize, String> {
     debug!("[TVMaze Command] clear_show_watchlist_tracking called for id={}", tvmaze_id);
     state.db.tvmaze_clear_show_added_episodes(tvmaze_id).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-async fn get_show_details(tvmaze_id: i64) -> Result<tvmaze::TvMazeShowDetails, String> {
-    debug!("[TVMaze Command] get_show_details called for id={}", tvmaze_id);
-    tvmaze::fetch_show_details(tvmaze_id).await
 }
 
 #[derive(Debug, Serialize)]
@@ -4705,9 +4586,6 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            // Audio visualizer capture commands
-            start_audio_capture,
-            stop_audio_capture,
             // MPV commands
             init_mpv,
             mpv_load,
@@ -4791,24 +4669,17 @@ pub fn run() {
             // DVR commands
             init_dvr,
             schedule_recording,
-            get_scheduled_recordings,
             cancel_recording,
-            delete_recording,
-            get_completed_recordings,
             get_active_recordings,
             get_recording_thumbnail,
-            update_schedule_paddings,
             update_schedule_settings,
             check_schedule_conflicts,
             update_playing_stream,
             update_dvr_stream_url,
-            get_dvr_settings,
-            save_dvr_setting,
             update_recording_title,
             convert_recording,
             open_file_location,
             open_log_folder,
-            run_cleanup_now,
             // Tray / minimize-to-tray commands
             tray::set_minimize_to_tray,
             // TVMaze / TV Calendar commands
@@ -4818,7 +4689,6 @@ pub fn run() {
             get_tracked_shows,
             get_calendar_episodes,
             sync_tvmaze_shows,
-            get_show_details,
             get_show_details_with_episodes,
             set_show_channel,
             get_episode_details,
@@ -4860,7 +4730,6 @@ pub fn run() {
             get_cached_logo_path,
             get_logo_cache_stats,
             clear_logo_cache,
-            prefetch_logos,
             prune_logo_cache,
             // Database health / recovery
             db_health,

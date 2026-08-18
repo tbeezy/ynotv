@@ -11,7 +11,7 @@ use std::sync::{
     Arc, Mutex,
 };
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Runtime};
 
 #[derive(Serialize, Clone, Debug)]
 pub struct AudioSpectrumData {
@@ -64,32 +64,6 @@ impl AudioCaptureState {
             let _ = handle.join();
         }
     }
-}
-
-#[tauri::command]
-pub fn start_audio_capture<R: Runtime>(app: AppHandle<R>, state: tauri::State<'_, AudioCaptureState>) -> Result<(), String> {
-    let pid = {
-        #[cfg(target_os = "windows")]
-        {
-            if let Some(mpv_state) = app.try_state::<crate::MpvState>() {
-                *mpv_state.pid.lock().unwrap()
-            } else {
-                0
-            }
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            0
-        }
-    };
-    state.start(app, pid);
-    Ok(())
-}
-
-#[tauri::command]
-pub fn stop_audio_capture(state: tauri::State<'_, AudioCaptureState>) -> Result<(), String> {
-    state.stop();
-    Ok(())
 }
 
 #[cfg(target_os = "windows")]

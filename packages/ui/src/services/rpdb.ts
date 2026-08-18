@@ -63,32 +63,6 @@ export async function validateRpdbApiKey(apiKey: string): Promise<boolean> {
   }
 }
 
-/**
- * Get RPDB request count and limit for an API key
- * Useful for showing users their usage
- */
-export async function getRpdbRequestCount(
-  apiKey: string
-): Promise<{ current: number; limit: number } | null> {
-  if (!apiKey) return null;
-
-  try {
-    const response = await fetch(`${RPDB_API_BASE}/${apiKey}/requests`);
-
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        current: data.req ?? 0,
-        limit: data.limit ?? 0,
-      };
-    }
-
-    return null;
-  } catch (err) {
-    console.warn('[RPDB] Failed to get request count:', err);
-    return null;
-  }
-}
 
 /**
  * Build RPDB poster URL for a movie or series
@@ -140,11 +114,3 @@ export function getRpdbBackdropUrl(
  * @param type - 'movie' or 'series'
  * @returns Full logo URL (PNG)
  */
-export function getRpdbLogoUrl(
-  apiKey: string,
-  tmdbId: number,
-  type: 'movie' | 'series'
-): string {
-  const mediaId = `${type === 'movie' ? 'movie' : 'series'}-${tmdbId}`;
-  return `${RPDB_API_BASE}/${apiKey}/tmdb/logo-default/${mediaId}.png`;
-}

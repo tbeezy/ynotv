@@ -18,8 +18,6 @@ interface LiveTVTabProps {
   onLogoCacheMaxMbChange: (maxMb: number) => void;
   logoCacheTtlDays: number;
   onLogoCacheTtlDaysChange: (days: number) => void;
-  logoCachePrefetch: boolean;
-  onLogoCachePrefetchChange: (prefetch: boolean) => void;
   // EPG props
   epgDarkenCurrent: boolean;
   onEpgDarkenCurrentChange: (enabled: boolean) => void;
@@ -147,8 +145,6 @@ export function LiveTVTab({
   onLogoCacheMaxMbChange,
   logoCacheTtlDays,
   onLogoCacheTtlDaysChange,
-  logoCachePrefetch,
-  onLogoCachePrefetchChange,
   epgDarkenCurrent,
   onEpgDarkenCurrentChange,
   epgHighlightBorderCurrent,

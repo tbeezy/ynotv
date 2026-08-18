@@ -202,13 +202,6 @@ pub async fn fetch_episodes(tvmaze_id: i64) -> Result<Vec<EpisodeRow>, String> {
     }).collect())
 }
 
-pub async fn fetch_show_details(tvmaze_id: i64) -> Result<TvMazeShowDetails, String> {
-    let client = reqwest::Client::new();
-    let url = format!("https://api.tvmaze.com/shows/{}", tvmaze_id);
-    let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
-    resp.json::<TvMazeShowDetails>().await.map_err(|e| e.to_string())
-}
-
 pub async fn fetch_show_details_with_episodes(tvmaze_id: i64) -> Result<(TvMazeShowDetails, Vec<TvMazeEpisode>), String> {
     let client = reqwest::Client::new();
 
