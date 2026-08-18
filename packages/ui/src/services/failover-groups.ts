@@ -232,7 +232,17 @@ export async function addChannelToFailoverGroup(
     .equals(streamId)
     .first();
   if (existing && existing.group_id !== groupId) {
-    throw new Error(i18n.t('settings:failover.alreadyInGroup', { group: existing.group_id }));
+    const existingGroup = await db.failoverGroups
+      .where('group_id')
+      .equals(existing.group_id)
+      .first();
+    const groupName = existingGroup?.name || existing.group_id;
+    const err: any = new Error(i18n.t('settings:failover.alreadyInGroup', { group: groupName }));
+    err.code = 'ALREADY_IN_GROUP';
+    err.existingGroupId = existing.group_id;
+    err.existingGroupName = groupName;
+    err.streamId = streamId;
+    throw err;
   }
   if (existing) return; // Already in this group, nothing to do
 
@@ -249,6 +259,16 @@ export async function addChannelToFailoverGroup(
     priority: maxPriority + 1,
   });
 }
+
+/** Move a channel from another failover group to a target failover group */
+export async function moveChannelToFailoverGroup(
+  targetGroupId: string,
+  streamId: string
+): Promise<void> {
+  await removeChannelFromFailoverGroup(streamId);
+  await addChannelToFailoverGroup(targetGroupId, streamId);
+}
+
 
 /** Remove a channel from its failover group. Re-normalizes priority numbers. */
 export async function removeChannelFromFailoverGroup(streamId: string): Promise<void> {
@@ -357,30 +377,184 @@ export async function getFailoverGroupForChannel(
 export async function listFailoverGroups(): Promise<
   Array<FailoverGroup & { memberCount: number }>
 > {
-  const groups = await db.failoverGroups.toArray();
+  const [groups, allMembers] = await Promise.all([
+    db.failoverGroups.toArray(),
+    db.failoverGroupMembers.toArray(),
+  ]);
 
-  // Load enabled sources to filter count
-  const sourcesResult = window.storage ? await window.storage.getSources() : { data: [] };
-  const enabledSourceIds = new Set(sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []);
-
-  const result = [];
-  for (const g of groups) {
-    const members = await db.failoverGroupMembers
-      .where('group_id')
-      .equals(g.group_id)
-      .toArray();
-
-    // Join with channels to check source_id
-    const streamIds = members.map(m => m.stream_id);
-    const channels = await db.channels.where('stream_id').anyOf(streamIds).toArray();
-    const activeStreamIds = new Set(
-      channels
-        .filter(c => enabledSourceIds.has(c.source_id))
-        .map(c => c.stream_id)
-    );
-
-    const activeCount = members.filter(m => activeStreamIds.has(m.stream_id)).length;
-    result.push({ ...g, memberCount: activeCount });
+  if (allMembers.length === 0) {
+    return groups.map((g) => ({ ...g, memberCount: 0 }));
   }
-  return result;
+
+  const streamIds = allMembers.map((m) => m.stream_id);
+  const [relevantChannels, sourcesResult] = await Promise.all([
+    db.channels.where('stream_id').anyOf(streamIds).toArray(),
+    window.storage ? window.storage.getSources() : Promise.resolve({ data: [] }),
+  ]);
+
+  const enabledSourceIds = new Set(
+    sourcesResult.data?.filter((s: any) => s.enabled !== false).map((s: any) => s.id) || []
+  );
+
+  const channelSourceMap = new Map<string, string>();
+  for (const c of relevantChannels) {
+    if (c.stream_id) channelSourceMap.set(c.stream_id, c.source_id);
+  }
+
+  // Count active members per group in memory (O(M) pass)
+  const memberCounts = new Map<string, number>();
+  for (const m of allMembers) {
+    const sourceId = channelSourceMap.get(m.stream_id);
+    if (!sourceId || enabledSourceIds.has(sourceId)) {
+      memberCounts.set(m.group_id, (memberCounts.get(m.group_id) || 0) + 1);
+    }
+  }
+
+  return groups.map((g) => ({
+    ...g,
+    memberCount: memberCounts.get(g.group_id) || 0,
+  }));
 }
+
+
+/**
+ * Throw an ALREADY_IN_GROUP error if any stream is already a member of a
+ * failover group (optionally excluding one group, e.g. the batch target).
+ */
+async function assertStreamsNotInOtherGroups(
+  streamIds: string[],
+  excludeGroupId?: string
+): Promise<void> {
+  if (streamIds.length === 0) return;
+  const memberships = await db.failoverGroupMembers
+    .where('stream_id')
+    .anyOf(streamIds)
+    .toArray();
+  for (const m of memberships) {
+    if (excludeGroupId && m.group_id === excludeGroupId) continue;
+    const group = await db.failoverGroups.where('group_id').equals(m.group_id).first();
+    const groupName = group?.name || m.group_id;
+    const err: any = new Error(
+      i18n.t('settings:failover.alreadyInGroup', { group: groupName })
+    );
+    err.code = 'ALREADY_IN_GROUP';
+    err.existingGroupId = m.group_id;
+    err.existingGroupName = groupName;
+    err.streamId = m.stream_id;
+    throw err;
+  }
+}
+
+/** Create multiple failover groups and their members in a single atomic batch */
+export async function createFailoverGroupsBatch(
+  groups: Array<{ name: string; streamIds: string[] }>
+): Promise<string[]> {
+  const createdGroupIds: string[] = [];
+  const groupsToInsert: FailoverGroup[] = [];
+  const membersToInsert: Array<{ group_id: string; stream_id: string; priority: number }> = [];
+
+  const allStreamIds: string[] = [];
+  const seenStreamIds = new Set<string>();
+
+  for (const g of groups) {
+    if (!g.streamIds || g.streamIds.length === 0) continue;
+    for (const sid of g.streamIds) {
+      if (seenStreamIds.has(sid)) {
+        const err: any = new Error(
+          i18n.t('settings:failover.alreadyInGroup', { group: g.name })
+        );
+        err.code = 'ALREADY_IN_GROUP';
+        err.existingGroupId = '';
+        err.existingGroupName = g.name;
+        err.streamId = sid;
+        throw err;
+      }
+      seenStreamIds.add(sid);
+      allStreamIds.push(sid);
+    }
+
+    const group_id = crypto.randomUUID();
+    createdGroupIds.push(group_id);
+    groupsToInsert.push({
+      group_id,
+      name: g.name,
+      created_at: Date.now(),
+    });
+
+    g.streamIds.forEach((sid, priority) => {
+      membersToInsert.push({
+        group_id,
+        stream_id: sid,
+        priority,
+      });
+    });
+  }
+
+  // Fail loudly before touching the DB if any stream already belongs to an
+  // existing group (the UNIQUE stream_id constraint would otherwise abort the
+  // whole transaction mid-way with a raw SQL error and roll back everything).
+  await assertStreamsNotInOtherGroups(allStreamIds);
+
+  if (groupsToInsert.length > 0) {
+    await db.transaction('rw', [db.failoverGroups, db.failoverGroupMembers], async () => {
+      await db.failoverGroups.bulkPut(groupsToInsert);
+      await db.failoverGroupMembers.bulkPut(membersToInsert as any);
+    });
+  }
+
+  return createdGroupIds;
+}
+
+/** Add multiple channels to an existing group in a single batch */
+export async function addChannelsToFailoverGroupBatch(
+  groupId: string,
+  streamIds: string[]
+): Promise<void> {
+  // Fail loudly if any stream already belongs to a different group (the
+  // UNIQUE stream_id constraint would otherwise reject the whole batch).
+  await assertStreamsNotInOtherGroups(streamIds, groupId);
+
+  const existingMembers = await db.failoverGroupMembers
+    .where('group_id')
+    .equals(groupId)
+    .toArray();
+  const existingStreamIds = new Set(existingMembers.map((m) => m.stream_id));
+  let nextPriority = existingMembers.reduce((max, m) => Math.max(max, m.priority), -1) + 1;
+
+  const toAdd: Array<{ group_id: string; stream_id: string; priority: number }> = [];
+  for (const sid of streamIds) {
+    if (!existingStreamIds.has(sid)) {
+      toAdd.push({
+        group_id: groupId,
+        stream_id: sid,
+        priority: nextPriority++,
+      });
+      existingStreamIds.add(sid);
+    }
+  }
+
+  if (toAdd.length > 0) {
+    await db.failoverGroupMembers.bulkPut(toAdd as any);
+  }
+}
+
+
+/** Clean up failover members for channels/sources that no longer exist */
+export async function cleanupOrphanedFailoverMembers(): Promise<number> {
+  const allMembers = await db.failoverGroupMembers.toArray();
+  if (allMembers.length === 0) return 0;
+
+  const allChannels = await db.channels.toArray();
+  const channelStreamIds = new Set(allChannels.map((c) => c.stream_id));
+
+  const orphaned = allMembers.filter((m) => !channelStreamIds.has(m.stream_id));
+  if (orphaned.length > 0) {
+    for (const m of orphaned) {
+      if (m.id !== undefined) {
+        await db.failoverGroupMembers.delete(m.id);
+      }
+    }
+  }
+  return orphaned.length;
+}
+

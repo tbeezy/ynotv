@@ -329,8 +329,8 @@ export function VodBrowse({
       } as React.CSSProperties;
 
       const showBadge = vodShowSourceBadge || (includeSourceInVodSearch && search && search.trim());
-      const sourceName = (showBadge && sourceNameMap)
-        ? sourceNameMap.get(item.source_id)
+      const sourceName = showBadge
+        ? (item.source_id === 'local' ? 'Local' : sourceNameMap?.get(item.source_id))
         : undefined;
 
       return (

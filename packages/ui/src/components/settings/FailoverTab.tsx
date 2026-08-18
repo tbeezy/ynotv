@@ -9,6 +9,7 @@ import {
   reorderFailoverGroupMember,
   type getFailoverGroupForChannel,
 } from '../../services/failover-groups';
+import { FailoverAutoClusterModal } from '../FailoverAutoClusterModal';
 import { db } from '../../db';
 import type { FailoverGroup } from '../../db';
 import { useTranslation } from 'react-i18next';
@@ -126,6 +127,7 @@ export function FailoverTab() {
   const [loading, setLoading] = useState(true);
   const [newGroupName, setNewGroupName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showAutoCluster, setShowAutoCluster] = useState(false);
   const [displaySource, setDisplaySource] = useState(false);
   const [sourceNameMap, setSourceNameMap] = useState<Map<string, string>>(new Map());
   const [categoryNameMap, setCategoryNameMap] = useState<Map<string, string>>(new Map());
@@ -282,7 +284,28 @@ export function FailoverTab() {
         {i18n.t('settings:failover.desc')}
       </p>
 
-      <div className="failover-toolbar">
+      <div className="failover-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {!creating && (
+            <>
+              <button className="failover-create-btn" onClick={() => setCreating(true)}>
+                + {i18n.t('settings:failover.newGroup')}
+              </button>
+              <button
+                className="failover-create-btn"
+                onClick={() => setShowAutoCluster(true)}
+                style={{
+                  background: 'rgba(0, 212, 255, 0.12)',
+                  borderColor: 'rgba(0, 212, 255, 0.35)',
+                  color: 'var(--accent-primary, #00d4ff)',
+                }}
+                title={i18n.t('settings:failover.smartAutoGroupTooltip', { defaultValue: 'Automatically scan and cluster similar channels into failover groups' })}
+              >
+                <span>⚡</span> {i18n.t('settings:failover.smartAutoGroup', { defaultValue: 'Smart Auto-Group' })}
+              </button>
+            </>
+          )}
+        </div>
         <label className="failover-display-source-label" title={i18n.t('settings:failover.displaySourceHint')}>
           <input
             type="checkbox"
@@ -294,12 +317,8 @@ export function FailoverTab() {
       </div>
 
       {/* Create new group */}
-      <div className="failover-create-row">
-        {!creating ? (
-          <button className="failover-create-btn" onClick={() => setCreating(true)}>
-            + {i18n.t('settings:failover.newGroup')}
-          </button>
-        ) : (
+      {creating && (
+        <div className="failover-create-row">
           <div className="failover-create-form">
             <input
               type="text"
@@ -312,8 +331,9 @@ export function FailoverTab() {
             <button onClick={handleCreateGroup} disabled={!newGroupName.trim()}>{i18n.t('common:create')}</button>
             <button className="cancel-btn" onClick={() => { setCreating(false); setNewGroupName(''); }}>{i18n.t('common:cancel')}</button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
 
       {loading ? (
         <div className="failover-empty">{i18n.t('settings:failover.loading')}</div>
@@ -389,9 +409,23 @@ export function FailoverTab() {
           ))}
         </div>
       )}
+
+      {showAutoCluster && (
+        <FailoverAutoClusterModal
+          isOpen={showAutoCluster}
+          onClose={() => {
+            setShowAutoCluster(false);
+            loadGroups();
+          }}
+          onSuccess={() => {
+            loadGroups();
+          }}
+        />
+      )}
     </div>
   );
 }
+
 
 // ── EditableGroupName ─────────────────────────────────────────────────────────
 

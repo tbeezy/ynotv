@@ -49,7 +49,16 @@
   font-weight: 400;
 }
 
-/* Dark scrollbar styling - matches EPG */
+/* Dark scrollbar styling - matches Nuvio */
+.vod-browse {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-hover, rgba(255, 255, 255, 0.15)) transparent;
+}
+
+.vod-browse:hover {
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) transparent;
+}
+
 .vod-browse::-webkit-scrollbar,
 .vod-browse *::-webkit-scrollbar {
   width: 6px;
@@ -62,25 +71,15 @@
 
 .vod-browse::-webkit-scrollbar-thumb,
 .vod-browse *::-webkit-scrollbar-thumb {
-  background: var(--vs-scrollbar-thumb-bg, rgba(255, 255, 255, 0.1));
+  background: var(--surface-hover, rgba(255, 255, 255, 0.15));
   border-radius: 3px;
 }
 
 .vod-browse::-webkit-scrollbar-thumb:hover,
-.vod-browse *::-webkit-scrollbar-thumb:hover {
-  background: var(--vs-scrollbar-thumb-hover-bg, rgba(255, 255, 255, 0.2));
-}
-
-/* Light up the scrollbar when hovering anywhere over the page (matches the
-   Nuvio homepage / VOD detail pages) instead of only when hovering the thumb */
+.vod-browse *::-webkit-scrollbar-thumb:hover,
 .vod-browse:hover::-webkit-scrollbar-thumb,
 .vod-browse:hover *::-webkit-scrollbar-thumb {
-  background: var(--vs-scrollbar-thumb-hover-bg, rgba(255, 255, 255, 0.2));
-}
-
-/* Firefox */
-.vod-browse:hover {
-  scrollbar-color: var(--vs-scrollbar-thumb-hover-bg, rgba(255, 255, 255, 0.2)) transparent;
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
 }
 
 /* Virtuoso Grid */

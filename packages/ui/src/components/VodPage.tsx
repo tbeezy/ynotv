@@ -56,6 +56,7 @@ import { removeFromRecentlyWatched, recordVodWatch, recordEpisodeWatch, getEpiso
 import { type MediaItem, type VodType, type VodPlayInfo } from '../types/media';
 import { type VodPlayerMode } from './vod/SplitPlayButton';
 import { LocalTab } from './local/LocalTab';
+import { readLocalLibrary, groupLocal, localEntryToStoredEpisode } from '../services/local-library/local-library';
 import './VodPage.css';
 
 // Carousel row type for virtualization (all data pre-fetched)
@@ -363,7 +364,7 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
     if (recentlyWatchedItems.length > 0) {
       rows.push({
         key: 'recently-watched',
-        title: 'Recently Watched',
+        title: i18n.t('vod:recentlyWatched'),
         items: recentlyWatchedItems,
         loading: false,
         progressData: recentlyWatchedProgressMap,
@@ -373,7 +374,7 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
     } else if (recentlyWatchedLoading) {
       rows.push({
         key: 'recently-watched',
-        title: 'Recently Watched',
+        title: i18n.t('vod:recentlyWatched'),
         items: [],
         loading: true,
       });
@@ -383,7 +384,7 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
     if (tmdbApiKey && streamingCatalogsEnabled && enabledStreamingServices.length > 0) {
       rows.push({
         key: 'streaming-platforms',
-        title: 'Streaming Platforms',
+        title: i18n.t('vod:streamingPlatforms'),
         items: [],
       });
     }
@@ -392,14 +393,14 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
     if (popularItems.length > 0) {
       rows.push({
         key: 'popular',
-        title: 'Popular',
+        title: i18n.t('vod:popular'),
         items: popularItems,
         loading: false,
       });
     } else if (popularLoading) {
       rows.push({
         key: 'popular',
-        title: 'Popular',
+        title: i18n.t('vod:popular'),
         items: [],
         loading: true,
       });
@@ -409,14 +410,14 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
     if (newItems.length > 0) {
       rows.push({
         key: 'new',
-        title: 'New Releases',
+        title: i18n.t('vod:newReleases'),
         items: newItems,
         loading: false,
       });
     } else if (newLoading) {
       rows.push({
         key: 'new',
-        title: 'New Releases',
+        title: i18n.t('vod:newReleases'),
         items: [],
         loading: true,
       });
@@ -426,7 +427,7 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
     if (topRatedItems.length > 0 || topRatedLoading) {
       rows.push({
         key: 'featured',
-        title: 'Featured',
+        title: i18n.t('vod:featured'),
         items: topRatedItems,
         loading: topRatedLoading,
       });
@@ -616,10 +617,26 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
       const series = item as StoredSeries;
       try {
         const dbInstance = await (db as any).dbPromise;
-        const episodes: StoredEpisode[] = await dbInstance.select(
-          'SELECT * FROM vodEpisodes WHERE series_id = ? ORDER BY season_num, episode_num',
-          [series.series_id]
-        );
+        let episodes: StoredEpisode[] = [];
+
+        if (series.source_id === 'local' || series.series_id.startsWith('local_')) {
+          const localEntries = readLocalLibrary();
+          const groups = groupLocal(localEntries);
+          const targetKey = series.series_id.replace(/^local_/, '').toLowerCase();
+          const matchingGroup = groups.find(
+            (g) => g.kind === 'show' && g.key.toLowerCase() === targetKey
+          );
+          if (matchingGroup && matchingGroup.kind === 'show') {
+            episodes = matchingGroup.episodes.map((ep) =>
+              localEntryToStoredEpisode(ep, series.series_id, matchingGroup.head.title)
+            );
+          }
+        } else {
+          episodes = await dbInstance.select(
+            'SELECT * FROM vodEpisodes WHERE series_id = ? ORDER BY season_num, episode_num',
+            [series.series_id]
+          );
+        }
 
         if (!episodes || episodes.length === 0) {
           handleRecentItemClick(series, seasonNum, episodeNum, episodeTitle);
@@ -890,6 +907,8 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
           <LocalTab
             initialFilter={type === 'movie' ? 'movies' : 'series'}
             lockFilter={true}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
             onPlayVod={(info) => handlePlay(info, vodPlayerMode)}
           />
         ) : selectedCategoryId && selectedCategory ? (

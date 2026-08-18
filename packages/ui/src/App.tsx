@@ -17,7 +17,6 @@ import { useModal } from './components/Modal';
 import { NowPlayingBar } from './components/NowPlayingBar';
 import { PiPMediaBar } from './components/PiPMediaBar';
 import { ChannelInfoOverlay } from './components/ChannelInfoOverlay';
-import { FailoverGroupOverlay } from './components/FailoverGroupOverlay';
 import { TrackSelectionModal } from './components/TrackSelectionModal';
 import { SubtitleControlModal } from './components/SubtitleControlModal';
 import { StalkerSubtitleModal } from './components/StalkerSubtitleModal';
@@ -2046,15 +2045,6 @@ function useTmdbPresencePoster(
     return showControls || channelChangeFlash;
   }, [channelInfoOverlayEnabled, currentChannel, pipMode, showControls, channelChangeFlash, activeView, guideTransparent, isTransparentGuideZapActive]);
 
-  // Failover group overlay visibility: same conditions as NowPlayingBar
-  const isFailoverGroupOverlayVisible = useMemo(() => {
-    if (!currentChannel) return false;
-    const isVod = currentChannel.stream_id === 'vod' || currentChannel.stream_id?.startsWith('recording_');
-    if (isVod) return false;
-    // Don't show when in LiveTV guide or Sports views
-    if (activeView === 'guide' || activeView === 'sports') return false;
-    return showControls;
-  }, [currentChannel, showControls, activeView]);
 
   // ==========================================================================
   // Watchlist State (from useWatchlist)
@@ -4930,14 +4920,6 @@ function useTmdbPresencePoster(
         compiledNuvioBadgeRules={compiledNuvioBadgeRules}
         pipMode={pipMode}
         onTogglePip={togglePip}
-        overlay={
-          <FailoverGroupOverlay
-            currentChannel={currentChannel}
-            visible={isFailoverGroupOverlayVisible}
-            onChannelClick={handlePlayChannelWrapper}
-            showSource={failoverGroupShowSource}
-          />
-        }
       />
 
       {/* PiP drag overlay + media bar */}

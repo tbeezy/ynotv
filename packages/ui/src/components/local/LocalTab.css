@@ -7,6 +7,33 @@
   width: 100%;
   padding: 24px 32px 64px 32px;
   box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-hover, rgba(255, 255, 255, 0.15)) transparent;
+}
+
+.local-tab-container:hover {
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) transparent;
+}
+
+.local-tab-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.local-tab-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.local-tab-container::-webkit-scrollbar-thumb {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.15));
+  border-radius: 3px;
+}
+
+.local-tab-container::-webkit-scrollbar-thumb:hover,
+.local-tab-container:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
 }
 
 /* Toolbar & Filters */
@@ -181,18 +208,26 @@
 .local-review-banner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   padding: 12px 18px;
   border-radius: 14px;
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.35);
   color: #fbbf24;
-  cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .local-review-banner:hover {
   background: rgba(245, 158, 11, 0.18);
+}
+
+.local-review-banner__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  cursor: pointer;
 }
 
 .local-review-banner__text {
@@ -202,15 +237,34 @@
   color: var(--text-primary, #ffffff);
 }
 
+.local-review-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .local-review-banner__btn {
   background: #f59e0b;
   color: #000000;
   font-size: 11.5px;
   font-weight: 700;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 9999px;
+  border: none;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.local-review-banner__btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.04);
+}
+
+.local-review-banner__btn--batch {
+  background: var(--accent-primary, #00d4ff);
+  color: #000000;
 }
 
 /* Bulk actions bar */
@@ -443,11 +497,17 @@
   justify-content: center;
   box-shadow: 0 4px 16px rgba(0, 212, 255, 0.4);
   transform: scale(0.9);
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  cursor: pointer;
 }
 
 .local-card:hover .local-card__play-btn {
   transform: scale(1);
+}
+
+.local-card__play-btn:hover {
+  transform: scale(1.1) !important;
+  filter: brightness(1.15);
 }
 
 /* Card action buttons on hover */

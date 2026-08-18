@@ -215,5 +215,232 @@ describe('Local Library - Auto Sync', () => {
   });
 });
 
+describe('Local Library - VOD Stored Converters', () => {
+  it('converts LocalEntry to StoredMovie correctly', async () => {
+    const { localEntryToStoredMovie } = await import('../local-library');
+    const movieEntry: LocalEntry = {
+      id: 'C:/Movies/Gladiator.2000.mkv',
+      path: 'C:/Movies/Gladiator.2000.mkv',
+      filename: 'Gladiator.2000.mkv',
+      title: 'Gladiator',
+      year: 2000,
+      type: 'movie',
+      rating: 8.5,
+      runtime: 155,
+      poster: 'https://image.tmdb.org/t/p/w500/poster.jpg',
+      overview: 'A former Roman General sets out to exact vengeance.',
+      addedAt: 1600000000000,
+      tmdbId: 98,
+      imdbId: 'tt0172495',
+    };
+
+    const stored = localEntryToStoredMovie(movieEntry);
+    expect(stored.stream_id).toBe('local_C:/Movies/Gladiator.2000.mkv');
+    expect(stored.source_id).toBe('local');
+    expect(stored.title).toBe('Gladiator');
+    expect(stored.name).toBe('Gladiator');
+    expect(stored.year).toBe('2000');
+    expect(stored.rating).toBe('8.5');
+    expect(stored.duration).toBe(155 * 60);
+    expect(stored.direct_url).toBe('C:/Movies/Gladiator.2000.mkv');
+    expect(stored.tmdb_id).toBe(98);
+    expect(stored.imdb_id).toBe('tt0172495');
+    expect(stored.stream_icon).toBe('https://image.tmdb.org/t/p/w500/poster.jpg');
+    expect(stored.plot).toBe('A former Roman General sets out to exact vengeance.');
+  });
+
+  it('converts LocalGroup to StoredSeries correctly', async () => {
+    const { localGroupToStoredSeries, localEntryToStoredEpisode } = await import('../local-library');
+    const headEntry: LocalEntry = {
+      id: 'C:/Shows/Dark/S01E01.mkv',
+      path: 'C:/Shows/Dark/S01E01.mkv',
+      filename: 'Dark.S01E01.mkv',
+      title: 'Dark',
+      year: 2017,
+      type: 'show',
+      season: 1,
+      episode: 1,
+      rating: 8.7,
+      poster: 'https://image.tmdb.org/t/p/w500/dark.jpg',
+      overview: 'A family saga with a supernatural twist.',
+      addedAt: 1600000000000,
+      tmdbId: 70523,
+    };
+
+    const ep2Entry: LocalEntry = {
+      id: 'C:/Shows/Dark/S01E02.mkv',
+      path: 'C:/Shows/Dark/S01E02.mkv',
+      filename: 'Dark.S01E02.mkv',
+      title: 'Lies',
+      year: 2017,
+      type: 'show',
+      season: 1,
+      episode: 2,
+      addedAt: 1600000001000,
+    };
+
+    const group = {
+      key: 'dark',
+      head: headEntry,
+      episodes: [headEntry, ep2Entry],
+    };
+
+    const storedSeries = localGroupToStoredSeries(group);
+    expect(storedSeries.series_id).toBe('local_dark');
+    expect(storedSeries.source_id).toBe('local');
+    expect(storedSeries.title).toBe('Dark');
+    expect(storedSeries.year).toBe('2017');
+    expect(storedSeries.rating).toBe('8.7');
+    expect(storedSeries.cover).toBe('https://image.tmdb.org/t/p/w500/dark.jpg');
+    expect(storedSeries.plot).toBe('A family saga with a supernatural twist.');
+
+    const ep1Stored = localEntryToStoredEpisode(headEntry, storedSeries.series_id, storedSeries.title);
+    expect(ep1Stored.id).toBe(headEntry.id);
+    expect(ep1Stored.series_id).toBe('local_dark');
+    expect(ep1Stored.season_num).toBe(1);
+    expect(ep1Stored.episode_num).toBe(1);
+    expect(ep1Stored.title).toBe('Episode 1');
+    expect(ep1Stored.direct_url).toBe('C:/Shows/Dark/S01E01.mkv');
+
+    const ep2Stored = localEntryToStoredEpisode(ep2Entry, storedSeries.series_id, storedSeries.title);
+    expect(ep2Stored.title).toBe('Lies');
+    expect(ep2Stored.episode_num).toBe(2);
+  });
+
+  it('filters local movies and series by search query', async () => {
+    const { matchesSearch } = await import('../../../utils/searchNormalization');
+    const { groupLocal } = await import('../local-library');
+
+    const library: LocalEntry[] = [
+      {
+        id: '1',
+        path: 'C:/Movies/Inception.2010.mkv',
+        filename: 'Inception.2010.mkv',
+        title: 'Inception',
+        year: 2010,
+        type: 'movie',
+        addedAt: 1000,
+      },
+      {
+        id: '2',
+        path: 'C:/Movies/Interstellar.2014.mkv',
+        filename: 'Interstellar.2014.mkv',
+        title: 'Interstellar',
+        year: 2014,
+        type: 'movie',
+        addedAt: 2000,
+      },
+      {
+        id: '3',
+        path: 'C:/Shows/Severance/S01E01.mkv',
+        filename: 'Severance.S01E01.mkv',
+        title: 'Severance',
+        year: 2022,
+        type: 'show',
+        season: 1,
+        episode: 1,
+        addedAt: 3000,
+      },
+    ];
+
+    // Search movies for 'cept'
+    const movieMatches = library.filter(
+      (e) => e.type !== 'show' && (matchesSearch(e.title, 'cept') || matchesSearch(e.filename, 'cept'))
+    );
+    expect(movieMatches).toHaveLength(1);
+    expect(movieMatches[0].title).toBe('Inception');
+
+    // Search series for 'sever'
+    const groups = groupLocal(library);
+    const seriesMatches = groups.filter(
+      (g) =>
+        g.kind === 'show' &&
+        (matchesSearch(g.head.title, 'sever') ||
+          matchesSearch(g.head.filename, 'sever') ||
+          g.episodes.some((ep) => matchesSearch(ep.title, 'sever') || matchesSearch(ep.filename, 'sever')))
+    );
+    expect(seriesMatches).toHaveLength(1);
+    if (seriesMatches[0].kind === 'show') {
+      expect(seriesMatches[0].head.title).toBe('Severance');
+    }
+  });
+
+  it('extracts episode and season numbers from various filename conventions', async () => {
+    const { extractEpisodeNumber } = await import('../local-library');
+
+    expect(extractEpisodeNumber('S1E24 LCLA ENG SUB.mp4')).toEqual({ season: 1, episode: 24 });
+    expect(extractEpisodeNumber('Show.Name.S02E08.720p.mkv')).toEqual({ season: 2, episode: 8 });
+    expect(extractEpisodeNumber('Drama_EP12_1080p.mp4')).toEqual({ season: 1, episode: 12 });
+    expect(extractEpisodeNumber('Drama.Ep.05.mkv')).toEqual({ season: 1, episode: 5 });
+    expect(extractEpisodeNumber('Show Name - 03 - Episode Title.mkv')).toEqual({ season: 1, episode: 3 });
+  });
+
+  it('batches multiple files into a single unified Series group', async () => {
+    const { groupLocal, extractEpisodeNumber } = await import('../local-library');
+
+    const unassignedFiles: LocalEntry[] = [
+      {
+        id: '1',
+        path: '/dramas/S1E01 LCLA.mp4',
+        filename: 'S1E01 LCLA.mp4',
+        title: 'S1E01 LCLA',
+        year: null,
+        type: 'movie',
+        needsReview: true,
+        addedAt: 1000,
+      },
+      {
+        id: '2',
+        path: '/dramas/S1E02 LCLA.mp4',
+        filename: 'S1E02 LCLA.mp4',
+        title: 'S1E02 LCLA',
+        year: null,
+        type: 'movie',
+        needsReview: true,
+        addedAt: 2000,
+      },
+      {
+        id: '3',
+        path: '/dramas/S1E03 LCLA.mp4',
+        filename: 'S1E03 LCLA.mp4',
+        title: 'S1E03 LCLA',
+        year: null,
+        type: 'movie',
+        needsReview: true,
+        addedAt: 3000,
+      },
+    ];
+
+    // Simulate batch identification
+    const identified = unassignedFiles.map((f) => {
+      const ep = extractEpisodeNumber(f.filename);
+      return {
+        ...f,
+        tmdbId: 99999,
+        title: 'Moonlight Mystique',
+        type: 'show' as const,
+        season: ep?.season ?? 1,
+        episode: ep?.episode ?? 1,
+        needsReview: false,
+        poster: 'https://image.tmdb.org/t/p/w500/poster.jpg',
+      };
+    });
+
+    const groups = groupLocal(identified);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].kind).toBe('show');
+    if (groups[0].kind === 'show') {
+      expect(groups[0].head.title).toBe('Moonlight Mystique');
+      expect(groups[0].episodes).toHaveLength(3);
+      expect(groups[0].episodes[0].episode).toBe(1);
+      expect(groups[0].episodes[1].episode).toBe(2);
+      expect(groups[0].episodes[2].episode).toBe(3);
+    }
+  });
+});
+
+
+
+
 
 

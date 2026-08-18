@@ -86,6 +86,7 @@
   min-height: 0;
   /* Important: allows flex child to shrink below content size */
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   background: var(--glass-surface-bg, var(--bg-primary, #0d0d0d));
   backdrop-filter: var(--glass-surface-filter, none);
@@ -93,6 +94,12 @@
   border: var(--glass-surface-border, none);
   border-radius: var(--glass-panel-radius, 0);
   box-shadow: var(--glass-surface-shadow, none);
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-hover, rgba(255, 255, 255, 0.15)) transparent;
+}
+
+.vod-page__content:hover {
+  scrollbar-color: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff)) transparent;
 }
 
 .vod-page__content::-webkit-scrollbar,
@@ -107,13 +114,15 @@
 
 .vod-page__content::-webkit-scrollbar-thumb,
 .vod-page__content *::-webkit-scrollbar-thumb {
-  background: var(--vs-scrollbar-thumb-bg, rgba(255, 255, 255, 0.1));
+  background: var(--surface-hover, rgba(255, 255, 255, 0.15));
   border-radius: 3px;
 }
 
 .vod-page__content::-webkit-scrollbar-thumb:hover,
-.vod-page__content *::-webkit-scrollbar-thumb:hover {
-  background: var(--vs-scrollbar-thumb-hover-bg, rgba(255, 255, 255, 0.2));
+.vod-page__content *::-webkit-scrollbar-thumb:hover,
+.vod-page__content:hover::-webkit-scrollbar-thumb,
+.vod-page__content:hover *::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-hover-color, var(--accent-primary, #00d4ff));
 }
 
 .vod-page__carousels {

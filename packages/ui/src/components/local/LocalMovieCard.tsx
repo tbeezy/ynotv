@@ -38,10 +38,17 @@ export const LocalMovieCard = memo(function LocalMovieCard({
   const handleCardClick = useCallback(() => {
     if (selectMode) {
       onToggleSelect(entry.id);
+    } else if (onOpenDetail) {
+      onOpenDetail(entry);
     } else {
       onPlay(entry);
     }
-  }, [selectMode, entry, onToggleSelect, onPlay]);
+  }, [selectMode, entry, onToggleSelect, onOpenDetail, onPlay]);
+
+  const handlePlayClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onPlay(entry);
+  }, [entry, onPlay]);
 
   const handleToggleWatched = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -138,7 +145,12 @@ export const LocalMovieCard = memo(function LocalMovieCard({
           <>
             {/* Play Button Hover Overlay */}
             <div className="local-card__hover-overlay">
-              <div className="local-card__play-btn">
+              <div
+                className="local-card__play-btn"
+                onClick={handlePlayClick}
+                role="button"
+                title={t('play', 'Play')}
+              >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
@@ -147,7 +159,7 @@ export const LocalMovieCard = memo(function LocalMovieCard({
 
             {/* Quick Action Buttons */}
             <div className="local-card__action-btns">
-              {onOpenDetail && (entry.tmdbId || entry.imdbId) && (
+              {onOpenDetail && (
                 <button
                   type="button"
                   className="local-card__action-btn"
@@ -213,7 +225,7 @@ export const LocalMovieCard = memo(function LocalMovieCard({
         )}
       </div>
 
-      <div className="local-card__info">
+      <div className="local-card__info" onClick={handleCardClick} style={{ cursor: 'pointer' }}>
         <h4 className="local-card__title" title={entry.title}>
           {entry.title}
         </h4>

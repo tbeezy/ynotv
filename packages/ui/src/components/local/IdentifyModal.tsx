@@ -19,13 +19,18 @@ type Candidate = {
   rating?: number;
 };
 
-function seedQuery(title: string): string {
+function seedQuery(title: string, filename?: string): string {
+  let raw = title || filename || '';
+  raw = raw.replace(/\.(mkv|mp4|m4v|mov|avi|wmv|webm|ts|m2ts|mpg|mpeg|flv|ogv)$/i, '');
   return (
-    title
+    raw
+      .replace(/^s\d{1,2}[\s._-]*e\d{1,3}[\s._-]*/i, '')
+      .replace(/^episode[\s._-]*\d{1,3}[\s._-]*/i, '')
+      .replace(/^ep[\s._-]*\d{1,3}[\s._-]*/i, '')
       .replace(/\bs\d{1,2}[\s._-]*e\d{1,3}.*$/i, '')
       .replace(/\b\d{1,2}x\d{1,3}.*$/i, '')
       .replace(/\bseason[\s._-]*\d.*$/i, '')
-      .trim() || title
+      .trim() || raw
   );
 }
 
@@ -64,10 +69,11 @@ export const IdentifyModal = memo(function IdentifyModal({
 
   useEffect(() => {
     if (!head) return;
-    setKind(head.type === 'show' ? 'tv' : 'movie');
-    setQuery(seedQuery(head.title ?? ''));
+    const isMulti = target && target.length > 1;
+    setKind(isMulti || head.type === 'show' ? 'tv' : 'movie');
+    setQuery(seedQuery(head.title ?? '', head.filename));
     setResults([]);
-  }, [head?.id]);
+  }, [head?.id, target?.length]);
 
   useEffect(() => {
     if (!head || !tmdbToken) return;
@@ -168,10 +174,14 @@ export const IdentifyModal = memo(function IdentifyModal({
       >
         <div className="local-modal-header">
           <div>
-            <h3 className="local-modal-title">{t('identifyTitle', 'What is this title?')}</h3>
+            <h3 className="local-modal-title">
+              {target.length > 1
+                ? t('identifyBatchTitle', 'Identify {{count}} files', { count: target.length })
+                : t('identifyTitle', 'What is this title?')}
+            </h3>
             <p className="local-modal-subtitle">
               {target.length > 1
-                ? `${target.length} ${t('episodes', 'episodes')} · ${head.filename}`
+                ? `${target.length} ${t('filesSelected', 'files selected for matching')} · ${head.filename}`
                 : head.filename}
             </p>
           </div>

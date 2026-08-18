@@ -86,6 +86,7 @@ export function useSourceNameMap(): Map<string, string> | null {
       const result = await window.storage.getSources();
       if (result.data) {
         const map = new Map<string, string>();
+        map.set('local', 'Local');
         for (const source of result.data) {
           if (source.enabled !== false) {
             map.set(source.id, source.name);

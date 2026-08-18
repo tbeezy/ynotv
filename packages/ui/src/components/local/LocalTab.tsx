@@ -6,6 +6,7 @@ import {
   addLocalEntries,
   groupLocal,
   parseFilename,
+  extractEpisodeNumber,
   removeLocalEntries,
   sortGroups,
   updateLocalEntries,
@@ -32,6 +33,8 @@ import './LocalTab.css';
 interface LocalTabProps {
   initialFilter?: 'all' | 'movies' | 'series';
   lockFilter?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   onPlayVod?: (info: VodPlayInfo) => void;
   onOpenDetail?: (item: any) => void;
 }
@@ -39,6 +42,8 @@ interface LocalTabProps {
 export function LocalTab({
   initialFilter = 'all',
   lockFilter = false,
+  searchQuery: searchQueryProp,
+  onSearchChange,
   onPlayVod,
   onOpenDetail,
 }: LocalTabProps) {
@@ -47,7 +52,12 @@ export function LocalTab({
   const tmdbToken = useActiveTmdbToken();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'movies' | 'series'>(initialFilter);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  const searchQuery = searchQueryProp !== undefined ? searchQueryProp : internalSearchQuery;
+  const handleSearchChange = useCallback((query: string) => {
+    setInternalSearchQuery(query);
+    onSearchChange?.(query);
+  }, [onSearchChange]);
   const [sortKey, setSortKey] = useState<LocalSortKey>('added');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectMode, setSelectMode] = useState(false);
@@ -100,14 +110,14 @@ export function LocalTab({
     useCallback(
       (res: { added: number; removed: number }) => {
         if (res.added > 0 && res.removed > 0) {
-          showToast(`Synced library: +${res.added} added, -${res.removed} removed`);
+          showToast(t('syncResult', { added: res.added, removed: res.removed }));
         } else if (res.added > 0) {
-          showToast(`Added ${res.added} new item${res.added > 1 ? 's' : ''} to Local Library`);
+          showToast(t('addedNewItems', { count: res.added }));
         } else if (res.removed > 0) {
-          showToast(`Cleaned ${res.removed} missing item${res.removed > 1 ? 's' : ''}`);
+          showToast(t('cleanedMissingItems', { count: res.removed }));
         }
       },
-      [showToast],
+      [showToast, t],
     ),
   );
 
@@ -180,7 +190,7 @@ export function LocalTab({
       const selected = await open({
         directory: true,
         multiple: false,
-        title: 'Select Folder with Movies or Shows',
+        title: t('selectFolderDialogTitle', 'Select Folder with Movies or Shows'),
       });
       if (!selected || typeof selected !== 'string') return;
 
@@ -190,7 +200,7 @@ export function LocalTab({
 
       if (!files || files.length === 0) {
         setScanning(false);
-        showToast('No video files found in folder.');
+        showToast(t('noVideoFilesFound'));
         return;
       }
 
@@ -209,25 +219,25 @@ export function LocalTab({
     } catch (err: any) {
       console.error('[LocalTab] Folder scan failed:', err);
       setScanning(false);
-      showToast(err?.message || 'Folder scan failed');
+      showToast(err?.message || t('folderScanFailed'));
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const handleRescanSpecificFolder = useCallback(async (folderPath: string) => {
     try {
       clearSidecarCache();
       const files = await invoke<ScannedFile[]>('scan_local_folder', { folder: folderPath });
       if (!files || files.length === 0) {
-        showToast('No video files found in folder.');
+        showToast(t('noVideoFilesFound'));
         return;
       }
       addScannedFolder(folderPath);
       await executeScan(files, 'tmdb');
     } catch (err: any) {
       console.error('[LocalTab] Rescan failed:', err);
-      showToast(err?.message || 'Rescan failed');
+      showToast(err?.message || t('rescanFailed'));
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const executeScan = async (files: ScannedFile[], mode: ScanMode) => {
     setScanning(true);
@@ -265,7 +275,7 @@ export function LocalTab({
     setScanProgress(null);
     setPendingScanFiles(null);
     setPendingFolderPath(null);
-    showToast(`Added ${built.length} items to Local Library`);
+    showToast(t('addedItemsToLibrary', { count: built.length }));
   };
 
   const handleScanModePick = (mode: ScanMode) => {
@@ -277,21 +287,35 @@ export function LocalTab({
 
   // Identify resolution
   const handleIdentifyResolved = useCallback((ids: string[], resolution: IdentifyResolution) => {
-    updateLocalEntries(ids, {
-      tmdbId: resolution.tmdbId,
-      imdbId: resolution.imdbId,
-      poster: resolution.poster,
-      backdrop: resolution.backdrop,
-      title: resolution.title,
-      year: resolution.year,
-      type: resolution.type,
-      overview: resolution.overview ?? null,
-      rating: resolution.rating ?? null,
-      runtime: resolution.runtime ?? null,
-      needsReview: false,
+    updateLocalEntries(ids, (entry) => {
+      const epInfo = extractEpisodeNumber(entry.filename);
+      const epNum = entry.episode ?? epInfo?.episode ?? null;
+      const seasonNum = entry.season ?? epInfo?.season ?? 1;
+
+      return {
+        tmdbId: resolution.tmdbId,
+        imdbId: resolution.imdbId,
+        poster: resolution.poster,
+        backdrop: resolution.backdrop,
+        title: resolution.title,
+        year: resolution.year,
+        type: resolution.type,
+        overview: resolution.overview ?? null,
+        rating: resolution.rating ?? null,
+        runtime: resolution.runtime ?? null,
+        season: resolution.type === 'show' ? seasonNum : null,
+        episode: resolution.type === 'show' ? epNum : null,
+        needsReview: false,
+      };
     });
-    showToast('Match updated');
-  }, [showToast]);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    showToast(
+      ids.length > 1
+        ? t('matchedFilesAs', { count: ids.length, title: resolution.title })
+        : t('matchUpdated')
+    );
+  }, [showToast, t]);
 
   // Selection handlers
   const handleToggleSelectId = useCallback((id: string) => {
@@ -335,8 +359,8 @@ export function LocalTab({
     removeLocalEntries(Array.from(selectedIds));
     setSelectedIds(new Set());
     setSelectMode(false);
-    showToast('Removed selected items');
-  }, [selectedIds, showToast]);
+    showToast(t('removedSelectedItems'));
+  }, [selectedIds, showToast, t]);
 
   const handleBulkMarkWatched = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -348,8 +372,8 @@ export function LocalTab({
         await markLocalEpisodeWatched(item, item.title, true);
       }
     }
-    showToast(`Marked ${selectedItems.length} items as watched`);
-  }, [selectedIds, items, showToast]);
+    showToast(t('markedItemsWatched', { count: selectedItems.length }));
+  }, [selectedIds, items, showToast, t]);
 
   return (
     <div className="local-tab-container">
@@ -396,7 +420,7 @@ export function LocalTab({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder={t('searchPlaceholder', 'Search local media...')}
               className="local-toolbar__search-input"
             />
@@ -404,7 +428,7 @@ export function LocalTab({
               <button
                 type="button"
                 className="local-toolbar__search-clear"
-                onClick={() => setSearchQuery('')}
+                onClick={() => handleSearchChange('')}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -483,27 +507,59 @@ export function LocalTab({
 
       {/* Needs Review Alert Banner */}
       {needsReviewList.length > 0 && !selectMode && (
-        <div
-          className="local-review-banner"
-          onClick={() => {
-            const first = needsReviewList[0];
-            const matchingEpisodes = items.filter(
-              (i) => i.type === 'show' && i.title === first.title,
-            );
-            setIdentifyTarget(matchingEpisodes.length > 0 ? matchingEpisodes : [first]);
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <span className="local-review-banner__text">
-            {t('needsReviewBanner', '{{count}} titles need review — help us identify them.', {
-              count: needsReviewList.length,
-            })}
-          </span>
-          <span className="local-review-banner__btn">{t('review', 'Review')}</span>
+        <div className="local-review-banner">
+          <div
+            className="local-review-banner__left"
+            onClick={() => {
+              const first = needsReviewList[0];
+              const matchingEpisodes = items.filter(
+                (i) => i.type === 'show' && i.title === first.title,
+              );
+              setIdentifyTarget(matchingEpisodes.length > 0 ? matchingEpisodes : [first]);
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <span className="local-review-banner__text">
+              {t('needsReviewBanner', '{{count}} titles need review — help us identify them.', {
+                count: needsReviewList.length,
+              })}
+            </span>
+          </div>
+
+          <div className="local-review-banner__actions">
+            {needsReviewList.length > 1 && (
+              <button
+                type="button"
+                className="local-review-banner__btn local-review-banner__btn--batch"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedIds(new Set(needsReviewList.map((i) => i.id)));
+                  setIdentifyTarget(needsReviewList);
+                }}
+                title={t('batchReviewAll', 'Identify all review items into one series')}
+              >
+                {t('batchReview', 'Batch Match Series')}
+              </button>
+            )}
+            <button
+              type="button"
+              className="local-review-banner__btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                const first = needsReviewList[0];
+                const matchingEpisodes = items.filter(
+                  (i) => i.type === 'show' && i.title === first.title,
+                );
+                setIdentifyTarget(matchingEpisodes.length > 0 ? matchingEpisodes : [first]);
+              }}
+            >
+              {t('review', 'Review')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -530,6 +586,22 @@ export function LocalTab({
             </button>
             <button
               type="button"
+              className="local-btn local-btn--primary"
+              disabled={selectedIds.size === 0}
+              onClick={() => {
+                const selectedItems = items.filter((i) => selectedIds.has(i.id));
+                if (selectedItems.length > 0) {
+                  setIdentifyTarget(selectedItems);
+                }
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '5px' }}>
+                <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5" />
+              </svg>
+              {selectedIds.size > 1 ? t('matchAsSeries', 'Match as Series') : t('identify', 'Identify')}
+            </button>
+            <button
+              type="button"
               className="local-btn local-btn--secondary"
               onClick={handleBulkMarkWatched}
               disabled={selectedIds.size === 0}
@@ -547,7 +619,7 @@ export function LocalTab({
             </button>
             <button
               type="button"
-              className="local-btn local-btn--primary"
+              className="local-btn local-btn--secondary"
               onClick={() => {
                 setSelectMode(false);
                 setSelectedIds(new Set());
@@ -694,7 +766,7 @@ export function LocalTab({
           onRemove={(ids) => {
             removeLocalEntries(ids);
             setSelectedDetailGroup(null);
-            showToast('Item removed');
+            showToast(t('itemRemoved'));
           }}
         />
       )}

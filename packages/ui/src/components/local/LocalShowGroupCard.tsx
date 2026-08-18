@@ -41,10 +41,17 @@ export const LocalShowGroupCard = memo(function LocalShowGroupCard({
   const handleCardClick = useCallback(() => {
     if (selectMode) {
       onToggleSelect(episodeIds);
+    } else if (onOpenDetail) {
+      onOpenDetail(head);
     } else {
       onOpenEpisodes(head, episodes);
     }
-  }, [selectMode, head, episodes, episodeIds, onToggleSelect, onOpenEpisodes]);
+  }, [selectMode, head, episodes, episodeIds, onToggleSelect, onOpenDetail, onOpenEpisodes]);
+
+  const handleEpisodesClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenEpisodes(head, episodes);
+  }, [head, episodes, onOpenEpisodes]);
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -130,7 +137,12 @@ export const LocalShowGroupCard = memo(function LocalShowGroupCard({
           <>
             {/* Hover Overlay */}
             <div className="local-card__hover-overlay">
-              <div className="local-card__play-btn">
+              <div
+                className="local-card__play-btn"
+                onClick={handleEpisodesClick}
+                role="button"
+                title={t('episodes', 'Episodes')}
+              >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="8" y1="6" x2="21" y2="6" />
                   <line x1="8" y1="12" x2="21" y2="12" />
@@ -144,7 +156,7 @@ export const LocalShowGroupCard = memo(function LocalShowGroupCard({
 
             {/* Action buttons on hover */}
             <div className="local-card__action-btns">
-              {onOpenDetail && (head.tmdbId || head.imdbId) && (
+              {onOpenDetail && (
                 <button
                   type="button"
                   className="local-card__action-btn"
@@ -199,7 +211,7 @@ export const LocalShowGroupCard = memo(function LocalShowGroupCard({
         )}
       </div>
 
-      <div className="local-card__info">
+      <div className="local-card__info" onClick={handleCardClick} style={{ cursor: 'pointer' }}>
         <h4 className="local-card__title" title={head.title}>
           {head.title}
         </h4>

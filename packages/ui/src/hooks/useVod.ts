@@ -7,7 +7,15 @@ import { syncSeriesEpisodes, syncAllVod, type VodSyncResult } from '../db/sync';
 import type { Source } from '@ynotv/core';
 import { useEnabledSources } from './useChannels';
 import { getTmdbImageUrl, TMDB_POSTER_SIZES } from '../services/tmdb';
-import { getSearchVariants } from '../utils/searchNormalization';
+import { getSearchVariants, matchesSearch } from '../utils/searchNormalization';
+import {
+  readLocalLibrary,
+  groupLocal,
+  localEntryToStoredMovie,
+  localGroupToStoredSeries,
+  localEntryToStoredEpisode,
+} from '../services/local-library/local-library';
+import type { LocalEntry } from '../services/local-library/types';
 
 // ===========================================================================
 // Movies Hooks
@@ -287,10 +295,24 @@ export function useSeriesDetails(seriesId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get cached episodes from DB
+  // Get cached episodes from DB (or local library for local series)
   const episodes = useLiveQuery(
     async () => {
       if (!seriesId) return [];
+      if (seriesId.startsWith('local_')) {
+        const localEntries = readLocalLibrary();
+        const groups = groupLocal(localEntries);
+        const targetKey = seriesId.replace(/^local_/, '').toLowerCase();
+        const matchingGroup = groups.find(
+          (g) => g.kind === 'show' && g.key.toLowerCase() === targetKey
+        );
+        if (matchingGroup && matchingGroup.kind === 'show') {
+          return matchingGroup.episodes.map((ep) =>
+            localEntryToStoredEpisode(ep, seriesId, matchingGroup.head.title)
+          );
+        }
+        return [];
+      }
       return db.vodEpisodes.where('series_id').equals(seriesId).toArray();
     },
     [seriesId]
@@ -299,8 +321,7 @@ export function useSeriesDetails(seriesId: string | null) {
   // Fetch episodes if not cached
   const fetchEpisodes = useCallback(async () => {
     console.log('[useSeriesDetails] fetchEpisodes called for:', seriesId);
-    if (!seriesId || !window.storage) {
-      console.log('[useSeriesDetails] Skipping: Missing ID or storage');
+    if (!seriesId || !window.storage || seriesId.startsWith('local_')) {
       return;
     }
 
@@ -347,7 +368,7 @@ export function useSeriesDetails(seriesId: string | null) {
   const fetchAttempted = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (seriesId && !loading && !fetchAttempted.current.has(seriesId)) {
+    if (seriesId && !seriesId.startsWith('local_') && !loading && !fetchAttempted.current.has(seriesId)) {
       fetchAttempted.current.add(seriesId);
       fetchEpisodes();
     }
@@ -653,8 +674,35 @@ export function useWindowedMovies(
           finalParams
         );
 
-        setAllItems(items);
-        setTotalCount(items.length);
+        let mergedItems = items;
+        if (search && search.trim().length > 0 && (categoryId === null || categoryId === 'local')) {
+          try {
+            const localEntries = readLocalLibrary();
+            const matchingLocalMovies = localEntries
+              .filter((e) => e.type !== 'show' && (matchesSearch(e.title, search) || matchesSearch(e.filename, search)))
+              .map(localEntryToStoredMovie);
+
+            if (matchingLocalMovies.length > 0) {
+              mergedItems = [...items, ...matchingLocalMovies];
+              if (sortBy === 'added') {
+                mergedItems.sort((a: StoredMovie, b: StoredMovie) => {
+                  const tA = a.added ? (typeof a.added === 'number' ? a.added : new Date(a.added).getTime()) : 0;
+                  const tB = b.added ? (typeof b.added === 'number' ? b.added : new Date(b.added).getTime()) : 0;
+                  return tB - tA;
+                });
+              } else if (sortBy === 'popularity') {
+                mergedItems.sort((a: StoredMovie, b: StoredMovie) => (b.popularity || 0) - (a.popularity || 0));
+              } else {
+                mergedItems.sort((a: StoredMovie, b: StoredMovie) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
+              }
+            }
+          } catch (localErr) {
+            console.error('[useWindowedMovies] Error loading matching local movies:', localErr);
+          }
+        }
+
+        setAllItems(mergedItems);
+        setTotalCount(mergedItems.length);
       } catch (error) {
         console.error('[useWindowedMovies] Error loading movies:', error);
       } finally {
@@ -814,8 +862,43 @@ export function useWindowedSeries(
           params
         );
 
-        setAllItems(items);
-        setTotalCount(items.length);
+        let mergedItems = items;
+        if (search && search.trim().length > 0 && (categoryId === null || categoryId === 'local')) {
+          try {
+            const localEntries = readLocalLibrary();
+            const groups = groupLocal(localEntries);
+            const matchingLocalSeries = groups
+              .filter((g): g is { kind: 'show'; key: string; head: LocalEntry; episodes: LocalEntry[] } => {
+                if (g.kind !== 'show') return false;
+                return (
+                  matchesSearch(g.head.title, search) ||
+                  matchesSearch(g.head.filename, search) ||
+                  g.episodes.some((ep) => matchesSearch(ep.title, search) || matchesSearch(ep.filename, search))
+                );
+              })
+              .map(localGroupToStoredSeries);
+
+            if (matchingLocalSeries.length > 0) {
+              mergedItems = [...items, ...matchingLocalSeries];
+              if (sortBy === 'added') {
+                mergedItems.sort((a: StoredSeries, b: StoredSeries) => {
+                  const tA = a.added ? (typeof a.added === 'number' ? a.added : new Date(a.added).getTime()) : 0;
+                  const tB = b.added ? (typeof b.added === 'number' ? b.added : new Date(b.added).getTime()) : 0;
+                  return tB - tA;
+                });
+              } else if (sortBy === 'popularity') {
+                mergedItems.sort((a: StoredSeries, b: StoredSeries) => (b.popularity || 0) - (a.popularity || 0));
+              } else {
+                mergedItems.sort((a: StoredSeries, b: StoredSeries) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
+              }
+            }
+          } catch (localErr) {
+            console.error('[useWindowedSeries] Error loading matching local series:', localErr);
+          }
+        }
+
+        setAllItems(mergedItems);
+        setTotalCount(mergedItems.length);
       } catch (error) {
         console.error('[useWindowedSeries] Error loading series:', error);
       } finally {

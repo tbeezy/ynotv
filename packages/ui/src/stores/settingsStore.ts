@@ -493,6 +493,10 @@ export interface SettingsState {
   setVodShowSourceBadge: (enabled: boolean) => void;
   failoverGroupShowSource: boolean;
   setFailoverGroupShowSource: (enabled: boolean) => void;
+  showFailoverLiveTvWidget: boolean;
+  setShowFailoverLiveTvWidget: (enabled: boolean) => void;
+  showFailoverMediaBarWidget: boolean;
+  setShowFailoverMediaBarWidget: (enabled: boolean) => void;
 
   // Custom scrollbar
   enableCustomScrollbarWidth: boolean;
@@ -1193,6 +1197,18 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     set({ failoverGroupShowSource: enabled });
     persistSettings({ failoverGroupShowSource: enabled });
     dispatchAppEvent('ynotv:livetv-settings-changed', { failoverGroupShowSource: enabled });
+  },
+  showFailoverLiveTvWidget: true,
+  setShowFailoverLiveTvWidget: (enabled) => {
+    set({ showFailoverLiveTvWidget: enabled });
+    persistSettings({ showFailoverLiveTvWidget: enabled });
+    dispatchAppEvent('ynotv:livetv-settings-changed', { showFailoverLiveTvWidget: enabled });
+  },
+  showFailoverMediaBarWidget: true,
+  setShowFailoverMediaBarWidget: (enabled) => {
+    set({ showFailoverMediaBarWidget: enabled });
+    persistSettings({ showFailoverMediaBarWidget: enabled });
+    dispatchAppEvent('ynotv:livetv-settings-changed', { showFailoverMediaBarWidget: enabled });
   },
 
   // Custom scrollbar

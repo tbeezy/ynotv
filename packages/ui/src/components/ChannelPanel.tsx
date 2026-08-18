@@ -20,6 +20,7 @@ import { PlaylistListModal } from './PlaylistListModal';
 import { useChannelSortOrder, useEpgView, useEpgVisibleHours, useEpgClockFormat, useEpgShowDate, useUIStore } from '../stores/uiStore';
 import { NowPlayingBar } from './NowPlayingBar';
 import { AudioVisualizer, type VisualizerMode } from './AudioVisualizer';
+import { FailoverChannelOverlay } from './FailoverChannelOverlay';
 import type { StoredChannel, StoredProgram, WatchlistItem } from '../db';
 import { db } from '../db';
 import { matchesSearch } from '../utils/searchNormalization';
@@ -445,6 +446,7 @@ export function ChannelPanel({
   const epgShowDate = useEpgShowDate();
   const epgLazyLoadingEnabled = useSettingsStore((s) => s.epgLazyLoadingEnabled);
   const layoutSettingsLoaded = useSettingsStore((s) => s.layoutSettingsLoaded);
+  const showFailoverLiveTvWidget = useSettingsStore((s) => s.showFailoverLiveTvWidget);
 
   useEffect(() => {
     if (error) console.log('[ChannelPanel] Received error prop:', error);
@@ -2671,16 +2673,31 @@ export function ChannelPanel({
                       {selectedProgram?.description || i18n.t('common:noDescription')}
                     </div>
                     {selectedChannel && (
-                      <div style={{ marginTop: '8px' }}>
-                        <MetadataBadge
-                          streamId={selectedChannel.stream_id}
-                          variant="detailed"
-                          showResolution={epgMetadataBadgeResolution}
-                          showFps={epgMetadataBadgeFps}
-                          showSound={epgMetadataBadgeSound}
-                        />
-                      </div>
+                      <>
+                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <MetadataBadge
+                            streamId={selectedChannel.stream_id}
+                            variant="detailed"
+                            showResolution={epgMetadataBadgeResolution}
+                            showFps={epgMetadataBadgeFps}
+                            showSound={epgMetadataBadgeSound}
+                          />
+                        </div>
+                        {showFailoverLiveTvWidget !== false && (
+                          <div className="guide-info-failover-corner">
+                            <FailoverChannelOverlay
+                              currentChannel={selectedChannel}
+                              onChannelClick={handleChannelClick}
+                              isCleanDesign={true}
+                              showLabel={true}
+                              placement="bottom-right"
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
+
+
                   </>
                 ) : (
                   <div className="guide-program-title">{t('selectAChannel')}</div>

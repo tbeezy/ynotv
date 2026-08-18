@@ -1,6 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import type { LocalEntry, LocalGroup, LocalSortKey, ParsedFilename, SortDir } from './types';
 import type { VodPlayInfo } from '../../types/media';
+import type { StoredMovie, StoredSeries, StoredEpisode } from '../../db';
+
+function toAssetUrl(urlOrPath: string | null | undefined): string | undefined {
+  if (!urlOrPath) return undefined;
+  if (
+    urlOrPath.startsWith('http://') ||
+    urlOrPath.startsWith('https://') ||
+    urlOrPath.startsWith('data:') ||
+    urlOrPath.startsWith('asset:')
+  ) {
+    return urlOrPath;
+  }
+  try {
+    return convertFileSrc(urlOrPath);
+  } catch {
+    return urlOrPath;
+  }
+}
 
 const KEY = 'ynotv.library.local.v1';
 const FOLDERS_KEY = 'ynotv.library.local.folders.v1';
@@ -104,14 +123,18 @@ export function removeLocalEntries(ids: string[]): void {
   write(read().filter((e) => !idSet.has(e.id)));
 }
 
-export function updateLocalEntries(ids: string[], patch: Partial<LocalEntry>): void {
+export function updateLocalEntries(
+  ids: string[],
+  patch: Partial<LocalEntry> | ((entry: LocalEntry) => Partial<LocalEntry>),
+): void {
   if (ids.length === 0) return;
   const idSet = new Set(ids);
   let changed = false;
   const next = read().map((e) => {
     if (!idSet.has(e.id)) return e;
     changed = true;
-    return { ...e, ...patch };
+    const p = typeof patch === 'function' ? patch(e) : patch;
+    return { ...e, ...p };
   });
   if (changed) write(next);
 }
@@ -184,6 +207,29 @@ export function parseFilename(filename: string): ParsedFilename {
     episode,
     resolution,
   };
+}
+
+export function extractEpisodeNumber(filename: string): { season: number; episode: number } | null {
+  const stem = filename.replace(/\.(mkv|mp4|m4v|mov|avi|wmv|webm|ts|m2ts|mpg|mpeg|flv|ogv)$/i, '');
+  const tv = stem.match(
+    /(?:^|[\s._\-\[\(])s(\d{1,2})[\s._-]*e(\d{1,3})(?:[\s._\-\]\)]|$)|(?:^|[\s._\-\[\(])(\d{1,2})x(\d{1,3})(?:[\s._\-\]\)]|$)|(?:^|[\s._\-\[\(])season[\s._-]*(\d{1,2})[\s._-]*(?:episode|ep)[\s._-]*(\d{1,3})(?:[\s._\-\]\)]|$)/i,
+  );
+  if (tv) {
+    const season = parseInt(tv[1] ?? tv[3] ?? tv[5], 10);
+    const episode = parseInt(tv[2] ?? tv[4] ?? tv[6], 10);
+    return { season: isNaN(season) ? 1 : season, episode: isNaN(episode) ? 1 : episode };
+  }
+  const epOnly = stem.match(/(?:^|[\s._\-\[\(])(?:ep|episode|e)[\s._-]*(\d{1,3})(?:[\s._\-\]\)]|$)/i);
+  if (epOnly) {
+    const ep = parseInt(epOnly[1], 10);
+    if (!isNaN(ep)) return { season: 1, episode: ep };
+  }
+  const numMatch = stem.match(/(?:[-_\s\[\(])(\d{1,3})(?:[-_\s\]\)]|$)/);
+  if (numMatch) {
+    const ep = parseInt(numMatch[1], 10);
+    if (!isNaN(ep) && ep < 1000) return { season: 1, episode: ep };
+  }
+  return null;
 }
 
 export function episodeLabel(e: LocalEntry): string | null {
@@ -285,3 +331,79 @@ export function localEntryToVodPlayInfo(
     imdbId: entry.imdbId ?? undefined,
   };
 }
+
+/**
+ * Converts a LocalEntry (movie) into StoredMovie for VOD browsing and detail pages
+ */
+export function localEntryToStoredMovie(entry: LocalEntry): StoredMovie {
+  const poster = toAssetUrl(entry.poster || entry.localArt?.poster) || '';
+  const backdrop = toAssetUrl(entry.backdrop || entry.localArt?.backdrop);
+
+  return {
+    stream_id: `local_${entry.id}`,
+    name: entry.title || entry.filename,
+    title: entry.title,
+    year: entry.year ? String(entry.year) : undefined,
+    stream_icon: poster,
+    category_ids: JSON.stringify(['local']),
+    direct_url: entry.path,
+    source_id: 'local',
+    plot: entry.overview ?? undefined,
+    rating: entry.rating != null ? String(entry.rating) : undefined,
+    duration: entry.runtime ? entry.runtime * 60 : undefined,
+    tmdb_id: entry.tmdbId ?? undefined,
+    imdb_id: entry.imdbId ?? undefined,
+    backdrop_path: backdrop,
+    added: new Date(entry.addedAt),
+  };
+}
+
+/**
+ * Converts a local show group into StoredSeries for VOD browsing and detail pages
+ */
+export function localGroupToStoredSeries(group: { key: string; head: LocalEntry; episodes: LocalEntry[] }): StoredSeries {
+  const head = group.head;
+  const cover = toAssetUrl(head.poster || head.localArt?.poster) || '';
+  const backdrop = toAssetUrl(head.backdrop || head.localArt?.backdrop);
+
+  return {
+    series_id: `local_${group.key}`,
+    name: head.title || head.filename,
+    title: head.title,
+    year: head.year ? String(head.year) : undefined,
+    cover,
+    category_ids: ['local'],
+    source_id: 'local',
+    plot: head.overview ?? undefined,
+    rating: head.rating != null ? String(head.rating) : undefined,
+    tmdb_id: head.tmdbId ?? undefined,
+    imdb_id: head.imdbId ?? undefined,
+    backdrop_path: backdrop,
+    added: new Date(head.addedAt),
+    direct_url: head.path,
+  };
+}
+
+/**
+ * Converts a local episode entry into StoredEpisode for SeriesDetail
+ */
+export function localEntryToStoredEpisode(
+  entry: LocalEntry,
+  seriesId: string,
+  seriesTitle?: string
+): StoredEpisode {
+  const epNum = entry.episode ?? 1;
+  const epTitle = entry.title && entry.title !== seriesTitle ? entry.title : `Episode ${epNum}`;
+
+  return {
+    id: entry.id,
+    series_id: seriesId,
+    title: epTitle,
+    episode_num: epNum,
+    season_num: entry.season ?? 1,
+    direct_url: entry.path,
+    plot: entry.overview ?? undefined,
+    duration: entry.runtime ? entry.runtime * 60 : undefined,
+  };
+}
+

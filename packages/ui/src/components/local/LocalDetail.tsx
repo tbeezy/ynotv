@@ -88,7 +88,7 @@ function LocalEpisodeCard({
       ? tmdbEpisode.name
       : episode.title !== seriesTitle && episode.title
         ? episode.title
-        : tmdbEpisode?.name || `Episode ${epNum}`;
+        : tmdbEpisode?.name || t('episodeNum', { num: epNum });
 
   const displayOverview = tmdbEpisode?.overview || episode.overview || '';
 

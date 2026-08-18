@@ -16,6 +16,7 @@ import type { StremioStream, StremioStreamBadge } from '../types/stremio';
 import type { VisualizerMode } from './AudioVisualizer';
 import { useActivePlaylistStore, isActivePlaylistItem } from '../stores/activePlaylistStore';
 import { TeamChannelOverlay } from './sports/TeamChannelOverlay';
+import { FailoverChannelOverlay } from './FailoverChannelOverlay';
 import './NowPlayingBar.css';
 
 interface NowPlayingBarProps {
@@ -163,6 +164,7 @@ export function NowPlayingBar({
 }: NowPlayingBarProps) {
   const { t } = useTranslation('player');
   const showVolumePercentSetting = useSettingsStore((s) => s.showVolumePercent);
+  const showFailoverMediaBarWidget = useSettingsStore((s) => s.showFailoverMediaBarWidget);
   const showVolumePercent = propShowVolumePercent ?? showVolumePercentSetting ?? false;
 
   // scrubMode: 'timeshift' | 'epgcatchup' — local toggle when channel supports both
@@ -1029,6 +1031,15 @@ export function NowPlayingBar({
                   />
                 )}
 
+                {onPlayChannel && !isVod && showFailoverMediaBarWidget !== false && (
+                  <FailoverChannelOverlay
+                    currentChannel={channel}
+                    onChannelClick={onPlayChannel}
+                    isCleanDesign={true}
+                  />
+                )}
+
+
                 <button
                   className="npb-clean-btn"
                   onClick={onToggleFullscreen}
@@ -1397,6 +1408,14 @@ export function NowPlayingBar({
                     isCleanDesign={false}
                   />
                 )}
+                {onPlayChannel && !isVod && showFailoverMediaBarWidget !== false && (
+                  <FailoverChannelOverlay
+                    currentChannel={channel}
+                    onChannelClick={onPlayChannel}
+                    isCleanDesign={false}
+                  />
+                )}
+
                 {!isVod && (
                   <button
                     className="npb-btn npb-record-btn"
