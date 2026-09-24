@@ -1053,7 +1053,9 @@ export const Bridge = {
         const content = await fs.readTextFile(path as string);
         // Extract filename from path for default name
         const fileName = (path as string).split(/[\\/]/).pop()?.replace(/\.m3u8?$/i, '') || 'Imported Playlist';
-        return { success: true, data: { content, fileName } };
+        // The path is kept on the source so the playlist can be re-read on a
+        // later sync instead of being a one-shot copy (see services/local-playlist).
+        return { success: true, data: { content, fileName, filePath: path as string } };
     },
 
     async openJsonFile() {

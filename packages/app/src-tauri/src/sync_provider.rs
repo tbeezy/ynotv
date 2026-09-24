@@ -421,7 +421,49 @@ pub(crate) fn extract_m3u_attr(text: &str, keys: &[&str]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{create_m3u_category_id, extract_m3u_attr};
+    use super::{create_m3u_category_id, extract_m3u_attr, read_local_playlist_file};
+
+    #[test]
+    fn reads_an_imported_playlist_and_strips_a_bom() {
+        let dir = std::env::temp_dir().join(format!("ynotv-m3u-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("list.m3u");
+        let mut bytes = vec![0xEF, 0xBB, 0xBF];
+        bytes.extend_from_slice(b"#EXTM3U url-tvg=\"http://epg.test/g.xml\"\n#EXTINF:-1,Channel\nhttp://x/1.ts\n");
+        std::fs::write(&path, bytes).unwrap();
+
+        let text = read_local_playlist_file(path.to_string_lossy().to_string()).unwrap();
+
+        // The header check in the sync looks for `#EXTM3U` at the start of the line.
+        assert!(text.starts_with("#EXTM3U"), "unexpected start: {:?}", text);
+        assert!(text.contains("url-tvg=\"http://epg.test/g.xml\""));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn rejects_a_missing_or_empty_playlist_path() {
+        let missing = std::env::temp_dir().join("ynotv-does-not-exist.m3u");
+        let _ = std::fs::remove_file(&missing);
+        assert!(read_local_playlist_file(missing.to_string_lossy().to_string()).is_err());
+        assert!(read_local_playlist_file("   ".to_string()).is_err());
+    }
+
+    #[test]
+    fn decodes_non_utf8_playlist_bytes_instead_of_failing() {
+        let dir = std::env::temp_dir().join(format!("ynotv-m3u-cp1252-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("latin.m3u");
+        // "Café" in Windows-1252: 0xE9 is not valid UTF-8.
+        std::fs::write(&path, b"#EXTM3U\n#EXTINF:-1,Caf\xE9 TV\nhttp://x/2.ts\n").unwrap();
+
+        let text = read_local_playlist_file(path.to_string_lossy().to_string()).unwrap();
+
+        assert!(text.contains("Caf"), "unexpected text: {:?}", text);
+        assert!(text.contains("http://x/2.ts"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn creates_distinct_ids_for_cyrillic_m3u_groups() {
@@ -714,6 +756,43 @@ pub struct XtreamSeriesStream {
     pub last_modified: Option<serde_json::Value>,
     pub episode_run_time: Option<serde_json::Value>,
     pub youtube_trailer: Option<String>,
+}
+
+/// Largest playlist file we will read into memory (64 MB of text).
+const MAX_LOCAL_PLAYLIST_BYTES: u64 = 64 * 1024 * 1024;
+
+/// Read a playlist file the user imported from disk.
+///
+/// This lives in Rust rather than the JS fs plugin because the plugin only
+/// grants access to a picked path for the session it was picked in, so a path
+/// remembered in a source (and restored from a backup) could not be read back
+/// later. Invalid UTF-8 is decoded with replacement characters: a Windows-1252
+/// playlist should still sync, with the mangled names it already had.
+#[tauri::command]
+pub fn read_local_playlist_file(path: String) -> Result<String, String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("No playlist file path given".to_string());
+    }
+
+    let metadata = std::fs::metadata(trimmed)
+        .map_err(|e| format!("Cannot open the playlist file: {}", e))?;
+    if !metadata.is_file() {
+        return Err("The playlist path is not a file".to_string());
+    }
+    if metadata.len() > MAX_LOCAL_PLAYLIST_BYTES {
+        return Err(format!(
+            "The playlist file is larger than {} MB",
+            MAX_LOCAL_PLAYLIST_BYTES / (1024 * 1024)
+        ));
+    }
+
+    let bytes = std::fs::read(trimmed)
+        .map_err(|e| format!("Cannot read the playlist file: {}", e))?;
+    // A UTF-8 BOM would otherwise become part of the first line, so the `#EXTM3U`
+    // header check (and the `url-tvg` attribute on it) would miss.
+    let text = String::from_utf8_lossy(&bytes).to_string();
+    Ok(text.strip_prefix('\u{feff}').unwrap_or(&text).to_string())
 }
 
 // Regex imports inside method to avoid polluting global scope

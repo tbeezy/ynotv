@@ -1,6 +1,15 @@
 import { db, clearSourceData, clearVodData, restoreUserCustomizations, type SourceMeta, type StoredProgram, type StoredMovie, type StoredSeries, type StoredEpisode, type VodCategory } from './index';
 import i18n, { translateNativeError } from '../i18n';
-import { fetchAndParseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
+import { fetchAndParseM3U, parseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
+import {
+  isLocalPlaylistSource,
+  isLegacyLocalImport,
+  localPlaylistPath,
+  localPlaylistUnreadableMessage,
+  planLocalPlaylistSync,
+  resolveLocalPlaylist,
+  writeLocalPlaylistSnapshot,
+} from '../services/local-playlist';
 import type { Source, Channel, Category, Movie, Series } from '@ynotv/core';
 import { useUIStore } from '../stores/uiStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -2405,8 +2414,13 @@ async function syncSourceInternal(source: Source, onProgress?: (msg: string) => 
   const result = await _doSyncSourceImpl(source, onProgress, staggerAlignment);
   if (result.success) return result;
 
+  // A playlist imported from a file has no URL to fall back to: a failure means
+  // the file and the copy kept in the app are both unavailable, and rotating to
+  // a backup URL would quietly turn the source into something else.
+  const localPlaylistSource = isLocalPlaylistSource(source) || isLegacyLocalImport(source);
+
   // If primary failed and we have backup URLs, try them in order
-  if (source.backup_urls && source.backup_urls.length > 0) {
+  if (!localPlaylistSource && source.backup_urls && source.backup_urls.length > 0) {
     for (const backupUrl of source.backup_urls) {
       const trimmedUrl = backupUrl.trim();
       if (!trimmedUrl) continue;
@@ -2481,13 +2495,23 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
     let channels: Channel[] = [];
     let categories: Category[] = [];
     let epgUrl: string | undefined;
+    // Set when a local playlist couldn't be read as a playlist this time (its
+    // file is missing and the kept copy carried it, or neither produced
+    // channels): the source then keeps its stale stamp so the next cycle retries.
+    let localPlaylistNeedsRetry = false;
 
     let nativeSyncComplete = false;
     let nativeChannelsCount = 0;
     let nativeCategoriesCount = 0;
 
+    // A playlist imported from a file is rebuilt here rather than by the native
+    // sync: its "URL" is a path on this machine, so there is nothing to fetch.
+    const localPlaylistFile = isLocalPlaylistSource(source) ? localPlaylistPath(source) : null;
+    const isLocalPlaylist = localPlaylistFile !== null;
+    const isLegacyLocal = isLegacyLocalImport(source);
+
     // ----- NATIVE RUST SYNC (Xtream & M3U only) -----
-    if ((window as any).__TAURI__ && !source.vod_only && !source.url.startsWith('imported:')) {
+    if ((window as any).__TAURI__ && !source.vod_only && !isLocalPlaylist && !isLegacyLocal) {
       try {
         if (source.type === 'm3u') {
           debugLog(`Native Rust Sync for M3U: ${source.url}`, 'sync');
@@ -2615,23 +2639,80 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
     if (!nativeSyncComplete) {
     if (source.type === 'm3u') {
       // Check if this is a local imported file (not a remote URL)
-      if (source.url.startsWith('imported:')) {
-        // Local imported M3U - channels are already in DB, just fetch existing
-        debugLog(`Local imported M3U detected: ${source.url}`, 'sync');
-        onProgress?.(i18n.t('common:loadingLocalPlaylist'));
+      if (isLocalPlaylist || isLegacyLocal) {
+        if (isLocalPlaylist) {
+          // Local imported M3U - rebuild from the file, or from the copy kept in
+          // the app when the file has moved or been deleted.
+          debugLog(`Local M3U file: ${localPlaylistFile}`, 'sync');
+          onProgress?.(i18n.t('common:loadingLocalPlaylist'));
 
-        // Get existing channels from database
-        const existingChannels = await db.channels.where('source_id').equals(source.id).toArray();
-        const existingCategories = await db.categories.where('source_id').equals(source.id).toArray();
+          const resolved = await resolveLocalPlaylist(source);
+          const parsed = resolved.content ? parseM3U(resolved.content, source.id) : null;
+          // `existingChannels` is this source's pre-sync set: what the app would
+          // still be showing if the playlist has to be left alone.
+          const plan = planLocalPlaylistSync({
+            from: resolved.source,
+            parsedChannelCount: parsed?.channels.length ?? 0,
+            cachedChannelCount: existingChannelMap.size,
+          });
 
-        // Get EPG URL from source meta if available
-        const sourceMeta = await db.sourcesMeta.get(source.id);
+          if (plan.use === 'parsed') {
+            channels = parsed!.channels;
+            categories = parsed!.categories;
+            epgUrl = parsed!.epgUrl ?? undefined;
+            debugLog(
+              `Local M3U ${resolved.source === 'file' ? 'file read' : 'kept copy used'}` +
+                `${resolved.error ? ` (${resolved.error})` : ''}: ` +
+                `${channels.length} channels, ${categories.length} categories`,
+              'sync'
+            );
+            if (plan.refreshCopy) {
+              // Keep the copy current so a later restore has the latest edit.
+              await writeLocalPlaylistSnapshot(source.id, resolved.content!);
+            }
+          } else {
+            // Nothing usable to parse. Keep what is cached rather than deleting
+            // channels for a playlist that produced nothing, and don't stamp the
+            // source as fresh: it retries on the next cycle, or as soon as the
+            // file is back (see keepStale below).
+            const sourceMeta = await db.sourcesMeta.get(source.id);
+            channels = existingChannels as Channel[];
+            categories = existingCategories as Category[];
+            epgUrl = sourceMeta?.epg_url;
+            const reason =
+              resolved.error ??
+              (resolved.content ? 'the file listed no channels' : 'no playlist file or kept copy');
+            console.warn(
+              `[Sync] Local M3U unusable for "${source.name}" (${reason}): keeping ${channels.length} cached channel(s)`
+            );
+            debugLog(`Local M3U unusable (${reason}): kept ${channels.length} cached channels`, 'sync');
+            if (plan.use === 'none') {
+              throw new Error(localPlaylistUnreadableMessage(resolved.filePath));
+            }
+          }
+          // Rebuilt from the copy, or not rebuilt at all: leave the source stale
+          // so the file is looked for again instead of backing off for hours.
+          localPlaylistNeedsRetry = plan.keepStale;
+        } else {
+          // A file import from before the path was recorded: the channels were
+          // parsed into the database at import time and there is nothing left to
+          // re-read, so this can only report what is cached.
+          debugLog(`Legacy local import detected: ${source.url}`, 'sync');
+          onProgress?.(i18n.t('common:loadingLocalPlaylist'));
 
-        channels = existingChannels as Channel[];
-        categories = existingCategories as Category[];
-        epgUrl = sourceMeta?.epg_url;
+          const cachedChannels = await db.channels.where('source_id').equals(source.id).toArray();
+          const cachedCategories = await db.categories.where('source_id').equals(source.id).toArray();
+          const sourceMeta = await db.sourcesMeta.get(source.id);
 
-        debugLog(`Loaded ${channels.length} channels from local import`, 'sync');
+          channels = cachedChannels as Channel[];
+          categories = cachedCategories as Category[];
+          epgUrl = sourceMeta?.epg_url;
+
+          debugLog(`Loaded ${channels.length} channels from local import`, 'sync');
+          if (channels.length === 0) {
+            throw new Error(i18n.t('common:localImportNeedsReimport'));
+          }
+        }
       } else {
         // Remote M3U URL - fetch and parse
         debugLog(`Fetching M3U from: ${source.url}`, 'sync');
@@ -3115,11 +3196,21 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
     // Non-fatal: the EPG data is already stored — a bookkeeping failure here must not flip
     // a fully-synced source to FAILED (it previously did, via lock contention).
     try {
-      await bulkOps.updateSourceMeta({
-        source_id: source.id,
-        last_synced: new Date().toISOString(),
-      });
-      dbEvents.notify('sourcesMeta', 'update');
+      if (localPlaylistNeedsRetry) {
+        // The playlist itself wasn't read this time, so the source isn't fresh:
+        // leaving last_synced alone makes the next auto-sync cycle try again
+        // (which is how a returned or re-linked file is picked up).
+        debugLog(
+          `Source ${source.id} left stale: its local playlist file could not be read`,
+          'sync'
+        );
+      } else {
+        await bulkOps.updateSourceMeta({
+          source_id: source.id,
+          last_synced: new Date().toISOString(),
+        });
+        dbEvents.notify('sourcesMeta', 'update');
+      }
     } catch (metaErr) {
       debugLog(`Failed to mark source ${source.id} as synced: ${metaErr}`, 'sync');
     }

@@ -5474,6 +5474,7 @@ pub fn run() {
             popout_get_params_debug,
             // Optimized bulk sync commands
             sync_provider::sync_m3u_source,
+            sync_provider::read_local_playlist_file,
             sync_provider::sync_xtream_source,
             sync_provider::sync_xtream_vod_movies,
             sync_provider::sync_xtream_vod_series,

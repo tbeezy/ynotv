@@ -29,7 +29,7 @@ declare global {
             saveM3UFile: (content: string, defaultName: string) => Promise<{ success: boolean; data?: { filePath: string }; error?: string; canceled?: boolean }>;
             saveCsvFile: (content: string, defaultName: string) => Promise<{ success: boolean; data?: { filePath: string }; error?: string; canceled?: boolean }>;
             openJsonFile: () => Promise<{ success: boolean; data?: string; error?: string; canceled?: boolean }>;
-            importM3UFile: () => Promise<{ success: boolean; data?: { content: string; fileName: string }; error?: string; canceled?: boolean }>;
+            importM3UFile: () => Promise<{ success: boolean; data?: { content: string; fileName: string; filePath?: string }; error?: string; canceled?: boolean }>;
             isEncryptionAvailable: () => Promise<{ success: boolean; data?: boolean; error?: string }>;
         };
         fetchProxy: {

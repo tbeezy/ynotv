@@ -3,6 +3,14 @@ import { createPortal } from 'react-dom';
 import type { Source, Channel } from '@ynotv/core';
 import { syncAllSources, syncAllVod, syncSource, syncVodForSource, markSourceDeleted, syncGlobalEpgLinkStandalone, applyGlobalEpgToSource, cleanupGlobalEpgCache, type SyncResult, type VodSyncResult } from '../../db/sync';
 import { clearSourceData, clearVodData, db, type StoredChannel, type StoredProgram } from '../../db';
+import {
+  clearLocalPlaylistSnapshot,
+  isLocalPlaylistSource,
+  isLegacyLocalImport,
+  localPlaylistPath,
+  localPlaylistUrl,
+  writeLocalPlaylistSnapshot,
+} from '../../services/local-playlist';
 import { dbEvents } from '../../db/sqlite-adapter';
 import { useSyncStatus } from '../../hooks/useChannels';
 import {
@@ -805,7 +813,15 @@ export function SourcesTab({
     categories: number;
     epgUrl?: string;
     rawContent: string;
+    /** Where the file was picked from, so a sync can re-read it later. */
+    filePath?: string;
   } | null>(null);
+
+  // The file this form's playlist points at, when it was imported from one.
+  const localFilePath = importedM3U?.filePath || localPlaylistPath({ url: formData.url });
+  // A file import from before the app recorded where the file was: it has no
+  // path to sync from, so say so instead of showing `imported:<name>` as a URL.
+  const legacyLocalImport = isLegacyLocalImport({ type: formData.type, url: formData.url });
 
   function handleAdd() {
     setFormData(emptyForm);
@@ -821,7 +837,7 @@ export function SourcesTab({
     const result = await window.storage.importM3UFile();
     if (result.canceled || !result.data) return;
 
-    const { content, fileName } = result.data;
+    const { content, fileName, filePath } = result.data;
 
     // Parse to validate and extract info
     const tempSourceId = 'temp-import';
@@ -832,13 +848,27 @@ export function SourcesTab({
       categories: parsed.categories.length,
       epgUrl: parsed.epgUrl ?? undefined,
       rawContent: content,
+      filePath,
     });
+
+    if (editingId) {
+      // Re-linking an existing source's file: keep the source as configured
+      // (name, EPG settings, catchup, backup URLs) and only swap the playlist.
+      setFormData({
+        ...formData,
+        type: 'm3u',
+        url: filePath ? localPlaylistUrl(filePath) : formData.url,
+      });
+      setShowAddForm(true);
+      setError(null);
+      return;
+    }
 
     setFormData({
       ...emptyForm,
       name: fileName,
       type: 'm3u',
-      url: '', // No URL for file imports
+      url: filePath ? localPlaylistUrl(filePath) : '', // No URL for file imports
       autoLoadEpg: !!parsed.epgUrl,
       epgUrl: parsed.epgUrl ?? '',
       userAgent: '',
@@ -848,6 +878,17 @@ export function SourcesTab({
     setEditingId(null);
     setShowAddForm(true);
     setError(null);
+  }
+
+  /**
+   * Drop the file this form's playlist points at, so the URL field is shown.
+   * Both "Use URL instead" buttons do the same thing: clearing only the import
+   * summary left the stored `file:` URL behind, which put the file panel back
+   * on screen and made the user click the same button twice.
+   */
+  function handleUseUrlInstead() {
+    setImportedM3U(null);
+    setFormData((prev) => ({ ...prev, url: '' }));
   }
 
   function handleEdit(source: Source) {
@@ -907,6 +948,8 @@ export function SourcesTab({
       // Clean up all data in SQLite before removing source config
       await clearSourceData(id);
       await clearVodData(id);
+      // The playlist's kept copy belongs to this source and nothing else.
+      await clearLocalPlaylistSnapshot(id);
 
       // Channels the user pinned to this playlist's own feed are skipped by
       // every other feed, and this playlist's channels are gone now — so the
@@ -1008,7 +1051,13 @@ export function SourcesTab({
         id: sourceId,
         name: formData.name.trim(),
         type: formData.type,
-        url: importedM3U ? `imported:${formData.name.trim()}` : formData.url.trim(),
+        // A file import records where the file is, so a later sync can re-read it
+        // (a restore or a cache clear used to leave nothing to re-read).
+        url: importedM3U
+          ? importedM3U.filePath
+            ? localPlaylistUrl(importedM3U.filePath)
+            : `imported:${formData.name.trim()}`
+          : formData.url.trim(),
         enabled: true,
         username: formData.type === 'xtream' ? formData.username.trim() : undefined,
         password: formData.type === 'xtream' ? formData.password.trim() : undefined,
@@ -1040,7 +1089,9 @@ export function SourcesTab({
       }
 
       // If swap occurred, trigger resync after save
-      const needsResync = formData.pendingSwap;
+      // (Re-linking an existing source's playlist file needs one too: the new
+      // channels are merged by the sync so the source keeps its settings.)
+      const needsResync = formData.pendingSwap || (!!importedM3U && !!editingId);
 
       const result = await window.storage.saveSource(source);
       if (result.error) {
@@ -1048,44 +1099,61 @@ export function SourcesTab({
         return;
       }
 
+      // A source that is no longer a local playlist (its URL was replaced, or it
+      // became a remote one) has no use for the copy of the old playlist, and an
+      // orphaned copy would keep riding in every backup.
+      if (editingId && !isLocalPlaylistSource(source) && !importedM3U) {
+        await clearLocalPlaylistSnapshot(sourceId);
+      }
+
       // For file imports, store channels directly in the database
       if (importedM3U) {
-        const parsed = parseM3U(importedM3U.rawContent, sourceId);
+        // Keep a copy of the playlist in the app: it survives a cache clear and
+        // rides in a backup, so the playlist can be rebuilt when the file has
+        // moved, been deleted, or the backup is restored on another machine.
+        await writeLocalPlaylistSnapshot(sourceId, importedM3U.rawContent);
 
-        // If Xtream catchup is configured, enrich channels with catchup data
-        if (xtreamCatchup) {
-          try {
-            const { enrichM3uWithXtreamCatchup } = await import('../../db/sync');
-            const enrichedChannels = await enrichM3uWithXtreamCatchup(
-              source as any,
-              parsed.channels,
-              () => {}
-            );
-            (parsed as any).channels = enrichedChannels;
-          } catch (err) {
-            console.warn('[SourcesTab] Failed to enrich imported M3U with Xtream catchup:', err);
-          }
-        }
+        // An existing source is left to the sync below: writing the parsed rows
+        // straight in would overwrite the channel settings (alias, favourites,
+        // enabled) it already has.
+        if (!editingId) {
+          const parsed = parseM3U(importedM3U.rawContent, sourceId);
 
-        await db.transaction('rw', [db.channels, db.categories, db.sourcesMeta], async () => {
-          if (parsed.channels.length > 0) {
-            // Cast to any to bypass Channel vs StoredChannel type mismatch
-            await db.channels.bulkPut(parsed.channels as any[]);
+          // If Xtream catchup is configured, enrich channels with catchup data
+          if (xtreamCatchup) {
+            try {
+              const { enrichM3uWithXtreamCatchup } = await import('../../db/sync');
+              const enrichedChannels = await enrichM3uWithXtreamCatchup(
+                source as any,
+                parsed.channels,
+                () => {}
+              );
+              (parsed as any).channels = enrichedChannels;
+            } catch (err) {
+              console.warn('[SourcesTab] Failed to enrich imported M3U with Xtream catchup:', err);
+            }
           }
-          if (parsed.categories.length > 0) {
-            await db.categories.bulkPut(parsed.categories);
-          }
-          await db.sourcesMeta.put({
-            source_id: sourceId,
-            epg_url: parsed.epgUrl ?? undefined,
-            last_synced: new Date(),
-            channel_count: parsed.channels.length,
-            category_count: parsed.categories.length,
-            expiry_date: (source as any)._xtream_expiry,
-            active_cons: (source as any)._xtream_active_cons,
-            max_connections: (source as any)._xtream_max_connections,
+
+          await db.transaction('rw', [db.channels, db.categories, db.sourcesMeta], async () => {
+            if (parsed.channels.length > 0) {
+              // Cast to any to bypass Channel vs StoredChannel type mismatch
+              await db.channels.bulkPut(parsed.channels as any[]);
+            }
+            if (parsed.categories.length > 0) {
+              await db.categories.bulkPut(parsed.categories);
+            }
+            await db.sourcesMeta.put({
+              source_id: sourceId,
+              epg_url: parsed.epgUrl ?? undefined,
+              last_synced: new Date(),
+              channel_count: parsed.channels.length,
+              category_count: parsed.categories.length,
+              expiry_date: (source as any)._xtream_expiry,
+              active_cons: (source as any)._xtream_active_cons,
+              max_connections: (source as any)._xtream_max_connections,
+            });
           });
-        });
+        }
       }
 
       setShowAddForm(false);
@@ -1114,9 +1182,9 @@ export function SourcesTab({
         }
       }
 
-      // Trigger auto-resync if swap occurred
+      // Trigger auto-resync if swap occurred, or if a playlist file was re-linked
       if (needsResync) {
-        console.log('[SourcesTab] Triggering auto-resync due to credential swap');
+        console.log('[SourcesTab] Triggering auto-resync after save');
         // Pass the updated source object directly to avoid race conditions
         setTimeout(() => handleSourceSync(sourceId, source), 100);
       }
@@ -2084,15 +2152,44 @@ export function SourcesTab({
             )}
 
             {/* M3U: URL or File import */}
-            {formData.type === 'm3u' && !importedM3U && (
+            {formData.type === 'm3u' && localFilePath && !importedM3U && (
+              <div className="form-group">
+                <label>{i18n.t('settings:sources.localPlaylistFile')}</label>
+                <input type="text" value={localFilePath} readOnly />
+                <span className="hint" style={{ display: 'block', marginTop: '6px' }}>
+                  {i18n.t('settings:sources.localPlaylistHint')}
+                </span>
+                <button
+                  type="button"
+                  className="import-btn"
+                  onClick={handleImportM3U}
+                >
+                  {i18n.t('settings:sources.importFromFile')}
+                </button>
+                <button
+                  type="button"
+                  className="change-file-btn"
+                  onClick={handleUseUrlInstead}
+                >
+                  {i18n.t('settings:sources.useUrlInstead')}
+                </button>
+              </div>
+            )}
+
+            {formData.type === 'm3u' && !localFilePath && !importedM3U && (
               <div className="form-group">
                 <label>{i18n.t('settings:sources.playlistUrl')}</label>
                 <input
                   type="text"
-                  value={formData.url}
+                  value={legacyLocalImport ? '' : formData.url}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                   placeholder="http://example.com/playlist.m3u"
                 />
+                {legacyLocalImport && (
+                  <span className="hint" style={{ display: 'block', marginTop: '6px' }}>
+                    {i18n.t('settings:sources.localImportUnlinked')}
+                  </span>
+                )}
                 <div className="or-divider">
                   <span>{i18n.t('settings:sources.or')}</span>
                 </div>
@@ -2118,7 +2215,7 @@ export function SourcesTab({
                 <button
                   type="button"
                   className="change-file-btn"
-                  onClick={() => setImportedM3U(null)}
+                  onClick={handleUseUrlInstead}
                 >
                   {i18n.t('settings:sources.useUrlInstead')}
                 </button>
