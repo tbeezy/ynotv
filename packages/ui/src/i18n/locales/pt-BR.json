@@ -1893,6 +1893,8 @@
       "description": "Ative o registro detalhado para ajudar a diagnosticar problemas com reprodução de vídeo, solicitações de rede e erros do aplicativo. Os registros são gravados em um arquivo que você pode compartilhar ao relatar bugs.",
       "enableLogging": "Ativar registro de depuração",
       "enableLoggingHint": "Quando ativado, registros detalhados do mpv, do renderizador e do processo principal são gravados em um arquivo. Isso pode afetar levemente o desempenho.",
+      "supportModeLabel": "Modo de suporte",
+      "supportModeHint": "Inicia o mecanismo de vídeo com registro mpv detalhado desde a inicialização, para que a primeira solicitação de uma sessão seja capturada — a opção Diagnóstico do aplicativo cobre apenas o mecanismo que já está em execução e é perdida ao reiniciar. O mpv.log anterior é mantido como mpv.1.log em vez de ser excluído. Os arquivos de log contêm URLs de stream, então compartilhe-os apenas com pessoas de confiança. Passa a valer na próxima inicialização do aplicativo. O modo de suporte também pode ser ativado iniciando com YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Configurações de retenção de registros",
       "retentionHint": "Registros antigos são removidos automaticamente quando o aplicativo inicia.",
       "logFileLocation": "Local do arquivo de registro",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} legendas",
     "subsCount_many": "{{count}} legendas",
     "subsCount_two": "{{count}} legendas",
-    "subsCount_zero": "{{count}} legendas"
+    "subsCount_zero": "{{count}} legendas",
+    "copySupportBundle": "Copiar pacote de suporte",
+    "copySupportBundleTitle": "Log do aplicativo + ambos os logs do mpv + linha de comando do mecanismo + configurações de reprodução, com credenciais mascaradas",
+    "failedSupportBundle": "Falha ao criar o pacote de suporte: {{error}}"
   },
   "logoEditor": {
     "title": "Editor de Logos",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Captura o fluxo por alguns segundos para medir o bitrate de vídeo e consultar o bitrate de áudio. Adiciona alguns segundos por canal.",
     "colVideoBitrate": "Bitrate V.",
     "colAudioBitrate": "Bitrate A.",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "Comparar user-agents: origem / nenhum / navegador",
+    "uaCompareLoading": "Enviando a mesma solicitação com cada user-agent…",
+    "uaCompareExplainer": "Mesma URL, três impressões digitais de solicitação, pela própria pilha HTTP do aplicativo (sem mpv, sem yt-dlp). Uma linha que falha enquanto outra funciona significa que o servidor está reagindo à solicitação, não ao stream.",
+    "uaNoStatus": "sem status",
+    "uaRowSource": "User-agent da origem",
+    "uaRowNone": "Sem user-agent",
+    "uaRowBrowser": "User-agent do navegador"
   }
 }

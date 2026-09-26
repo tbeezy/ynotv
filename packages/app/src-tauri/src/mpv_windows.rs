@@ -24,6 +24,10 @@ pub struct MpvState {
     pub pending_requests: Arc<Mutex<HashMap<u64, tokio::sync::oneshot::Sender<Result<Value, String>>>>>,
     pub request_id_counter: Mutex<u64>,
     pub initializing: Mutex<bool>,
+    /// Arguments of the most recent spawn, kept for support bundles: the
+    /// effective command line is what explains playback behaviour, and the
+    /// app log that carries it is only written when debug logging is on.
+    pub last_spawn_args: Mutex<Vec<String>>,
 }
 
 impl MpvState {
@@ -38,6 +42,7 @@ impl MpvState {
             pending_requests: Arc::new(Mutex::new(HashMap::new())),
             request_id_counter: Mutex::new(0),
             initializing: Mutex::new(false),
+            last_spawn_args: Mutex::new(Vec::new()),
         }
     }
 }
@@ -405,8 +410,16 @@ async fn try_spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, 
     };
 
     // Prepare arguments
-    // Truncate the diagnostics log each spawn so it can't grow without bound.
-    let _ = std::fs::remove_file(get_mpv_log_path(app));
+    // Roll the diagnostics log over instead of deleting it: the retry loop and
+    // setting changes respawn mpv, and the attempt that actually failed used to
+    // be destroyed before a reporter could copy it. One generation is kept, and
+    // the retention sweep cleans it up like any other log.
+    let previous_log = get_mpv_log_path(app);
+    if std::path::Path::new(&previous_log).exists() {
+        let rotated = format!("{}.1.log", previous_log.trim_end_matches(".log"));
+        let _ = std::fs::remove_file(&rotated);
+        let _ = std::fs::rename(&previous_log, &rotated);
+    }
     let mut args = vec![
         format!("--input-ipc-server={}", socket_path),
         format!("--wid={}", hwnd),
@@ -450,6 +463,7 @@ async fn try_spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, 
     }
 
     log::info!("[MPV] Spawning mpv with {} args: {:?}", args.len(), args);
+    *state.last_spawn_args.lock().unwrap() = args.clone();
 
     // Launch MPV using shell plugin
     let sidecar = app.shell().sidecar("mpv")
@@ -478,6 +492,14 @@ async fn try_spawn_mpv<R: Runtime>(app: &AppHandle<R>, state: &tauri::State<'_, 
             // reports the same strings for the same failures.
             let parse_and_emit = |line_str: &str, app_handle: &tauri::AppHandle<R>| {
                 if let Some(error_msg) = crate::mpv_error_parse::http_error_message(line_str) {
+                    // Record the status in ynoTV.log too: the frontend may be
+                    // suppressing the event, and the raw line names the component
+                    // that failed (ffmpeg vs the ytdl hook).
+                    log::warn!(
+                        "[MPV] HTTP error report: {} | {}",
+                        error_msg,
+                        line_str.trim().chars().take(160).collect::<String>()
+                    );
                     let _ = app_handle.emit("mpv-http-error", error_msg);
                 }
             };

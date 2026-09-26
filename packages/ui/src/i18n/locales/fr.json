@@ -1893,6 +1893,8 @@
       "description": "Activez le journal détaillé pour vous aider à diagnostiquer les problèmes de lecture vidéo, les requêtes réseau et les erreurs d'application. Les journaux sont enregistrés dans un fichier que vous pouvez partager lors du signalement de bugs.",
       "enableLogging": "Activer le journal de débogage",
       "enableLoggingHint": "Lorsqu’il est activé, des journaux détaillés de mpv, du rendu et du processus principal sont écrits dans un fichier. Cela peut légèrement affecter les performances.",
+      "supportModeLabel": "Mode support",
+      "supportModeHint": "Démarre le moteur vidéo avec la journalisation mpv détaillée dès le lancement, afin que la première requête d'une session soit capturée — l'option Diagnostics de l'application ne couvre que le moteur déjà en cours d'exécution et est perdue lors d'un redémarrage. Le mpv.log précédent est conservé sous mpv.1.log au lieu d'être supprimé. Les fichiers journaux contiennent des URL de flux ; ne les partagez qu'avec des personnes de confiance. Prend effet au prochain démarrage de l'application. Le mode support peut aussi être activé en lançant avec YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Paramètres de conservation des journaux",
       "retentionHint": "Les anciens journaux sont automatiquement supprimés au démarrage de l'application.",
       "logFileLocation": "Emplacement du fichier journal",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} sous-titres",
     "subsCount_many": "{{count}} sous-titres",
     "subsCount_two": "{{count}} sous-titres",
-    "subsCount_zero": "{{count}} sous-titres"
+    "subsCount_zero": "{{count}} sous-titres",
+    "copySupportBundle": "Copier le paquet de support",
+    "copySupportBundleTitle": "Journal de l'application + les deux journaux mpv + ligne de commande du moteur + paramètres de lecture, identifiants masqués",
+    "failedSupportBundle": "Échec de la création du paquet de support : {{error}}"
   },
   "logoEditor": {
     "title": "Éditeur de logos",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Capture le flux pendant quelques secondes pour mesurer le débit vidéo et obtenir le débit audio. Ajoute quelques secondes par chaîne.",
     "colVideoBitrate": "Débit V.",
     "colAudioBitrate": "Débit A.",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "Comparer les user-agents : source / aucun / navigateur",
+    "uaCompareLoading": "Envoi de la même requête avec chaque user-agent…",
+    "uaCompareExplainer": "Même URL, trois empreintes de requête, via la propre pile HTTP de l'application (sans mpv ni yt-dlp). Une ligne qui échoue alors qu'une autre réussit signifie que le serveur réagit à la requête, pas au flux.",
+    "uaNoStatus": "aucun statut",
+    "uaRowSource": "User-agent de la source",
+    "uaRowNone": "Aucun user-agent",
+    "uaRowBrowser": "User-agent du navigateur"
   }
 }

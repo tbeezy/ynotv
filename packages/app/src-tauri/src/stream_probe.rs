@@ -369,10 +369,34 @@ fn detect_hls_drm(body: &str) -> Option<String> {
     None
 }
 
+/// User-agent the app's own HTTP checks send when a source doesn't specify one.
+const DEFAULT_PROBE_UA: &str = "VLC/3.0.18 LibVLC/3.0.18";
+
+/// The user-agent a mainstream browser sends. Many panels accept browsers and
+/// refuse strings that look like media players or restreamers, so comparing
+/// against this separates "the server blocks this client" from "the stream is
+/// dead".
+const BROWSER_PROBE_UA: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
 async fn check_http_stream(
     client: &reqwest::Client,
     url: &str,
     user_agent: Option<&str>,
+    timeout_duration: Duration,
+) -> HttpCheckResult {
+    let effective_ua = user_agent
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or(DEFAULT_PROBE_UA);
+    check_http_stream_with_ua(client, url, Some(effective_ua), timeout_duration).await
+}
+
+/// The HTTP check itself, with `ua_header` sent verbatim: `None` sends no
+/// User-Agent header at all, which is what comparing clients needs.
+async fn check_http_stream_with_ua(
+    client: &reqwest::Client,
+    url: &str,
+    ua_header: Option<&str>,
     timeout_duration: Duration,
 ) -> HttpCheckResult {
     if is_placeholder(url) {
@@ -386,16 +410,15 @@ async fn check_http_stream(
     }
 
     let start_time = Instant::now();
-    let effective_ua = user_agent
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or("VLC/3.0.18 LibVLC/3.0.18");
 
-    let req = client
+    let mut req = client
         .get(url)
-        .header(reqwest::header::USER_AGENT, effective_ua)
         .header(reqwest::header::ACCEPT, "*/*")
         .header(reqwest::header::CONNECTION, "close")
         .timeout(timeout_duration);
+    if let Some(ua) = ua_header {
+        req = req.header(reqwest::header::USER_AGENT, ua);
+    }
 
     let response = match req.send().await {
         Ok(res) => res,
@@ -474,6 +497,77 @@ async fn check_http_stream(
         error_reason: None,
         playable_url: url.to_string(),
     }
+}
+
+// ============================================================================
+// User-Agent Comparison Probe
+// ============================================================================
+
+/// One request fingerprint tried against a stream URL.
+#[derive(Debug, Clone, Serialize)]
+pub struct UserAgentProbeResult {
+    /// Stable fingerprint id (`source`/`none`/`browser`) so the UI can localize
+    /// the row label; `label` stays as an English fallback.
+    pub id: String,
+    pub label: String,
+    pub user_agent: Option<String>,
+    pub status: String,
+    pub http_status: Option<u16>,
+    pub latency_ms: Option<u64>,
+    pub error_reason: Option<String>,
+}
+
+/// Probe one URL with several user agents so "it plays in VLC but not here" can
+/// be attributed to the request itself instead of guessed at.
+///
+/// This runs on the app's own HTTP stack: no mpv and no yt-dlp take part, so a
+/// difference between rows is purely about how the server answers the header.
+#[tauri::command]
+pub async fn probe_stream_user_agents(
+    url: String,
+    user_agent: Option<String>,
+    timeout_secs: Option<f64>,
+) -> Result<Vec<UserAgentProbeResult>, String> {
+    let timeout = Duration::from_secs_f64(timeout_secs.unwrap_or(8.0).clamp(2.0, 30.0));
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .pool_max_idle_per_host(0)
+        .pool_idle_timeout(Duration::from_secs(0))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let source_ua = user_agent
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_PROBE_UA.to_string());
+
+    let fingerprints: [(&str, &str, Option<String>); 3] = [
+        ("source", "Source user-agent", Some(source_ua)),
+        ("none", "No user-agent", None),
+        ("browser", "Browser user-agent", Some(BROWSER_PROBE_UA.to_string())),
+    ];
+
+    let (check1, check2, check3) = tokio::join!(
+        check_http_stream_with_ua(&client, &url, fingerprints[0].2.as_deref(), timeout),
+        check_http_stream_with_ua(&client, &url, fingerprints[1].2.as_deref(), timeout),
+        check_http_stream_with_ua(&client, &url, fingerprints[2].2.as_deref(), timeout),
+    );
+
+    let checks = [check1, check2, check3];
+    let mut results = Vec::with_capacity(fingerprints.len());
+    for ((id, label, ua), check) in fingerprints.into_iter().zip(checks) {
+        results.push(UserAgentProbeResult {
+            id: id.to_string(),
+            label: label.to_string(),
+            user_agent: ua,
+            status: check.status,
+            http_status: check.http_status,
+            latency_ms: check.latency_ms,
+            error_reason: check.error_reason,
+        });
+    }
+
+    Ok(results)
 }
 
 // ============================================================================

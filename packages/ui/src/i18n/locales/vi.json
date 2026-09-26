@@ -1520,7 +1520,10 @@
     "subsCount_few": "{{count}} phụ đề",
     "subsCount_many": "{{count}} phụ đề",
     "subsCount_two": "{{count}} phụ đề",
-    "subsCount_zero": "{{count}} phụ đề"
+    "subsCount_zero": "{{count}} phụ đề",
+    "copySupportBundle": "Sao chép gói hỗ trợ",
+    "copySupportBundleTitle": "Nhật ký ứng dụng + cả hai nhật ký mpv + dòng lệnh của công cụ + cài đặt phát lại, với thông tin đăng nhập được che",
+    "failedSupportBundle": "Không tạo được gói hỗ trợ: {{error}}"
   },
   "nav": {
     "epgButtons": {
@@ -3531,6 +3534,8 @@
       "description": "Bật ghi nhật ký chi tiết để giúp chẩn đoán các sự cố với phát video, yêu cầu mạng và lỗi ứng dụng. Nhật ký được ghi vào một tệp mà bạn có thể chia sẻ khi báo lỗi.",
       "enableLogging": "Bật ghi nhật ký gỡ lỗi",
       "enableLoggingHint": "Khi bật, các nhật ký chi tiết từ mpv, trình kết xuất và quá trình chính được ghi vào một tệp. Điều này có thể ảnh hưởng nhẹ đến hiệu suất.",
+      "supportModeLabel": "Chế độ hỗ trợ",
+      "supportModeHint": "Khởi động công cụ video với ghi nhật ký mpv chi tiết ngay từ lúc khởi chạy, để yêu cầu đầu tiên của một phiên được ghi lại — nút Chẩn đoán trong ứng dụng chỉ bao phủ công cụ đang chạy và sẽ mất khi khởi động lại. mpv.log trước đó được giữ lại dưới tên mpv.1.log thay vì bị xóa. Tệp nhật ký chứa URL luồng, nên chỉ chia sẻ với người bạn tin tưởng. Có hiệu lực ở lần khởi động ứng dụng tiếp theo. Cũng có thể bật chế độ hỗ trợ bằng cách khởi chạy với YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Cài Đặt Giữ Nhật Ký",
       "retentionHint": "Các nhật ký cũ được tự động xóa khi ứng dụng khởi động.",
       "logFileLocation": "Vị Trí Tệp Nhật Ký",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Ghi lại luồng phát trong vài giây để đo bitrate video và truy vấn bitrate âm thanh. Thêm vài giây cho mỗi kênh.",
     "colVideoBitrate": "Bitrate V.",
     "colAudioBitrate": "Bitrate Â.",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "So sánh user-agent: nguồn / không có / trình duyệt",
+    "uaCompareLoading": "Đang gửi cùng một yêu cầu với mỗi user-agent…",
+    "uaCompareExplainer": "Cùng một URL, ba dấu vân tay yêu cầu, qua ngăn xếp HTTP của chính ứng dụng (không mpv, không yt-dlp). Một dòng thất bại trong khi dòng khác thành công nghĩa là máy chủ đang phản hồi theo yêu cầu, chứ không phải theo luồng.",
+    "uaNoStatus": "không có trạng thái",
+    "uaRowSource": "User-agent của nguồn",
+    "uaRowNone": "Không có user-agent",
+    "uaRowBrowser": "User-agent của trình duyệt"
   }
 }

@@ -213,6 +213,23 @@ export function stopWindowSync() {
     }
 }
 
+/**
+ * Shape of `get_support_bundle`: everything a bug report needs in one paste.
+ * Credentials are already masked by the Rust side.
+ */
+export interface SupportBundle {
+    app_version: string;
+    os: string;
+    app_log_path: string | null;
+    app_log: string;
+    mpv_log_path: string | null;
+    mpv_log: string;
+    previous_mpv_log_path: string | null;
+    previous_mpv_log: string;
+    spawn_args: string[];
+    settings: Record<string, unknown>;
+}
+
 let isCasting = false;
 let castMetadata = { title: "YNotV Stream", subtitle: "" };
 // Prevents concurrent cast_load_media calls from racing each other (INVALID_MEDIA_SESSION_ID)
@@ -721,6 +738,15 @@ export const Bridge = {
 
     async setMpvVerboseLogging(enabled: boolean) {
         return invoke('mpv_set_verbose_logging', { enabled });
+    },
+
+    /**
+     * One paste for a bug report: app log, current and previous mpv logs
+     * (unfiltered), the engine command line and the effective playback settings.
+     * Credentials are masked on the Rust side.
+     */
+    async getSupportBundle(maxLines?: number): Promise<SupportBundle> {
+        return invoke('get_support_bundle', { maxLines: maxLines ?? 1200 });
     },
 
     async removeSubtitleFile(filePath: string) {

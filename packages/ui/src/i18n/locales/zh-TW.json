@@ -1893,6 +1893,8 @@
       "description": "啟用詳細日誌以幫助診斷影片播放、網路請求和應用程式錯誤問題。日誌寫入檔案，報告錯誤時可共享該檔案。",
       "enableLogging": "啟用調試日誌",
       "enableLoggingHint": "啟用後，來自 mpv、渲染器和主進程的詳細日誌將寫入檔案。這可能會略微影響效能。",
+      "supportModeLabel": "支援模式",
+      "supportModeHint": "在啟動時即讓影片引擎輸出詳細的 mpv 日誌，以擷取工作階段的第一次請求——應用程式內的「診斷」開關僅涵蓋已在執行的引擎，重新啟動後即失效。先前的 mpv.log 會保留為 mpv.1.log，而不是被刪除。日誌檔包含串流網址，請僅與你信任的人分享。下次啟動應用程式時生效。也可透過以 YNOTV_SUPPORT_MODE=1 啟動來啟用支援模式。",
       "retentionLabel": "日誌保留設定",
       "retentionHint": "應用啟動時自動移除較舊的日誌。",
       "logFileLocation": "日誌檔案位置",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} 個字幕",
     "subsCount_many": "{{count}} 個字幕",
     "subsCount_two": "{{count}} 個字幕",
-    "subsCount_zero": "{{count}} 個字幕"
+    "subsCount_zero": "{{count}} 個字幕",
+    "copySupportBundle": "複製支援套件",
+    "copySupportBundleTitle": "應用程式日誌 + 兩份 mpv 日誌 + 引擎命令列 + 播放設定，憑證已遮蔽",
+    "failedSupportBundle": "無法建立支援套件：{{error}}"
   },
   "logoEditor": {
     "title": "徽標編輯器",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "擷取串流數秒以測量視訊位元速率並查詢音訊位元速率。每個頻道會增加數秒時間。",
     "colVideoBitrate": "視訊位元速率",
     "colAudioBitrate": "音訊位元速率",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "比較 user-agent：來源 / 無 / 瀏覽器",
+    "uaCompareLoading": "正在以每個 user-agent 傳送相同請求…",
+    "uaCompareExplainer": "相同 URL，三種請求指紋，皆透過應用程式自身的 HTTP 堆疊（不使用 mpv，也不使用 yt-dlp）。若某一列失敗而另一列成功，表示伺服器是針對請求本身回應，而非針對串流。",
+    "uaNoStatus": "無狀態",
+    "uaRowSource": "來源 user-agent",
+    "uaRowNone": "無 user-agent",
+    "uaRowBrowser": "瀏覽器 user-agent"
   }
 }

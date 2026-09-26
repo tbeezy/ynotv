@@ -2269,7 +2269,7 @@ fn parse_and_stream_epg_once<R: std::io::BufRead>(
                                     matched_programs += 1; // count once, not per stream_id
 
                                     // Hot path (one stream_id per EPG channel —
-                                    // ~650k programmes on otx88): reuse the
+                                    // ~650k programmes on a large feed): reuse the
                                     // programme's own Strings instead of cloning
                                     // all five per programme, which cost millions
                                     // of heap allocations per big feed. Output
@@ -3185,7 +3185,7 @@ fn log_pin_kept_programs(db: &DvrDatabase, source_id: &str) {
 /// lookups to full scans of the ~2.5M-row table (measured: alignments ballooned
 /// 2.5–5.5s to 11–52s when it was dropped in the first bulk-load run). The
 /// full-scan DELETE cost of dropping `idx_programs_source` is negligible
-/// (otx88 inserted 742k rows in 5.4s with it dropped).
+/// (a large feed inserted 742k rows in 5.4s with it dropped).
 const PROGRAMS_INDEXES_TO_DROP: [&str; 3] = [
     "idx_programs_time",
     "idx_programs_source",

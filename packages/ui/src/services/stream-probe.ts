@@ -124,6 +124,37 @@ export interface ProbeSessionController {
 /**
  * Check if the bundled or system FFmpeg binary is available for stream probing
  */
+export interface UserAgentProbeResult {
+  /** Stable fingerprint id: `source` | `none` | `browser`. */
+  id: string;
+  label: string;
+  user_agent?: string | null;
+  status: string;
+  http_status?: number;
+  latency_ms?: number;
+  error_reason?: string;
+}
+
+/**
+ * Probe one URL with three request fingerprints: the source's own user-agent,
+ * no user-agent at all, and a browser user-agent.
+ *
+ * Runs on the app's own HTTP stack — mpv and yt-dlp are not involved — so a
+ * difference between the rows is about the request itself, which is what makes
+ * "it plays in VLC but not here" answerable.
+ */
+export async function probeStreamUserAgents(
+  url: string,
+  userAgent?: string | null,
+  timeoutSecs?: number,
+): Promise<UserAgentProbeResult[]> {
+  return invoke<UserAgentProbeResult[]>('probe_stream_user_agents', {
+    url,
+    userAgent: userAgent || null,
+    timeoutSecs: timeoutSecs ?? null,
+  });
+}
+
 export async function checkProbeFfmpegStatus(): Promise<FfmpegStatus> {
   try {
     return await invoke<FfmpegStatus>('check_probe_ffmpeg_status');

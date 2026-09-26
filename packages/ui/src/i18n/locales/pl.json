@@ -1893,6 +1893,8 @@
       "description": "Włącz szczegółowe rejestrowanie, aby pomóc diagnozować problemy z odtwarzaniem wideo, żądaniami sieciowymi i błędami aplikacji. Dzienniki są zapisywane do pliku, który możesz udostępnić podczas zgłaszania błędów.",
       "enableLogging": "Włącz rejestrowanie debugowania",
       "enableLoggingHint": "Po włączeniu szczegółowe dzienniki mpv, renderera i procesu głównego są zapisywane do pliku. Może to nieznacznie wpłynąć na wydajność.",
+      "supportModeLabel": "Tryb pomocy",
+      "supportModeHint": "Uruchamia silnik wideo ze szczegółowym rejestrowaniem mpv już od startu, dzięki czemu pierwsze żądanie sesji jest przechwytywane — przełącznik Diagnostyka w aplikacji obejmuje tylko już działający silnik i przepada przy restarcie. Poprzedni plik mpv.log jest zachowywany jako mpv.1.log zamiast usuwania. Pliki dziennika zawierają adresy URL strumieni, więc udostępniaj je tylko zaufanym osobom. Działa przy następnym uruchomieniu aplikacji. Tryb pomocy można też włączyć, uruchamiając aplikację z YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Ustawienia przechowywania dzienników",
       "retentionHint": "Stare dzienniki są automatycznie usuwane przy uruchamianiu aplikacji.",
       "logFileLocation": "Lokalizacja pliku dziennika",
@@ -4661,7 +4663,10 @@
     "showResults_two": "Pokaż {{count}} wyniki",
     "showResults_zero": "Pokaż {{count}} wyniki",
     "subsCount_two": "{{count}} napisy",
-    "subsCount_zero": "{{count}} napisy"
+    "subsCount_zero": "{{count}} napisy",
+    "copySupportBundle": "Kopiuj pakiet pomocy",
+    "copySupportBundleTitle": "Dziennik aplikacji + oba dzienniki mpv + wiersz poleceń silnika + ustawienia odtwarzania, z zamaskowanymi danymi logowania",
+    "failedSupportBundle": "Nie udało się utworzyć pakietu pomocy: {{error}}"
   },
   "logoEditor": {
     "title": "Edytor log",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Przechwytuj strumień przez kilka sekund, aby zmierzyć bitrate wideo i pobrać bitrate audio. Wydłuża test o kilka sekund na kanał.",
     "colVideoBitrate": "Bitrate W.",
     "colAudioBitrate": "Bitrate A.",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "Porównaj user-agenty: źródło / brak / przeglądarka",
+    "uaCompareLoading": "Wysyłanie tego samego żądania z każdym user-agentem…",
+    "uaCompareExplainer": "Ten sam adres URL, trzy odciski żądań, przez własny stos HTTP aplikacji (bez mpv i yt-dlp). Wiersz, który zawodzi, gdy inny działa, oznacza, że serwer reaguje na żądanie, a nie na strumień.",
+    "uaNoStatus": "brak statusu",
+    "uaRowSource": "User-agent źródła",
+    "uaRowNone": "Brak user-agenta",
+    "uaRowBrowser": "User-agent przeglądarki"
   }
 }

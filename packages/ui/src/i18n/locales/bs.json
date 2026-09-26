@@ -1893,6 +1893,8 @@
       "description": "Omogućite detaljno bilježenje da pomognete u dijagnostici problema sa video reprodukcijom, mrežnim zahtevima i greškama aplikacije. Dnevnici se upisuju u fajl koji možete podeliti pri prijavljivanju grešaka.",
       "enableLogging": "Omogući dnevnik otklanjanja grešaka",
       "enableLoggingHint": "Kada je uključeno, detaljni dnevnici mpv-a, renderera i glavnog procesa se upisuju u fajl. Ovo može blago uticati na performanse.",
+      "supportModeLabel": "Način podrške",
+      "supportModeHint": "Pokreće video pogon s detaljnim mpv zapisivanjem od samog pokretanja, pa se prvi zahtjev sesije bilježi — prekidač Dijagnostika u aplikaciji pokriva samo već pokrenuti pogon i gubi se pri ponovnom pokretanju. Prethodni mpv.log čuva se kao mpv.1.log umjesto da se izbriše. Datoteke zapisnika sadrže URL-ove streama, pa ih dijelite samo s osobama od povjerenja. Primjenjuje se pri sljedećem pokretanju aplikacije. Način podrške može se omogućiti i pokretanjem s YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Podešavanja zadržavanja dnevnika",
       "retentionHint": "Stari dnevnici se automatski uklanjaju pri pokretanju aplikacije.",
       "logFileLocation": "Lokacija fajla dnevnika",
@@ -4661,7 +4663,10 @@
     "showResults_zero": "Prikaži {{count}} rezultata",
     "subsCount_many": "{{count}} titla",
     "subsCount_two": "{{count}} titla",
-    "subsCount_zero": "{{count}} titla"
+    "subsCount_zero": "{{count}} titla",
+    "copySupportBundle": "Kopiraj paket podrške",
+    "copySupportBundleTitle": "Zapisnik aplikacije + oba mpv zapisnika + naredbeni redak pogona + postavke reprodukcije, s maskiranim vjerodajnicama",
+    "failedSupportBundle": "Izrada paketa podrške nije uspjela: {{error}}"
   },
   "logoEditor": {
     "title": "Uređivač logotipa",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Snimajte stream nekoliko sekundi radi mjerenja bitratea videa i provjere bitratea audija. Dodaje nekoliko sekundi po kanalu.",
     "colVideoBitrate": "V. Bitrate",
     "colAudioBitrate": "A. Bitrate",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "Uporedi user-agente: izvor / nijedan / preglednik",
+    "uaCompareLoading": "Slanje istog zahtjeva sa svakim user-agentom…",
+    "uaCompareExplainer": "Isti URL, tri otiska zahtjeva, putem vlastitog HTTP sloja aplikacije (bez mpv-a i yt-dlp-a). Red koji ne uspije dok drugi uspijeva znači da poslužitelj reagira na zahtjev, a ne na stream.",
+    "uaNoStatus": "nema statusa",
+    "uaRowSource": "User-agent izvora",
+    "uaRowNone": "Bez user-agenta",
+    "uaRowBrowser": "User-agent preglednika"
   }
 }

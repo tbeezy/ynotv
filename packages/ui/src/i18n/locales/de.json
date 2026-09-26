@@ -1893,6 +1893,8 @@
       "description": "Aktivieren Sie die detaillierte Protokollierung, um Probleme mit Videowiedergabe, Netzwerkanfragen und App-Fehlern zu diagnostizieren. Protokolle werden in eine Datei geschrieben, die Sie beim Melden von Fehlern teilen können.",
       "enableLogging": "Debug-Protokollierung aktivieren",
       "enableLoggingHint": "Wenn aktiviert, werden detaillierte Protokolle von mpv, Renderer und Hauptprozess in eine Datei geschrieben. Kann die Leistung leicht beeinträchtigen.",
+      "supportModeLabel": "Support-Modus",
+      "supportModeHint": "Startet die Video-Engine schon beim Start mit ausführlicher mpv-Protokollierung, sodass die erste Anfrage einer Sitzung erfasst wird — der Diagnose-Schalter in der App deckt nur die bereits laufende Engine ab und geht bei einem Neustart verloren. Das vorherige mpv.log wird als mpv.1.log aufbewahrt statt gelöscht. Protokolldateien enthalten Stream-URLs, teile sie daher nur mit Personen, denen du vertraust. Wirkt sich beim nächsten App-Start aus. Der Support-Modus kann auch durch Starten mit YNOTV_SUPPORT_MODE=1 aktiviert werden.",
       "retentionLabel": "Protokoll-Aufbewahrungseinstellungen",
       "retentionHint": "Alte Protokolle werden automatisch entfernt, wenn die App startet.",
       "logFileLocation": "Speicherort der Protokolldatei",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} Untertitel",
     "subsCount_many": "{{count}} Untertitel",
     "subsCount_two": "{{count}} Untertitel",
-    "subsCount_zero": "{{count}} Untertitel"
+    "subsCount_zero": "{{count}} Untertitel",
+    "copySupportBundle": "Support-Paket kopieren",
+    "copySupportBundleTitle": "App-Protokoll + beide mpv-Protokolle + Engine-Befehlszeile + Wiedergabeeinstellungen, mit maskierten Zugangsdaten",
+    "failedSupportBundle": "Support-Paket konnte nicht erstellt werden: {{error}}"
   },
   "logoEditor": {
     "title": "Logo-Editor",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Den Stream für einige Sekunden erfassen, um die Video-Bitrate zu messen und die Audio-Bitrate abzufragen. Dauert einige Sekunden länger pro Kanal.",
     "colVideoBitrate": "V.-Bitrate",
     "colAudioBitrate": "A.-Bitrate",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "User-Agents vergleichen: Quelle / keiner / Browser",
+    "uaCompareLoading": "Dieselbe Anfrage wird mit jedem User-Agent gesendet…",
+    "uaCompareExplainer": "Dieselbe URL, drei Anfrage-Fingerabdrücke, über den eigenen HTTP-Stack der App (kein mpv, kein yt-dlp). Eine Zeile, die fehlschlägt, während eine andere erfolgreich ist, bedeutet, dass der Server auf die Anfrage und nicht auf den Stream reagiert.",
+    "uaNoStatus": "kein Status",
+    "uaRowSource": "User-Agent der Quelle",
+    "uaRowNone": "Kein User-Agent",
+    "uaRowBrowser": "Browser-User-Agent"
   }
 }

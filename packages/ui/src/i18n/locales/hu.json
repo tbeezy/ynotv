@@ -1893,6 +1893,8 @@
       "description": "Részletes naplózás engedélyezése a videólejátszással, hálózati kérésekkel és alkalmazáshibákkal kapcsolatos problémák diagnosztizálásához. A naplók egy fájlba íródnak, amelyet hibajelentéskor megoszthat.",
       "enableLogging": "Hibakeresési naplózás engedélyezése",
       "enableLoggingHint": "Ha engedélyezve van, az mpv, a renderelő és a fő folyamat részletes naplói fájlba íródnak. Ez kissé befolyásolhatja a teljesítményt.",
+      "supportModeLabel": "Támogatási mód",
+      "supportModeHint": "A videómotort már induláskor részletes mpv-naplózással indítja, így a munkamenet első kérése is rögzül — az alkalmazáson belüli Diagnosztika kapcsoló csak a már futó motort fedi le, és újraindításkor elveszik. A korábbi mpv.log fájl törlés helyett mpv.1.log néven megmarad. A naplófájlok stream-URL-eket tartalmaznak, ezért csak megbízható személyekkel ossza meg őket. Az alkalmazás következő indításakor lép életbe. A támogatási mód a YNOTV_SUPPORT_MODE=1 kapcsolóval való indítással is engedélyezhető.",
       "retentionLabel": "Naplómegőrzési beállítások",
       "retentionHint": "A régebbi naplók automatikusan törlődnek az alkalmazás indításakor.",
       "logFileLocation": "Naplófájl helye",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} felirat",
     "subsCount_many": "{{count}} felirat",
     "subsCount_two": "{{count}} felirat",
-    "subsCount_zero": "{{count}} felirat"
+    "subsCount_zero": "{{count}} felirat",
+    "copySupportBundle": "Támogatási csomag másolása",
+    "copySupportBundleTitle": "Alkalmazásnapló + mindkét mpv-napló + motor parancssora + lejátszási beállítások, maszkolt hitelesítő adatokkal",
+    "failedSupportBundle": "Nem sikerült létrehozni a támogatási csomagot: {{error}}"
   },
   "logoEditor": {
     "title": "Logószerkesztő",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "A stream rögzítése néhány másodpercig a videó bitrátájának méréséhez és a hang bitrátájának lekérdezéséhez. Csatornánként néhány másodperccel tovább tart.",
     "colVideoBitrate": "V. bitráta",
     "colAudioBitrate": "H. bitráta",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "User-agentek összehasonlítása: forrás / nincs / böngésző",
+    "uaCompareLoading": "Ugyanazon kérés küldése minden user-agenttel…",
+    "uaCompareExplainer": "Ugyanaz az URL, három kérés-ujjlenyomat, az alkalmazás saját HTTP-veremén keresztül (mpv és yt-dlp nélkül). Az a sor, amelyik meghiúsul, míg egy másik sikerül, azt jelenti, hogy a kiszolgáló a kérésre reagál, nem a streamre.",
+    "uaNoStatus": "nincs állapot",
+    "uaRowSource": "Forrás user-agent",
+    "uaRowNone": "Nincs user-agent",
+    "uaRowBrowser": "Böngésző user-agent"
   }
 }

@@ -1893,6 +1893,8 @@
       "description": "Activa el registro detallado para ayudar a diagnosticar problemas con la reproducción de vídeo, las solicitudes de red y los errores de la aplicación. Los registros se escriben en un archivo que puedes compartir al informar errores.",
       "enableLogging": "Activar registro de depuración",
       "enableLoggingHint": "Cuando está activado, se escriben registros detallados de mpv, el renderizador y el proceso principal en un archivo. Esto puede afectar ligeramente el rendimiento.",
+      "supportModeLabel": "Modo de soporte",
+      "supportModeHint": "Inicia el motor de vídeo con registro mpv detallado desde el arranque, para que se capture la primera solicitud de una sesión; el interruptor de Diagnóstico de la app solo cubre el motor que ya está en ejecución y se pierde al reiniciarse. El mpv.log anterior se conserva como mpv.1.log en lugar de borrarse. Los archivos de registro contienen URL de flujos, así que solo compártelos con personas de confianza. Surte efecto en el próximo inicio de la app. El modo de soporte también puede activarse iniciando con YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Ajustes de retención de registros",
       "retentionHint": "Los registros antiguos se eliminan automáticamente al iniciar la aplicación.",
       "logFileLocation": "Ubicación del archivo de registro",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} subtítulos",
     "subsCount_many": "{{count}} subtítulos",
     "subsCount_two": "{{count}} subtítulos",
-    "subsCount_zero": "{{count}} subtítulos"
+    "subsCount_zero": "{{count}} subtítulos",
+    "copySupportBundle": "Copiar paquete de soporte",
+    "copySupportBundleTitle": "Registro de la aplicación + ambos registros de mpv + línea de comandos del motor + ajustes de reproducción, con credenciales ocultas",
+    "failedSupportBundle": "No se pudo crear el paquete de soporte: {{error}}"
   },
   "logoEditor": {
     "title": "Editor de logotipos",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Captura el flujo durante unos segundos para medir la tasa de bits de vídeo y consultar la de audio. Añade unos segundos por canal.",
     "colVideoBitrate": "Bitrate V.",
     "colAudioBitrate": "Bitrate A.",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "Comparar user-agents: origen / ninguno / navegador",
+    "uaCompareLoading": "Enviando la misma solicitud con cada user-agent…",
+    "uaCompareExplainer": "La misma URL, tres huellas de solicitud, desde la propia pila HTTP de la aplicación (sin mpv ni yt-dlp). Una fila que falla mientras otra funciona significa que el servidor reacciona a la solicitud, no al flujo.",
+    "uaNoStatus": "sin estado",
+    "uaRowSource": "User-agent del origen",
+    "uaRowNone": "Sin user-agent",
+    "uaRowBrowser": "User-agent del navegador"
   }
 }

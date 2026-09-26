@@ -1893,6 +1893,8 @@
       "description": "Video oynatma, ağ istekleri ve uygulama hatalarıyla ilgili sorunları tanılamaya yardımcı olmak için ayrıntılı günlük kaydını etkinleştirin. Günlükler, hata bildirirken paylaşabileceğiniz bir dosyaya yazılır.",
       "enableLogging": "Hata ayıklama günlüğünü etkinleştir",
       "enableLoggingHint": "Etkinleştirildiğinde mpv, oluşturucu ve ana işlemden ayrıntılı günlükler bir dosyaya yazılır. Bu, performansı biraz etkileyebilir.",
+      "supportModeLabel": "Destek modu",
+      "supportModeHint": "Video motorunu başlangıçtan itibaren ayrıntılı mpv günlüklemesiyle başlatır, böylece bir oturumun ilk isteği yakalanır — uygulamadaki Tanılama anahtarı yalnızca hâlihazırda çalışan motoru kapsar ve yeniden başlatmada kaybolur. Önceki mpv.log silinmek yerine mpv.1.log olarak saklanır. Günlük dosyaları akış URL'leri içerir, bu yüzden yalnızca güvendiğiniz kişilerle paylaşın. Uygulamanın bir sonraki başlatılışında etkili olur. Destek modu YNOTV_SUPPORT_MODE=1 ile başlatılarak da etkinleştirilebilir.",
       "retentionLabel": "Günlük Saklama Ayarları",
       "retentionHint": "Eski günlükler uygulama başladığında otomatik olarak kaldırılır.",
       "logFileLocation": "Günlük Dosyası Konumu",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} altyazı",
     "subsCount_many": "{{count}} altyazı",
     "subsCount_two": "{{count}} altyazı",
-    "subsCount_zero": "{{count}} altyazı"
+    "subsCount_zero": "{{count}} altyazı",
+    "copySupportBundle": "Destek paketini kopyala",
+    "copySupportBundleTitle": "Uygulama günlüğü + her iki mpv günlüğü + motor komut satırı + oynatma ayarları, kimlik bilgileri gizlenmiş",
+    "failedSupportBundle": "Destek paketi oluşturulamadı: {{error}}"
   },
   "logoEditor": {
     "title": "Logo Düzenleyici",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Video bit hızını ölçmek ve ses bit hızını sorgulamak için yayını birkaç saniye yakalayın. Kanal başına birkaç saniye ekler.",
     "colVideoBitrate": "V. Bit Hızı",
     "colAudioBitrate": "S. Bit Hızı",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "User-agent'ları karşılaştır: kaynak / yok / tarayıcı",
+    "uaCompareLoading": "Aynı istek her user-agent ile gönderiliyor…",
+    "uaCompareExplainer": "Aynı URL, üç istek parmak izi, uygulamanın kendi HTTP yığınıyla (mpv yok, yt-dlp yok). Bir satır başarısız olurken diğeri başarılıysa sunucu akışa değil isteğe göre yanıt veriyordur.",
+    "uaNoStatus": "durum yok",
+    "uaRowSource": "Kaynak user-agent",
+    "uaRowNone": "User-agent yok",
+    "uaRowBrowser": "Tarayıcı user-agent"
   }
 }

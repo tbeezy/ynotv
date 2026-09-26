@@ -12,6 +12,8 @@ interface DebugTabProps {
   onDebugLoggingChange: (enabled: boolean) => void;
   logRetentionDays: number;
   onLogRetentionChange: (days: number) => void;
+  supportModeEnabled: boolean;
+  onSupportModeChange: (enabled: boolean) => void;
 }
 
 export function DebugTab({
@@ -19,6 +21,8 @@ export function DebugTab({
   onDebugLoggingChange,
   logRetentionDays,
   onLogRetentionChange,
+  supportModeEnabled,
+  onSupportModeChange,
 }: DebugTabProps) {
   useTranslation();
   const [logPath, setLogPath] = useState<string>('');
@@ -46,6 +50,12 @@ export function DebugTab({
     if (window.debug?.setDebugLoggingEnabled) {
       window.debug.setDebugLoggingEnabled(enabled);
     }
+  }
+
+  async function handleSupportModeChange(enabled: boolean) {
+    if (!window.storage) return;
+    onSupportModeChange(enabled);
+    await window.storage.updateSettings({ supportModeEnabled: enabled });
   }
 
   async function handleOpenLogFolder() {
@@ -76,6 +86,20 @@ export function DebugTab({
           </label>
           <p className="form-hint" style={{ marginTop: '0.5rem' }}>
             {i18n.t('settings:debug.enableLoggingHint')}
+          </p>
+        </div>
+
+        <div className="tmdb-form" style={{ marginTop: '1.5rem' }}>
+          <label className="genre-checkbox" style={{ maxWidth: '420px' }}>
+            <input
+              type="checkbox"
+              checked={supportModeEnabled}
+              onChange={(e) => handleSupportModeChange(e.target.checked)}
+            />
+            <span className="genre-name">{i18n.t('settings:debug.supportModeLabel')}</span>
+          </label>
+          <p className="form-hint" style={{ marginTop: '0.5rem' }}>
+            {i18n.t('settings:debug.supportModeHint')}
           </p>
         </div>
 

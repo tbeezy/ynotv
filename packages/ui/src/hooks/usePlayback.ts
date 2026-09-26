@@ -1019,13 +1019,14 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     currentChannelRef.current = channel;
     setCurrentChannel(channel);
 
+    // Suppress status updates from MPV for up to 1.5 seconds during channel transition
+    // to prevent stale position/playing events from the old channel from overriding our state,
+    // and reset the progress latch so HTTP errors aren't masked by the previous channel.
+    suppressStatusUpdates?.(1500);
+
     if (showLoadingScreenRef.current) {
       setLoadingState('loading');
       loadingStartedAtRef.current = Date.now();
-
-      // Suppress status updates from MPV for up to 1.5 seconds during channel transition
-      // to prevent stale position/playing events from the old channel from overriding our state.
-      suppressStatusUpdates?.(1500);
 
       // Clear last frame and reset state
       Bridge.stop().catch(() => {});
@@ -1137,7 +1138,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     } finally {
       setLoadInFlight(false);
     }
-  }, [notifyMainLoaded, resetHealthTracking, setIgnoreHttpErrors]);
+  }, [notifyMainLoaded, resetHealthTracking, setIgnoreHttpErrors, suppressStatusUpdates]);
 
   // ── Retry helpers ──────────────────────────────────────────────────────────
 
@@ -1501,6 +1502,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     try {
       const resolved = await resolvePlayUrl(info.source_id, info.url);
       if (resolved.url.startsWith('infoHash:')) return false;
+      suppressStatusUpdates?.(1500);
       setIgnoreHttpErrors(true);
       setPosition(0);
       setDuration(0);
@@ -1536,7 +1538,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       logWarn('[Trailer] Retry threw:', err);
       return false;
     }
-  }, [setIgnoreHttpErrors, setPosition, setDuration, setPlaying]);
+  }, [setIgnoreHttpErrors, setPosition, setDuration, setPlaying, suppressStatusUpdates]);
 
   // ── mpv-stream-ended / mpv-end-file-error / mpv-http-error listeners ───────
   // All three failure signals route through handleStreamDied so failover runs.
@@ -1577,16 +1579,22 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         else unlistenEndFileError = fn;
       });
 
-      listen('mpv-http-error', () => {
+      listen('mpv-http-error', (e: any) => {
+        // The Rust side maps ffmpeg's `HTTP error <code>` line to a readable
+        // message and emits it as the payload. Log it before any early return so
+        // a failing stream's status code always reaches ynoTV.log.
+        const reason = typeof e?.payload === 'string' && e.payload.trim()
+          ? e.payload
+          : 'unknown HTTP error';
         if (!useEventBasedReconnectRef.current) {
-          logInfo('[Retry] Ignoring mpv-http-error event (event-based reconnect disabled)');
+          logInfo(`[Retry] Ignoring mpv-http-error event (event-based reconnect disabled): ${reason}`);
           return;
         }
         if (isIgnoringHttpErrors()) {
-          logInfo('[Retry] Ignoring mpv-http-error event for current stream');
+          logInfo(`[Retry] Ignoring mpv-http-error event for current stream: ${reason}`);
           return;
         }
-        logInfo('[Retry] Received mpv-http-error event');
+        logInfo(`[Retry] Received mpv-http-error event: ${reason}`);
         handleStreamDied();
       }).then((fn) => {
         if (disposed) fn();
@@ -2608,10 +2616,15 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       return;
     }
 
+    // Catchup/timeshift is a stream transition like any other: reset the progress
+    // latch and any deferred HTTP error so a fresh failure on a local URL isn't
+    // masked as "stream is already playing".
+    suppressStatusUpdates?.(1500);
     const isLocal = isLocalUrl(resolved.url);
     if (isLocal) {
       setIgnoreHttpErrors(true);
-    }      const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
+    }
+    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
       if (!result.success) {
       if (isLocal) setIgnoreHttpErrors(false);
       setError(translateNativeError(result.error) || i18n.t('player:failedToLoadCatchupStream'));
@@ -2620,7 +2633,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       setCatchupInfo({ channelId: channel.stream_id, programTitle, startTime: adjustedStartTimeMs, duration: adjustedDurationMinutes, programDesc });
       setPlaying(true);
     }
-  }, [vodInfo, position, duration, clearPendingSeeks]);
+  }, [vodInfo, position, duration, clearPendingSeeks, suppressStatusUpdates]);
 
   const handleCatchupSeek = useCallback(async (channel: StoredChannel, programTitle: string, startTimeMs: number, durationMinutes: number, seekSeconds: number, programDesc?: string) => {
     seekingRef.current = true;
@@ -2683,6 +2696,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     const isStalker = sourceData?.type === 'stalker';
     const isLocal = isLocalUrl(resolved.url);
     const isTrailer = info.source_id === 'trailer' || isYouTubeUrl(resolved.url) || isYouTubeUrl(info.url);
+    suppressStatusUpdates?.(1500);
     setIgnoreHttpErrors(isStalker || isLocal || isTrailer);
     if (isTrailer) {
       trailerLoadStartTimeRef.current = Date.now();
@@ -2934,7 +2948,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       onCloseView?.();
       return true;
     }
-  }, [setIgnoreHttpErrors, setPosition, setDuration, clearPendingSeeks]);
+  }, [setIgnoreHttpErrors, setPosition, setDuration, clearPendingSeeks, suppressStatusUpdates]);
 
   // Merge late-resolved metadata into the active play (e.g. Jellyfin
   // ProviderIds that arrive after playback already started). The optional
@@ -3005,6 +3019,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         }
       }
 
+      suppressStatusUpdates?.(1500);
       if (Bridge.getIsCasting?.()) {
         Bridge.setCastMetadata(recording.program_title, 'DVR Recording');
       }
@@ -3054,7 +3069,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     } catch (error: any) {
       setError(translateNativeError(error?.message) || i18n.t('player:failedToPlayRecording'));
     }
-  }, [clearPendingSeeks]);
+  }, [clearPendingSeeks, suppressStatusUpdates]);
 
   const handleStop = useCallback(async () => {
     // Save progress before stopping if playing VOD and initial seek is not pending
@@ -3130,6 +3145,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
       console.log('[Playback] ✅ Progress saved on stop');
     }
     
+    suppressStatusUpdates?.(0);
     clearPendingSeeks();
     await Bridge.stop();
     setPlaying(false);
@@ -3167,7 +3183,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     recoveryArmedRef.current = false;
     userPausedRef.current = false;
     setFailoverState(null);
-  }, [vodInfo, position, duration, clearPendingSeeks]);
+  }, [vodInfo, position, duration, clearPendingSeeks, suppressStatusUpdates]);
 
   const handleSeek = useCallback(async (seconds: number) => {
     seekingRef.current = true;

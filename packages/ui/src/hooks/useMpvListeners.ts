@@ -3,7 +3,17 @@ import type { MpvStatus } from '../types/app';
 import { Bridge } from '../services/tauri-bridge';
 import i18n, { translateNativeError } from '../i18n';
 import { createAudioOnlyTracker, resolveAudioOnly } from '../utils/audioOnly';
-import { logInfo } from '../utils/logger';
+import { logInfo, logWarn } from '../utils/logger';
+
+/**
+ * How long a suppressible HTTP error is held before it is shown.
+ *
+ * Stalker/MAC sources (and some LAN panels) raise false 401/403s that don't stop
+ * playback, so those errors are deferred rather than shown immediately: a stream
+ * that starts making progress inside this window keeps them silent, and a stream
+ * that never starts reports why instead of leaving a bare black screen.
+ */
+const HTTP_ERROR_GRACE_MS = 5000;
 
 export interface MpvState {
     mpvReady: boolean;
@@ -97,13 +107,33 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
     const initializedRef = useRef(false);
     const hasSyncedInitialVolumeRef = useRef(false);
     const suppressStatusUntilRef = useRef<number>(0);
+    // True once the current file has actually produced playback progress.
+    // `playing` alone is not enough: mpv reports it as soon as loadfile is
+    // accepted, which is also true for a stream that never opens.
+    const progressRef = useRef(false);
+    // A deferred (suppressed) HTTP error, and the timer that surfaces it when the
+    // stream still hasn't started progressing.
+    const pendingHttpErrorRef = useRef<string | null>(null);
+    const pendingHttpErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearPendingHttpError = useCallback(() => {
+        if (pendingHttpErrorTimerRef.current !== null) {
+            clearTimeout(pendingHttpErrorTimerRef.current);
+            pendingHttpErrorTimerRef.current = null;
+        }
+        pendingHttpErrorRef.current = null;
+    }, []);
     
     const suppressStatusUpdates = useCallback((durationMs: number) => {
         suppressStatusUntilRef.current = Date.now() + durationMs;
         lastAudioOnlyRef.current = false;
         audioOnlyTrackerRef.current.reset();
         setIsAudioOnly(false);
-    }, []);
+        // Called on every stream transition: the previous file's progress says
+        // nothing about the new one, so suppression must not carry over.
+        progressRef.current = false;
+        clearPendingHttpError();
+    }, [clearPendingHttpError]);
 
     // Keep the latest onEndFile callback in a ref so the one-shot listener
     // registered below never captures a stale closure.
@@ -227,8 +257,20 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
                     });
                 }
 
-                // Clear stale playback errors once the stream is playing and making progress
-                if (status.playing && status.position !== undefined && status.position > 0) {
+                // Track real progress so HTTP-error suppression can tell a stream
+                // that is playing from one that never opened. One-way latch: once
+                // playback has progressed, it stays latched until the next stream
+                // transition so pauses or position resets don't un-latch it.
+                const hasProgressed = status.playing === true && (
+                    (status.position !== undefined && status.position > 0) ||
+                    Boolean(status.videoTrackId || status.videoFormat)
+                ) && !status.coreIdle;
+
+                if (hasProgressed) {
+                    progressRef.current = true;
+                    // The stream got there after all: drop any deferred HTTP error
+                    // instead of showing it seconds into healthy playback.
+                    clearPendingHttpError();
                     setError(null);
                 }
             });
@@ -248,11 +290,36 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
             });
 
             const unlistenHttpError = await listen('mpv-http-error', (e: any) => {
-                // Suppress HTTP errors for Stalker/MAC sources where auth headers
-                // cause false 401/403 errors but the stream plays fine.
-                if (!ignoreHttpErrorsRef.current) {
-                    setError(translateNativeError(e.payload) || e.payload);
+                const message = translateNativeError(e.payload) || e.payload;
+                // Stalker/MAC sources (and some LAN panels) raise false 401/403s
+                // that don't stop playback. Where errors are suppressed, defer
+                // them instead of dropping them: a stream that never plays must
+                // report the reason, otherwise the user gets a black screen with
+                // no explanation and nothing lands in the log.
+                if (ignoreHttpErrorsRef.current && !progressRef.current) {
+                    const alreadyPending = pendingHttpErrorRef.current !== null;
+                    pendingHttpErrorRef.current = message;
+                    if (!alreadyPending) {
+                        logInfo(`[Playback] HTTP error deferred (stream has not started yet): ${message}`);
+                        pendingHttpErrorTimerRef.current = setTimeout(() => {
+                            pendingHttpErrorTimerRef.current = null;
+                            const pending = pendingHttpErrorRef.current;
+                            pendingHttpErrorRef.current = null;
+                            if (pending && !progressRef.current) {
+                                logWarn(`[Playback] Stream never started, reporting deferred HTTP error: ${pending}`);
+                                setError(pending);
+                            }
+                        }, HTTP_ERROR_GRACE_MS);
+                    }
+                    return;
                 }
+                // Already playing: the error is noise from a client that got past
+                // whatever the panel objected to, so keep it out of the UI.
+                if (ignoreHttpErrorsRef.current && progressRef.current) {
+                    logWarn(`[Playback] HTTP error ignored (stream is already playing): ${message}`);
+                    return;
+                }
+                setError(message);
             });
 
             const unlistenEndFileError = await listen('mpv-end-file-error', (e: any) => {
@@ -287,9 +354,11 @@ export function useMpvListeners(options: UseMpvListenersOptions = {}) {
         return () => {
             disposed = true;
             unlistenFns.forEach(fn => fn());
+            clearPendingHttpError();
         };
     }, [
         options.settingsLoaded,
+        clearPendingHttpError,
     ]); // Register listeners once after settings load; MPV init is intentionally one-shot.
 
     return {

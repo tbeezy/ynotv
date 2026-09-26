@@ -494,6 +494,14 @@ fn spawn_log_capture<R: Runtime>(
                         // its EndFile event carries a reason but no error text.
                         if let Some(error_msg) = crate::mpv_error_parse::http_error_message(text) {
                             if current_http_error.as_deref() != Some(error_msg.as_str()) {
+                                // Record the status in ynoTV.log too: the frontend may
+                                // be suppressing the event, and the raw line names the
+                                // component that failed (ffmpeg vs the ytdl hook).
+                                log::warn!(
+                                    "[MPV] HTTP error report: {} | {}",
+                                    error_msg,
+                                    text.trim().chars().take(160).collect::<String>()
+                                );
                                 let _ = app.emit("mpv-http-error", error_msg.clone());
                                 current_http_error = Some(error_msg);
                             }

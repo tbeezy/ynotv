@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'react';
 import { db, type StoredChannel, type StoredCategory, type FailoverGroupMember, type TeamChannelLink } from '../db';
 import {
   startChannelProbe,
   probeSingleStream,
+  probeStreamUserAgents,
   checkProbeFfmpegStatus,
   saveProbedMetadataToDb,
   computeProbeHealthScore,
@@ -12,6 +13,7 @@ import {
   type ProbeSummary,
   type ProbeSessionController,
   type FfmpegStatus,
+  type UserAgentProbeResult,
 } from '../services/stream-probe';
 import { resolvePlayUrl } from '../services/stream-resolver';
 import { reorderFailoverGroupChannels } from '../services/failover-groups';
@@ -129,6 +131,15 @@ export function ChannelProbeModal({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [reprobingStreamId, setReprobingStreamId] = useState<string | null>(null);
+  // "Compare user-agents" result for one row: which request fingerprint the
+  // server actually answers.
+  const [uaCompare, setUaCompare] = useState<{
+    streamId: string;
+    loading: boolean;
+    error?: string;
+    results?: UserAgentProbeResult[];
+  } | null>(null);
+  const uaRequestIdRef = useRef<number>(0);
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -684,6 +695,61 @@ export function ChannelProbeModal({
       }
     },
     [sources, timeoutSecs, autoSaveBadges, measureBitrate]
+  );
+
+  /** Localized label for a UA-comparison row, keyed by the backend fingerprint id. */
+  const uaRowLabel = (row: UserAgentProbeResult) => {
+    switch (row.id) {
+      case 'source': return t('uaRowSource');
+      case 'none': return t('uaRowNone');
+      case 'browser': return t('uaRowBrowser');
+      default: return row.label;
+    }
+  };
+
+  /**
+   * Ask the same URL for its answer under three request fingerprints. This is
+   * what turns "it plays in VLC but not here" into a fact: the rows use the
+   * app's own HTTP stack, so no mpv and no yt-dlp can be blamed.
+   */
+  const handleCompareUserAgents = useCallback(
+    async (result: ProbeChannelResult) => {
+      if (uaCompare?.streamId === result.stream_id) {
+        uaRequestIdRef.current += 1;
+        setUaCompare(null);
+        return;
+      }
+
+      const reqId = ++uaRequestIdRef.current;
+      const source = sources.find((s) => s.id === result.source_id);
+      let streamUrl = result.url;
+      let userAgent =
+        source?.user_agent ||
+        useSettingsStore.getState().globalLiveTvUserAgent ||
+        'VLC/3.0.18 LibVLC/3.0.18';
+
+      if (source?.type === 'stalker' || streamUrl.startsWith('stalker_') || streamUrl.startsWith('/media/')) {
+        try {
+          const resolved = await resolvePlayUrl(result.source_id, streamUrl);
+          streamUrl = resolved.url;
+          if (resolved.userAgent) userAgent = resolved.userAgent;
+        } catch (e) {
+          console.warn('[ChannelProbeModal] Failed to resolve play URL for UA comparison:', e);
+        }
+      }
+
+      if (reqId !== uaRequestIdRef.current) return;
+      setUaCompare({ streamId: result.stream_id, loading: true });
+      try {
+        const compared = await probeStreamUserAgents(streamUrl, userAgent, timeoutSecs);
+        if (reqId !== uaRequestIdRef.current) return;
+        setUaCompare({ streamId: result.stream_id, loading: false, results: compared });
+      } catch (err) {
+        if (reqId !== uaRequestIdRef.current) return;
+        setUaCompare({ streamId: result.stream_id, loading: false, error: String(err) });
+      }
+    },
+    [sources, timeoutSecs, uaCompare]
   );
 
 
@@ -1953,7 +2019,8 @@ export function ChannelProbeModal({
                   {sortedResults.map((res) => {
                     const quality = res.quality_label || res.resolution;
                     return (
-                      <tr key={res.stream_id}>
+                      <Fragment key={res.stream_id}>
+                      <tr>
                         <td>
                           <span className={`cpm-status-pill ${res.status}`}>
                             <span className="cpm-status-dot" />
@@ -2074,9 +2141,64 @@ export function ChannelProbeModal({
                                 </svg>
                               )}
                             </button>
+                            <button
+                              className="cpm-row-btn"
+                              disabled={uaCompare?.streamId === res.stream_id && uaCompare.loading}
+                              onClick={() => handleCompareUserAgents(res)}
+                              title={t('uaCompareTitle')}
+                              style={{ fontSize: '0.62rem', fontWeight: 700 }}
+                            >
+                              {uaCompare?.streamId === res.stream_id && uaCompare.loading ? '...' : 'UA'}
+                            </button>
                           </div>
                         </td>
                       </tr>
+                      {uaCompare?.streamId === res.stream_id && (
+                        <tr>
+                          <td colSpan={11} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)' }}>
+                            {uaCompare.loading ? (
+                              <span className="cpm-badge-muted">{t('uaCompareLoading')}</span>
+                            ) : uaCompare.error ? (
+                              <span style={{ color: '#f87171', fontSize: '0.75rem' }}>{uaCompare.error}</span>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                                  {t('uaCompareExplainer')}
+                                </span>
+                                {(uaCompare.results ?? []).map((row) => (
+                                  <div
+                                    key={row.id || row.label}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.75rem' }}
+                                  >
+                                    <span style={{ minWidth: '140px', color: '#e2e8f0' }}>{uaRowLabel(row)}</span>
+                                    <span className={`cpm-status-pill ${row.status}`}>
+                                      <span className="cpm-status-dot" />
+                                      {row.status}
+                                    </span>
+                                    <span style={{ minWidth: '110px', color: '#94a3b8' }}>
+                                      {row.http_status != null ? `HTTP ${row.http_status}` : t('uaNoStatus')}
+                                      {row.latency_ms != null ? ` · ${row.latency_ms}ms` : ''}
+                                    </span>
+                                    {row.error_reason && (
+                                      <span style={{ color: '#f87171' }}>{row.error_reason}</span>
+                                    )}
+                                    {row.user_agent && (
+                                      <span
+                                        className="cpm-badge-muted"
+                                        title={row.user_agent}
+                                        style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                      >
+                                        {row.user_agent}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

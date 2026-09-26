@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSubtitleDebugStore } from '../stores/subtitleDebugStore';
-import { Bridge } from '../services/tauri-bridge';
+import { Bridge, type SupportBundle } from '../services/tauri-bridge';
 
 interface SubtitleDiagnosticsModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export function SubtitleDiagnosticsModal({ isOpen, onClose }: SubtitleDiagnostic
   const [mpvLogPath, setMpvLogPath] = useState('');
   const [verboseOn, setVerboseOn] = useState(false);
   const [mpvLoading, setMpvLoading] = useState(false);
+  const [bundleLoading, setBundleLoading] = useState(false);
   const jsBodyRef = useRef<HTMLTextAreaElement>(null);
   const mpvBodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -67,6 +68,46 @@ export function SubtitleDiagnosticsModal({ isOpen, onClose }: SubtitleDiagnostic
     ? entries.map((e) => `[${e.time}] (${e.area}) ${e.msg}`).join('\n')
     : t('noDiagnostics');
 
+  /**
+   * One paste for a bug report: the app log, both mpv logs (unfiltered — the
+   * panel below only shows subtitle-related lines), the engine command line and
+   * the playback settings that shaped it. Credentials are masked in Rust.
+   */
+  const copySupportBundle = async () => {
+    setBundleLoading(true);
+    try {
+      const bundle: SupportBundle = await Bridge.getSupportBundle(1200);
+      const sections: string[] = [
+        `ynoTV support bundle — app ${bundle.app_version} on ${bundle.os}`,
+        '',
+        `=== Engine command line (${bundle.spawn_args.length} args) ===`,
+        bundle.spawn_args.join('\n'),
+        '',
+        `=== Effective playback settings ===`,
+        JSON.stringify(bundle.settings, null, 2),
+        '',
+        `=== App log (${bundle.app_log_path || 'not found'}) ===`,
+        bundle.app_log || '(empty)',
+        '',
+        `=== MPV log (${bundle.mpv_log_path || 'not found'}) ===`,
+        bundle.mpv_log || '(empty)',
+        '',
+        `=== MPV log, previous engine start (${bundle.previous_mpv_log_path || 'not found'}) ===`,
+        bundle.previous_mpv_log || '(empty)',
+        '',
+        '=== App / JS log (this session) ===',
+        jsText,
+      ];
+      await navigator.clipboard.writeText(sections.join('\n'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      setMpvLog(t('failedSupportBundle', { error: String(e) }));
+    } finally {
+      setBundleLoading(false);
+    }
+  };
+
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -91,6 +132,14 @@ export function SubtitleDiagnosticsModal({ isOpen, onClose }: SubtitleDiagnostic
             {copied ? t('copied') : t('copyAll')}
           </button>
           <button className="subtitle-diagnostics-btn" onClick={() => copy(jsText)}>{t('copyAppLog')}</button>
+          <button
+            className="subtitle-diagnostics-btn"
+            disabled={bundleLoading}
+            onClick={copySupportBundle}
+            title={t('copySupportBundleTitle')}
+          >
+            {bundleLoading ? t('loading') : t('copySupportBundle')}
+          </button>
           <button className="subtitle-diagnostics-btn" onClick={() => copy(mpvLog)}>{t('copyMpvLog')}</button>
           <button
             className={`subtitle-diagnostics-btn ${verboseOn ? 'subtitle-diagnostics-btn-active' : ''}`}

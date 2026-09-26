@@ -1893,6 +1893,8 @@
       "description": "Enable verbose logging to help diagnose issues with video playback, network requests, and application errors. Logs are written to a file that you can share when reporting bugs.",
       "enableLogging": "Enable debug logging",
       "enableLoggingHint": "When enabled, detailed logs from mpv, the renderer, and main process are written to a file. This may slightly impact performance.",
+      "supportModeLabel": "Support mode",
+      "supportModeHint": "Starts the video engine with verbose mpv logging from launch, so the first request of a session is captured — the in-app Diagnostics toggle only covers the engine that is already running and is lost when it restarts. The previous mpv.log is kept as mpv.1.log instead of being deleted. Log files contain stream URLs, so only share them with people you trust. Takes effect on the next app start. Support mode can also be enabled by launching with YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Log Retention Settings",
       "retentionHint": "Older logs are automatically removed when the app starts.",
       "logFileLocation": "Log File Location",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} subs",
     "subsCount_many": "{{count}} subs",
     "subsCount_two": "{{count}} subs",
-    "subsCount_zero": "{{count}} subs"
+    "subsCount_zero": "{{count}} subs",
+    "copySupportBundle": "Copy Support Bundle",
+    "copySupportBundleTitle": "App log + both mpv logs + engine command line + playback settings, with credentials masked",
+    "failedSupportBundle": "Failed to build support bundle: {{error}}"
   },
   "logoEditor": {
     "title": "Logo Editor",
@@ -5247,6 +5252,13 @@
     "cancelProbeAndClose": "Cancel Probe & Close",
     "guideButtonTitle": "Stream Probe & Health Checker",
     "guideButtonLabel": "Stream Probe",
-    "rerunDeadTitle": "Re-test only dead and failing streams from the current scan"
+    "rerunDeadTitle": "Re-test only dead and failing streams from the current scan",
+    "uaCompareTitle": "Compare user-agents: source / none / browser",
+    "uaCompareLoading": "Sending the same request with each user-agent…",
+    "uaCompareExplainer": "Same URL, three request fingerprints, from the app's own HTTP stack (no mpv, no yt-dlp). A row that fails while another succeeds means the server is keying on the request, not on the stream.",
+    "uaNoStatus": "no status",
+    "uaRowSource": "Source user-agent",
+    "uaRowNone": "No user-agent",
+    "uaRowBrowser": "Browser user-agent"
   }
 }

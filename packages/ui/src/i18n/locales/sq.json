@@ -1893,6 +1893,8 @@
       "description": "Aktivizo regjistrimin e detajuar për të ndihmuar në diagnostikimin e problemeve me luajtjen e videos, kërkesat e rrjetit dhe gabimet e aplikacionit. Regjistrat ruhen në një skedar që mund ta ndash kur raporton gabime.",
       "enableLogging": "Aktivizo regjistrimin e debug-ut",
       "enableLoggingHint": "Kur aktivizohet, regjistrat e detajuar të mpv-së, renderer-it dhe procesit kryesor ruhen në një skedar. Mund të ndikojë pak në performancën.",
+      "supportModeLabel": "Modaliteti i mbështetjes",
+      "supportModeHint": "Nis motorin e videos me regjistrim të detajuar mpv që në nisje, në mënyrë që kërkesa e parë e një sesioni të kapet — çelësi Diagnostika brenda aplikacionit mbulon vetëm motorin që tashmë është duke u ekzekutuar dhe humbet kur riniset. mpv.log i mëparshëm ruhet si mpv.1.log në vend që të fshihet. Skedarët e regjistrit përmbajnë URL transmetimi, prandaj shpërndajini vetëm me persona që i besoni. Hyn në fuqi në nisjen e radhës së aplikacionit. Modaliteti i mbështetjes mund të aktivizohet edhe duke nisur me YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Cilësimet e ruajtjes së regjistrave",
       "retentionHint": "Regjistrat e vjetër fshihen automatikisht në nisjen e aplikacionit.",
       "logFileLocation": "Vendndodhja e skedarit të regjistrit",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} titra",
     "subsCount_many": "{{count}} titra",
     "subsCount_two": "{{count}} titra",
-    "subsCount_zero": "{{count}} titra"
+    "subsCount_zero": "{{count}} titra",
+    "copySupportBundle": "Kopjo paketën e mbështetjes",
+    "copySupportBundleTitle": "Regjistri i aplikacionit + të dy regjistrat mpv + rreshti i komandës së motorit + cilësimet e riprodhimit, me kredencialet e maskuara",
+    "failedSupportBundle": "Krijimi i paketës së mbështetjes dështoi: {{error}}"
   },
   "logoEditor": {
     "title": "Redaktuesi i logove",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Regjistro transmetimin për disa sekonda për të matur bitrate-in e videos dhe për të marrë bitrate-in e audios. Shton disa sekonda për kanal.",
     "colVideoBitrate": "Bitrate V.",
     "colAudioBitrate": "Bitrate A.",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "Krahaso user-agentët: burimi / asnjë / shfletuesi",
+    "uaCompareLoading": "Po dërgohet e njëjta kërkesë me çdo user-agent…",
+    "uaCompareExplainer": "I njëjti URL, tre gjurmë kërkese, përmes stakut HTTP të vetë aplikacionit (pa mpv, pa yt-dlp). Një rresht që dështon ndërsa një tjetër ia del do të thotë që serveri po reagon ndaj kërkesës, jo ndaj transmetimit.",
+    "uaNoStatus": "pa status",
+    "uaRowSource": "User-agent i burimit",
+    "uaRowNone": "Pa user-agent",
+    "uaRowBrowser": "User-agent i shfletuesit"
   }
 }

@@ -1893,6 +1893,8 @@
       "description": "Schakel uitgebreide logging in om problemen met videoweergave, netwerkverzoeken en app-fouten te diagnosticeren. Logs worden naar een bestand geschreven dat je kunt delen bij het melden van bugs.",
       "enableLogging": "Debuglogging inschakelen",
       "enableLoggingHint": "Wanneer ingeschakeld, worden gedetailleerde logs van mpv, de renderer en het hoofdproces naar een bestand geschreven. Dit kan de prestaties enigszins beïnvloeden.",
+      "supportModeLabel": "Ondersteuningsmodus",
+      "supportModeHint": "Start de video-engine met uitgebreide mpv-logboekregistratie vanaf het opstarten, zodat de eerste aanvraag van een sessie wordt vastgelegd — de Diagnostiek-schakelaar in de app dekt alleen de al draaiende engine en gaat verloren bij een herstart. Het vorige mpv.log wordt bewaard als mpv.1.log in plaats van verwijderd. Logbestanden bevatten stream-URL's, deel ze dus alleen met mensen die je vertrouwt. Werkt bij de volgende start van de app. De ondersteuningsmodus kan ook worden ingeschakeld door te starten met YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Logbewaarinstellingen",
       "retentionHint": "Oudere logs worden automatisch verwijderd wanneer de app start.",
       "logFileLocation": "Locatie van logbestand",
@@ -4661,7 +4663,10 @@
     "subsCount_few": "{{count}} ondertitels",
     "subsCount_many": "{{count}} ondertitels",
     "subsCount_two": "{{count}} ondertitels",
-    "subsCount_zero": "{{count}} ondertitels"
+    "subsCount_zero": "{{count}} ondertitels",
+    "copySupportBundle": "Supportbundel kopiëren",
+    "copySupportBundleTitle": "App-logboek + beide mpv-logboeken + opdrachtregel van de engine + afspeelinstellingen, met gemaskeerde inloggegevens",
+    "failedSupportBundle": "Kon supportbundel niet maken: {{error}}"
   },
   "logoEditor": {
     "title": "Logo-editor",
@@ -5247,6 +5252,13 @@
     "measureBitrateTitle": "Leg de stream enkele seconden vast om de videobitrate te meten en de audiobitrate op te vragen. Voegt enkele seconden per kanaal toe.",
     "colVideoBitrate": "V.-bitrate",
     "colAudioBitrate": "A.-bitrate",
-    "kbpsValue": "{{count}} kbps"
+    "kbpsValue": "{{count}} kbps",
+    "uaCompareTitle": "User-agents vergelijken: bron / geen / browser",
+    "uaCompareLoading": "Dezelfde aanvraag wordt met elke user-agent verzonden…",
+    "uaCompareExplainer": "Dezelfde URL, drie aanvraagvingerafdrukken, via de eigen HTTP-stack van de app (geen mpv, geen yt-dlp). Een rij die faalt terwijl een andere slaagt, betekent dat de server op de aanvraag reageert, niet op de stream.",
+    "uaNoStatus": "geen status",
+    "uaRowSource": "User-agent van bron",
+    "uaRowNone": "Geen user-agent",
+    "uaRowBrowser": "Browser-user-agent"
   }
 }

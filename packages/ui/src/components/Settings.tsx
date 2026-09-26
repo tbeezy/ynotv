@@ -453,6 +453,7 @@ export function Settings({
 
   // Debug state
   const [debugLoggingEnabled, setDebugLoggingEnabled] = useState(false);
+  const [supportModeEnabled, setSupportModeEnabled] = useState(false);
   const [logRetentionDays, setLogRetentionDays] = useState(7);
 
   // Channel display state
@@ -965,6 +966,7 @@ export function Settings({
         streamingNuvioCatalogsEnabled?: boolean;
         enabledStreamingServices?: string[];
         debugLoggingEnabled?: boolean;
+        supportModeEnabled?: boolean;
         logRetentionDays?: number;
         channelSortOrder?: 'alphabetical' | 'number' | 'provider';
         categorySortOrder?: 'default' | 'alphabetical';
@@ -1168,6 +1170,7 @@ export function Settings({
 
       // Load debug settings
       setDebugLoggingEnabled(settings.debugLoggingEnabled ?? false);
+      setSupportModeEnabled(settings.supportModeEnabled ?? false);
       setLogRetentionDays(settings.logRetentionDays ?? 7);
 
       // Load channel display settings
@@ -2843,6 +2846,8 @@ export function Settings({
               setLogRetentionDays(val);
               if (window.storage) window.storage.updateSettings({ logRetentionDays: val });
             }}
+            supportModeEnabled={supportModeEnabled}
+            onSupportModeChange={setSupportModeEnabled}
           />
         );
       case 'shortcuts':

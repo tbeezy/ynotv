@@ -690,6 +690,24 @@ pub(crate) async fn get_mpv_params_from_store<R: Runtime>(app: &AppHandle<R>) ->
                 args.insert(0, "--vo=gpu".to_string());
             }
 
+            // 2b. Support mode (Settings -> Debug, or YNOTV_SUPPORT_MODE=1).
+            //     The sidecar spawn passes --msg-level=all=warn and a later argv
+            //     entry wins, so appending the verbose level here captures the
+            //     first request of a session. The runtime Diagnostics toggle
+            //     cannot: it only covers the engine instance that is already
+            //     running, and every respawn drops back to warn.
+            let support_mode_env = std::env::var("YNOTV_SUPPORT_MODE")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false);
+            let support_mode = get_value("supportModeEnabled")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+                || support_mode_env;
+            if support_mode {
+                debug!("[MPV] Support mode on: appending --msg-level=all=v");
+                args.push("--msg-level=all=v".to_string());
+            }
+
             // 3. Inject Cache settings (Settings -> Cache)
             let ts_enabled = get_value("timeshiftEnabled")
                 .and_then(|v| v.as_bool())
@@ -1611,22 +1629,318 @@ async fn mpv_remove_subtitle<R: Runtime>(app: AppHandle<R>, file_path: String) -
 #[tauri::command]
 async fn mpv_get_log<R: Runtime>(app: AppHandle<R>, tail: Option<usize>) -> Result<serde_json::Value, String> {
     let tail = tail.unwrap_or(400);
-    #[cfg(target_os = "macos")]
-    {
-        mpv_core::get_log(&app, tail).await
+    let mut res = {
+        #[cfg(target_os = "macos")]
+        {
+            mpv_core::get_log(&app, tail).await?
+        }
+        #[cfg(target_os = "windows")]
+        {
+            if get_player_engine(&app).await == PlayerEngine::LibMpv {
+                mpv_core::get_log(&app, tail).await?
+            } else {
+                mpv_windows::get_mpv_log(&app, tail).await?
+            }
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            mpv_core::get_log(&app, tail).await?
+        }
+    };
+    if let Some(log) = res.get("log").and_then(|v| v.as_str()) {
+        res["log"] = serde_json::Value::String(redact_support_text(log));
     }
-    #[cfg(target_os = "windows")]
-    {
-        if get_player_engine(&app).await == PlayerEngine::LibMpv {
-            mpv_core::get_log(&app, tail).await
-        } else {
-            mpv_windows::get_mpv_log(&app, tail).await
+    if let Some(p) = res.get("path").and_then(|v| v.as_str()) {
+        res["path"] = serde_json::Value::String(redact_support_text(p).trim_end().to_string());
+    }
+    Ok(res)
+}
+
+/// Case-insensitive ASCII search that keeps byte offsets valid on lines that
+/// contain non-ASCII text (lowercasing a string can change its length).
+fn find_ascii_ci(haystack: &str, needle: &str, from: usize) -> Option<usize> {
+    let h = haystack.as_bytes();
+    let n = needle.as_bytes();
+    if n.is_empty() || from + n.len() > h.len() {
+        return None;
+    }
+    (from..=h.len() - n.len()).find(|&i| h[i..i + n.len()].eq_ignore_ascii_case(n))
+}
+
+/// Mask the account-name segment of OS profile paths so a support bundle never
+/// leaks the machine's user name. The bundled yt-dlp sidecar path carries it
+/// (`C:\Users\<name>\…\yt-dlp.exe`), as do app/mpv log lines; credentials
+/// redaction alone does not cover filesystem paths.
+///
+/// Handles Windows drive paths with single backslash (`C:\Users\`), forward
+/// slash (`C:/Users/`), and escaped double backslash (`C:\\Users\\` from script-opts),
+/// across any Windows drive letter.
+///
+/// The bare-slash forms (`/Users/<name>`, `/home/<name>`) also occur inside
+/// URLs (`example.com/users/123`), so they only apply at the start of a line or
+/// after a non-identifier character; the Windows forms require a drive letter.
+fn redact_user_paths(line: &str) -> String {
+    const SEG_ENDS: [char; 13] = [
+        '\\', '/', ' ', '\t', '"', '\'', ',', ';', '|', '\r', ')', '>', ']',
+    ];
+
+    let mut line = line.to_string();
+
+    // 1. Windows drive paths: [A-Za-z]:\Users\, [A-Za-z]:/Users/, and escaped [A-Za-z]:\\Users\\
+    let win_needles = [":\\users\\", ":/users/", ":\\\\users\\\\"];
+    for needle in win_needles {
+        let mut cursor = 0usize;
+        while let Some(pos) = find_ascii_ci(&line, needle, cursor) {
+            // Must be preceded by a drive letter ([A-Za-z])
+            if pos == 0 || !line.as_bytes()[pos - 1].is_ascii_alphabetic() {
+                cursor = pos + 1;
+                continue;
+            }
+            // Preceding drive letter must not be part of an identifier (e.g. "abc:/users/")
+            if pos > 1 && line.as_bytes()[pos - 2].is_ascii_alphanumeric() {
+                cursor = pos + 1;
+                continue;
+            }
+
+            let seg_start = pos + needle.len();
+            let seg_end = line[seg_start..]
+                .find(|c: char| SEG_ENDS.contains(&c))
+                .map(|i| seg_start + i)
+                .unwrap_or(line.len());
+            if seg_end > seg_start {
+                line.replace_range(seg_start..seg_end, "***");
+                cursor = seg_start + 3;
+            } else {
+                cursor = seg_start + 1;
+            }
         }
     }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        mpv_core::get_log(&app, tail).await
+
+    // 2. Unix profile paths: /Users/<name> (macOS) and /home/<name> (Linux)
+    let unix_prefixes = ["/users/", "/home/"];
+    for prefix in unix_prefixes {
+        let mut cursor = 0usize;
+        while let Some(pos) = find_ascii_ci(&line, prefix, cursor) {
+            let prev_ok = line[..pos]
+                .chars()
+                .next_back()
+                .map(|c| !(c.is_alphanumeric() || c == '.' || c == '-'))
+                .unwrap_or(true);
+            if !prev_ok {
+                cursor = pos + prefix.len();
+                continue;
+            }
+
+            let seg_start = pos + prefix.len();
+            let seg_end = line[seg_start..]
+                .find(|c: char| SEG_ENDS.contains(&c))
+                .map(|i| seg_start + i)
+                .unwrap_or(line.len());
+            if seg_end > seg_start {
+                line.replace_range(seg_start..seg_end, "***");
+                cursor = seg_start + 3;
+            } else {
+                cursor = seg_start + 1;
+            }
+        }
     }
+
+    line
+}
+
+/// Mask credentials in text that is about to leave the machine in a support
+/// bundle: `?username=…&password=…` style query parameters and `scheme://user:pass@`
+/// authority sections (mpv's `--http-proxy` can carry the latter).
+fn redact_support_text(text: &str) -> String {
+    const KEYS: [&str; 9] = [
+        "password", "username", "api_key", "apikey", "token", "auth", "pass", "pwd", "user",
+    ];
+    const QUERY_ENDS: [char; 10] = ['&', ' ', '"', '\'', ',', '\\', '\r', '|', ')', '>'];
+    // In RFC 3986, the authority section is terminated by '/', '?', '#', whitespace or quotes.
+    const AUTH_ENDS: [char; 13] = [
+        '&', ' ', '"', '\'', ',', '\\', '\r', '|', ')', '>', '/', '?', '#',
+    ];
+
+    let mut out = String::with_capacity(text.len());
+    for line in text.split('\n') {
+        let mut line = line.to_string();
+
+        for key in KEYS {
+            let needle = format!("{}=", key);
+            // Cursor keeps the scan moving forward: re-finding the key we just
+            // masked would otherwise loop forever on the same occurrence.
+            let mut cursor = 0usize;
+            while let Some(pos) = find_ascii_ci(&line, &needle, cursor) {
+                let start = pos + needle.len();
+                let end = line[start..]
+                    .find(|c: char| QUERY_ENDS.contains(&c))
+                    .map(|i| start + i)
+                    .unwrap_or(line.len());
+                if end > start {
+                    line.replace_range(start..end, "***");
+                    cursor = start + 3;
+                } else {
+                    cursor = start + 1;
+                }
+            }
+        }
+
+        // scheme://user:pass@host - scan all URLs on the line
+        let mut scheme_cursor = 0usize;
+        while let Some(scheme_end) = find_ascii_ci(&line, "://", scheme_cursor) {
+            let creds_start = scheme_end + 3;
+            if let Some(at_rel) = line[creds_start..].find('@') {
+                let at = creds_start + at_rel;
+                // If there is any boundary character (/, ?, #, space, quote, etc.)
+                // between :// and @, then @ is in the path/query, not in the authority userinfo.
+                let cut = line[creds_start..at].find(|c: char| AUTH_ENDS.contains(&c));
+                if cut.is_none() && at > creds_start {
+                    line.replace_range(creds_start..at, "***");
+                    scheme_cursor = creds_start + 3;
+                    continue;
+                }
+            }
+            scheme_cursor = creds_start;
+        }
+
+        // OS profile paths leak the machine's account name (sidecar paths, logs).
+        let line = redact_user_paths(&line);
+
+        out.push_str(&line);
+        out.push('\n');
+    }
+    out
+}
+
+/// Tail of a file, tolerating a missing or unreadable path.
+fn read_log_tail(path: &std::path::Path, max_lines: usize) -> String {
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return String::new();
+    };
+    let lines: Vec<&str> = content.lines().collect();
+    let start = lines.len().saturating_sub(max_lines);
+    lines[start..].join("\n")
+}
+
+/// Newest `ynotv*.log` in the app log directory (the name carries a date and the
+/// rotation strategy can vary), if one exists.
+fn newest_app_log(log_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let mut newest: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+    for entry in std::fs::read_dir(log_dir).ok()?.flatten() {
+        let path = entry.path();
+        let name = path.file_name()?.to_string_lossy().to_lowercase();
+        if !name.starts_with("ynotv") || !name.ends_with(".log") {
+            continue;
+        }
+        let Ok(modified) = entry.metadata().and_then(|m| m.modified()) else {
+            continue;
+        };
+        if newest.as_ref().map(|(t, _)| modified > *t).unwrap_or(true) {
+            newest = Some((modified, path));
+        }
+    }
+    newest.map(|(_, p)| p)
+}
+
+/// Everything a bug report needs, in one call: the app log, the current and
+/// previous mpv logs (unfiltered — the Diagnostics panel only shows
+/// subtitle-related lines), the engine command line, and the playback settings
+/// that decide how streams are requested. Credentials are masked on the way out.
+#[tauri::command]
+async fn get_support_bundle<R: Runtime>(
+    app: AppHandle<R>,
+    max_lines: Option<usize>,
+) -> Result<serde_json::Value, String> {
+    use tauri::Manager;
+
+    let max_lines = max_lines.unwrap_or(1200).clamp(100, 20000);
+
+    let (app_log_path, app_log) = match app
+        .path()
+        .app_log_dir()
+        .ok()
+        .as_ref()
+        .and_then(|dir| newest_app_log(dir))
+    {
+        Some(path) => (
+            Some(path.to_string_lossy().replace('\\', "/")),
+            read_log_tail(&path, max_lines),
+        ),
+        None => (None, String::new()),
+    };
+
+    #[cfg(target_os = "windows")]
+    let (mpv_log_path, mpv_log, previous_mpv_log_path, previous_mpv_log, spawn_args) = {
+        let state = app.state::<mpv_windows::MpvState>();
+        let current = mpv_windows::get_mpv_log_path(&app);
+        let previous = format!("{}.1.log", current.trim_end_matches(".log"));
+        let spawn_args = state.last_spawn_args.lock().unwrap().clone();
+        (
+            Some(current.clone()),
+            read_log_tail(std::path::Path::new(&current), max_lines),
+            Some(previous.clone()),
+            read_log_tail(std::path::Path::new(&previous), max_lines),
+            spawn_args,
+        )
+    };
+    #[cfg(not(target_os = "windows"))]
+    let (mpv_log_path, mpv_log, previous_mpv_log_path, previous_mpv_log, spawn_args) = (
+        None::<String>,
+        String::new(),
+        None::<String>,
+        String::new(),
+        Vec::<String>::new(),
+    );
+
+    // Only the settings that change how a stream is requested or recovered.
+    const SETTING_KEYS: [&str; 18] = [
+        "supportModeEnabled",
+        "debugLoggingEnabled",
+        "hardwareAcceleration",
+        "mpvParams",
+        "mpvQuality",
+        "useEventBasedReconnect",
+        "stallDetectionEnabled",
+        "streamWatchdogSeconds",
+        "streamMaxRetries",
+        "timeshiftEnabled",
+        "timeshiftCacheBytes",
+        "globalLiveTvUserAgent",
+        "popoutHwdecEnabled",
+        "popoutMpvParamsEnabled",
+        "popoutMpvParams",
+        "socks5ProxyEnabled",
+        "socks5ProxyServer",
+        "logRetentionDays",
+    ];
+    let mut settings_map = serde_json::Map::new();
+    for key in SETTING_KEYS {
+        if let Some(value) = read_store_setting(&app, key) {
+            let redacted_val = match value {
+                serde_json::Value::String(s) => {
+                    serde_json::Value::String(redact_support_text(&s).trim_end().to_string())
+                }
+                other => other,
+            };
+            settings_map.insert(key.to_string(), redacted_val);
+        }
+    }
+
+    Ok(serde_json::json!({
+        "app_version": app.package_info().version.to_string(),
+        "os": std::env::consts::OS,
+        "app_log_path": app_log_path.map(|p| redact_support_text(&p).trim_end().to_string()),
+        "app_log": redact_support_text(&app_log),
+        "mpv_log_path": mpv_log_path.map(|p| redact_support_text(&p).trim_end().to_string()),
+        "mpv_log": redact_support_text(&mpv_log),
+        "previous_mpv_log_path": previous_mpv_log_path.map(|p| redact_support_text(&p).trim_end().to_string()),
+        "previous_mpv_log": redact_support_text(&previous_mpv_log),
+        "spawn_args": spawn_args
+            .iter()
+            .map(|arg| redact_support_text(arg).trim_end().to_string())
+            .collect::<Vec<String>>(),
+        "settings": settings_map,
+    }))
 }
 
 #[tauri::command]
@@ -5445,6 +5759,7 @@ pub fn run() {
             mpv_remove_subtitle,
             mpv_get_log,
             mpv_set_verbose_logging,
+            get_support_bundle,
             mpv_set_property,
             mpv_set_properties,
             mpv_get_property,
@@ -5494,6 +5809,7 @@ pub fn run() {
             stream_probe::resume_channel_probe,
             stream_probe::cancel_channel_probe,
             stream_probe::probe_single_stream,
+            stream_probe::probe_stream_user_agents,
             stream_probe::check_probe_ffmpeg_status,
             health_check,
             download_media,
@@ -5817,5 +6133,88 @@ fn delete_opensubtitles_credentials() -> Result<(), String> {
         Ok(_) => Ok(()),
         Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(format!("Failed to delete credentials: {}", e)),
+    }
+}
+
+#[cfg(test)]
+mod support_bundle_tests {
+    use super::redact_support_text;
+
+    #[test]
+    fn masks_query_credentials_but_keeps_the_rest_of_the_url() {
+        let input = "[Playback] Raw URL: http://192.168.38.102:5523/play/vidaa/9963.m3u8?username=alice&password=hunter2&token=abc123\nplain line";
+        let out = redact_support_text(input);
+        assert!(!out.contains("hunter2"), "password leaked: {}", out);
+        assert!(!out.contains("alice"), "username leaked: {}", out);
+        assert!(!out.contains("abc123"), "token leaked: {}", out);
+        assert!(out.contains("192.168.38.102:5523/play/vidaa/9963.m3u8"));
+        assert!(out.contains("plain line"));
+    }
+
+    #[test]
+    fn masks_proxy_credentials_in_the_engine_command_line() {
+        let input = "--http-proxy=socks5h://proxyuser:proxypass@10.0.0.5:1080 --volume=100";
+        let out = redact_support_text(input);
+        assert!(!out.contains("proxypass"), "proxy password leaked: {}", out);
+        assert!(!out.contains("proxyuser"), "proxy user leaked: {}", out);
+        assert!(out.contains("--volume=100"));
+        assert!(out.contains("10.0.0.5:1080"));
+    }
+
+    #[test]
+    fn masks_xtream_codes_pass_and_pwd_parameters() {
+        let input = "GET http://iptv.server:8080/get.php?username=alice&pass=secret123&type=m3u_plus\nGET http://iptv.server:8080/live/user=bob&pwd=mysecretpassword";
+        let out = redact_support_text(input);
+        assert!(!out.contains("secret123"), "pass leaked: {}", out);
+        assert!(!out.contains("alice"), "username leaked: {}", out);
+        assert!(!out.contains("bob"), "user leaked: {}", out);
+        assert!(!out.contains("mysecretpassword"), "pwd leaked: {}", out);
+        assert!(out.contains("iptv.server:8080/get.php"));
+    }
+
+    #[test]
+    fn preserves_urls_with_at_symbols_in_path() {
+        let input = "Stream: http://cdn.example.com/hls/channel@1080p/index.m3u8 and http://media.tv/stream@hd.ts";
+        let out = redact_support_text(input);
+        assert!(out.contains("http://cdn.example.com/hls/channel@1080p/index.m3u8"), "path ruined: {}", out);
+        assert!(out.contains("http://media.tv/stream@hd.ts"), "path ruined: {}", out);
+    }
+
+    #[test]
+    fn masks_multiple_authority_urls_on_a_single_line() {
+        let input = "Redirect from http://plain.example.com/stream to http://user1:pass1@host1.com and then http://user2:pass2@host2.com";
+        let out = redact_support_text(input);
+        assert!(!out.contains("user1:pass1"), "user1:pass1 leaked: {}", out);
+        assert!(!out.contains("user2:pass2"), "user2:pass2 leaked: {}", out);
+        assert!(out.contains("http://plain.example.com/stream"), "plain URL lost: {}", out);
+        assert!(out.contains("http://***@host1.com"), "host1 authority missed: {}", out);
+        assert!(out.contains("http://***@host2.com"), "host2 authority missed: {}", out);
+    }
+
+    #[test]
+    fn masks_windows_user_profile_paths() {
+        let input = "--script-opts-append=ytdl_hook-ytdl_path=C:\\Users\\tony\\AppData\\Roaming\\yt-dlp.exe\r\n[cache] C:/Users/tony/Videos/mpv.log\r\n--script-opts-append=ytdl_hook-ytdl_path=D:\\\\Users\\\\tony\\\\AppData\\\\Roaming\\\\yt-dlp.exe";
+        let out = redact_support_text(input);
+        assert!(!out.contains("tony"), "user name leaked: {}", out);
+        assert!(out.contains("C:\\Users\\***\\AppData"), "windows path lost: {}", out);
+        assert!(out.contains("C:/Users/***/Videos"), "forward-slash path lost: {}", out);
+        assert!(out.contains("D:\\\\Users\\\\***\\\\AppData"), "escaped windows path lost: {}", out);
+    }
+
+    #[test]
+    fn masks_unix_profile_paths_but_not_url_segments() {
+        let input = "config /home/alice/.config/ynotv/mpv.log and /Users/bob/Library/Logs/ynotv.log\nGET http://example.com/users/123/profile -> 200";
+        let out = redact_support_text(input);
+        assert!(!out.contains("alice"), "linux user leaked: {}", out);
+        assert!(!out.contains("bob"), "mac user leaked: {}", out);
+        assert!(out.contains("/home/***/.config"), "linux path lost: {}", out);
+        assert!(out.contains("/Users/***/Library"), "mac path lost: {}", out);
+        assert!(out.contains("http://example.com/users/123/profile"), "URL path was masked: {}", out);
+    }
+
+    #[test]
+    fn leaves_clean_text_untouched() {
+        let input = "[Health] MPV reported idle/eof during live playback\n[MPV] HTTP error report: Access Denied (403)";
+        assert_eq!(redact_support_text(input), format!("{}\n", input));
     }
 }
