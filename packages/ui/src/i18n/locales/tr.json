@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Kategori kenar çubuğunu otomatik gizle",
       "categorySidebarAutohideSub": "Kategori kenar çubuğunu gizli tutun ve fareyi sol kenara getirdiğinizde rehberin üzerinde dışarı kaydırın. Bir kategori seçtikten veya fareyi uzaklaştırdıktan sonra kapanır.",
       "programFontSize": "Program Yazı Boyutu",
-      "programNameExample": "Program Adı Örneği"
+      "programNameExample": "Program Adı Örneği",
+      "epgShowFullChannelPath": "Tam kanal yolunu göster",
+      "epgShowFullChannelPathSub": "Program ayrıntıları bölmesinde yalnızca kategori adı yerine tam hiyerarşi yolunu (Kaynak / Kategori / Kanal) gösterin."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Etkinleştirildiğinde kanal simgesi veya logo görseli kaplamadan gizlenir.",
       "hideTimer": "Program Zamanlayıcısını ve İlerlemeyi Gizle",
       "hideTimerSub": "Etkinleştirildiğinde program başlangıç/bitiş saati, kalan süre ve ilerleme çubuğu kaplamadan gizlenir.",
+      "showFullPath": "Tam kanal yolunu göster",
+      "showFullPathSub": "Kanal bilgisi katmanında yalnızca kanal adı yerine tam hiyerarşi yolunu (Kaynak / Kategori / Kanal) gösterin.",
       "overlayPosition": "Kaplama Konumu",
       "overlayPositionSub": "Kanal bilgisi kaplamasının ekranın sol üstünde mi yoksa sağ üstünde mi görüneceğini seçin.",
       "showSourceFailover": "Yük Devretme Grubu için Kaynağı Göster",

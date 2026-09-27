@@ -638,11 +638,23 @@
   font-weight: var(--guide-meta-font-weight, 400);
 }
 
+.guide-program-meta > span:first-child {
+  flex-shrink: 0;
+}
+
+.guide-program-category {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .guide-program-progress-bar {
   height: 4px;
   background: var(--guide-prog-bar-bg, var(--surface-border, rgba(255, 255, 255, 0.2)));
   border-radius: 2px;
   width: 200px;
+  flex-shrink: 0;
   overflow: hidden;
   box-shadow: var(--guide-prog-bar-shadow, none);
   margin-top: var(--guide-prog-bar-margin-top, 0);

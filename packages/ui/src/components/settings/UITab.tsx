@@ -30,6 +30,7 @@ interface UITabProps {
     channelInfoOverlayHideMetaBadge?: boolean;
     channelInfoOverlayHideLogo?: boolean;
     channelInfoOverlayHideTimer?: boolean;
+    channelInfoOverlayShowFullPath?: boolean;
     channelInfoOverlayPosition?: 'left' | 'right';
     channelInfoOverlayLogoShape?: 'square' | 'horizontal';
   };
@@ -56,6 +57,7 @@ interface UITabProps {
     channelInfoOverlayHideMetaBadge?: boolean;
     channelInfoOverlayHideLogo?: boolean;
     channelInfoOverlayHideTimer?: boolean;
+    channelInfoOverlayShowFullPath?: boolean;
     channelInfoOverlayPosition?: 'left' | 'right';
     channelInfoOverlayLogoShape?: 'square' | 'horizontal';
   }) => void;
@@ -848,6 +850,24 @@ export function UITab({ settings, onSettingsChange }: UITabProps) {
                     type="checkbox"
                     checked={settings.channelInfoOverlayHideTimer ?? false}
                     onChange={(e) => onSettingsChange({ ...settings, channelInfoOverlayHideTimer: e.target.checked })}
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+
+              {/* Display Full Channel Path */}
+              <div className="timeshift-toggle-row">
+                <div className="timeshift-toggle-info">
+                  <span className="timeshift-toggle-label">{i18n.t('settings:overlay.showFullPath')}</span>
+                  <span className="timeshift-toggle-sub">
+                    {i18n.t('settings:overlay.showFullPathSub')}
+                  </span>
+                </div>
+                <label className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={settings.channelInfoOverlayShowFullPath ?? false}
+                    onChange={(e) => onSettingsChange({ ...settings, channelInfoOverlayShowFullPath: e.target.checked })}
                   />
                   <span className="toggle-slider" />
                 </label>

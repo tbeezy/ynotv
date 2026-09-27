@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Fshih automatikisht shiritin anësor të kategorive",
       "categorySidebarAutohideSub": "Mbaje shiritin anësor të kategorive të fshehur dhe rrëshqite mbi udhëzuesin kur lëviz miun në skajin e majtë. Mbyllet pasi zgjedh një kategori ose largon miun.",
       "programFontSize": "Madhësia e fontit të programit",
-      "programNameExample": "Shembull i emrit të programit"
+      "programNameExample": "Shembull i emrit të programit",
+      "epgShowFullChannelPath": "Shfaq shtegun e plotë të kanalit",
+      "epgShowFullChannelPathSub": "Shfaq rrugën e plotë të hierarkisë (Burimi / Kategoria / Kanali) në panelin e detajeve të programit në vend të vetëm emrit të kategorisë."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Kur aktivizohet, ikona ose logoja e kanalit fshihet në mbivendosje.",
       "hideTimer": "Fshihe kohëmatësin dhe progresin e programit",
       "hideTimerSub": "Kur aktivizohet, ora e fillimit/përfundimit të programit, koha e mbetur dhe shiriti i progresit fshihen në mbivendosje.",
+      "showFullPath": "Shfaq shtegun e plotë të kanalit",
+      "showFullPathSub": "Shfaq rrugën e plotë të hierarkisë (Burimi / Kategoria / Kanali) në mbivendosjen e informacionit të kanalit në vend të vetëm emrit të kanalit.",
       "overlayPosition": "Pozicioni i mbivendosjes",
       "overlayPositionSub": "Zgjidh nëse mbivendosja e informacionit të kanalit shfaqet në këndin e sipërm majtas ose djathtas të ekranit.",
       "showSourceFailover": "Shfaq burimin për grupin e rezervës",

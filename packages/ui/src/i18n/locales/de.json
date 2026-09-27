@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Kategorie-Seitenleiste automatisch ausblenden",
       "categorySidebarAutohideSub": "Die Kategorie-Seitenleiste bleibt ausgeblendet und gleitet über den Guide, wenn die Maus an den linken Rand bewegt wird. Sie schließt sich nach Auswahl einer Kategorie oder wenn die Maus weg bewegt wird.",
       "programFontSize": "Programm Schriftgröße",
-      "programNameExample": "Programm Name Beispiel"
+      "programNameExample": "Programm Name Beispiel",
+      "epgShowFullChannelPath": "Vollständigen Kanalpfad anzeigen",
+      "epgShowFullChannelPathSub": "Den vollständigen Hierarchiepfad (Quelle / Kategorie / Kanal) im Programmdetailbereich anstelle nur des Kategorienamens anzeigen."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Wenn aktiviert, wird das Senderlogo aus dem Overlay ausgeblendet.",
       "hideTimer": "Programm-Timer und Fortschritt ausblenden",
       "hideTimerSub": "Wenn aktiviert, werden Start-/Endzeit des Programms, Restzeit und Fortschrittsbalken aus dem Overlay ausgeblendet.",
+      "showFullPath": "Vollständigen Kanalpfad anzeigen",
+      "showFullPathSub": "Den vollständigen Hierarchiepfad (Quelle / Kategorie / Kanal) im Kanalinfo-Overlay anstelle nur des Kanalnamens anzeigen.",
       "overlayPosition": "Overlay-Position",
       "overlayPositionSub": "Wählen Sie, ob das Senderinformations-Overlay in der oberen linken oder rechten Ecke des Bildschirms erscheint.",
       "showSourceFailover": "Quelle für die Failover-Gruppe anzeigen",

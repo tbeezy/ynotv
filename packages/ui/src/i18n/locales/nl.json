@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Categoriezijbalk automatisch verbergen",
       "categorySidebarAutohideSub": "Houd de categoriezijbalk verborgen en schuif hem over de gids wanneer de muis naar de linkerrand beweegt. Hij sluit na het kiezen van een categorie of wanneer de muis weggaat.",
       "programFontSize": "Lettergrootte programma",
-      "programNameExample": "Voorbeeld programmanaam"
+      "programNameExample": "Voorbeeld programmanaam",
+      "epgShowFullChannelPath": "Volledig kanaalpad weergeven",
+      "epgShowFullChannelPathSub": "Toon het volledige hiërarchiepad (Bron / Categorie / Kanaal) in het programmadetailvenster in plaats van alleen de categorienaam."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Wanneer ingeschakeld, wordt het kanaalpictogram of logo verborgen in de overlay.",
       "hideTimer": "Programmatimer en voortgang verbergen",
       "hideTimerSub": "Wanneer ingeschakeld, worden start-/eindtijd van het programma, resterende tijd en de voortgangsbalk verborgen in de overlay.",
+      "showFullPath": "Volledig kanaalpad weergeven",
+      "showFullPathSub": "Toon het volledige hiërarchiepad (Bron / Categorie / Kanaal) in de kanaalinfo-overlay in plaats van alleen de kanaalnaam.",
       "overlayPosition": "Overlaypositie",
       "overlayPositionSub": "Kies of de kanaalinformatie-overlay linksboven of rechtsboven op het scherm verschijnt.",
       "showSourceFailover": "Bron tonen voor failovergroep",

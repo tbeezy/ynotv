@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Masquer automatiquement la barre latérale des catégories",
       "categorySidebarAutohideSub": "Gardez la barre latérale des catégories masquée et faites-la glisser au-dessus du guide lorsque la souris atteint le bord gauche. Elle se ferme après le choix d'une catégorie ou lorsque la souris s'éloigne.",
       "programFontSize": "Taille de police du programme",
-      "programNameExample": "Exemple de nom de programme"
+      "programNameExample": "Exemple de nom de programme",
+      "epgShowFullChannelPath": "Afficher le chemin complet de la chaîne",
+      "epgShowFullChannelPathSub": "Afficher le chemin hiérarchique complet (Source / Catégorie / Chaîne) dans le volet des détails du programme au lieu du seul nom de catégorie."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Lorsqu’il est activé, l’icône ou le logo de la chaîne est masqué de la superposition.",
       "hideTimer": "Masquer la minuterie et la progression du programme",
       "hideTimerSub": "Lorsqu’il est activé, l’heure de début/fin, le temps restant et la barre de progression du programme sont masqués de la superposition.",
+      "showFullPath": "Afficher le chemin complet de la chaîne",
+      "showFullPathSub": "Afficher le chemin hiérarchique complet (Source / Catégorie / Chaîne) dans l'incrustation d'informations de la chaîne au lieu du seul nom de chaîne.",
       "overlayPosition": "Position de la superposition",
       "overlayPositionSub": "Choisissez si la superposition d’informations de chaîne apparaît en haut à gauche ou en haut à droite de l’écran.",
       "showSourceFailover": "Afficher la source du groupe de basculement",

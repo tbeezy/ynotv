@@ -93,6 +93,8 @@ interface LiveTVTabProps {
   onEpgThreeColumnChange: (enabled: boolean) => void;
   categorySidebarAutohide: boolean;
   onCategorySidebarAutohideChange: (enabled: boolean) => void;
+  epgShowFullChannelPath: boolean;
+  onEpgShowFullChannelPathChange: (enabled: boolean) => void;
   epgTitleFontSize: number;
   onEpgTitleFontSizeChange: (size: number) => void;
   epgBodyFontSize: number;
@@ -140,6 +142,8 @@ interface LiveTVTabProps {
   onChannelInfoOverlayHideLogoChange: (hide: boolean) => void;
   channelInfoOverlayHideTimer: boolean;
   onChannelInfoOverlayHideTimerChange: (hide: boolean) => void;
+  channelInfoOverlayShowFullPath: boolean;
+  onChannelInfoOverlayShowFullPathChange: (show: boolean) => void;
   channelInfoOverlayPosition: 'left' | 'right';
   onChannelInfoOverlayPositionChange: (pos: 'left' | 'right') => void;
   channelInfoOverlayLogoShape: 'square' | 'horizontal';
@@ -255,6 +259,8 @@ export function LiveTVTab({
   onEpgThreeColumnChange,
   categorySidebarAutohide,
   onCategorySidebarAutohideChange,
+  epgShowFullChannelPath,
+  onEpgShowFullChannelPathChange,
   epgTitleFontSize,
   onEpgTitleFontSizeChange,
   epgBodyFontSize,
@@ -299,6 +305,8 @@ export function LiveTVTab({
   onChannelInfoOverlayHideLogoChange,
   channelInfoOverlayHideTimer,
   onChannelInfoOverlayHideTimerChange,
+  channelInfoOverlayShowFullPath,
+  onChannelInfoOverlayShowFullPathChange,
   channelInfoOverlayPosition,
   onChannelInfoOverlayPositionChange,
   channelInfoOverlayLogoShape,
@@ -423,6 +431,22 @@ export function LiveTVTab({
                       type="checkbox"
                       checked={categorySidebarAutohide}
                       onChange={(e) => onCategorySidebarAutohideChange(e.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+
+                {/* Display Full Channel Path Toggle */}
+                <div className="timeshift-toggle-row">
+                  <div className="timeshift-toggle-info">
+                    <span className="timeshift-toggle-label">{i18n.t('settings:livetv.epgShowFullChannelPath')}</span>
+                    <span className="timeshift-toggle-sub">{i18n.t('settings:livetv.epgShowFullChannelPathSub')}</span>
+                  </div>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={epgShowFullChannelPath}
+                      onChange={(e) => onEpgShowFullChannelPathChange(e.target.checked)}
                     />
                     <span className="slider"></span>
                   </label>
@@ -1236,6 +1260,8 @@ export function LiveTVTab({
             onChannelInfoOverlayHideLogoChange={onChannelInfoOverlayHideLogoChange}
             channelInfoOverlayHideTimer={channelInfoOverlayHideTimer}
             onChannelInfoOverlayHideTimerChange={onChannelInfoOverlayHideTimerChange}
+            channelInfoOverlayShowFullPath={channelInfoOverlayShowFullPath}
+            onChannelInfoOverlayShowFullPathChange={onChannelInfoOverlayShowFullPathChange}
             channelInfoOverlayPosition={channelInfoOverlayPosition}
             onChannelInfoOverlayPositionChange={onChannelInfoOverlayPositionChange}
             channelInfoOverlayLogoShape={channelInfoOverlayLogoShape}

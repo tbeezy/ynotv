@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "自动隐藏分类侧边栏",
       "categorySidebarAutohideSub": "保持分类侧边栏隐藏，当鼠标移到左边缘时将其滑出到指南上方。选择分类或移开鼠标后自动关闭。",
       "programFontSize": "节目字体大小",
-      "programNameExample": "节目名称示例"
+      "programNameExample": "节目名称示例",
+      "epgShowFullChannelPath": "显示完整频道路径",
+      "epgShowFullChannelPathSub": "在节目详情面板中显示完整层次结构路径（来源 / 分类 / 频道），而不是仅显示分类名称。"
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "启用后，频道图标或徽标图像将从覆盖层隐藏。",
       "hideTimer": "隐藏节目计时器和进度",
       "hideTimerSub": "启用后，节目的开始/结束时间、剩余时间和进度条将从覆盖层隐藏。",
+      "showFullPath": "显示完整频道路径",
+      "showFullPathSub": "在频道信息浮层中显示完整层次结构路径（来源 / 分类 / 频道），而不是仅显示频道名称。",
       "overlayPosition": "覆盖层位置",
       "overlayPositionSub": "选择频道信息覆盖层出现在屏幕的左上角还是右上角。",
       "showSourceFailover": "为故障转移组显示源",

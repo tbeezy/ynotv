@@ -21,6 +21,8 @@ interface LiveViewTabProps {
   onChannelInfoOverlayHideLogoChange: (hide: boolean) => void;
   channelInfoOverlayHideTimer: boolean;
   onChannelInfoOverlayHideTimerChange: (hide: boolean) => void;
+  channelInfoOverlayShowFullPath: boolean;
+  onChannelInfoOverlayShowFullPathChange: (show: boolean) => void;
   channelInfoOverlayPosition: 'left' | 'right';
   onChannelInfoOverlayPositionChange: (pos: 'left' | 'right') => void;
   channelInfoOverlayLogoShape: 'square' | 'horizontal';
@@ -48,6 +50,8 @@ export function LiveViewTab({
   onChannelInfoOverlayHideLogoChange,
   channelInfoOverlayHideTimer,
   onChannelInfoOverlayHideTimerChange,
+  channelInfoOverlayShowFullPath,
+  onChannelInfoOverlayShowFullPathChange,
   channelInfoOverlayPosition,
   onChannelInfoOverlayPositionChange,
   channelInfoOverlayLogoShape,
@@ -152,6 +156,24 @@ export function LiveViewTab({
                 type="checkbox"
                 checked={channelInfoOverlayHideTimer}
                 onChange={(e) => onChannelInfoOverlayHideTimerChange(e.target.checked)}
+              />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+
+          {/* Display Full Channel Path */}
+          <div className="timeshift-toggle-row">
+            <div className="timeshift-toggle-info">
+              <span className="timeshift-toggle-label">{i18n.t('settings:overlay.showFullPath')}</span>
+              <span className="timeshift-toggle-sub">
+                {i18n.t('settings:overlay.showFullPathSub')}
+              </span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={channelInfoOverlayShowFullPath}
+                onChange={(e) => onChannelInfoOverlayShowFullPathChange(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>

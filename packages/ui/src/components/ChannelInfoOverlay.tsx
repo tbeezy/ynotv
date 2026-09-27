@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { StoredChannel } from '../db';
-import { useCurrentProgram } from '../hooks/useChannels';
+import { db } from '../db';
+import { useCurrentProgram, useSourceNameMap } from '../hooks/useChannels';
 import { useEpgClockFormat } from '../stores/uiStore';
+import { useSettingsStore } from '../stores/settingsStore';
+import { formatChannelFullPath, parseCategoryIds } from '../utils/channelPath';
 import { MetadataBadge } from './MetadataBadge';
 import { formatTime } from '../utils/dateTime';
 import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import './ChannelInfoOverlay.css';
 
 interface ChannelInfoOverlayProps {
@@ -16,6 +20,8 @@ interface ChannelInfoOverlayProps {
   hideTimer?: boolean;
   overlayPosition?: 'left' | 'right';
   logoShape?: 'square' | 'horizontal';
+  showFullPath?: boolean;
+  categoryId?: string | null;
   isCatchup?: boolean;
   catchupInfo?: {
     channelId: string;
@@ -41,6 +47,8 @@ export function ChannelInfoOverlay({
   hideTimer = false,
   overlayPosition = 'left',
   logoShape = 'square',
+  showFullPath,
+  categoryId,
   isCatchup = false,
   catchupInfo = null,
   position = 0,
@@ -48,6 +56,81 @@ export function ChannelInfoOverlay({
 }: ChannelInfoOverlayProps) {
   useTranslation();
   const epgClockFormat = useEpgClockFormat();
+  const channelInfoOverlayShowFullPath = useSettingsStore((s) => s.channelInfoOverlayShowFullPath);
+  const effectiveShowFullPath = showFullPath ?? channelInfoOverlayShowFullPath;
+  const sourceNames = useSourceNameMap();
+  const [resolvedCategoryName, setResolvedCategoryName] = useState<string>('');
+
+  useEffect(() => {
+    if (!effectiveShowFullPath || !channel) {
+      setResolvedCategoryName('');
+      return;
+    }
+    let cancelled = false;
+    // Clear immediately on channel or category change to prevent stale category flash
+    setResolvedCategoryName('');
+
+    async function loadCategory() {
+      const catIds = parseCategoryIds(channel?.category_ids);
+      const catId = (categoryId && !categoryId.startsWith('__')) ? categoryId : catIds[0];
+      if (!catId) {
+        if (!cancelled) setResolvedCategoryName('');
+        return;
+      }
+      try {
+        const found = await db.categories
+          .where('category_id')
+          .equals(catId)
+          .toArray();
+        if (cancelled) return;
+        const match = (channel?.source_id ? found.find((c) => c.source_id === channel.source_id) : null) || found[0];
+        let name = match ? (match.alias || match.category_name || '') : '';
+
+        // Also check playlist category links for custom_name override
+        try {
+          const links = await db.playlistCategoryLinks.where('category_id').equals(catId).toArray();
+          const customLink = links.find((l) => Boolean(l.custom_name));
+          if (!cancelled && customLink?.custom_name) {
+            name = customLink.custom_name;
+          }
+        } catch {
+          // ignore playlist link error
+        }
+
+        if (!cancelled) {
+          setResolvedCategoryName(name);
+        }
+      } catch (err) {
+        console.error('[ChannelInfoOverlay] Failed to load category:', err);
+        if (!cancelled) {
+          setResolvedCategoryName('');
+        }
+      }
+    }
+    loadCategory();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveShowFullPath, channel?.stream_id, channel?.source_id, channel?.category_ids, categoryId]);
+
+  const channelDisplayTitle = useMemo(() => {
+    if (!channel) return '';
+    if (!effectiveShowFullPath) {
+      return channel.alias || channel.name;
+    }
+    return formatChannelFullPath({
+      channel,
+      categoryId,
+      sourceNames: sourceNames ?? undefined,
+      fallbackCategoryName: resolvedCategoryName,
+      translations: {
+        favorites: i18n.t('live:favorites', { defaultValue: 'Favorites' }),
+        watchlist: i18n.t('live:watchlist', { defaultValue: 'Watchlist' }),
+        recentlyViewed: i18n.t('live:recentlyViewed', { defaultValue: 'Recently Viewed' }),
+      },
+    }) || channel.alias || channel.name;
+  }, [channel, effectiveShowFullPath, categoryId, sourceNames, resolvedCategoryName, i18n.language]);
+
   const currentProgram = useCurrentProgram(isCatchup ? null : (channel?.stream_id ?? null));
   const [showDescription, setShowDescription] = useState(false);
 
@@ -149,8 +232,8 @@ export function ChannelInfoOverlay({
             />
           )}
           <div className="cio-header-text">
-            <span className="cio-channel-name" title={channel.alias || channel.name}>
-              {channel.alias || channel.name}
+            <span className="cio-channel-name" title={channelDisplayTitle}>
+              {channelDisplayTitle}
             </span>
             {!hideMetaBadge && <MetadataBadge streamId={channel.stream_id} variant="detailed" location="overlay" />}
           </div>

@@ -277,6 +277,8 @@ export interface SettingsState {
   setChannelInfoOverlayPosition: (pos: 'left' | 'right') => void;
   channelInfoOverlayLogoShape: 'square' | 'horizontal';
   setChannelInfoOverlayLogoShape: (shape: 'square' | 'horizontal') => void;
+  channelInfoOverlayShowFullPath: boolean;
+  setChannelInfoOverlayShowFullPath: (show: boolean) => void;
   transparentGuideOnZap: boolean;
   setTransparentGuideOnZap: (enabled: boolean) => void;
 
@@ -578,6 +580,8 @@ export interface SettingsState {
   setEpgMetadataBadgeFhdLabels: (enabled: boolean) => void;
   epgResolutionFilterEnabled: boolean;
   setEpgResolutionFilterEnabled: (enabled: boolean) => void;
+  epgShowFullChannelPath: boolean;
+  setEpgShowFullChannelPath: (enabled: boolean) => void;
   epgCatchupFilterEnabled: boolean;
   setEpgCatchupFilterEnabled: (enabled: boolean) => void;
   epgMetadataBadgeSound: boolean;
@@ -1098,6 +1102,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     set({ channelInfoOverlayLogoShape: shape });
     persistSettings({ channelInfoOverlayLogoShape: shape });
   },
+  channelInfoOverlayShowFullPath: (cachedSettings?.channelInfoOverlayShowFullPath as boolean) ?? false,
+  setChannelInfoOverlayShowFullPath: (show) => {
+    set({ channelInfoOverlayShowFullPath: show });
+    persistSettings({ channelInfoOverlayShowFullPath: show });
+  },
   transparentGuideOnZap: false,
   setTransparentGuideOnZap: (enabled) => {
     set({ transparentGuideOnZap: enabled });
@@ -1493,6 +1502,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setEpgResolutionFilterEnabled: (enabled) => {
     set({ epgResolutionFilterEnabled: enabled });
     persistSettings({ epgResolutionFilterEnabled: enabled });
+  },
+  epgShowFullChannelPath: (cachedSettings?.epgShowFullChannelPath as boolean) ?? false,
+  setEpgShowFullChannelPath: (enabled) => {
+    set({ epgShowFullChannelPath: enabled });
+    persistSettings({ epgShowFullChannelPath: enabled });
   },
   epgCatchupFilterEnabled: (cachedSettings?.epgCatchupFilterEnabled as boolean) ?? false,
   setEpgCatchupFilterEnabled: (enabled) => {

@@ -1043,7 +1043,9 @@
       "threeColumnView": "3 Column View",
       "threeColumnViewSub": "Replace the EPG time grid with a 3-column channel strip and schedule. Independent of the EPG View Layout setting.",
       "categorySidebarAutohide": "Auto-hide category sidebar",
-      "categorySidebarAutohideSub": "Keep the category sidebar hidden and slide it out over the guide when you move the mouse to the left edge. It closes after you pick a category or move the mouse away."
+      "categorySidebarAutohideSub": "Keep the category sidebar hidden and slide it out over the guide when you move the mouse to the left edge. It closes after you pick a category or move the mouse away.",
+      "epgShowFullChannelPath": "Display full channel path",
+      "epgShowFullChannelPathSub": "Show the full hierarchy path (Source / Category / Channel) in the program details pane instead of just the category name."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "When enabled, the channel icon or logo image will be hidden from the overlay.",
       "hideTimer": "Hide Program Timer & Progress",
       "hideTimerSub": "When enabled, program start/end time, time remaining, and the progress bar will be hidden from the overlay.",
+      "showFullPath": "Display Full Channel Path",
+      "showFullPathSub": "Show the full hierarchy path (Source / Category / Channel) in the channel info overlay instead of just the channel name.",
       "overlayPosition": "Overlay Position",
       "overlayPositionSub": "Choose whether the channel information overlay appears on the top-left or top-right of the screen.",
       "showSourceFailover": "Show Source for Failover Group",

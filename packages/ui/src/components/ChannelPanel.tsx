@@ -76,6 +76,7 @@ import { dbEvents } from '../db/sqlite-adapter';
 import { primaryRect } from '../hooks/useMultiview';
 import type { LayoutMode, ViewerSlot, MultiviewEngineMode } from '../hooks/useMultiview';
 import './ChannelPanel.css';
+import { formatChannelFullPath, formatChannelDisplayPath } from '../utils/channelPath';
 
 
 // Default width of the channel info column (20% bigger than original 220)
@@ -520,6 +521,7 @@ export function ChannelPanel({
   const channelSortOrder = useChannelSortOrder();
   const epgHiddenButtons = useUIStore((s) => s.epgHiddenButtons);
   const epgResolutionFilterEnabled = useSettingsStore((s) => s.epgResolutionFilterEnabled);
+  const epgShowFullChannelPath = useSettingsStore((s) => s.epgShowFullChannelPath);
   const epgCatchupFilterEnabled = useSettingsStore((s) => s.epgCatchupFilterEnabled);
   // Soft-cap the "All Channels" view: beyond this many channels the full list
   // is unusable (a multi-second block to transfer + parse every channel), so we
@@ -724,25 +726,30 @@ export function ChannelPanel({
   // Fetch source names and category names only when version changes
   useEffect(() => {
     if (lastSourceVersionRef.current === sourceVersion) return;
-    if (!includeSourceInSearch || !window.storage) return;
 
     async function fetchSourceNames() {
-      const result = await window.storage.getSources();
-      if (result.data) {
-        const map = new Map<string, string>();
-        for (const source of result.data) {
-          map.set(source.id, source.name);
+      if (window.storage) {
+        try {
+          const result = await window.storage.getSources();
+          if (result.data) {
+            const map = new Map<string, string>();
+            for (const source of result.data) {
+              map.set(source.id, source.name);
+            }
+            sourceNameMapRef.current = map;
+            lastSourceVersionRef.current = sourceVersion;
+          }
+        } catch (e) {
+          console.warn('[ChannelPanel] Failed to fetch source names:', e);
         }
-        sourceNameMapRef.current = map;
-        lastSourceVersionRef.current = sourceVersion;
-      }
-      // Also load category names for source → category display
-      const allCategories = await db.categories.toArray();
-      const catMap = new Map<string, string>();
-      for (const cat of allCategories) {
-        catMap.set(cat.category_id, cat.alias || cat.category_name);
       }
       try {
+        // Also load category names for source → category display and channel hierarchy path
+        const allCategories = await db.categories.toArray();
+        const catMap = new Map<string, string>();
+        for (const cat of allCategories) {
+          catMap.set(cat.category_id, cat.alias || cat.category_name);
+        }
         const allLinks = await db.playlistCategoryLinks.toArray();
         for (const link of allLinks) {
           const cat = allCategories.find(c => c.category_id === link.category_id);
@@ -752,14 +759,14 @@ export function ChannelPanel({
             catMap.set(link.category_id, link.custom_name);
           }
         }
+        categoryNameMapRef.current = catMap;
       } catch (e) {
         console.warn('[ChannelPanel] Failed to fetch playlist category links:', e);
       }
-      categoryNameMapRef.current = catMap;
     }
 
     fetchSourceNames();
-  }, [sourceVersion, includeSourceInSearch]);
+  }, [sourceVersion]);
 
   // State for search results programs
   const [searchChannelPrograms, setSearchChannelPrograms] = useState<Map<string, StoredProgram[]>>(new Map());
@@ -1377,14 +1384,14 @@ export function ChannelPanel({
 
   const categoryName = playlistCatLink
     ? (playlistCatLink.displayName ?? t('linkedCategory'))
-    : (currentCategory?.category_name ?? i18n.t('live:allChannels'));
+    : ((currentCategory?.alias || currentCategory?.category_name) ?? i18n.t('live:allChannels'));
 
   // The EPG editor's list tab names the category it was handed. Left empty when
   // there is no real category (All Channels / Favorites), so the modal falls back
   // to its own label instead of producing "Filter All Channels channels…".
   const epgEditorListName = playlistCatLink
     ? (playlistCatLink.displayName ?? '')
-    : (currentCategory?.category_name ?? '');
+    : ((currentCategory?.alias || currentCategory?.category_name) ?? '');
 
   // Get source ID from current category or playlist link
   const sourceId = playlistCatLink
@@ -1585,9 +1592,74 @@ export function ChannelPanel({
   const selectedCategoryName = useMemo(() => {
     if (!selectedChannel) return undefined;
     const catId = parseCategoryIds(selectedChannel.category_ids)[0] || categoryId;
-    const found = categories?.find(c => c.category_id === catId);
-    return found?.category_name;
+    const found = categories?.find(c => c.category_id === catId && (!selectedChannel.source_id || c.source_id === selectedChannel.source_id))
+      || categories?.find(c => c.category_id === catId);
+    return found?.alias || found?.category_name || (catId ? categoryNameMapRef.current.get(catId) : undefined);
   }, [selectedChannel, categoryId, categories]);
+
+  const selectedChannelFullPath = useMemo(() => {
+    return formatChannelFullPath({
+      channel: selectedChannel,
+      categoryId,
+      currentCategory,
+      linkedCategoryDisplayName: playlistCatLink?.displayName,
+      categories,
+      categoryNameMap: categoryNameMapRef.current,
+      sourceNames,
+      isWatchlistMode,
+      isSearchMode,
+      fallbackCategoryName: categoryName,
+      translations: {
+        favorites: i18n.t('live:favorites', { defaultValue: 'Favorites' }),
+        watchlist: i18n.t('live:watchlist', { defaultValue: 'Watchlist' }),
+        recentlyViewed: i18n.t('live:recentlyViewed', { defaultValue: 'Recently Viewed' }),
+      },
+    });
+  }, [
+    selectedChannel,
+    categoryId,
+    currentCategory,
+    playlistCatLink?.displayName,
+    categories,
+    sourceNames,
+    isWatchlistMode,
+    isSearchMode,
+    categoryName,
+    i18n.language,
+  ]);
+
+  const displayCategoryOrPath = useMemo(() => {
+    return formatChannelDisplayPath({
+      channel: selectedChannel,
+      categoryId,
+      currentCategory,
+      linkedCategoryDisplayName: playlistCatLink?.displayName,
+      categories,
+      categoryNameMap: categoryNameMapRef.current,
+      sourceNames,
+      isWatchlistMode,
+      isSearchMode,
+      showFullPath: epgShowFullChannelPath,
+      fallbackCategoryName: categoryName,
+      translations: {
+        favorites: i18n.t('live:favorites', { defaultValue: 'Favorites' }),
+        watchlist: i18n.t('live:watchlist', { defaultValue: 'Watchlist' }),
+        recentlyViewed: i18n.t('live:recentlyViewed', { defaultValue: 'Recently Viewed' }),
+      },
+    });
+  }, [
+    selectedChannel,
+    categoryId,
+    currentCategory,
+    playlistCatLink?.displayName,
+    categories,
+    sourceNames,
+    isWatchlistMode,
+    isSearchMode,
+    epgShowFullChannelPath,
+    categoryName,
+    i18n.language,
+  ]);
 
   // States for Stalker EPG lazy loading and progress tracking
   const [visibleIndices, setVisibleIndices] = useState({ startIndex: 0, endIndex: 35 });
@@ -3338,8 +3410,11 @@ export function ChannelPanel({
             title={selectedProgram ? `${selectedProgram.title}${selectedProgram.subtitle ? `\n${selectedProgram.subtitle}` : ''}\n${formatEpgTime(new Date(selectedProgram.start))} - ${formatEpgTime(new Date(selectedProgram.end))}${selectedProgram.description ? `\n\n${selectedProgram.description}` : ''}${(Boolean(selectedChannel.tv_archive) || selectedChannel.tv_archive === 1) ? `\n\n${i18n.t('epg:clickPlayCatchup')}` : ''}` : undefined}
           >
             <span className="guide-alt-live-badge">● {i18n.t('common:live', { defaultValue: 'LIVE' })}</span>
-            <span className="guide-alt-live-channel" title={selectedChannel.name}>
-              {selectedChannel.name}
+            <span
+              className="guide-alt-live-channel"
+              title={epgShowFullChannelPath && selectedChannelFullPath ? selectedChannelFullPath : (selectedChannel.alias || selectedChannel.name)}
+            >
+              {epgShowFullChannelPath && selectedChannelFullPath ? selectedChannelFullPath : (selectedChannel.alias || selectedChannel.name)}
             </span>
             <span className="guide-alt-live-program" title={selectedProgram?.title}>
               {selectedProgram?.title || i18n.t('common:noProgramInfo', { defaultValue: 'No Program Information' })}
@@ -3500,7 +3575,7 @@ export function ChannelPanel({
                 ) : selectedChannel ? (
                   <>
                     <div className="guide-program-title">
-                      {selectedProgram ? selectedProgram.title : (selectedChannel.name || i18n.t('common:noProgramName'))}
+                      {selectedProgram ? selectedProgram.title : (selectedChannel.alias || selectedChannel.name || i18n.t('common:noProgramName'))}
                     </div>
                     {selectedProgram?.subtitle && (
                       <div className="guide-program-subtitle">{selectedProgram.subtitle}</div>
@@ -3512,7 +3587,7 @@ export function ChannelPanel({
                           <div className="guide-program-progress-fill" style={{ width: `${progressPercent}%` }} />
                         </div>
                       )}
-                      <span>{categoryName}</span>
+                      <span className="guide-program-category" title={displayCategoryOrPath}>{displayCategoryOrPath}</span>
                     </div>
                     <div className="guide-program-description">
                       {selectedProgram?.description || i18n.t('common:noDescription')}

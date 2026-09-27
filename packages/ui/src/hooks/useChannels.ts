@@ -12,6 +12,7 @@ import { useCategorySortOrder } from '../stores/uiStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { Source } from '@ynotv/core';
 import { buildSearchQueryClauses, getSearchVariants } from '../utils/searchNormalization';
+import { parseCategoryIds } from '../utils/channelPath';
 // Hook to get enabled source IDs (for filtering data from disabled sources)
 // Returns null during loading to avoid hiding all data
 export function useEnabledSources(): Set<string> | null {
@@ -973,23 +974,8 @@ export function useSelectedCategory() {
   return { categoryId, setCategoryId, loading };
 }
 
-// Helper to parse category IDs from JSON string or array
-export function parseCategoryIds(categoryIdsJson: string | string[] | number[] | undefined): string[] {
-  if (!categoryIdsJson) return [];
-  if (Array.isArray(categoryIdsJson)) {
-    return categoryIdsJson.map(String);
-  }
-  try {
-    const parsed = JSON.parse(categoryIdsJson);
-    if (Array.isArray(parsed)) {
-      // Map all to strings to support numeric category IDs from Xtream/Stalker
-      return parsed.map(String);
-    }
-  } catch {
-    // Invalid JSON
-  }
-  return [];
-}
+// Helper to parse category IDs from JSON string or array (canonical implementation in channelPath)
+export { parseCategoryIds };
 
 // Helper to resolve category IDs (native, category links, or custom categories) into native category IDs and explicit stream IDs
 async function resolveSearchCategoryFilters(

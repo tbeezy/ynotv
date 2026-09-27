@@ -1042,6 +1042,8 @@
       "threeColumnViewSub": "Kicseréli az EPG időrácsot egy 3 oszlopos csatornasávra és műsorlistára. Független az EPG nézetelrendezés beállítástól.",
       "categorySidebarAutohide": "Kategória oldalsáv automatikus elrejtése",
       "categorySidebarAutohideSub": "Tartsa rejtve a kategória oldalsávot, és húzza ki az útmutató fölé, amikor az egeret a bal szélre viszi. Kategória kiválasztása vagy az egér elmozdítása után bezárul.",
+      "epgShowFullChannelPath": "Teljes csatornaútvonal megjelenítése",
+      "epgShowFullChannelPathSub": "A teljes hierarchia (Forrás / Kategória / Csatorna) megjelenítése a műsor részletei panelen a sima kategórianév helyett.",
       "programFontSize": "Program betűméret",
       "programNameExample": "Programnév példa"
     },
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Ha engedélyezve van, a csatorna ikonja vagy logóképe el lesz rejtve a fedvényről.",
       "hideTimer": "Műsoridőzítő és folyamat elrejtése",
       "hideTimerSub": "Ha engedélyezve van, a műsor kezdő/végideje, a hátralévő idő és a folyamatjelző sáv el lesz rejtve a fedvényről.",
+      "showFullPath": "Teljes csatornaútvonal megjelenítése",
+      "showFullPathSub": "A teljes hierarchia (Forrás / Kategória / Csatorna) megjelenítése a csatornainfó overlayen a sima csatornanév helyett.",
       "overlayPosition": "Fedvény helyzete",
       "overlayPositionSub": "Válassza ki, hogy a csatornainformációs fedvény a képernyő bal vagy jobb felső sarkában jelenjen-e meg.",
       "showSourceFailover": "Forrás megjelenítése a tartalékcsoportnál",

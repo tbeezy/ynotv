@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Ocultar automáticamente la barra lateral de categorías",
       "categorySidebarAutohideSub": "Mantén oculta la barra lateral de categorías y deslizala sobre la guía al mover el ratón al borde izquierdo. Se cierra al elegir una categoría o al alejar el ratón.",
       "programFontSize": "Tamaño de fuente del programa",
-      "programNameExample": "Ejemplo de nombre de programa"
+      "programNameExample": "Ejemplo de nombre de programa",
+      "epgShowFullChannelPath": "Mostrar ruta completa del canal",
+      "epgShowFullChannelPathSub": "Mostrar la ruta jerárquica completa (Fuente / Categoría / Canal) en el panel de detalles del programa en lugar de solo el nombre de la categoría."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Cuando está activado, el icono o logotipo del canal se oculta de la superposición.",
       "hideTimer": "Ocultar temporizador y progreso del programa",
       "hideTimerSub": "Cuando está activado, la hora de inicio/fin del programa, el tiempo restante y la barra de progreso se ocultan de la superposición.",
+      "showFullPath": "Mostrar ruta completa del canal",
+      "showFullPathSub": "Mostrar la ruta jerárquica completa (Fuente / Categoría / Canal) en la superposición de información del canal en lugar de solo el nombre del canal.",
       "overlayPosition": "Posición de la superposición",
       "overlayPositionSub": "Elige si la superposición de información del canal aparece en la esquina superior izquierda o derecha de la pantalla.",
       "showSourceFailover": "Mostrar fuente para el grupo de conmutación por error",

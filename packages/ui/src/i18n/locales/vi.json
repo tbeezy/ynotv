@@ -1672,6 +1672,8 @@
       "hideChannelLogoSub": "Khi bật, biểu tượng hoặc ảnh logo kênh sẽ bị ẩn khỏi lớp phủ.",
       "hideTimer": "Ẩn Bộ Hẹn Giờ & Tiến Trình Chương Trình",
       "hideTimerSub": "Khi bật, thời gian bắt đầu/kết thúc chương trình, thời gian còn lại và thanh tiến trình sẽ bị ẩn khỏi lớp phủ.",
+      "showFullPath": "Hiển thị đường dẫn kênh đầy đủ",
+      "showFullPathSub": "Hiển thị đường dẫn phân cấp đầy đủ (Nguồn / Danh mục / Kênh) trong lớp phủ thông tin kênh thay vì chỉ tên kênh.",
       "overlayPosition": "Vị Trí Lớp Phủ",
       "overlayPositionSub": "Chọn lớp phủ thông tin kênh xuất hiện ở góc trên bên trái hay trên bên phải màn hình.",
       "showSourceFailover": "Hiển Thị Nguồn cho Nhóm Chuyển Dự Phòng",
@@ -2702,7 +2704,9 @@
       "categorySidebarAutohide": "Tự động ẩn thanh bên danh mục",
       "categorySidebarAutohideSub": "Giữ thanh bên danh mục ẩn và trượt nó lên trên hướng dẫn khi di chuyển chuột đến mép trái. Nó đóng sau khi bạn chọn một danh mục hoặc di chuyển chuột ra xa.",
       "programFontSize": "Cỡ chữ chương trình",
-      "programNameExample": "Ví dụ tên chương trình"
+      "programNameExample": "Ví dụ tên chương trình",
+      "epgShowFullChannelPath": "Hiển thị đường dẫn kênh đầy đủ",
+      "epgShowFullChannelPathSub": "Hiển thị đường dẫn phân cấp đầy đủ (Nguồn / Danh mục / Kênh) trong ngăn chi tiết chương trình thay vì chỉ tên danh mục."
     },
     "subtitles": {
       "tabs": {

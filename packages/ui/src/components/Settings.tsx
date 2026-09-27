@@ -70,6 +70,8 @@ interface SettingsProps {
   onChannelInfoOverlayHideLogoChange?: (hide: boolean) => void;
   channelInfoOverlayHideTimer?: boolean;
   onChannelInfoOverlayHideTimerChange?: (hide: boolean) => void;
+  channelInfoOverlayShowFullPath?: boolean;
+  onChannelInfoOverlayShowFullPathChange?: (show: boolean) => void;
   channelInfoOverlayPosition?: 'left' | 'right';
   onChannelInfoOverlayPositionChange?: (pos: 'left' | 'right') => void;
   channelInfoOverlayLogoShape?: 'square' | 'horizontal';
@@ -212,6 +214,8 @@ export function Settings({
   onChannelInfoOverlayHideLogoChange,
   channelInfoOverlayHideTimer: channelInfoOverlayHideTimerProp,
   onChannelInfoOverlayHideTimerChange,
+  channelInfoOverlayShowFullPath: channelInfoOverlayShowFullPathProp,
+  onChannelInfoOverlayShowFullPathChange,
   channelInfoOverlayPosition: channelInfoOverlayPositionProp,
   onChannelInfoOverlayPositionChange,
   channelInfoOverlayLogoShape: channelInfoOverlayLogoShapeProp,
@@ -687,6 +691,8 @@ export function Settings({
   const setEpgPreferEpgLogos = useSettingsStore((s) => s.setEpgPreferEpgLogos);
   const categorySidebarAutohide = useSettingsStore((s) => s.categorySidebarAutohide);
   const setCategorySidebarAutohide = useSettingsStore((s) => s.setCategorySidebarAutohide);
+  const epgShowFullChannelPath = useSettingsStore((s) => s.epgShowFullChannelPath);
+  const setEpgShowFullChannelPath = useSettingsStore((s) => s.setEpgShowFullChannelPath);
   const epgLogoDisplay = useSettingsStore((s) => s.epgLogoDisplay);
   const setEpgLogoDisplay = useSettingsStore((s) => s.setEpgLogoDisplay);
   const oledBlack = useSettingsStore((s) => s.oledBlack);
@@ -759,6 +765,7 @@ export function Settings({
   const [channelInfoOverlayHideMetaBadge, setChannelInfoOverlayHideMetaBadge] = useState(channelInfoOverlayHideMetaBadgeProp ?? false);
   const [channelInfoOverlayHideLogo, setChannelInfoOverlayHideLogo] = useState(channelInfoOverlayHideLogoProp ?? false);
   const [channelInfoOverlayHideTimer, setChannelInfoOverlayHideTimer] = useState(channelInfoOverlayHideTimerProp ?? false);
+  const [channelInfoOverlayShowFullPath, setChannelInfoOverlayShowFullPath] = useState(channelInfoOverlayShowFullPathProp ?? false);
   const [channelInfoOverlayPosition, setChannelInfoOverlayPosition] = useState(channelInfoOverlayPositionProp ?? 'left');
   const [channelInfoOverlayLogoShape, setChannelInfoOverlayLogoShape] = useState<'square' | 'horizontal'>(channelInfoOverlayLogoShapeProp ?? 'square');
 
@@ -795,6 +802,7 @@ export function Settings({
   useEffect(() => { setChannelInfoOverlayHideMetaBadge(channelInfoOverlayHideMetaBadgeProp ?? false); }, [channelInfoOverlayHideMetaBadgeProp]);
   useEffect(() => { setChannelInfoOverlayHideLogo(channelInfoOverlayHideLogoProp ?? false); }, [channelInfoOverlayHideLogoProp]);
   useEffect(() => { setChannelInfoOverlayHideTimer(channelInfoOverlayHideTimerProp ?? false); }, [channelInfoOverlayHideTimerProp]);
+  useEffect(() => { setChannelInfoOverlayShowFullPath(channelInfoOverlayShowFullPathProp ?? false); }, [channelInfoOverlayShowFullPathProp]);
   useEffect(() => { setChannelInfoOverlayPosition(channelInfoOverlayPositionProp ?? 'left'); }, [channelInfoOverlayPositionProp]);
   useEffect(() => { setChannelInfoOverlayLogoShape(channelInfoOverlayLogoShapeProp ?? 'square'); }, [channelInfoOverlayLogoShapeProp]);
   useEffect(() => { setEpgMetadataBadgeResolution(epgMetadataBadgeResolutionProp ?? true); }, [epgMetadataBadgeResolutionProp]);
@@ -1043,6 +1051,7 @@ export function Settings({
         channelInfoOverlayBoxWidth?: number;
         channelInfoOverlayOpacity?: number;
         channelInfoOverlayHideDescription?: boolean;
+        channelInfoOverlayShowFullPath?: boolean;
         popoutStopMain?: boolean;
         popoutAlwaysOnTop?: boolean;
         popoutHwdecEnabled?: boolean;
@@ -1363,6 +1372,7 @@ export function Settings({
       setChannelInfoOverlayBoxWidth(settings.channelInfoOverlayBoxWidth ?? 380);
       setChannelInfoOverlayOpacity(settings.channelInfoOverlayOpacity ?? 55);
       setChannelInfoOverlayHideDescription(settings.channelInfoOverlayHideDescription ?? false);
+      setChannelInfoOverlayShowFullPath(settings.channelInfoOverlayShowFullPath ?? false);
 
       // Load Popout settings
       setPopoutStopMain(settings.popoutStopMain ?? true);
@@ -2317,6 +2327,16 @@ export function Settings({
     }
   };
 
+  const handleChannelInfoOverlayShowFullPathChange = async (show: boolean) => {
+    setChannelInfoOverlayShowFullPath(show);
+    if (onChannelInfoOverlayShowFullPathChange) {
+      onChannelInfoOverlayShowFullPathChange(show);
+    }
+    if (window.storage) {
+      await window.storage.updateSettings({ channelInfoOverlayShowFullPath: show });
+    }
+  };
+
   const handleChannelInfoOverlayPositionChange = async (pos: 'left' | 'right') => {
     setChannelInfoOverlayPosition(pos);
     if (onChannelInfoOverlayPositionChange) {
@@ -2473,6 +2493,7 @@ export function Settings({
     channelInfoOverlayHideMetaBadge?: boolean;
     channelInfoOverlayHideLogo?: boolean;
     channelInfoOverlayHideTimer?: boolean;
+    channelInfoOverlayShowFullPath?: boolean;
     channelInfoOverlayPosition?: 'left' | 'right';
   }) => {
     const updated = { ...uiSettings, ...newSettings };
@@ -2520,6 +2541,10 @@ export function Settings({
     if (newSettings.channelInfoOverlayHideTimer !== undefined) {
       setChannelInfoOverlayHideTimer(newSettings.channelInfoOverlayHideTimer);
       onChannelInfoOverlayHideTimerChange?.(newSettings.channelInfoOverlayHideTimer);
+    }
+    if (newSettings.channelInfoOverlayShowFullPath !== undefined) {
+      setChannelInfoOverlayShowFullPath(newSettings.channelInfoOverlayShowFullPath);
+      onChannelInfoOverlayShowFullPathChange?.(newSettings.channelInfoOverlayShowFullPath);
     }
     if (newSettings.channelInfoOverlayPosition !== undefined) {
       setChannelInfoOverlayPosition(newSettings.channelInfoOverlayPosition);
@@ -2875,6 +2900,7 @@ export function Settings({
               channelInfoOverlayHideMetaBadge,
               channelInfoOverlayHideLogo,
               channelInfoOverlayHideTimer,
+              channelInfoOverlayShowFullPath,
               channelInfoOverlayPosition,
             }}
             onSettingsChange={handleUiSettingsChange}
@@ -3106,6 +3132,8 @@ export function Settings({
             onEpgThreeColumnChange={handleEpgThreeColumnChange}
             categorySidebarAutohide={categorySidebarAutohide}
             onCategorySidebarAutohideChange={setCategorySidebarAutohide}
+            epgShowFullChannelPath={epgShowFullChannelPath}
+            onEpgShowFullChannelPathChange={setEpgShowFullChannelPath}
             epgTitleFontSize={epgTitleFontSize}
             onEpgTitleFontSizeChange={handleEpgTitleFontSizeChange}
             epgBodyFontSize={epgBodyFontSize}
@@ -3160,6 +3188,8 @@ export function Settings({
             onChannelInfoOverlayHideLogoChange={handleChannelInfoOverlayHideLogoChange}
             channelInfoOverlayHideTimer={channelInfoOverlayHideTimer}
             onChannelInfoOverlayHideTimerChange={handleChannelInfoOverlayHideTimerChange}
+            channelInfoOverlayShowFullPath={channelInfoOverlayShowFullPath}
+            onChannelInfoOverlayShowFullPathChange={handleChannelInfoOverlayShowFullPathChange}
             channelInfoOverlayPosition={channelInfoOverlayPosition}
             onChannelInfoOverlayPositionChange={handleChannelInfoOverlayPositionChange}
             channelInfoOverlayLogoShape={channelInfoOverlayLogoShape}

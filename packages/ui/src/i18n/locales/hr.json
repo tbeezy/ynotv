@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Automatski sakrij bočnu traku kategorija",
       "categorySidebarAutohideSub": "Držite bočnu traku kategorija skrivenom i izvucite je preko vodiča kada miš pomaknete na lijevi rub. Zatvara se nakon odabira kategorije ili pomicanja miša.",
       "programFontSize": "Veličina fonta programa",
-      "programNameExample": "Primjer naziva programa"
+      "programNameExample": "Primjer naziva programa",
+      "epgShowFullChannelPath": "Prikaži punu putanju kanala",
+      "epgShowFullChannelPathSub": "Prikaži punu hijerarhijsku putanju (Izvor / Kategorija / Kanal) u oknu pojedinosti programa umjesto samo naziva kategorije."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Kada je uključeno, ikonica ili logotip kanala se sakriva iz preklopa.",
       "hideTimer": "Sakrij tajmer i napredak programa",
       "hideTimerSub": "Kada je uključeno, vrijeme početka/kraja programa, preostalo vrijeme i traka napretka se sakrivaju iz preklopa.",
+      "showFullPath": "Prikaži punu putanju kanala",
+      "showFullPathSub": "Prikaži punu hijerarhijsku putanju (Izvor / Kategorija / Kanal) u prekrivanju informacija o kanalu umjesto samo naziva kanala.",
       "overlayPosition": "Pozicija preklopa",
       "overlayPositionSub": "Izaberite da li se preklop sa informacijama o kanalu pojavljuje u gornjem lijevom ili desnom uglu ekrana.",
       "showSourceFailover": "Prikaži izvor za grupu za prebacivanje",

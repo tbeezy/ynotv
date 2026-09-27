@@ -267,4 +267,20 @@ describe('settings store write path', () => {
     store.getState().setEnableCustomScrollbarWidth(true);
     expect(store.getState().theme).toBe('dark-blue');
   });
+
+  it('updates epgShowFullChannelPath and persists through the bridge', () => {
+    const store = useSettingsStore;
+    expect(store.getState().epgShowFullChannelPath).toBe(false);
+    store.getState().setEpgShowFullChannelPath(true);
+    expect(store.getState().epgShowFullChannelPath).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ epgShowFullChannelPath: true }));
+  });
+
+  it('updates channelInfoOverlayShowFullPath and persists through the bridge', () => {
+    const store = useSettingsStore;
+    expect(store.getState().channelInfoOverlayShowFullPath).toBe(false);
+    store.getState().setChannelInfoOverlayShowFullPath(true);
+    expect(store.getState().channelInfoOverlayShowFullPath).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ channelInfoOverlayShowFullPath: true }));
+  });
 });

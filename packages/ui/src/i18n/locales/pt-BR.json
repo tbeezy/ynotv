@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Ocultar automaticamente a barra lateral de categorias",
       "categorySidebarAutohideSub": "Mantenha a barra lateral de categorias oculta e deslize-a sobre o guia quando o mouse chegar à borda esquerda. Ela fecha depois que você escolhe uma categoria ou afasta o mouse.",
       "programFontSize": "Tamanho da fonte do programa",
-      "programNameExample": "Exemplo de nome de programa"
+      "programNameExample": "Exemplo de nome de programa",
+      "epgShowFullChannelPath": "Exibir caminho completo do canal",
+      "epgShowFullChannelPathSub": "Exibir o caminho hierárquico completo (Fonte / Categoria / Canal) no painel de detalhes do programa em vez de apenas o nome da categoria."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Quando ativado, o ícone ou logotipo do canal é ocultado da sobreposição.",
       "hideTimer": "Ocultar temporizador e progresso do programa",
       "hideTimerSub": "Quando ativado, a hora de início/término do programa, o tempo restante e a barra de progresso são ocultados da sobreposição.",
+      "showFullPath": "Exibir caminho completo do canal",
+      "showFullPathSub": "Exibir o caminho hierárquico completo (Fonte / Categoria / Canal) na sobreposição de informações do canal em vez de apenas o nome do canal.",
       "overlayPosition": "Posição da sobreposição",
       "overlayPositionSub": "Escolha se a sobreposição de informações do canal aparece no canto superior esquerdo ou direito da tela.",
       "showSourceFailover": "Mostrar fonte para o grupo de failover",

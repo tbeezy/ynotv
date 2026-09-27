@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "自動隱藏分類側邊欄",
       "categorySidebarAutohideSub": "保持分類側邊欄隱藏，當滑鼠移到左邊緣時將其滑出到指南上方。選擇分類或移開滑鼠後自動關閉。",
       "programFontSize": "節目字型大小",
-      "programNameExample": "節目名稱範例"
+      "programNameExample": "節目名稱範例",
+      "epgShowFullChannelPath": "顯示完整頻道路徑",
+      "epgShowFullChannelPathSub": "在節目詳情面板中顯示完整層次結構路徑（來源 / 分類 / 頻道），而不是僅顯示分類名稱。"
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "啟用後，頻道圖示或徽標圖像將從覆蓋層隱藏。",
       "hideTimer": "隱藏節目計時器和進度",
       "hideTimerSub": "啟用後，節目的開始/結束時間、剩餘時間和進度條將從覆蓋層隱藏。",
+      "showFullPath": "顯示完整頻道路徑",
+      "showFullPathSub": "在頻道資訊浮層中顯示完整階層路徑（來源 / 分類 / 頻道），而不是僅顯示頻道名稱。",
       "overlayPosition": "覆蓋層位置",
       "overlayPositionSub": "選擇頻道資訊覆蓋層出現在螢幕的左上角還是右上角。",
       "showSourceFailover": "為故障轉移組顯示源",

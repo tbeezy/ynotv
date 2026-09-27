@@ -423,11 +423,13 @@ function App() {
   const channelInfoOverlayHideMetaBadge = useSettingsStore((s) => s.channelInfoOverlayHideMetaBadge);
   const channelInfoOverlayHideLogo = useSettingsStore((s) => s.channelInfoOverlayHideLogo);
   const channelInfoOverlayHideTimer = useSettingsStore((s) => s.channelInfoOverlayHideTimer);
+  const channelInfoOverlayShowFullPath = useSettingsStore((s) => s.channelInfoOverlayShowFullPath);
   const channelInfoOverlayPosition = useSettingsStore((s) => s.channelInfoOverlayPosition);
   const channelInfoOverlayLogoShape = useSettingsStore((s) => s.channelInfoOverlayLogoShape);
   const setChannelInfoOverlayHideMetaBadge = useSettingsStore((s) => s.setChannelInfoOverlayHideMetaBadge);
   const setChannelInfoOverlayHideLogo = useSettingsStore((s) => s.setChannelInfoOverlayHideLogo);
   const setChannelInfoOverlayHideTimer = useSettingsStore((s) => s.setChannelInfoOverlayHideTimer);
+  const setChannelInfoOverlayShowFullPath = useSettingsStore((s) => s.setChannelInfoOverlayShowFullPath);
   const setChannelInfoOverlayPosition = useSettingsStore((s) => s.setChannelInfoOverlayPosition);
   const setChannelInfoOverlayLogoShape = useSettingsStore((s) => s.setChannelInfoOverlayLogoShape);
   const setChannelInfoOverlayHideDescription = useSettingsStore((s) => s.setChannelInfoOverlayHideDescription);
@@ -6702,6 +6704,8 @@ function useTmdbPresencePoster(
         hideTimer={channelInfoOverlayHideTimer}
         overlayPosition={channelInfoOverlayPosition}
         logoShape={channelInfoOverlayLogoShape}
+        showFullPath={channelInfoOverlayShowFullPath}
+        categoryId={categoryId}
         isCatchup={isCatchup}
         catchupInfo={catchupInfo}
         position={position}
@@ -7192,6 +7196,8 @@ function useTmdbPresencePoster(
           onChannelInfoOverlayHideLogoChange={setChannelInfoOverlayHideLogo}
           channelInfoOverlayHideTimer={channelInfoOverlayHideTimer}
           onChannelInfoOverlayHideTimerChange={setChannelInfoOverlayHideTimer}
+          channelInfoOverlayShowFullPath={channelInfoOverlayShowFullPath}
+          onChannelInfoOverlayShowFullPathChange={setChannelInfoOverlayShowFullPath}
           channelInfoOverlayPosition={channelInfoOverlayPosition}
           onChannelInfoOverlayPositionChange={setChannelInfoOverlayPosition}
           channelInfoOverlayLogoShape={channelInfoOverlayLogoShape}

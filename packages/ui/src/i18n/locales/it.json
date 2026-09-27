@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Nascondi automaticamente la barra laterale delle categorie",
       "categorySidebarAutohideSub": "Mantieni nascosta la barra laterale delle categorie e falla scorrere sopra la guida quando il mouse raggiunge il bordo sinistro. Si chiude dopo aver scelto una categoria o aver allontanato il mouse.",
       "programFontSize": "Dimensione carattere programma",
-      "programNameExample": "Esempio nome programma"
+      "programNameExample": "Esempio nome programma",
+      "epgShowFullChannelPath": "Mostra percorso completo del canale",
+      "epgShowFullChannelPathSub": "Mostra il percorso gerarchico completo (Sorgente / Categoria / Canale) nel riquadro dei dettagli del programma invece del solo nome della categoria."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Quando attivo, l'icona o il logo del canale viene nascosto dall'overlay.",
       "hideTimer": "Nascondi timer e avanzamento programma",
       "hideTimerSub": "Quando attivo, ora di inizio/fine del programma, tempo rimanente e barra di avanzamento vengono nascosti dall'overlay.",
+      "showFullPath": "Mostra percorso completo del canale",
+      "showFullPathSub": "Mostra il percorso gerarchico completo (Sorgente / Categoria / Canale) nella sovrapposizione info canale invece del solo nome del canale.",
       "overlayPosition": "Posizione overlay",
       "overlayPositionSub": "Scegli se l'overlay delle informazioni sul canale appare nell'angolo in alto a sinistra o a destra dello schermo.",
       "showSourceFailover": "Mostra fonte per il gruppo di failover",

@@ -1043,7 +1043,9 @@
       "categorySidebarAutohide": "Automatycznie ukrywaj pasek boczny kategorii",
       "categorySidebarAutohideSub": "Trzymaj pasek boczny kategorii ukryty i wysuń go nad przewodnikiem, gdy mysz dotrze do lewej krawędzi. Zamyka się po wybraniu kategorii lub odsunięciu myszy.",
       "programFontSize": "Rozmiar czcionki programu",
-      "programNameExample": "Przykładowa nazwa programu"
+      "programNameExample": "Przykładowa nazwa programu",
+      "epgShowFullChannelPath": "Pokaż pełną ścieżkę kanału",
+      "epgShowFullChannelPathSub": "Pokaż pełną ścieżkę hierarchii (Źródło / Kategoria / Kanał) w panelu szczegółów programu zamiast samej nazwy kategorii."
     },
     "subtitles": {
       "tabs": {
@@ -1983,6 +1985,8 @@
       "hideChannelLogoSub": "Po włączeniu ikona lub logo kanału jest ukrywana w nakładce.",
       "hideTimer": "Ukryj timer i postęp programu",
       "hideTimerSub": "Po włączeniu godzina rozpoczęcia/zakończenia programu, pozostały czas i pasek postępu są ukrywane w nakładce.",
+      "showFullPath": "Pokaż pełną ścieżkę kanału",
+      "showFullPathSub": "Pokaż pełną ścieżkę hierarchii (Źródło / Kategoria / Kanał) w nakładce informacji o kanale zamiast samej nazwy kanału.",
       "overlayPosition": "Pozycja nakładki",
       "overlayPositionSub": "Wybierz, czy nakładka informacji o kanale pojawia się w lewym czy prawym górnym rogu ekranu.",
       "showSourceFailover": "Pokazuj źródło dla grupy failover",
