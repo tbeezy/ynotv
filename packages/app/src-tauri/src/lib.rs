@@ -5741,6 +5741,39 @@ pub fn run() {
                         }
                     }
                 }
+                tauri::WindowEvent::Focused(_) => {
+                    #[cfg(target_os = "windows")]
+                    {
+                        let app_handle = window.app_handle().clone();
+                        tauri::async_runtime::spawn(async move {
+                            let engine = get_player_engine(&app_handle).await;
+                            for delay in [0, 50, 150, 300, 600] {
+                                if delay > 0 {
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
+                                }
+                                if engine == PlayerEngine::LibMpv {
+                                    if let Some(state) = app_handle.try_state::<mpv_core::MpvCoreState>() {
+                                        let target = {
+                                            state.target_geometry.lock().ok().and_then(|g| *g)
+                                        };
+                                        if let Some((x, y, w, h)) = target {
+                                            let _ = mpv_core::set_geometry(&app_handle, x, y, w, h).await;
+                                        }
+                                    }
+                                } else {
+                                    if let Some(state) = app_handle.try_state::<mpv_windows::MpvState>() {
+                                        let target = {
+                                            state.target_geometry.lock().ok().and_then(|g| *g)
+                                        };
+                                        if let Some((x, y, w, h)) = target {
+                                            let _ = mpv_windows::mpv_set_geometry(&app_handle, x, y, w, h).await;
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
                 _ => {}
             }
         })

@@ -2668,6 +2668,22 @@ export function ChannelPanel({
     // assert the preview rect whenever the window regains focus.
     let unlistenFocus: (() => void) | null = null;
     let disposed = false;
+    const triggerPositionReassertion = () => {
+      forceNextUpdate = true;
+      lastMainGeometry = ''; // reset cache so the geometry call is never skipped
+      scheduleVideoPositionUpdate();
+    };
+
+    const runStaggeredReassertion = () => {
+      triggerPositionReassertion();
+      const delays = [50, 150, 300, 600, 1000];
+      delays.forEach((delay) => {
+        setTimeout(() => {
+          if (disposed) return;
+          triggerPositionReassertion();
+        }, delay);
+      });
+    };
 
     import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
       const appWindow = getCurrentWindow();
@@ -2681,9 +2697,7 @@ export function ChannelPanel({
           dragSettleTimer = null;
           isDragging = false;
           // Bypass geometry cache and reposition MPV exactly once after the drag ends.
-          forceNextUpdate = true;
-          lastMainGeometry = ''; // reset cache so the geometry call is never skipped
-          scheduleVideoPositionUpdate();
+          triggerPositionReassertion();
         }, 100);
       }).then((unlisten) => {
         if (disposed) unlisten();
@@ -2691,23 +2705,38 @@ export function ChannelPanel({
       }).catch(() => {});
 
       appWindow.onFocusChanged(({ payload: focused }) => {
-        if (!focused) return;
-        forceNextUpdate = true;
-        lastMainGeometry = ''; // reset cache so the geometry call is never skipped
-        scheduleVideoPositionUpdate();
-        // Safety pass: outlast any async mpv re-fit that lands after the JS
-        // focus event. Idempotent, so the extra call is harmless.
-        setTimeout(() => {
-          if (disposed) return;
-          forceNextUpdate = true;
-          lastMainGeometry = '';
-          scheduleVideoPositionUpdate();
-        }, 150);
+        // Re-assert preview geometry on BOTH focus gain and focus loss.
+        // On Windows, when ynoTV loses focus (e.g. user clicks another window or
+        // launches a full-screen game on another monitor), MPV's embedded window
+        // receives WM_ACTIVATE / WM_KILLFOCUS and re-fits itself to the full parent
+        // window in the background. Re-asserting geometry on focus loss keeps the video
+        // bounded to the preview box.
+        runStaggeredReassertion();
       }).then((unlisten) => {
         if (disposed) unlisten();
         else unlistenFocus = unlisten;
       }).catch(() => {});
     }).catch(() => {});
+
+    // Listen for browser focus/blur/visibilitychange to catch external mode switches
+    const handleFocusOrBlur = () => {
+      runStaggeredReassertion();
+    };
+    window.addEventListener('blur', handleFocusOrBlur);
+    window.addEventListener('focus', handleFocusOrBlur);
+    document.addEventListener('visibilitychange', handleFocusOrBlur);
+
+    // Background watchdog: while the app window is unfocused (e.g. user is
+    // playing a full-screen game or using another app on another monitor),
+    // external DirectX mode switches, resolution changes, or GPU device resets
+    // can trigger an async mpv re-fit without firing any DOM or Tauri window event.
+    // Periodically re-assert geometry only while unfocused (0 IPC overhead when focused).
+    const unfocusedWatchdogInterval = setInterval(() => {
+      if (disposed) return;
+      if (!document.hasFocus() || document.hidden) {
+        triggerPositionReassertion();
+      }
+    }, 1000);
 
     // Settle loop for CSS transitions (sidebar/category strip opening/closing).
     // Runs on rAF while the preview geometry is still changing (plus a short
@@ -2745,6 +2774,10 @@ export function ChannelPanel({
       disposed = true;
       observer.disconnect();
       window.removeEventListener('resize', handleWindowResize);
+      window.removeEventListener('blur', handleFocusOrBlur);
+      window.removeEventListener('focus', handleFocusOrBlur);
+      document.removeEventListener('visibilitychange', handleFocusOrBlur);
+      clearInterval(unfocusedWatchdogInterval);
       if (unlistenMove) unlistenMove();
       if (unlistenFocus) unlistenFocus();
       if (dragSettleTimer !== null) clearTimeout(dragSettleTimer);

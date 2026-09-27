@@ -24,6 +24,9 @@ pub struct MpvState {
     pub pending_requests: Arc<Mutex<HashMap<u64, tokio::sync::oneshot::Sender<Result<Value, String>>>>>,
     pub request_id_counter: Mutex<u64>,
     pub initializing: Mutex<bool>,
+    /// Target preview geometry (x, y, width, height) when embedded in preview box.
+    /// None when in full player / fullscreen view (0, 0, 0, 0).
+    pub target_geometry: Mutex<Option<(i32, i32, u32, u32)>>,
     /// Arguments of the most recent spawn, kept for support bundles: the
     /// effective command line is what explains playback behaviour, and the
     /// app log that carries it is only written when debug logging is on.
@@ -37,6 +40,7 @@ impl MpvState {
             child: Mutex::new(None),
             pid: Mutex::new(0),
             main_hwnd: Mutex::new(0),
+            target_geometry: Mutex::new(None),
             socket_connected: Mutex::new(false),
             ipc_tx: Mutex::new(None),
             pending_requests: Arc::new(Mutex::new(HashMap::new())),
@@ -77,6 +81,10 @@ fn kill_and_clear_state(state: &tauri::State<'_, MpvState>) {
     {
         let mut main_hwnd = state.main_hwnd.lock().unwrap();
         *main_hwnd = 0;
+    }
+    {
+        let mut target_geo = state.target_geometry.lock().unwrap();
+        *target_geo = None;
     }
     {
         let mut init = state.initializing.lock().unwrap();
@@ -1091,6 +1099,12 @@ pub async fn mpv_set_geometry<R: Runtime>(
     };
 
     let state = app.state::<MpvState>();
+    if width == 0 && height == 0 {
+        *state.target_geometry.lock().unwrap() = None;
+    } else {
+        *state.target_geometry.lock().unwrap() = Some((x, y, width, height));
+    }
+
     let cached = *state.main_hwnd.lock().unwrap();
     let mut target_hwnd = if cached != 0 && is_valid_mpv_hwnd(cached) {
         Some(HWND(cached as _))
@@ -1169,6 +1183,10 @@ pub async fn kill_mpv<R: Runtime>(app: &AppHandle<R>) {
     {
         let mut main_hwnd = state.main_hwnd.lock().unwrap();
         *main_hwnd = 0;
+    }
+    {
+        let mut target_geo = state.target_geometry.lock().unwrap();
+        *target_geo = None;
     }
 }
 

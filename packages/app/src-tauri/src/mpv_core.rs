@@ -124,9 +124,49 @@ pub struct MpvCoreState {
     /// deterministic even if the window title lookup races window creation.
     #[cfg(windows)]
     pub main_hwnd: Mutex<isize>,
+    /// Target preview geometry (x, y, width, height) when embedded in preview box.
+    /// None when in full player / fullscreen view (0, 0, 0, 0).
+    #[cfg(windows)]
+    pub target_geometry: Mutex<Option<(i32, i32, u32, u32)>>,
     /// Ring buffer of libmpv log lines (mpv `log-message` events), served by
     /// `get_log` for the Diagnostics panel.
     pub log_lines: Arc<Mutex<VecDeque<String>>>,
+}
+
+#[cfg(windows)]
+static MPV_CORE_TARGET_GEOMETRY: parking_lot::Mutex<Option<(i32, i32, u32, u32)>> = parking_lot::Mutex::new(None);
+
+#[cfg(windows)]
+const MPV_CHILD_SUBCLASS_ID: usize = 0x594E_4D50; // 'YNMP'
+
+#[cfg(windows)]
+unsafe extern "system" fn mpv_child_subclass_proc(
+    hwnd: windows::Win32::Foundation::HWND,
+    message: u32,
+    wparam: windows::Win32::Foundation::WPARAM,
+    lparam: windows::Win32::Foundation::LPARAM,
+    _id: usize,
+    _data: usize,
+) -> windows::Win32::Foundation::LRESULT {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        WINDOWPOS, WM_WINDOWPOSCHANGING, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_NOACTIVATE,
+    };
+    use windows::Win32::UI::Shell::DefSubclassProc;
+
+    if message == WM_WINDOWPOSCHANGING && lparam.0 != 0 {
+        if let Some((tx, ty, tw, th)) = *MPV_CORE_TARGET_GEOMETRY.lock() {
+            let winpos = &mut *(lparam.0 as *mut WINDOWPOS);
+            winpos.x = tx;
+            winpos.y = ty;
+            winpos.cx = tw as i32;
+            winpos.cy = th as i32;
+            winpos.flags = (winpos.flags | SWP_NOZORDER | SWP_NOACTIVATE)
+                & !SWP_NOMOVE
+                & !SWP_NOSIZE;
+        }
+    }
+
+    DefSubclassProc(hwnd, message, wparam, lparam)
 }
 
 impl MpvCoreState {
@@ -137,6 +177,8 @@ impl MpvCoreState {
             is_shutting_down: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             #[cfg(windows)]
             main_hwnd: Mutex::new(0),
+            #[cfg(windows)]
+            target_geometry: Mutex::new(None),
             log_lines: Arc::new(Mutex::new(VecDeque::new())),
         }
     }
@@ -1200,12 +1242,20 @@ pub async fn set_geometry<R: Runtime>(
             (x, y, width, height)
         };
 
+        let state = app.state::<MpvCoreState>();
+        if width == 0 && height == 0 {
+            *state.target_geometry.lock().unwrap() = None;
+            *MPV_CORE_TARGET_GEOMETRY.lock() = None;
+        } else {
+            *state.target_geometry.lock().unwrap() = Some((x, y, width, height));
+            *MPV_CORE_TARGET_GEOMETRY.lock() = Some((tx, ty, tw, th));
+        }
+
         // Prefer the cached main-player HWND (validated below), and only fall
         // back to a child-window search when the cache is empty or stale. This
         // keeps main geometry deterministic in multiview: the title/class search
         // is only used when there is exactly one mpv window, so it can never
         // grab a secondary slot.
-        let state = app.state::<MpvCoreState>();
         let cached = *state.main_hwnd.lock().unwrap();
         let mut target_hwnd = if cached != 0 && is_valid_mpv_hwnd(cached) {
             Some(HWND(cached as _))
@@ -1225,6 +1275,8 @@ pub async fn set_geometry<R: Runtime>(
 
         if let Some(target) = target_hwnd {
             unsafe {
+                use windows::Win32::UI::Shell::SetWindowSubclass;
+                let _ = SetWindowSubclass(target, Some(mpv_child_subclass_proc), MPV_CHILD_SUBCLASS_ID, 0);
                 let _ = SetWindowPos(
                     target,
                     None,
@@ -1288,6 +1340,8 @@ pub async fn kill_mpv<R: Runtime>(app: &AppHandle<R>) {
         // The embedded window is destroyed with the mpv instance; drop the
         // cached HWND so the next init re-discovers it.
         *state.main_hwnd.lock().unwrap() = 0;
+        *state.target_geometry.lock().unwrap() = None;
+        *MPV_CORE_TARGET_GEOMETRY.lock() = None;
     }
 
     state.is_shutting_down.store(false, std::sync::atomic::Ordering::Relaxed);
