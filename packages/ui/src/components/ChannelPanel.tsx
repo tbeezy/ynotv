@@ -3410,18 +3410,28 @@ export function ChannelPanel({
             title={selectedProgram ? `${selectedProgram.title}${selectedProgram.subtitle ? `\n${selectedProgram.subtitle}` : ''}\n${formatEpgTime(new Date(selectedProgram.start))} - ${formatEpgTime(new Date(selectedProgram.end))}${selectedProgram.description ? `\n\n${selectedProgram.description}` : ''}${(Boolean(selectedChannel.tv_archive) || selectedChannel.tv_archive === 1) ? `\n\n${i18n.t('epg:clickPlayCatchup')}` : ''}` : undefined}
           >
             <span className="guide-alt-live-badge">● {i18n.t('common:live', { defaultValue: 'LIVE' })}</span>
-            <span
-              className="guide-alt-live-channel"
-              title={epgShowFullChannelPath && selectedChannelFullPath ? selectedChannelFullPath : (selectedChannel.alias || selectedChannel.name)}
-            >
-              {epgShowFullChannelPath && selectedChannelFullPath ? selectedChannelFullPath : (selectedChannel.alias || selectedChannel.name)}
-            </span>
+            {!epgShowFullChannelPath && (
+              <span
+                className="guide-alt-live-channel"
+                title={selectedChannel.alias || selectedChannel.name}
+              >
+                {selectedChannel.alias || selectedChannel.name}
+              </span>
+            )}
             <span className="guide-alt-live-program" title={selectedProgram?.title}>
               {selectedProgram?.title || i18n.t('common:noProgramInfo', { defaultValue: 'No Program Information' })}
             </span>
             <span className="guide-alt-live-times">
               {selectedProgram ? `${formatEpgTime(new Date(selectedProgram.start))} - ${formatEpgTime(new Date(selectedProgram.end))}` : ''}
             </span>
+            {epgShowFullChannelPath && (
+              <span
+                className="guide-alt-live-channel full-path"
+                title={selectedChannelFullPath || (selectedChannel.alias || selectedChannel.name)}
+              >
+                {selectedChannelFullPath || (selectedChannel.alias || selectedChannel.name)}
+              </span>
+            )}
             {selectedProgram?.description && (
               <span className="guide-alt-live-desc" title={selectedProgram.description}>
                 {selectedProgram.description}
@@ -3580,15 +3590,19 @@ export function ChannelPanel({
                     {selectedProgram?.subtitle && (
                       <div className="guide-program-subtitle">{selectedProgram.subtitle}</div>
                     )}
-                    <div className="guide-program-meta">
-                      <span>{selectedProgram ? `${formatEpgTime(new Date(selectedProgram.start))} - ${formatEpgTime(new Date(selectedProgram.end))}` : ''}</span>
-                      {selectedProgram && (
+                    {selectedProgram && (
+                      <div className="guide-program-meta">
+                        <span>{`${formatEpgTime(new Date(selectedProgram.start))} - ${formatEpgTime(new Date(selectedProgram.end))}`}</span>
                         <div className="guide-program-progress-bar">
                           <div className="guide-program-progress-fill" style={{ width: `${progressPercent}%` }} />
                         </div>
-                      )}
-                      <span className="guide-program-category" title={displayCategoryOrPath}>{displayCategoryOrPath}</span>
-                    </div>
+                      </div>
+                    )}
+                    {displayCategoryOrPath && (
+                      <div className="guide-program-category" title={displayCategoryOrPath}>
+                        {displayCategoryOrPath}
+                      </div>
+                    )}
                     <div className="guide-program-description">
                       {selectedProgram?.description || i18n.t('common:noDescription')}
                     </div>

@@ -631,7 +631,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   margin-top: var(--guide-meta-margin-top, 0);
   color: var(--guide-meta-color, var(--text-secondary, rgba(255, 255, 255, 0.7)));
   font-size: var(--guide-meta-font-size, 1rem);
@@ -643,10 +643,20 @@
 }
 
 .guide-program-category {
+  color: var(--guide-meta-color, var(--text-secondary, rgba(255, 255, 255, 0.7)));
+  font-size: var(--guide-meta-font-size, 1rem);
+  font-weight: var(--guide-meta-font-weight, 400);
+  line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   min-width: 0;
+  margin-bottom: 12px;
 }
 
 .guide-program-progress-bar {
@@ -2779,9 +2789,13 @@ html.epg-disable-channel-fade .guide-channels {
     margin-bottom: 4px;
   }
   .guide-program-meta {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-size: 0.85rem;
     gap: 10px;
+  }
+  .guide-program-category {
+    font-size: 0.85rem;
+    margin-bottom: 8px;
   }
   .guide-program-description {
     font-size: var(--epg-body-font-size, 13px);
@@ -3582,6 +3596,22 @@ html[data-theme]:has(.guide-transparent-mode) .category-strip {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.guide-alt-live-channel.full-path {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .guide-alt-live-program {

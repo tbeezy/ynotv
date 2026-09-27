@@ -1253,7 +1253,8 @@ html[data-theme="light"] {
   text-shadow: none !important;
 }
 
-[data-theme="light"] .guide-program-meta {
+[data-theme="light"] .guide-program-meta,
+[data-theme="light"] .guide-program-category {
   color: var(--lt-text-secondary, #475569) !important;
 }
 
