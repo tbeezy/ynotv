@@ -2673,24 +2673,31 @@ async fn check_schedule_conflicts(
     let max_conn = max_connections.unwrap_or(1);
     let would_exceed_limit = conflicts.len() as i32 >= max_conn;
     
-    // Check if user is currently watching this source
-    let viewing_conflict = state.check_viewing_conflict(&source_id, &channel_id).await
-        .map_err(|e| format!("Failed to check viewing conflict: {}", e))?;
+    // Check if user is currently watching this source (relevant if recording is active or starts within 5 minutes)
+    let now = chrono::Utc::now().timestamp();
+    let is_imminent_or_active = start <= now + 300 && end > now;
+    let viewing_conflict = if is_imminent_or_active {
+        state.check_viewing_conflict(&source_id, &channel_id).await
+            .map_err(|e| format!("Failed to check viewing conflict: {}", e))?
+    } else {
+        false
+    };
 
-    let has_conflict = !conflicts.is_empty() || would_exceed_limit || viewing_conflict;
+    let has_conflict = would_exceed_limit || viewing_conflict;
     
     let message = if has_conflict {
         let mut parts = Vec::new();
-        if !conflicts.is_empty() {
-            parts.push(format!("{} overlapping recording(s)", conflicts.len()));
-        }
         if would_exceed_limit {
-            parts.push(format!("connection limit ({} max)", max_conn));
+            parts.push(format!(
+                "{} overlapping recording(s) reaches/exceeds connection limit ({} max)",
+                conflicts.len(),
+                max_conn
+            ));
         }
         if viewing_conflict {
             parts.push("you are currently watching this source".to_string());
         }
-        Some(format!("Conflict: {}", parts.join(", ")))
+        Some(parts.join(", "))
     } else {
         None
     };

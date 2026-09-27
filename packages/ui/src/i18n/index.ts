@@ -149,7 +149,6 @@ export const changeLanguage = (lang: string): ReturnType<typeof i18n.changeLangu
 export function translateNativeError(msg: string | null | undefined): string {
   if (!msg) return '';
   // Prefix matches for Rust command wrappers with dynamic detail ("Failed to …: {cause}")
-  if (msg.startsWith('Conflict:')) return i18n.t('contextMenu.conflictMessage');
   if (msg.startsWith('Failed to schedule recording:')) return i18n.t('contextMenu.failedScheduleRecording');
   if (msg.startsWith('Failed to start instant recording:')) return i18n.t('dvr:failedToStartRecording');
   if (msg.startsWith('Failed to convert recording:')) return i18n.t('dvr:failedToConvertRecording');

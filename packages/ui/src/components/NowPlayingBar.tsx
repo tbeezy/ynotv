@@ -12,6 +12,7 @@ import { MetadataBadge } from './MetadataBadge';
 import { scheduleRecording, getDvrSettings, updatePlayingStream, detectScheduleConflicts, db, type DvrSchedule } from '../db';
 import { StalkerClient } from '@ynotv/local-adapter';
 import { useModal } from './Modal';
+import { translateNativeError } from '../i18n';
 import { type AspectRatioMode, getAspectRatioLabel, Bridge } from '../services/tauri-bridge';
 import { SourcePickerModal } from './SourcePickerModal';
 import type { StremioStream, StremioStreamBadge } from '../types/stremio';
@@ -386,9 +387,13 @@ export function NowPlayingBar({
 
     const conflictResult = await detectScheduleConflicts(tempSchedule);
     if (conflictResult.hasConflict) {
+      const conflictMsg = conflictResult.message
+        ? conflictResult.message.replace(/^Conflict:\s*/i, '')
+        : t('schedulingConflictMsg');
+
       showConfirmThree(
         t('schedulingConflict'),
-        t('schedulingConflictMsg'),
+        conflictMsg,
         () => {
           setIsStopAndRecord(true);
           setShowRecordModal(true);

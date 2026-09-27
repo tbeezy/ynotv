@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "إضافة {{count}} مصدر",
       "bulkStalkerNoEntries": "لم يتم اكتشاف أي إدخالات بوابة صالحة بعد. تأكد من أن كل إدخال يحتوي على عنوان URL متبوعًا بعنوان MAC واحد على الأقل.",
       "bulkStalkerBackupsCount": "+{{count}} نسخة احتياطية",
-      "bulkStalkerSuccess": "تمت إضافة {{count}} بوابة Stalker"
+      "bulkStalkerSuccess": "تمت إضافة {{count}} بوابة Stalker",
+      "maxConnections": "ماكس الاتصالات المتزامنة",
+      "maxConnectionsHint": "الحد الأقصى للتدفقات المتزامنة التي يسمح بها مزود الخدمة الخاص بك لهذا المصدر. سيتم تحذير التسجيلات المتداخلة إذا تم الوصول إلى هذا الحد.",
+      "autoDetected": "تم اكتشافه تلقائيًا من المزود",
+      "connectionsLimit": "{{max}} الاتصالات"
     },
     "scrobbling": {
       "title": "Trakt",

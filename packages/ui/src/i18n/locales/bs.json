@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "Dodaj {{count}} izvor(a)",
       "bulkStalkerNoEntries": "Još nije detektiran nijedan važeći unos portala. Provjerite da svaki unos ima URL praćen s barem jednom MAC adresom.",
       "bulkStalkerBackupsCount": "+{{count}} rezerve",
-      "bulkStalkerSuccess": "Dodano {{count}} Stalker portala"
+      "bulkStalkerSuccess": "Dodano {{count}} Stalker portala",
+      "maxConnections": "Maks. simultane veze",
+      "maxConnectionsHint": "Maksimalan broj istovremenih streamova koji dozvoljava vaš provajder za ovaj izvor. Snimci koji se preklapaju će upozoriti ako se dostigne ovo ograničenje.",
+      "autoDetected": "Automatski otkriveno od provajdera",
+      "connectionsLimit": "{{max}} veze"
     },
     "scrobbling": {
       "title": "Trakt",

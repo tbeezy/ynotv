@@ -3090,6 +3090,10 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
       }
     }
 
+    if (source.max_connections) {
+      meta.max_connections = String(source.max_connections);
+    }
+
     // Write channel/category counts and connection metadata — but NOT last_synced yet.
     // This is status bookkeeping only: a failure here must NOT abort the sync — the
     // channels/categories are already stored, and aborting skips the EPG (the previous

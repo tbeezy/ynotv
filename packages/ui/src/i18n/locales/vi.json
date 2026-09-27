@@ -3021,7 +3021,11 @@
       "bulkStalkerAddBtn": "Thêm {{count}} nguồn",
       "bulkStalkerNoEntries": "Chưa phát hiện mục cổng hợp lệ nào. Đảm bảo mỗi mục có một URL theo sau bởi ít nhất một địa chỉ MAC.",
       "bulkStalkerBackupsCount": "+{{count}} bản sao lưu",
-      "bulkStalkerSuccess": "Đã thêm {{count}} cổng Stalker"
+      "bulkStalkerSuccess": "Đã thêm {{count}} cổng Stalker",
+      "maxConnections": "Kết nối đồng thời tối đa",
+      "maxConnectionsHint": "Luồng đồng thời tối đa được nhà cung cấp của bạn cho phép đối với nguồn này. Các bản ghi chồng chéo sẽ cảnh báo nếu đạt đến giới hạn này.",
+      "autoDetected": "Tự động được phát hiện từ nhà cung cấp",
+      "connectionsLimit": "kết nối {{max}}"
     },
     "scrobbling": {
       "title": "Trakt",

@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "Shto {{count}} burime",
       "bulkStalkerNoEntries": "Ende nuk u zbuluan hyrje të vlefshme portalesh. Sigurohuni që çdo hyrje të ketë një URL të ndjekur nga të paktën një adresë MAC.",
       "bulkStalkerBackupsCount": "+{{count}} rezerva",
-      "bulkStalkerSuccess": "U shtuan {{count}} portale Stalker"
+      "bulkStalkerSuccess": "U shtuan {{count}} portale Stalker",
+      "maxConnections": "Lidhjet maksimale të njëkohshme",
+      "maxConnectionsHint": "Transmetimet maksimale të njëkohshme të lejuara nga ofruesi juaj për këtë burim. Regjistrimet e mbivendosura do të paralajmërojnë nëse arrihet ky kufi.",
+      "autoDetected": "Zbulohet automatikisht nga ofruesi",
+      "connectionsLimit": "lidhjet {{max}}"
     },
     "scrobbling": {
       "title": "Trakt",

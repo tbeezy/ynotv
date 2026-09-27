@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "افزودن {{count}} منبع",
       "bulkStalkerNoEntries": "هنوز هیچ ورودی پورتال معتبری شناسایی نشده است. مطمئن شوید هر ورودی دارای یک URL و حداقل یک آدرس MAC باشد.",
       "bulkStalkerBackupsCount": "+{{count}} پشتیبان",
-      "bulkStalkerSuccess": "{{count}} پورتال Stalker اضافه شد"
+      "bulkStalkerSuccess": "{{count}} پورتال Stalker اضافه شد",
+      "maxConnections": "حداکثر اتصالات همزمان",
+      "maxConnectionsHint": "حداکثر جریان‌های همزمان مجاز توسط ارائه‌دهنده شما برای این منبع. در صورت رسیدن به این حد، موارد ضبط شده با هم تداخل دارند.",
+      "autoDetected": "به طور خودکار از ارائه دهنده شناسایی می شود",
+      "connectionsLimit": "{{max}} اتصالات"
     },
     "scrobbling": {
       "title": "Trakt",

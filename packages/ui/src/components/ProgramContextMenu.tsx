@@ -284,52 +284,42 @@ export function ProgramContextMenu({
             // Check for conflicts
             const conflictResult = await detectScheduleConflicts(schedule);
             if (conflictResult.hasConflict) {
-                const sourceMeta = await db.sourcesMeta.get(sourceId);
-                const maxConnections = parseInt(sourceMeta?.max_connections || '1');
+                const conflictMsg = conflictResult.message
+                    ? conflictResult.message.replace(/^Conflict:\s*/i, '')
+                    : i18n.t('contextMenu.conflictMessage');
 
-                if (maxConnections === 1) {
-                    showConfirm(
-                        i18n.t('contextMenu.oneConnectionLimit'),
-                        i18n.t('contextMenu.oneConnectionLimitMsg'),
-                        async () => {
-                            try {
-                                setScheduling(true);
-                                await scheduleRecording(schedule);
-                                showModal({
-                                    title: i18n.t('contextMenu.recordingScheduled'),
-                                    message: i18n.t('contextMenu.hasBeenScheduled', { name: program.title }),
-                                    type: 'success',
-                                    confirmText: 'OK',
-                                    onConfirm: () => onClose(),
-                                    onCancel: () => onClose(),
-                                });
-                            } catch (err: any) {
-                                showModal({
-                                    title: i18n.t('contextMenu.schedulingFailed'),
-                                    message: translateNativeError(err?.message) || i18n.t('contextMenu.failedScheduleRecording'),
-                                    type: 'error',
-                                    confirmText: 'OK',
-                                    onConfirm: () => onClose(),
-                                    onCancel: () => onClose(),
-                                });
-                            } finally {
-                                setScheduling(false);
-                            }
-                        },
-                        () => onClose(),
-                        i18n.t('dvr:record'),
-                        i18n.t('common:cancel')
-                    );
-                } else {
-                    showModal({
-                        title: i18n.t('contextMenu.schedulingConflict'),
-                        message: translateNativeError(conflictResult.message) || i18n.t('contextMenu.conflictMessage'),
-                        type: 'error',
-                        confirmText: 'OK',
-                        onConfirm: () => onClose(),
-                        onCancel: () => onClose(),
-                    });
-                }
+                showConfirm(
+                    i18n.t('contextMenu.schedulingConflict'),
+                    conflictMsg,
+                    async () => {
+                        try {
+                            setScheduling(true);
+                            await scheduleRecording(schedule);
+                            showModal({
+                                title: i18n.t('contextMenu.recordingScheduled'),
+                                message: i18n.t('contextMenu.hasBeenScheduled', { name: program.title }),
+                                type: 'success',
+                                confirmText: 'OK',
+                                onConfirm: () => onClose(),
+                                onCancel: () => onClose(),
+                            });
+                        } catch (err: any) {
+                            showModal({
+                                title: i18n.t('contextMenu.schedulingFailed'),
+                                message: translateNativeError(err?.message) || i18n.t('contextMenu.failedScheduleRecording'),
+                                type: 'error',
+                                confirmText: 'OK',
+                                onConfirm: () => onClose(),
+                                onCancel: () => onClose(),
+                            });
+                        } finally {
+                            setScheduling(false);
+                        }
+                    },
+                    () => onClose(),
+                    i18n.t('contextMenu.ignoreAndRecord'),
+                    i18n.t('common:cancel')
+                );
                 return;
             }
 

@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "{{count}} kaynak ekle",
       "bulkStalkerNoEntries": "Henüz geçerli portal girişi algılanmadı. Her girişin bir URL ve en az bir MAC adresi içerdiğinden emin olun.",
       "bulkStalkerBackupsCount": "+{{count}} yedek",
-      "bulkStalkerSuccess": "{{count}} Stalker portalı eklendi"
+      "bulkStalkerSuccess": "{{count}} Stalker portalı eklendi",
+      "maxConnections": "Maksimum Eşzamanlı Bağlantı",
+      "maxConnectionsHint": "Sağlayıcınızın bu kaynak için izin verdiği maksimum eşzamanlı akış. Çakışan kayıtlar bu sınıra ulaşıldığında uyarı verecektir.",
+      "autoDetected": "Sağlayıcı tarafından otomatik olarak algılandı",
+      "connectionsLimit": "{{max}} bağlantılar"
     },
     "scrobbling": {
       "title": "Trakt",

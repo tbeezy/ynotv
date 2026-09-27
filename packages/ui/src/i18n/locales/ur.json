@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "{{count}} ذرائع شامل کریں",
       "bulkStalkerNoEntries": "ابھی تک کوئی درست پورٹل اندراج نہیں ملا۔ یقینی بنائیں کہ ہر اندراج میں ایک URL اور کم از کم ایک MAC ایڈریس ہو۔",
       "bulkStalkerBackupsCount": "+{{count}} بیک اپ",
-      "bulkStalkerSuccess": "{{count}} اسٹالکر پورٹل شامل کیے گئے"
+      "bulkStalkerSuccess": "{{count}} اسٹالکر پورٹل شامل کیے گئے",
+      "maxConnections": "زیادہ سے زیادہ بیک وقت کنکشنز",
+      "maxConnectionsHint": "اس ماخذ کے لیے آپ کے فراہم کنندہ کی طرف سے زیادہ سے زیادہ سمورتی سلسلے کی اجازت ہے۔ اگر اس حد تک پہنچ جاتی ہے تو اوور لیپنگ ریکارڈنگ انتباہ کرے گی۔",
+      "autoDetected": "فراہم کنندہ سے خود بخود پتہ چلا",
+      "connectionsLimit": "{{max}} کنکشنز"
     },
     "scrobbling": {
       "title": "ٹریکٹ",

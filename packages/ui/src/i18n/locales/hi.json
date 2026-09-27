@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "{{count}} स्रोत जोड़ें",
       "bulkStalkerNoEntries": "अभी तक कोई मान्य पोर्टल प्रविष्टि नहीं मिली। सुनिश्चित करें कि हर प्रविष्टि में एक URL और कम से कम एक MAC पता हो।",
       "bulkStalkerBackupsCount": "+{{count}} बैकअप",
-      "bulkStalkerSuccess": "{{count}} Stalker पोर्टल जोड़े गए"
+      "bulkStalkerSuccess": "{{count}} Stalker पोर्टल जोड़े गए",
+      "maxConnections": "अधिकतम एक साथ कनेक्शन",
+      "maxConnectionsHint": "इस स्रोत के लिए आपके प्रदाता द्वारा अनुमत अधिकतम समवर्ती धाराएँ। यदि यह सीमा समाप्त हो जाती है तो ओवरलैपिंग रिकॉर्डिंग चेतावनी देगी।",
+      "autoDetected": "प्रदाता से स्वतः पता लगाया गया",
+      "connectionsLimit": "{{max}} कनेक्शन"
     },
     "scrobbling": {
       "title": "Trakt",

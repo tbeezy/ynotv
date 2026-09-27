@@ -2712,13 +2712,16 @@ export async function updateScheduleSettings(
 
 /** Detect conflicts for a new schedule - uses backend for comprehensive checking */
 export async function detectScheduleConflicts(schedule: Omit<DvrSchedule, 'id' | 'created_at' | 'status'>): Promise<{ hasConflict: boolean; conflicts: DvrSchedule[]; message?: string }> {
+  const effectiveStart = schedule.scheduled_start - (schedule.start_padding_sec || 0);
+  const effectiveEnd = schedule.scheduled_end + (schedule.end_padding_sec || 0);
+
   try {
     // Use backend command for comprehensive conflict checking including viewing conflicts
     const result = await invoke('check_schedule_conflicts', {
       sourceId: schedule.source_id,
       channelId: schedule.channel_id,
-      start: schedule.scheduled_start,
-      end: schedule.scheduled_end,
+      start: effectiveStart,
+      end: effectiveEnd,
     }) as { has_conflict: boolean; conflicts: DvrSchedule[]; message?: string };
 
     return {
@@ -2737,7 +2740,9 @@ export async function detectScheduleConflicts(schedule: Omit<DvrSchedule, 'id' |
     const overlapping = allSchedules.filter(s => {
       if (s.source_id !== schedule.source_id) return false;
       if (s.status !== 'scheduled' && s.status !== 'recording') return false;
-      const overlaps = !(s.scheduled_end <= schedule.scheduled_start || s.scheduled_start >= schedule.scheduled_end);
+      const sStart = s.scheduled_start - (s.start_padding_sec || 0);
+      const sEnd = s.scheduled_end + (s.end_padding_sec || 0);
+      const overlaps = !(sEnd <= effectiveStart || sStart >= effectiveEnd);
       return overlaps;
     });
 

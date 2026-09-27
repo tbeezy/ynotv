@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "Ajouter {{count}} source(s)",
       "bulkStalkerNoEntries": "Aucune entrée de portail valide détectée pour le moment. Assurez-vous que chaque entrée contient une URL suivie d'au moins une adresse MAC.",
       "bulkStalkerBackupsCount": "+{{count}} secours",
-      "bulkStalkerSuccess": "{{count}} portail(s) Stalker ajouté(s)"
+      "bulkStalkerSuccess": "{{count}} portail(s) Stalker ajouté(s)",
+      "maxConnections": "Connexions simultanées maximales",
+      "maxConnectionsHint": "Nombre maximal de flux simultanés autorisés par votre fournisseur pour cette source. Les enregistrements superposés avertiront si cette limite est atteinte.",
+      "autoDetected": "Détecté automatiquement par le fournisseur",
+      "connectionsLimit": "{{max}} connexions"
     },
     "scrobbling": {
       "title": "Trakt",

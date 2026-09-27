@@ -1084,12 +1084,12 @@ impl DvrDatabase {
             _ => None,
         };
 
-        // Find overlapping schedules
+        // Find overlapping schedules (accounting for padding)
         let mut stmt = conn.prepare(
             "SELECT * FROM dvr_schedules
              WHERE source_id = ?1
              AND status IN ('scheduled', 'recording')
-             AND NOT (scheduled_end <= ?2 OR scheduled_start >= ?3)",
+             AND NOT ((scheduled_end + COALESCE(end_padding_sec, 0)) <= ?2 OR (scheduled_start - COALESCE(start_padding_sec, 0)) >= ?3)",
         )?;
 
         let conflicts = stmt.query_map(params![source_id, start, end], |row| {

@@ -12,7 +12,7 @@ import { useEpgClockFormat } from '../stores/uiStore';
 import { quickProbeChannel, formatProbeResultSummary, activeQuickProbes } from '../services/stream-probe';
 import { useToastStore } from '../stores/toastStore';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
+import i18n, { translateNativeError } from '../i18n';
 import './ProgramContextMenu.css'; // Reuse the same styles
 
 type MenuView = 'main' | 'quick' | 'custom' | 'group' | 'failover';
@@ -368,55 +368,44 @@ export function ChannelContextMenu({
 
         const conflictResult = await detectScheduleConflicts(schedule);
         if (conflictResult.hasConflict) {
-            const sourceMeta = await db.sourcesMeta.get(channel.source_id);
-            const maxConnections = parseInt(sourceMeta?.max_connections || '1');
-            const isViewingConflict = conflictResult.message?.toLowerCase().includes('watching this source');
-
             setMenuHidden(true);
-            if (maxConnections === 1 && isViewingConflict) {
-                showConfirm(
-                    i18n.t('contextMenu.oneConnectionLimit'),
-                    i18n.t('contextMenu.oneConnectionLimitMsg'),
-                    async () => {
-                        try {
-                            setScheduling(true);
-                            await scheduleRecording(schedule);
-                            const durationMins = Math.round((endTimestamp - startTimestamp) / 60);
-                            showModal({
-                                title: i18n.t('contextMenu.recordingScheduled'),
-                                message: i18n.t('contextMenu.scheduledForMinutes', { name: channel.name, count: durationMins }),
-                                type: 'success',
-                                confirmText: 'OK',
-                                onConfirm: () => onClose(),
-                                onCancel: () => onClose(),
-                            });
-                        } catch (err: any) {
-                            showModal({
-                                title: i18n.t('contextMenu.schedulingFailed'),
-                                message: err?.message || i18n.t('contextMenu.failedScheduleRecording'),
-                                type: 'error',
-                                confirmText: 'OK',
-                                onConfirm: () => onClose(),
-                                onCancel: () => onClose(),
-                            });
-                        } finally {
-                            setScheduling(false);
-                        }
-                    },
-                    () => onClose(),
-                    i18n.t('contextMenu.ignoreAndRecord'),
-                    'OK'
-                );
-            } else {
-                showModal({
-                    title: i18n.t('contextMenu.schedulingConflict'),
-                    message: conflictResult.message || i18n.t('contextMenu.programConflict'),
-                    type: 'error',
-                    confirmText: 'OK',
-                    onConfirm: () => onClose(),
-                    onCancel: () => onClose(),
-                });
-            }
+            const conflictMsg = conflictResult.message
+                ? conflictResult.message.replace(/^Conflict:\s*/i, '')
+                : i18n.t('contextMenu.programConflict');
+
+            showConfirm(
+                i18n.t('contextMenu.schedulingConflict'),
+                conflictMsg,
+                async () => {
+                    try {
+                        setScheduling(true);
+                        await scheduleRecording(schedule);
+                        const durationMins = Math.round((endTimestamp - startTimestamp) / 60);
+                        showModal({
+                            title: i18n.t('contextMenu.recordingScheduled'),
+                            message: i18n.t('contextMenu.scheduledForMinutes', { name: channel.name, count: durationMins }),
+                            type: 'success',
+                            confirmText: 'OK',
+                            onConfirm: () => onClose(),
+                            onCancel: () => onClose(),
+                        });
+                    } catch (err: any) {
+                        showModal({
+                            title: i18n.t('contextMenu.schedulingFailed'),
+                            message: translateNativeError(err?.message) || err?.message || i18n.t('contextMenu.failedScheduleRecording'),
+                            type: 'error',
+                            confirmText: 'OK',
+                            onConfirm: () => onClose(),
+                            onCancel: () => onClose(),
+                        });
+                    } finally {
+                        setScheduling(false);
+                    }
+                },
+                () => onClose(),
+                i18n.t('contextMenu.ignoreAndRecord'),
+                i18n.t('common:cancel')
+            );
             return;
         }
 

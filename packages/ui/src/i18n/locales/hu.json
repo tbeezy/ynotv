@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "{{count}} forrás hozzáadása",
       "bulkStalkerNoEntries": "Még nem észleltünk érvényes portálbejegyzést. Győződjön meg róla, hogy minden bejegyzés tartalmaz egy URL-t és legalább egy MAC-címet.",
       "bulkStalkerBackupsCount": "+{{count}} biztonsági másolat",
-      "bulkStalkerSuccess": "{{count}} Stalker portál hozzáadva"
+      "bulkStalkerSuccess": "{{count}} Stalker portál hozzáadva",
+      "maxConnections": "Maximális egyidejű kapcsolatok",
+      "maxConnectionsHint": "A szolgáltató által ehhez a forráshoz engedélyezett egyidejű adatfolyamok maximális száma. Az egymást átfedő felvételek figyelmeztetést kapnak, ha elérik ezt a határt.",
+      "autoDetected": "Automatikusan észlelve a szolgáltatótól",
+      "connectionsLimit": "{{max}} kapcsolatokat"
     },
     "scrobbling": {
       "title": "Trakt",

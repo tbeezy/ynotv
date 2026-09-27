@@ -36,6 +36,7 @@ export interface Source {
   advanced_epg_matching?: boolean; // Enable display name-based EPG matching for external EPGs (default: false)
   custom_refresh_interval?: number; // Custom EPG/channel refresh interval in hours
   custom_vod_refresh_interval?: number; // Custom VOD refresh interval in hours
+  max_connections?: number; // Max concurrent connections (manual override or provider limit)
 }
 
 export interface XtreamSource extends Source {

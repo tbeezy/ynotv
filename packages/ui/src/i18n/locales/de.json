@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "{{count}} Quelle(n) hinzufügen",
       "bulkStalkerNoEntries": "Noch keine gültigen Portal-Einträge erkannt. Stellen Sie sicher, dass jeder Eintrag eine URL gefolgt von mindestens einer MAC-Adresse enthält.",
       "bulkStalkerBackupsCount": "+{{count}} Backup(s)",
-      "bulkStalkerSuccess": "{{count}} Stalker-Portal(e) hinzugefügt"
+      "bulkStalkerSuccess": "{{count}} Stalker-Portal(e) hinzugefügt",
+      "maxConnections": "Maximale gleichzeitige Verbindungen",
+      "maxConnectionsHint": "Maximale Anzahl gleichzeitiger Streams, die Ihr Anbieter für diese Quelle zulässt. Überlappende Aufnahmen werden gewarnt, wenn diese Grenze erreicht wird.",
+      "autoDetected": "Automatisch vom Anbieter erkannt",
+      "connectionsLimit": "{{max}} Verbindungen"
     },
     "scrobbling": {
       "title": "Trakt",

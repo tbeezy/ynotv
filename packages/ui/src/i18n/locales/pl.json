@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "Dodaj {{count}} źródła",
       "bulkStalkerNoEntries": "Nie wykryto jeszcze żadnych prawidłowych wpisów portali. Upewnij się, że każdy wpis zawiera adres URL i co najmniej jeden adres MAC.",
       "bulkStalkerBackupsCount": "+{{count}} kopie zapasowe",
-      "bulkStalkerSuccess": "Dodano {{count}} portali Stalker"
+      "bulkStalkerSuccess": "Dodano {{count}} portali Stalker",
+      "maxConnections": "Maksymalna liczba jednoczesnych połączeń",
+      "maxConnectionsHint": "Maksymalna liczba jednoczesnych strumieni dozwolonych przez Twojego dostawcę dla tego źródła. Nakładające się nagrania wyświetlą ostrzeżenie, jeśli ten limit zostanie osiągnięty.",
+      "autoDetected": "Automatycznie wykryty przez dostawcę",
+      "connectionsLimit": "Połączenia {{max}}"
     },
     "scrobbling": {
       "title": "Trakt",

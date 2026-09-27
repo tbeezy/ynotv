@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "{{count}} bron(nen) toevoegen",
       "bulkStalkerNoEntries": "Nog geen geldige portalvermeldingen gedetecteerd. Zorg ervoor dat elke vermelding een URL bevat, gevolgd door ten minste één MAC-adres.",
       "bulkStalkerBackupsCount": "+{{count}} back-up(s)",
-      "bulkStalkerSuccess": "{{count}} Stalker-portal(s) toegevoegd"
+      "bulkStalkerSuccess": "{{count}} Stalker-portal(s) toegevoegd",
+      "maxConnections": "Maximaal gelijktijdige verbindingen",
+      "maxConnectionsHint": "Het maximale aantal gelijktijdige streams dat door uw provider is toegestaan voor deze bron. Overlappende opnames waarschuwen als deze limiet wordt bereikt.",
+      "autoDetected": "Automatisch gedetecteerd door provider",
+      "connectionsLimit": "{{max}}-verbindingen"
     },
     "scrobbling": {
       "title": "Trakt",

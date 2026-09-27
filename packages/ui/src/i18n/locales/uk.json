@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "Додати {{count}} джерела",
       "bulkStalkerNoEntries": "Дійсних записів порталів ще не виявлено. Переконайтеся, що кожен запис містить URL-адресу та принаймні одну MAC-адресу.",
       "bulkStalkerBackupsCount": "+{{count}} резервних",
-      "bulkStalkerSuccess": "Додано {{count}} порталів Stalker"
+      "bulkStalkerSuccess": "Додано {{count}} порталів Stalker",
+      "maxConnections": "Максимальна кількість одночасних підключень",
+      "maxConnectionsHint": "Максимальна кількість одночасних потоків, дозволена вашим постачальником для цього джерела. Записи, що накладаються, попередять, якщо цей ліміт буде досягнуто.",
+      "autoDetected": "Автоматично визначено від постачальника",
+      "connectionsLimit": "{{max}} підключення"
     },
     "scrobbling": {
       "title": "Trakt",

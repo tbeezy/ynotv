@@ -109,6 +109,7 @@ interface SourceFormData {
   xtreamCatchupUrl: string;
   xtreamCatchupUsername: string;
   xtreamCatchupPassword: string;
+  maxConnections?: number;
 }
 
 const emptyForm: SourceFormData = {
@@ -137,6 +138,7 @@ const emptyForm: SourceFormData = {
   xtreamCatchupUrl: '',
   xtreamCatchupUsername: '',
   xtreamCatchupPassword: '',
+  maxConnections: undefined,
 };
 
 // Normalize vendor Expiration Strings to concise MM/DD/YY
@@ -391,12 +393,17 @@ function SortableSourceItem(props: SortableSourceItemProps) {
             </>
           )}
 
-          {(source.type === 'xtream' || (source as any).xtream_catchup) && meta && meta.active_cons && meta.max_connections && (
+          {((source.type === 'xtream' || (source as any).xtream_catchup) && meta && meta.active_cons && meta.max_connections) ? (
             <span className="stat-chip stat-chip--count">
               <LinkIcon size={11} />
               <span>{i18n.t('settings:sources.connectionsCount', { active: meta.active_cons, max: meta.max_connections })}</span>
             </span>
-          )}
+          ) : ((meta?.max_connections || source.max_connections) ? (
+            <span className="stat-chip stat-chip--count">
+              <LinkIcon size={11} />
+              <span>{i18n.t('settings:sources.connectionsLimit', { max: meta?.max_connections || source.max_connections, defaultValue: '{{max}} connections' })}</span>
+            </span>
+          ) : null)}
 
           {meta && meta.expiry_date && (
             <span className={`stat-chip stat-chip--expiry${isExpiryWarning(meta.expiry_date) ? ' stat-chip--expiry-warn' : ''}`}>
@@ -671,6 +678,15 @@ export function SourcesTab({
     }
     db.sourcesMeta.get(editingId).then(meta => {
       setDiscoveredEpgUrl(meta?.epg_url || '');
+      if (meta?.max_connections) {
+        const parsed = parseInt(meta.max_connections);
+        if (!isNaN(parsed) && parsed > 0) {
+          setFormData(prev => ({
+            ...prev,
+            maxConnections: prev.maxConnections ?? parsed,
+          }));
+        }
+      }
     }).catch(() => {
       setDiscoveredEpgUrl('');
     });
@@ -920,6 +936,7 @@ export function SourcesTab({
       xtreamCatchupUrl: xtreamCatchup?.url || '',
       xtreamCatchupUsername: xtreamCatchup?.username || '',
       xtreamCatchupPassword: xtreamCatchup?.password || '',
+      maxConnections: source.max_connections,
     });
     console.log('[SourcesTab] Editing source, existing UA:', source.user_agent);
     setEditingId(source.id);
@@ -1077,6 +1094,7 @@ export function SourcesTab({
         display_order: formData.display_order,
         advanced_epg_matching: formData.advancedEpgMatching || undefined,
         disable_short_epg: formData.type === 'stalker' ? formData.disableShortEpg : undefined,
+        max_connections: formData.maxConnections,
         ...(xtreamCatchup ? { xtream_catchup: xtreamCatchup } : {}),
       };
 
@@ -1150,7 +1168,7 @@ export function SourcesTab({
               category_count: parsed.categories.length,
               expiry_date: (source as any)._xtream_expiry,
               active_cons: (source as any)._xtream_active_cons,
-              max_connections: (source as any)._xtream_max_connections,
+              max_connections: formData.maxConnections ? String(formData.maxConnections) : (source as any)._xtream_max_connections,
             });
           });
         }
@@ -1163,9 +1181,7 @@ export function SourcesTab({
       onSourcesChange();
       incrementVersion(); // Notify listeners of new source
 
-      // Immediately apply the source-level EPG timeshift to sourcesMeta so the
-      // programs_effective view picks it up without requiring a full resync.
-      // The view JOINs sourcesMeta live on every query, so this is instant.
+      // Immediately apply the source-level EPG timeshift and max_connections to sourcesMeta
       if (editingId) {
         try {
           const dbInstance = await (db as any).dbPromise;
@@ -1173,12 +1189,18 @@ export function SourcesTab({
             `UPDATE sourcesMeta SET epg_timeshift_hours = $1 WHERE source_id = $2`,
             [source.epg_timeshift_hours ?? 0, sourceId]
           );
+          if (formData.maxConnections !== undefined) {
+            await dbInstance.execute(
+              `UPDATE sourcesMeta SET max_connections = $1 WHERE source_id = $2`,
+              [formData.maxConnections ? String(formData.maxConnections) : null, sourceId]
+            );
+          }
           // Notify all program hooks (useCurrentProgram, usePrograms, useProgramsInRange,
           // useAllPrograms) to re-run so the shifted times appear immediately.
           dbEvents.notify('programs', 'update');
         } catch (e) {
           // sourcesMeta row may not exist yet for new sources — harmless, sync will create it
-          console.warn('[SourcesTab] Could not update sourcesMeta epg_timeshift_hours:', e);
+          console.warn('[SourcesTab] Could not update sourcesMeta metadata:', e);
         }
       }
 
@@ -2806,6 +2828,23 @@ export function SourcesTab({
                 step="1"
               />
               <span className="hint">{i18n.t('settings:sources.epgTimeOffsetHint')}</span>
+            </div>
+
+            <div className="form-group">
+              <label>{i18n.t('settings:sources.maxConnections', { defaultValue: 'Max Simultaneous Connections' })}</label>
+              <input
+                type="number"
+                value={formData.maxConnections ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value.trim();
+                  setFormData({ ...formData, maxConnections: val ? Math.max(1, parseInt(val) || 1) : undefined });
+                }}
+                placeholder={formData.type === 'xtream' ? i18n.t('settings:sources.autoDetected', { defaultValue: 'Auto-detected from provider' }) : '1'}
+                min="1"
+                max="99"
+                step="1"
+              />
+              <span className="hint">{i18n.t('settings:sources.maxConnectionsHint', { defaultValue: 'Maximum concurrent streams allowed by your provider for this source. Overlapping recordings will warn if this limit is reached.' })}</span>
             </div>
 
             <div className="form-group">

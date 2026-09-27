@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "Προσθήκη {{count}} πηγών",
       "bulkStalkerNoEntries": "Δεν εντοπίστηκαν ακόμη έγκυρες καταχωρήσεις πυλών. Βεβαιωθείτε ότι κάθε καταχώρηση έχει ένα URL ακολουθούμενο από τουλάχιστον μία διεύθυνση MAC.",
       "bulkStalkerBackupsCount": "+{{count}} εφεδρικές",
-      "bulkStalkerSuccess": "Προστέθηκαν {{count}} πύλες Stalker"
+      "bulkStalkerSuccess": "Προστέθηκαν {{count}} πύλες Stalker",
+      "maxConnections": "Μέγιστες ταυτόχρονες συνδέσεις",
+      "maxConnectionsHint": "Μέγιστες ταυτόχρονες ροές που επιτρέπονται από τον πάροχο σας για αυτήν την πηγή. Οι επικαλυπτόμενες εγγραφές θα προειδοποιήσουν εάν επιτευχθεί αυτό το όριο.",
+      "autoDetected": "Αυτόματη ανίχνευση από τον πάροχο",
+      "connectionsLimit": "{{max}} συνδέσεις"
     },
     "scrobbling": {
       "title": "Trakt",

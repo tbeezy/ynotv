@@ -1333,7 +1333,11 @@
       "bulkStalkerAddBtn": "添加 {{count}} 个来源",
       "bulkStalkerNoEntries": "尚未检测到有效的门户条目。请确保每个条目包含一个 URL 和至少一个 MAC 地址。",
       "bulkStalkerBackupsCount": "+{{count}} 个备份",
-      "bulkStalkerSuccess": "已添加 {{count}} 个 Stalker 门户"
+      "bulkStalkerSuccess": "已添加 {{count}} 个 Stalker 门户",
+      "maxConnections": "最大同时连接数",
+      "maxConnectionsHint": "您的提供商允许此源的最大并发流。如果达到此限制，重叠录音将发出警告。",
+      "autoDetected": "从提供商处自动检测到",
+      "connectionsLimit": "{{max}} 连接"
     },
     "scrobbling": {
       "title": "Trakt",
