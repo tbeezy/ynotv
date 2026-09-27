@@ -109,6 +109,7 @@ interface ChannelRowData {
   epgMetadataBadgeBitrate: boolean;
   epgMetadataBadgeAudioBitrate: boolean;
   threeColumn: boolean;
+  currentTime?: Date;
 }
 
 const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
@@ -153,6 +154,7 @@ const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
       epgMetadataBadgeBitrate={data.epgMetadataBadgeBitrate}
       epgMetadataBadgeAudioBitrate={data.epgMetadataBadgeAudioBitrate}
       altView={data.threeColumn}
+      currentTime={data.currentTime}
     />
   );
 }, (prevProps, nextProps) => {
@@ -171,6 +173,12 @@ const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
   const nextChannelRec = nextRecs.some(r => r.channelId === nextProps.channel.stream_id);
   const recordingsChanged = prevChannelRec !== nextChannelRec;
 
+  // When 3-column view is active, the row renders current program info and a progress bar,
+  // which depends on currentTime. In traditional grid view, current time is rendered as an
+  // overlay line across the whole grid, so rows don't need to re-render on time ticks.
+  const timeChanged = nextData.threeColumn && prevData.currentTime?.getTime() !== nextData.currentTime?.getTime();
+  const threeColumnChanged = prevData.threeColumn !== nextData.threeColumn;
+
   return prevProps.index === nextProps.index &&
          prevProps.channel.stream_id === nextProps.channel.stream_id &&
          prevProps.channel.is_favorite === nextProps.channel.is_favorite &&
@@ -181,6 +189,7 @@ const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
          prevProps.channel.tv_archive === nextProps.channel.tv_archive &&
          prevProps.channel.is_adult === nextProps.channel.is_adult &&
          prevProps.channel.source_id === nextProps.channel.source_id &&
+         !threeColumnChanged &&
          prevData.channelSortOrder === nextData.channelSortOrder &&
          prevData.currentChannel?.stream_id === nextData.currentChannel?.stream_id &&
          prevData.highlightChannel?.stream_id === nextData.highlightChannel?.stream_id &&
@@ -197,7 +206,8 @@ const ChannelRowVirtuoso = memo(function ChannelRowVirtuoso({
          prevData.epgMetadataBadgeBitrate === nextData.epgMetadataBadgeBitrate &&
          prevData.epgMetadataBadgeAudioBitrate === nextData.epgMetadataBadgeAudioBitrate &&
          !recordingsChanged &&
-         !programsChanged;
+         !programsChanged &&
+         !timeChanged;
 });
 
 // Shared context for the virtualized EPG tabs (Live Now / Upcoming) of search results
@@ -1105,11 +1115,14 @@ export function ChannelPanel({
 
   // Programs will be fetched after selectedChannel is defined (see below)
 
-  // Update current time every minute
+  // Update current time to keep progress bars, current-time indicator, and schedule in sync.
+  // Paused when the guide panel is not visible to eliminate background overhead.
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    if (visible === false) return;
+    setCurrentTime(new Date());
+    const timer = setInterval(() => setCurrentTime(new Date()), 10000);
     return () => clearInterval(timer);
-  }, []);
+  }, [visible]);
 
   // Calculate current time indicator position
   const currentTimeIndicatorPosition = useMemo(() => {
@@ -4272,6 +4285,7 @@ export function ChannelPanel({
                         epgMetadataBadgeBitrate,
                         epgMetadataBadgeAudioBitrate,
                         threeColumn: epgThreeColumn,
+                        currentTime,
                       }}
                     />
                   )}

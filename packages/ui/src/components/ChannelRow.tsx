@@ -42,6 +42,28 @@ interface ChannelRowProps {
   epgMetadataBadgeBitrate?: boolean;
   epgMetadataBadgeAudioBitrate?: boolean;
   altView?: boolean;
+  currentTime?: Date | number;
+}
+
+export interface CurrentProgramInfo {
+  program: StoredProgram;
+  startMs: number;
+  endMs: number;
+  pct: number;
+}
+
+export function getCurrentProgramInfo(programs: StoredProgram[], currentTimeMs: number = Date.now()): CurrentProgramInfo | null {
+  if (!programs || programs.length === 0) return null;
+  const now = currentTimeMs;
+  for (const p of programs) {
+    const s = p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime();
+    const e = p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime();
+    if (Number.isFinite(s) && Number.isFinite(e) && s <= now && e > now) {
+      const pct = e > s ? Math.max(0, Math.min(100, ((now - s) / (e - s)) * 100)) : 0;
+      return { program: p, startMs: s, endMs: e, pct };
+    }
+  }
+  return null;
 }
 
 export const ChannelRow = memo(function ChannelRow({
@@ -70,6 +92,7 @@ export const ChannelRow = memo(function ChannelRow({
   epgMetadataBadgeBitrate,
   epgMetadataBadgeAudioBitrate,
   altView,
+  currentTime,
 }: ChannelRowProps) {
   // Per-source logo overrides are read straight from the store so changes
   // apply live without re-running the channel query.
@@ -104,18 +127,10 @@ export const ChannelRow = memo(function ChannelRow({
   // array the grid renders, so it shares the grid's memoized data and never
   // issues an extra query or re-runs on scroll.
   const currentProgramInfo = useMemo(() => {
-    if (!altView || programs.length === 0) return null;
-    const now = Date.now();
-    for (const p of programs) {
-      const s = p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime();
-      const e = p.end instanceof Date ? p.end.getTime() : new Date(p.end).getTime();
-      if (Number.isFinite(s) && Number.isFinite(e) && s <= now && e > now) {
-        const pct = e > s ? Math.max(0, Math.min(100, ((now - s) / (e - s)) * 100)) : 0;
-        return { program: p, startMs: s, endMs: e, pct };
-      }
-    }
-    return null;
-  }, [altView, programs]);
+    if (!altView) return null;
+    const nowMs = currentTime instanceof Date ? currentTime.getTime() : (typeof currentTime === 'number' ? currentTime : Date.now());
+    return getCurrentProgramInfo(programs, nowMs);
+  }, [altView, programs, currentTime]);
 
   // Check if this channel is being recorded
   const isRecording = useMemo(() => {
