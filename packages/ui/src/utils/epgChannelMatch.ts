@@ -73,6 +73,17 @@ export function parseStripTags(input: string | string[] | undefined): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Returns true if an external store change should overwrite the local input text.
+ * Prevents overwriting in-progress typing (trailing commas, whitespace, capitalization)
+ * when the parsed tokens of the input already match the store.
+ */
+export function shouldSyncStripTagsInput(currentInput: string, storeTags: string[] | undefined): boolean {
+  const currentParsed = parseStripTags(currentInput).join(',');
+  const storeParsed = (storeTags ?? []).join(',');
+  return currentParsed !== storeParsed;
+}
+
 /** Every token to treat as noise: built-ins plus the user's own words. */
 export function stripTokenSet(extraTags?: string | string[]): Set<string> {
   const tokens = new Set<string>(DEFAULT_STRIP_TOKENS);

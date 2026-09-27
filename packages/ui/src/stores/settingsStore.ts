@@ -1392,6 +1392,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
   epgAutomatchStripTags: (cachedSettings?.epgAutomatchStripTags as string[]) ?? [],
   setEpgAutomatchStripTags: (tags) => {
+    const prev = get().epgAutomatchStripTags;
+    if (prev && prev.length === tags.length && prev.every((t, i) => t === tags[i])) {
+      return;
+    }
     set({ epgAutomatchStripTags: tags });
     persistSettings({ epgAutomatchStripTags: tags }, true);
   },

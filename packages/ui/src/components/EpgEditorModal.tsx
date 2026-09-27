@@ -43,7 +43,7 @@ import {
 } from '../services/epg-overrides';
 import { effectiveMatchName } from '../utils/epgMatchName';
 import { buildMissingEpgQuery, buildMissingEpgCountQuery } from '../utils/epgAutomatchFilter';
-import { parseStripTags, prepareCleanNameIndex } from '../utils/epgChannelMatch';
+import { parseStripTags, shouldSyncStripTagsInput, prepareCleanNameIndex } from '../utils/epgChannelMatch';
 import { priorOverrideSnapshot, type PriorOverrideSnapshot } from '../utils/epgAutomatchUndo';
 import {
   buildMatchTree,
@@ -844,8 +844,9 @@ export function EpgEditorModal({
   const epgAutomatchEnabledOnly = useSettingsStore((s) => s.epgAutomatchEnabledOnly);
   const setEpgAutomatchEnabledOnly = useSettingsStore((s) => s.setEpgAutomatchEnabledOnly);
   const enabledOnly = epgAutomatchEnabledOnly !== false;
-  const [stripTagsInput, setStripTagsInput] = useState('');
+  const [stripTagsInput, setStripTagsInput] = useState(() => (epgAutomatchStripTags ?? []).join(', '));
   useEffect(() => {
+    if (!shouldSyncStripTagsInput(stripTagsInput, epgAutomatchStripTags)) return;
     setStripTagsInput((epgAutomatchStripTags ?? []).join(', '));
   }, [epgAutomatchStripTags]);
   const [automatchProgress, setAutomatchProgress] = useState<{ matched: number; total: number } | null>(null);
@@ -3083,6 +3084,9 @@ export function EpgEditorModal({
                           onChange={e => {
                             setStripTagsInput(e.target.value);
                             setEpgAutomatchStripTags(parseStripTags(e.target.value));
+                          }}
+                          onBlur={() => {
+                            setEpgAutomatchStripTags(parseStripTags(stripTagsInput));
                           }}
                           placeholder={t('stripTagsPlaceholder')}
                           disabled={automatchRunning}
