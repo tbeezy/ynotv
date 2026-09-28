@@ -1040,6 +1040,8 @@
       "audioBitrate": "音訊位元速率",
       "threeColumnView": "三欄視圖",
       "threeColumnViewSub": "將 EPG 時間網格替換為三欄頻道條和節目表。與「EPG 視圖佈局」設定無關。",
+      "threeColumnRowLayout": "單行橫向排列各區塊",
+      "threeColumnRowLayoutSub": "將節目表視窗顯示於播放器右側而非下方（適合超寬螢幕顯示器）。",
       "categorySidebarAutohide": "自動隱藏分類側邊欄",
       "categorySidebarAutohideSub": "保持分類側邊欄隱藏，當滑鼠移到左邊緣時將其滑出到指南上方。選擇分類或移開滑鼠後自動關閉。",
       "programFontSize": "節目字型大小",

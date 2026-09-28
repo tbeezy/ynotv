@@ -1040,6 +1040,8 @@
       "audioBitrate": "Bitrate audio",
       "threeColumnView": "Vista de 3 columnas",
       "threeColumnViewSub": "Sustituye la cuadrícula temporal del EPG por una tira de canales de 3 columnas y su programación. Independiente del ajuste Diseño de vista de EPG.",
+      "threeColumnRowLayout": "Mostrar secciones en fila",
+      "threeColumnRowLayoutSub": "Muestra la ventana de la EPG a la derecha del reproductor en lugar de abajo (optimizado para pantallas ultraanchas).",
       "categorySidebarAutohide": "Ocultar automáticamente la barra lateral de categorías",
       "categorySidebarAutohideSub": "Mantén oculta la barra lateral de categorías y deslizala sobre la guía al mover el ratón al borde izquierdo. Se cierra al elegir una categoría o al alejar el ratón.",
       "programFontSize": "Tamaño de fuente del programa",

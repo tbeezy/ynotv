@@ -1040,6 +1040,8 @@
       "audioBitrate": "音频码率",
       "threeColumnView": "三栏视图",
       "threeColumnViewSub": "将 EPG 时间网格替换为三栏频道条和节目表。与“EPG 视图布局”设置无关。",
+      "threeColumnRowLayout": "单行横向排布各区域",
+      "threeColumnRowLayoutSub": "将电子节目单窗口显示在播放器右侧而非下方（适合超宽屏显示器）。",
       "categorySidebarAutohide": "自动隐藏分类侧边栏",
       "categorySidebarAutohideSub": "保持分类侧边栏隐藏，当鼠标移到左边缘时将其滑出到指南上方。选择分类或移开鼠标后自动关闭。",
       "programFontSize": "节目字体大小",

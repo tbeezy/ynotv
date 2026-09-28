@@ -91,6 +91,8 @@ interface LiveTVTabProps {
   onEpgViewChange: (view: 'traditional' | 'alternate') => void;
   epgThreeColumn: boolean;
   onEpgThreeColumnChange: (enabled: boolean) => void;
+  epgThreeColumnRowLayout: boolean;
+  onEpgThreeColumnRowLayoutChange: (enabled: boolean) => void;
   categorySidebarAutohide: boolean;
   onCategorySidebarAutohideChange: (enabled: boolean) => void;
   epgShowFullChannelPath: boolean;
@@ -257,6 +259,8 @@ export function LiveTVTab({
   onEpgViewChange,
   epgThreeColumn,
   onEpgThreeColumnChange,
+  epgThreeColumnRowLayout,
+  onEpgThreeColumnRowLayoutChange,
   categorySidebarAutohide,
   onCategorySidebarAutohideChange,
   epgShowFullChannelPath,
@@ -415,6 +419,30 @@ export function LiveTVTab({
                       type="checkbox"
                       checked={epgThreeColumn}
                       onChange={(e) => onEpgThreeColumnChange(e.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+
+                {/* Three-Column Sections in a Row Toggle */}
+                <div
+                  className="timeshift-toggle-row"
+                  style={{
+                    opacity: epgThreeColumn ? 1 : 0.5,
+                    transition: 'opacity 0.2s',
+                    pointerEvents: epgThreeColumn ? 'auto' : 'none',
+                  }}
+                >
+                  <div className="timeshift-toggle-info">
+                    <span className="timeshift-toggle-label">{i18n.t('settings:livetv.threeColumnRowLayout')}</span>
+                    <span className="timeshift-toggle-sub">{i18n.t('settings:livetv.threeColumnRowLayoutSub')}</span>
+                  </div>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={epgThreeColumn && epgThreeColumnRowLayout}
+                      disabled={!epgThreeColumn}
+                      onChange={(e) => onEpgThreeColumnRowLayoutChange(e.target.checked)}
                     />
                     <span className="slider"></span>
                   </label>

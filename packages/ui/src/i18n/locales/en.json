@@ -1042,6 +1042,8 @@
       "audioBitrate": "Avg Audio Bitrate",
       "threeColumnView": "3 Column View",
       "threeColumnViewSub": "Replace the EPG time grid with a 3-column channel strip and schedule. Independent of the EPG View Layout setting.",
+      "threeColumnRowLayout": "Display Sections in a Row",
+      "threeColumnRowLayoutSub": "Show the EPG window to the right of the player instead of below it (optimized for ultrawide displays).",
       "categorySidebarAutohide": "Auto-hide category sidebar",
       "categorySidebarAutohideSub": "Keep the category sidebar hidden and slide it out over the guide when you move the mouse to the left edge. It closes after you pick a category or move the mouse away.",
       "epgShowFullChannelPath": "Display full channel path",

@@ -1040,6 +1040,8 @@
       "audioBitrate": "Audio-Bitrate",
       "threeColumnView": "3-Spalten-Ansicht",
       "threeColumnViewSub": "Ersetzt das EPG-Zeitraster durch eine 3-spaltige Senderleiste mit Programmplan. Unabhängig von der Einstellung „EPG-Ansichtslayout“.",
+      "threeColumnRowLayout": "Bereiche in einer Zeile anzeigen",
+      "threeColumnRowLayoutSub": "EPG-Fenster rechts neben dem Player statt darunter anzeigen (optimiert für Ultra-Wide-Displays).",
       "categorySidebarAutohide": "Kategorie-Seitenleiste automatisch ausblenden",
       "categorySidebarAutohideSub": "Die Kategorie-Seitenleiste bleibt ausgeblendet und gleitet über den Guide, wenn die Maus an den linken Rand bewegt wird. Sie schließt sich nach Auswahl einer Kategorie oder wenn die Maus weg bewegt wird.",
       "programFontSize": "Programm Schriftgröße",

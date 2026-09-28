@@ -1040,6 +1040,8 @@
       "audioBitrate": "Bitrate audio",
       "threeColumnView": "Vista a 3 colonne",
       "threeColumnViewSub": "Sostituisce la griglia temporale dell’EPG con una striscia di canali a 3 colonne e relativo palinsesto. Indipendente dall’impostazione Layout vista EPG.",
+      "threeColumnRowLayout": "Mostra sezioni in riga",
+      "threeColumnRowLayoutSub": "Mostra la finestra EPG a destra del lettore anziché sotto (ottimizzato per schermi ultrawide).",
       "categorySidebarAutohide": "Nascondi automaticamente la barra laterale delle categorie",
       "categorySidebarAutohideSub": "Mantieni nascosta la barra laterale delle categorie e falla scorrere sopra la guida quando il mouse raggiunge il bordo sinistro. Si chiude dopo aver scelto una categoria o aver allontanato il mouse.",
       "programFontSize": "Dimensione carattere programma",

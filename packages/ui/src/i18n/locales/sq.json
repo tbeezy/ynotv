@@ -1040,6 +1040,8 @@
       "audioBitrate": "Bitrate audio",
       "threeColumnView": "Pamje 3 kolona",
       "threeColumnViewSub": "Zëvendëson rrjetën kohore të EPG-së me një shirit kanalesh me 3 kolona dhe orarin. I pavarur nga cilësimi Paraqitja e pamjes së EPG-së.",
+      "threeColumnRowLayout": "Shfaq seksionet në një rresht",
+      "threeColumnRowLayoutSub": "Shfaq dritaren e EPG në të djathtë të luajtësit në vend se poshtë tij (optimizuar për ekrane ultrawide).",
       "categorySidebarAutohide": "Fshih automatikisht shiritin anësor të kategorive",
       "categorySidebarAutohideSub": "Mbaje shiritin anësor të kategorive të fshehur dhe rrëshqite mbi udhëzuesin kur lëviz miun në skajin e majtë. Mbyllet pasi zgjedh një kategori ose largon miun.",
       "programFontSize": "Madhësia e fontit të programit",

@@ -1040,6 +1040,8 @@
       "audioBitrate": "Hang bitráta",
       "threeColumnView": "3 oszlopos nézet",
       "threeColumnViewSub": "Kicseréli az EPG időrácsot egy 3 oszlopos csatornasávra és műsorlistára. Független az EPG nézetelrendezés beállítástól.",
+      "threeColumnRowLayout": "Szakaszok megjelenítése egy sorban",
+      "threeColumnRowLayoutSub": "Az EPG ablak megjelenítése a lejátszótól jobbra, nem pedig alatta (ultraszéles képernyőkhöz optimalizálva).",
       "categorySidebarAutohide": "Kategória oldalsáv automatikus elrejtése",
       "categorySidebarAutohideSub": "Tartsa rejtve a kategória oldalsávot, és húzza ki az útmutató fölé, amikor az egeret a bal szélre viszi. Kategória kiválasztása vagy az egér elmozdítása után bezárul.",
       "epgShowFullChannelPath": "Teljes csatornaútvonal megjelenítése",

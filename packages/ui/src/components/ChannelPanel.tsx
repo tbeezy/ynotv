@@ -21,7 +21,7 @@ import { ViewAllProgramsModal } from './ViewAllProgramsModal';
 import { PlaylistListModal } from './PlaylistListModal';
 import { EpgEditorModal } from './EpgEditorModal';
 
-import { useChannelSortOrder, useEpgView, useEpgVisibleHours, useEpgClockFormat, useEpgShowDate, useUIStore, useEpgThreeColumn } from '../stores/uiStore';
+import { useChannelSortOrder, useEpgView, useEpgVisibleHours, useEpgClockFormat, useEpgShowDate, useUIStore, useEpgThreeColumn, useEpgThreeColumnRowLayout, isThreeColumnRowActive, isVerticalPreviewLayoutActive } from '../stores/uiStore';
 import { NowPlayingBar } from './NowPlayingBar';
 import { AudioVisualizer, type VisualizerMode } from './AudioVisualizer';
 import { FailoverChannelOverlay } from './FailoverChannelOverlay';
@@ -31,6 +31,7 @@ import { matchesSearch } from '../utils/searchNormalization';
 import { decompressEpgDescription } from '../utils/compression';
 import { formatTime, formatDate } from '../utils/dateTime';
 import { pickCurrentProgram, EPG_WINDOW_BACK_MS, EPG_WINDOW_FWD_MS } from '../utils/epgTime';
+import { clampRowPreviewWidthPct, didPreviewWidthChange } from '../utils/guidePreviewWidth';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 
@@ -81,6 +82,22 @@ import { formatChannelFullPath, formatChannelDisplayPath } from '../utils/channe
 
 // Default width of the channel info column (20% bigger than original 220)
 const DEFAULT_CHANNEL_COLUMN_WIDTH = 264;
+
+// The traditional split and the 3-column row layout each remember their own
+// preview width, so switching modes never inherits the other layout's drag.
+const PREVIEW_WIDTH_STORAGE_KEYS = { traditional: 'guidePreviewWidth', row: 'guidePreviewRowWidth' } as const;
+const PREVIEW_WIDTH_DEFAULT_PCTS = { traditional: 54, row: 50 } as const;
+
+const previewWidthKey = (isRowLayout: boolean) =>
+  isRowLayout ? PREVIEW_WIDTH_STORAGE_KEYS.row : PREVIEW_WIDTH_STORAGE_KEYS.traditional;
+
+const previewWidthDefault = (isRowLayout: boolean) =>
+  isRowLayout ? PREVIEW_WIDTH_DEFAULT_PCTS.row : PREVIEW_WIDTH_DEFAULT_PCTS.traditional;
+
+const readStoredPreviewWidth = (isRowLayout: boolean) => {
+  const saved = localStorage.getItem(previewWidthKey(isRowLayout));
+  return saved ? parseFloat(saved) : previewWidthDefault(isRowLayout);
+};
 
 // Memoized Virtuoso row component to prevent unnecessary re-renders
 // This must be defined OUTSIDE the ChannelPanel component
@@ -502,13 +519,14 @@ export function ChannelPanel({
   const { t } = useTranslation();
   const epgView = useEpgView();
   const epgThreeColumn = useEpgThreeColumn();
+  const epgThreeColumnRowLayout = useEpgThreeColumnRowLayout();
+  const isThreeColumnRow = isThreeColumnRowActive(epgThreeColumn, epgThreeColumnRowLayout);
   // The preview pane is sized by *height* (dragged via the bottom-center
-  // vertical resizer) in both the alternate layout and the 3-column view;
-  // only the traditional side-by-side layout drags its width/flex. Using
-  // `epgView === 'alternate'` alone here made 3-column mode (which keeps
-  // epgView 'traditional') drag an invisible flex value, so the height
-  // always snapped back to the default on release.
+  // vertical resizer) in both the alternate layout and the standard 3-column view;
+  // when 3-column row layout is enabled, or in traditional layout, the sections
+  // sit side-by-side and the preview pane is sized by width/flex instead.
   const isAltPreviewLayout = epgThreeColumn || epgView === 'alternate';
+  const isVerticalPreviewLayout = isVerticalPreviewLayoutActive(isAltPreviewLayout, isThreeColumnRow);
   const epgVisibleHours = useEpgVisibleHours();
   const epgClockFormat = useEpgClockFormat();
   const epgShowDate = useEpgShowDate();
@@ -648,11 +666,56 @@ export function ChannelPanel({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [availableWidth, setAvailableWidth] = useState(800);
 
-  // Resize persistence state
-  const [previewWidthPct, setPreviewWidthPct] = useState(() => {
-    const saved = localStorage.getItem('guidePreviewWidth');
-    return saved ? parseFloat(saved) : 54;
-  });
+  // Intent vs paint contract:
+  // - localStorage holds the user's *preferred* width percentage (the intent).
+  // - previewWidthPct state holds what is physically painted (clamped to bounds by CSS and the reconciler).
+  // - Any path may clamp state; only a deliberate user drag (handleMouseUp) and context-menu reset may write to localStorage.
+  // - When the container narrows (window resize, sidebar toggle), state is clamped for paint without ratcheting storage.
+  // - When space returns (window maximized, sidebar closed), the pane gracefully springs back to the preferred width.
+  const [previewWidthPct, setPreviewWidthPct] = useState(() => readStoredPreviewWidth(isThreeColumnRow));
+  const previewWidthPctRef = useRef(previewWidthPct);
+  previewWidthPctRef.current = previewWidthPct;
+
+  // Keep preview width in sync when switching between traditional and 3-column row layout
+  useEffect(() => {
+    const width = readStoredPreviewWidth(isThreeColumnRow);
+    setPreviewWidthPct(width);
+    if (previewPaneRef.current && !isVerticalPreviewLayout) {
+      previewPaneRef.current.style.flex = `0 0 ${width}%`;
+      if (previewPaneRef.current.parentElement) {
+        previewPaneRef.current.parentElement.style.setProperty('--preview-width', `${width}%`);
+      }
+    }
+  }, [isThreeColumnRow, isVerticalPreviewLayout]);
+
+  // Reconcile live painted width to container bounds when row layout container resizes
+  useEffect(() => {
+    if (!isThreeColumnRow) return;
+    const container = previewPaneRef.current?.parentElement;
+    if (!container) return;
+
+    let frame: number | null = null;
+    const reconcileToBounds = () => {
+      frame = null;
+      const availableWidth = container.getBoundingClientRect().width;
+      if (!(availableWidth > 0)) return;
+      const preferred = readStoredPreviewWidth(isThreeColumnRow);
+      const clamped = clampRowPreviewWidthPct(preferred, availableWidth);
+      if (clamped === previewWidthPctRef.current) return;
+      setPreviewWidthPct(clamped);
+    };
+
+    // ResizeObserver fires once on observe, which also covers the first paint.
+    const observer = new ResizeObserver(() => {
+      if (frame === null) frame = requestAnimationFrame(reconcileToBounds);
+    });
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [isThreeColumnRow, guideTransparent, visible]);
 
   const [previewHeightPx, setPreviewHeightPx] = useState(() => {
     const saved = localStorage.getItem('guidePreviewHeight');
@@ -1925,15 +1988,28 @@ export function ChannelPanel({
     const startY = e.clientY;
     
     let startPct = previewWidthPct;
-    if (previewPaneRef.current && epgView === 'traditional' && !epgThreeColumn) {
-      const match = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
-      if (match && match[1]) {
-        startPct = parseFloat(match[1]);
+    // Two origins, deliberately: `startPct` measures what the pane paints (so
+    // dragging a clamped pane has no dead zone), while `startBasisPct` is the
+    // inline flex basis the drag writes and mouse-up reads back. The commit
+    // guard compares against the latter, because a rect measurement carries the
+    // pane's border and would look like movement on its own.
+    let startBasisPct: number | null = null;
+    if (previewPaneRef.current && !isVerticalPreviewLayout) {
+      const basisMatch = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
+      startBasisPct = basisMatch && basisMatch[1] ? parseFloat(basisMatch[1]) : null;
+
+      const parentSection = previewPaneRef.current.parentElement;
+      const availableWidth = parentSection ? parentSection.getBoundingClientRect().width : 0;
+      const currentWidthPx = previewPaneRef.current.getBoundingClientRect().width;
+      if (availableWidth > 0 && currentWidthPx > 0) {
+        startPct = (currentWidthPx / availableWidth) * 100;
+      } else if (startBasisPct !== null) {
+        startPct = startBasisPct;
       }
     }
 
     let startHeightPx = previewHeightPx;
-    if (previewPaneRef.current && isAltPreviewLayout) {
+    if (previewPaneRef.current && isVerticalPreviewLayout) {
       const heightStr = previewPaneRef.current.style.height;
       if (heightStr && heightStr.endsWith('px')) {
          startHeightPx = parseInt(heightStr);
@@ -1948,7 +2024,7 @@ export function ChannelPanel({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!isResizingRef.current || !previewPaneRef.current) return;
       
-      if (isAltPreviewLayout) {
+      if (isVerticalPreviewLayout) {
         const dy = moveEvent.clientY - startY;
         let newHeightPx = startHeightPx + dy;
         // Clamp height
@@ -1959,14 +2035,20 @@ export function ChannelPanel({
         const dy = moveEvent.clientY - startY;
         
         let dw = dx;
-        if (Math.abs(dy * (16 / 9)) > Math.abs(dx)) {
+        if (!isThreeColumnRow && Math.abs(dy * (16 / 9)) > Math.abs(dx)) {
           dw = dy * (16 / 9);
         }
 
-        const deltaPct = (dw / containerWidth) * 100;
+        const parentSection = previewPaneRef.current.parentElement;
+        const availableWidth = parentSection ? parentSection.getBoundingClientRect().width : containerWidth;
+        const deltaPct = (dw / availableWidth) * 100;
         let newPct = startPct + deltaPct;
 
-        newPct = Math.max(20, Math.min(newPct, 80));
+        if (isThreeColumnRow && availableWidth > 0) {
+          newPct = clampRowPreviewWidthPct(newPct, availableWidth);
+        } else {
+          newPct = Math.max(20, Math.min(newPct, 80));
+        }
 
         previewPaneRef.current.style.flex = `0 0 ${newPct}%`;
         if (previewPaneRef.current.parentElement) {
@@ -1983,7 +2065,7 @@ export function ChannelPanel({
       document.removeEventListener('mouseup', handleMouseUp);
       
       if (previewPaneRef.current) {
-        if (isAltPreviewLayout) {
+        if (isVerticalPreviewLayout) {
           const heightStr = previewPaneRef.current.style.height;
           if (heightStr && heightStr.endsWith('px')) {
             const finalHeight = parseInt(heightStr);
@@ -1994,8 +2076,13 @@ export function ChannelPanel({
           const match = previewPaneRef.current.style.flex.match(/0 0 ([\d.]+)%/);
           if (match && match[1]) {
             const finalPct = parseFloat(match[1]);
-            setPreviewWidthPct(finalPct);
-            localStorage.setItem('guidePreviewWidth', String(finalPct));
+            // Only commit to localStorage if the user actually moved the pane
+            // (prevents docked clicks or zero-travel drags from ratcheting storage)
+            if (didPreviewWidthChange(startBasisPct, finalPct)) {
+              const roundedPct = Number(finalPct.toFixed(2));
+              setPreviewWidthPct(roundedPct);
+              localStorage.setItem(previewWidthKey(isThreeColumnRow), String(roundedPct));
+            }
           }
         }
       }
@@ -2003,28 +2090,29 @@ export function ChannelPanel({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [previewWidthPct, previewHeightPx, epgView, epgThreeColumn, isAltPreviewLayout]);
+  }, [previewWidthPct, previewHeightPx, epgView, epgThreeColumn, isAltPreviewLayout, isVerticalPreviewLayout, isThreeColumnRow]);
 
   const handleResizeContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isAltPreviewLayout) {
+    if (isVerticalPreviewLayout) {
       setPreviewHeightPx(360);
       localStorage.setItem('guidePreviewHeight', '360');
       if (previewPaneRef.current) {
         previewPaneRef.current.style.height = `360px`;
       }
     } else {
-      setPreviewWidthPct(54);
-      localStorage.setItem('guidePreviewWidth', '54');
+      const defaultPct = previewWidthDefault(isThreeColumnRow);
+      setPreviewWidthPct(defaultPct);
+      localStorage.setItem(previewWidthKey(isThreeColumnRow), String(defaultPct));
       if (previewPaneRef.current) {
-        previewPaneRef.current.style.flex = `0 0 54%`;
+        previewPaneRef.current.style.flex = `0 0 ${defaultPct}%`;
         if (previewPaneRef.current.parentElement) {
-          previewPaneRef.current.parentElement.style.setProperty('--preview-width', '54%');
+          previewPaneRef.current.parentElement.style.setProperty('--preview-width', `${defaultPct}%`);
         }
       }
     }
-  }, [epgView, epgThreeColumn, isAltPreviewLayout]);
+  }, [epgView, epgThreeColumn, isAltPreviewLayout, isVerticalPreviewLayout, isThreeColumnRow]);
 
   // ── Drag-to-resize for EPG channel column ─────────────────────────────────
   const isResizingChannelCol = useRef(false);
@@ -3105,7 +3193,7 @@ export function ChannelPanel({
       style={
         showMultiviewGrid
           ? { width: '100%', height: '100%', flex: 'none', borderRight: 'none' }
-          : epgThreeColumn || epgView === 'alternate'
+          : isVerticalPreviewLayout
           ? { height: `${previewHeightPx}px`, width: 'auto', aspectRatio: '16 / 9', maxWidth: '100%', flex: 'none' }
           : { flex: `0 0 ${previewWidthPct}%` }
       }
@@ -3120,7 +3208,7 @@ export function ChannelPanel({
       {/* Resizer Handle */}
       {!showMultiviewGrid && (
         <div 
-          className={`guide-preview-resizer ${isAltPreviewLayout ? 'vertical' : 'horizontal'}`}
+          className={`guide-preview-resizer ${isVerticalPreviewLayout ? 'vertical' : 'horizontal'}`}
           onMouseDown={handleResizeMouseDown}
           onContextMenu={handleResizeContextMenu}
           title={t('dragResizePreview')}
@@ -3567,13 +3655,13 @@ export function ChannelPanel({
   return (
     <div
       ref={gridContainerRef}
-      className={`guide-panel ${visible ? 'visible' : 'hidden'} ${categoryStripOpen ? 'with-categories' : ''} ${guideTransparent ? 'guide-transparent-mode' : ''} ${epgThreeColumn ? 'alt-view-active' : ''}`}
+      className={`guide-panel ${visible ? 'visible' : 'hidden'} ${categoryStripOpen ? 'with-categories' : ''} ${guideTransparent ? 'guide-transparent-mode' : ''} ${epgThreeColumn ? 'alt-view-active' : ''} ${isThreeColumnRow ? 'alt-row-layout' : ''}`}
     >
       {/* Top Section: Preview & Info — hidden in transparent guide mode */}
       {!guideTransparent && (
       <div 
         className={`guide-top-section ${epgThreeColumn || epgView === 'alternate' ? 'alternate-view' : ''} ${showMultiviewGrid && !epgThreeColumn ? 'multiview-grid-active' : ''}`}
-        style={epgView !== 'alternate' && !showMultiviewGrid ? { '--preview-width': `${previewWidthPct}%` } as React.CSSProperties : undefined}
+        style={!isVerticalPreviewLayout && !showMultiviewGrid ? ({ '--preview-width': `${previewWidthPct}%` } as React.CSSProperties) : undefined}
       >
         {(showMultiviewGrid || showMultiviewSplit) && epgThreeColumn ? (
           <>

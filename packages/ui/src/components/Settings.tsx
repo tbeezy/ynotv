@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Source } from '@ynotv/core';
-import { useEpgView, useSetEpgView, useSetEpgVisibleHours, useSetEpgClockFormat, useSetEpgShowDate, useUIStore, useIncludeAllChannelsToPlaylist, useSetIncludeAllChannelsToPlaylist, useEpgThreeColumn, useSetEpgThreeColumn } from '../stores/uiStore';
+import { useEpgView, useSetEpgView, useSetEpgVisibleHours, useSetEpgClockFormat, useSetEpgShowDate, useUIStore, useIncludeAllChannelsToPlaylist, useSetIncludeAllChannelsToPlaylist, useEpgThreeColumn, useSetEpgThreeColumn, useEpgThreeColumnRowLayout, useSetEpgThreeColumnRowLayout } from '../stores/uiStore';
 import { SettingsSidebar, SETTINGS_TAB_LABEL_KEYS, type SettingsTabId } from './settings/SettingsSidebar';
 import { searchSettings, type SettingsSearchResult } from './settings/SettingsSearchIndex';
 import { SourcesTab } from './settings/SourcesTab';
@@ -742,6 +742,8 @@ export function Settings({
   const setEpgView = useSetEpgView();
   const epgThreeColumn = useEpgThreeColumn();
   const setEpgThreeColumn = useSetEpgThreeColumn();
+  const epgThreeColumnRowLayout = useEpgThreeColumnRowLayout();
+  const setEpgThreeColumnRowLayout = useSetEpgThreeColumnRowLayout();
   const setEpgVisibleHours = useSetEpgVisibleHours();
   const [epgVisibleHours, setEpgVisibleHoursState] = useState<'auto' | number>('auto');
   const setEpgClockFormat = useSetEpgClockFormat();
@@ -2160,6 +2162,13 @@ export function Settings({
     }
   };
 
+  const handleEpgThreeColumnRowLayoutChange = async (enabled: boolean) => {
+    setEpgThreeColumnRowLayout(enabled);
+    if (window.storage) {
+      await window.storage.updateSettings({ epgThreeColumnRowLayout: enabled });
+    }
+  };
+
   const handleEpgVisibleHoursChange = async (hours: 'auto' | number) => {
     setEpgVisibleHoursState(hours);
     setEpgVisibleHours(hours);
@@ -3130,6 +3139,8 @@ export function Settings({
             onEpgViewChange={handleEpgViewChange}
             epgThreeColumn={epgThreeColumn}
             onEpgThreeColumnChange={handleEpgThreeColumnChange}
+            epgThreeColumnRowLayout={epgThreeColumnRowLayout}
+            onEpgThreeColumnRowLayoutChange={handleEpgThreeColumnRowLayoutChange}
             categorySidebarAutohide={categorySidebarAutohide}
             onCategorySidebarAutohideChange={setCategorySidebarAutohide}
             epgShowFullChannelPath={epgShowFullChannelPath}

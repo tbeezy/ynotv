@@ -1040,6 +1040,8 @@
       "audioBitrate": "Audio-bitrate",
       "threeColumnView": "3-kolomweergave",
       "threeColumnViewSub": "Vervangt het EPG-tijdraster door een kanaalstrook van 3 kolommen en een programma. Onafhankelijk van de instelling EPG-weergave-indeling.",
+      "threeColumnRowLayout": "Secties op één rij weergeven",
+      "threeColumnRowLayoutSub": "Toon het EPG-venster rechts van de speler in plaats van eronder (geoptimaliseerd voor ultrawide-schermen).",
       "categorySidebarAutohide": "Categoriezijbalk automatisch verbergen",
       "categorySidebarAutohideSub": "Houd de categoriezijbalk verborgen en schuif hem over de gids wanneer de muis naar de linkerrand beweegt. Hij sluit na het kiezen van een categorie of wanneer de muis weggaat.",
       "programFontSize": "Lettergrootte programma",

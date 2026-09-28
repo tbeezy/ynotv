@@ -1040,6 +1040,8 @@
       "audioBitrate": "Audio bitrate",
       "threeColumnView": "Prikaz u 3 kolone",
       "threeColumnViewSub": "Zamijenite EPG vremensku mrežu trakom kanala u 3 kolone i rasporedom. Nezavisno od postavke Rasporeda EPG prikaza.",
+      "threeColumnRowLayout": "Prikaži odjeljke u nizu",
+      "threeColumnRowLayoutSub": "Prikaži EPG prozor desno od playera umjesto ispod njega (optimizirano za ultraširoke ekrane).",
       "categorySidebarAutohide": "Automatski sakrij bočnu traku kategorija",
       "categorySidebarAutohideSub": "Drži bočnu traku kategorija skrivenom i izvuci je preko vodiča kada miš pomaknete na lijevu ivicu. Zatvara se nakon odabira kategorije ili pomicanja miša.",
       "programFontSize": "Veličina fonta programa",

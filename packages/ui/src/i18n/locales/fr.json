@@ -1040,6 +1040,8 @@
       "audioBitrate": "Débit audio",
       "threeColumnView": "Vue 3 colonnes",
       "threeColumnViewSub": "Remplace la grille horaire de l’EPG par une bande de chaînes sur 3 colonnes et son programme. Indépendant du réglage « Disposition de la vue EPG ».",
+      "threeColumnRowLayout": "Afficher les sections en ligne",
+      "threeColumnRowLayoutSub": "Afficher la fenêtre EPG à droite du lecteur plutôt qu'en dessous (optimisé pour les écrans ultra-larges).",
       "categorySidebarAutohide": "Masquer automatiquement la barre latérale des catégories",
       "categorySidebarAutohideSub": "Gardez la barre latérale des catégories masquée et faites-la glisser au-dessus du guide lorsque la souris atteint le bord gauche. Elle se ferme après le choix d'une catégorie ou lorsque la souris s'éloigne.",
       "programFontSize": "Taille de police du programme",

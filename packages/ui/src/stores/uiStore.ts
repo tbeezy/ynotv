@@ -84,6 +84,8 @@ interface UIState {
   setEpgView: (value: 'traditional' | 'alternate') => void;
   epgThreeColumn: boolean;
   setEpgThreeColumn: (value: boolean) => void;
+  epgThreeColumnRowLayout: boolean;
+  setEpgThreeColumnRowLayout: (value: boolean) => void;
   epgVisibleHours: 'auto' | number;
   setEpgVisibleHours: (value: 'auto' | number) => void;
   epgClockFormat: '12h' | '24h';
@@ -199,6 +201,29 @@ function getInitialEpgThreeColumn(): boolean {
   return false;
 }
 
+export function getInitialEpgThreeColumnRowLayout(): boolean {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const localData = localStorage.getItem('app-settings');
+      if (localData) {
+        const parsed = JSON.parse(localData);
+        if (typeof parsed.epgThreeColumnRowLayout === 'boolean') {
+          return parsed.epgThreeColumnRowLayout;
+        }
+      }
+    }
+  } catch {}
+  return false;
+}
+
+export function isThreeColumnRowActive(epgThreeColumn: boolean, epgThreeColumnRowLayout: boolean): boolean {
+  return Boolean(epgThreeColumn && epgThreeColumnRowLayout);
+}
+
+export function isVerticalPreviewLayoutActive(isAltLayout: boolean, isThreeColumnRow: boolean): boolean {
+  return Boolean(isAltLayout && !isThreeColumnRow);
+}
+
 export const useUIStore = create<UIState>((set) => ({
   // Movies
   moviesSelectedCategory: null,
@@ -274,6 +299,17 @@ export const useUIStore = create<UIState>((set) => ({
       }
     } catch {}
     set({ epgThreeColumn: value });
+  },
+  epgThreeColumnRowLayout: getInitialEpgThreeColumnRowLayout(),
+  setEpgThreeColumnRowLayout: (value) => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const existing = localStorage.getItem('app-settings');
+        const parsed = existing ? JSON.parse(existing) : {};
+        localStorage.setItem('app-settings', JSON.stringify({ ...parsed, epgThreeColumnRowLayout: value }));
+      }
+    } catch {}
+    set({ epgThreeColumnRowLayout: value });
   },
   epgVisibleHours: 'auto',
   setEpgVisibleHours: (value) => set({ epgVisibleHours: value }),
@@ -497,6 +533,8 @@ export const useEpgView = () => useUIStore((s) => s.epgView);
 export const useSetEpgView = () => useUIStore((s) => s.setEpgView);
 export const useEpgThreeColumn = () => useUIStore((s) => s.epgThreeColumn);
 export const useSetEpgThreeColumn = () => useUIStore((s) => s.setEpgThreeColumn);
+export const useEpgThreeColumnRowLayout = () => useUIStore((s) => s.epgThreeColumnRowLayout);
+export const useSetEpgThreeColumnRowLayout = () => useUIStore((s) => s.setEpgThreeColumnRowLayout);
 export const useEpgVisibleHours = () => useUIStore((s) => s.epgVisibleHours);
 export const useSetEpgVisibleHours = () => useUIStore((s) => s.setEpgVisibleHours);
 export const useEpgClockFormat = () => useUIStore((s) => s.epgClockFormat);
