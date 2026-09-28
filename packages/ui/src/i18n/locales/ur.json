@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "سیزن",
     "editEpisodeMetadataTitle": "قسط کے میٹا ڈیٹا میں ترمیم کریں",
     "matchSelected": "منتخب کردہ کی مطابقت کریں",
+    "fixMatchSelected": "منتخب کردہ کی مطابقت درست کریں",
+    "reviewMatchRow": "اس آئٹم کی مطابقت درست کریں",
     "removeSelected": "منتخب کردہ ہٹائیں",
     "reviewUnmatchedSubtitle": "کسی سیریز سے مطابقت کے لیے اشیاء منتخب کریں، یا انہیں اپنی لائبریری سے ہٹائیں۔",
     "reviewUnmatchedTitle": "غیر مطابقت پذیر اشیاء کا جائزہ لیں",

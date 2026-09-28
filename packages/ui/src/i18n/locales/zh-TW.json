@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "季",
     "editEpisodeMetadataTitle": "編輯劇集詮釋資料",
     "matchSelected": "比對選取項目",
+    "fixMatchSelected": "修復選取項目的比對",
+    "reviewMatchRow": "修復此項目的比對",
     "removeSelected": "移除選取項目",
     "reviewUnmatchedSubtitle": "選取要與影集比對的項目，或將其從媒體庫中移除。",
     "reviewUnmatchedTitle": "審查未比對項目",

@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Temporada",
     "editEpisodeMetadataTitle": "Editar metadados do episódio",
     "matchSelected": "Corresponder selecionados",
+    "fixMatchSelected": "Corrigir correspondência dos selecionados",
+    "reviewMatchRow": "Corrigir a correspondência deste item",
     "removeSelected": "Remover selecionados",
     "reviewUnmatchedSubtitle": "Selecione itens para corresponder a uma série ou removê-los da sua biblioteca.",
     "reviewUnmatchedTitle": "Revisar itens não correspondidos",

@@ -30,6 +30,7 @@ import {
   markEntriesAvailability,
 } from '../../services/local-library/local-library';
 import { countNfoFor, clearSidecarCache } from '../../services/local-library/sidecars';
+import { reviewGroupEntries, reviewGroupKey } from '../../services/local-library/review-groups';
 import {
   buildNfoEntryForFolder,
   buildTmdbEntry,
@@ -112,6 +113,14 @@ interface QueuedScanJob {
   run: () => Promise<void>;
   cancelled: boolean;
   settled: () => void;
+}
+
+/** A review group waiting its turn in the identify queue. */
+interface QueuedIdentify {
+  /** The review list row this group belongs to (see `reviewGroupKey`). */
+  key: string;
+  /** The entries the IdentifyModal works on. */
+  entries: LocalEntry[];
 }
 
 interface LocalGridContext {
@@ -316,9 +325,16 @@ export function LocalTab({
   // Modals / Details state
   const [identifyTarget, setIdentifyTarget] = useState<LocalEntry[] | null>(null);
   const [reviewTargets, setReviewTargets] = useState<LocalGroup[] | null>(null);
-  // Queue of entry-lists to identify one after another (used when the user
-  // picks several review groups to match at once).
-  const identifyQueueRef = useRef<LocalEntry[][] | null>(null);
+  // Review rows whose identify flow actually finished (resolved, skipped or
+  // removed). The review list drops exactly these rows; a cancelled flow reports
+  // nothing, so its row stays listed.
+  const [handledReviewKeys, setHandledReviewKeys] = useState<Set<string>>(() => new Set());
+  // Queue of review groups to identify one after another (used when the user
+  // picks several review groups to match at once). Each item carries its review
+  // group's key so a finished flow can be reported back to the list.
+  const identifyQueueRef = useRef<QueuedIdentify[] | null>(null);
+  // Key of the review group currently being identified (null when idle).
+  const identifyKeyRef = useRef<string | null>(null);
   // True between a successful identify resolve and its following onClose, so
   // the close handler knows not to wipe the next queued target.
   const resolvingRef = useRef(false);
@@ -521,6 +537,17 @@ export function LocalTab({
     const matchGroup = groups.find((g) => g.kind === 'show' && g.key === selectedDetailGroup.key);
     return matchGroup ?? null;
   }, [selectedDetailGroup, items, groups]);
+
+  // Keep episodes picker modal target fresh if underlying items update (e.g.
+  // metadata edit or episode fix-match from right-click context menu).
+  const currentEpisodesTarget = useMemo(() => {
+    if (!episodesModalTarget) return null;
+    const matchGroup = groups.find((g) => g.kind === 'show' && g.key === episodesModalTarget.key);
+    if (matchGroup && matchGroup.kind === 'show') {
+      return { key: matchGroup.key, head: matchGroup.head, episodes: matchGroup.episodes };
+    }
+    return episodesModalTarget;
+  }, [episodesModalTarget, groups]);
 
   // Filter & Sort
   const filteredGroups = useMemo(() => {
@@ -1131,11 +1158,22 @@ export function LocalTab({
     const q = identifyQueueRef.current;
     if (q && q.length > 0) {
       identifyQueueRef.current = q.slice(1);
-      setIdentifyTarget(q[0]);
+      identifyKeyRef.current = q[0].key;
+      setIdentifyTarget(q[0].entries);
     } else {
       identifyQueueRef.current = null;
+      identifyKeyRef.current = null;
       setIdentifyTarget(null);
     }
+  }, []);
+
+  // Tell the review list that the in-flight review group is done, so it drops
+  // exactly that row. Only the resolve/skip/remove paths call this — cancelling
+  // the identify flow reports nothing and leaves every unfinished row listed.
+  const markIdentifyHandled = useCallback(() => {
+    const key = identifyKeyRef.current;
+    if (!key) return;
+    setHandledReviewKeys((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
   }, []);
 
   // Identify resolution
@@ -1177,14 +1215,19 @@ export function LocalTab({
         : t('matchUpdated')
     );
 
+    markIdentifyHandled();
     advanceIdentifyQueue();
-  }, [showToast, t, advanceIdentifyQueue]);
+  }, [showToast, t, markIdentifyHandled, advanceIdentifyQueue]);
 
   // Match one or more review groups: identify each series/movie one at a time.
   const openReviewMatch = useCallback((groups: LocalGroup[]) => {
-    const lists = groups.map((g) => (g.kind === 'movie' ? [g.entry] : g.episodes));
-    identifyQueueRef.current = lists.length > 1 ? lists.slice(1) : null;
-    setIdentifyTarget(lists[0] ?? null);
+    const queue: QueuedIdentify[] = groups.map((g) => ({
+      key: reviewGroupKey(g),
+      entries: reviewGroupEntries(g),
+    }));
+    identifyQueueRef.current = queue.length > 1 ? queue.slice(1) : null;
+    identifyKeyRef.current = queue[0]?.key ?? null;
+    setIdentifyTarget(queue[0]?.entries ?? null);
   }, []);
 
   // Skip metadata matching for the given review group(s): the items stay in
@@ -1203,9 +1246,10 @@ export function LocalTab({
   const handleIdentifySkip = useCallback(
     (ids: string[]) => {
       handleReviewSkip(ids);
+      markIdentifyHandled();
       advanceIdentifyQueue();
     },
-    [handleReviewSkip, advanceIdentifyQueue],
+    [handleReviewSkip, markIdentifyHandled, advanceIdentifyQueue],
   );
 
   const handleIdentifyRemove = useCallback(
@@ -1217,9 +1261,10 @@ export function LocalTab({
         return next;
       });
       showToast(t('removedSelectedItems', 'Removed selected items'));
+      markIdentifyHandled();
       advanceIdentifyQueue();
     },
-    [removeLocalEntries, showToast, t, advanceIdentifyQueue],
+    [removeLocalEntries, showToast, t, markIdentifyHandled, advanceIdentifyQueue],
   );
 
   // Refresh Metadata: force a fresh TMDB lookup for the given entries (used
@@ -1654,6 +1699,8 @@ export function LocalTab({
                   e.stopPropagation();
                   // Open the review list (grouped per series folder) so the
                   // user can pick which unmatched series to match or remove.
+                  // Handled keys are per session: a fresh list starts clean.
+                  setHandledReviewKeys(new Set());
                   setReviewTargets(reviewGroups);
                 }}
                 title={t('batchReviewAll', 'Review and manage unmatched items')}
@@ -2039,15 +2086,16 @@ export function LocalTab({
       )}
 
       {/* Episodes Picker Modal */}
-      {episodesModalTarget && (
+      {currentEpisodesTarget && (
         <LocalEpisodesModal
-          head={episodesModalTarget.head}
-          episodes={episodesModalTarget.episodes}
+          head={currentEpisodesTarget.head}
+          episodes={currentEpisodesTarget.episodes}
           onClose={() => setEpisodesModalTarget(null)}
           onPlayEpisode={(ep) => {
-            handlePlayEntry(ep, episodesModalTarget ? { key: episodesModalTarget.key || localShowKey(episodesModalTarget.head), head: episodesModalTarget.head } : undefined);
+            handlePlayEntry(ep, currentEpisodesTarget ? { key: currentEpisodesTarget.key || localShowKey(currentEpisodesTarget.head), head: currentEpisodesTarget.head } : undefined);
             setEpisodesModalTarget(null);
           }}
+          onFixMatch={(ep) => setIdentifyTarget([ep])}
         />
       )}
 
@@ -2058,11 +2106,16 @@ export function LocalTab({
       {reviewTargets && (
         <ReviewUnmatchedModal
           groups={reviewTargets}
+          handledKeys={handledReviewKeys}
           onClose={() => setReviewTargets(null)}
           onMatch={(selected) => {
-            setReviewTargets(null);
+            // The review list stays open behind the identify modal. Rows leave
+            // it only when the parent reports a group as handled, so a queue the
+            // user cancels keeps every unfinished row — including the one the
+            // identify modal was showing — for another attempt.
             openReviewMatch(selected);
           }}
+          onMatchOne={(group) => openReviewMatch([group])}
           onRemove={(ids) => {
             removeLocalEntries(ids);
             showToast(t('removedSelectedItems', 'Removed selected items'));
@@ -2082,8 +2135,10 @@ export function LocalTab({
               resolvingRef.current = false;
               return;
             }
-            // Cancelling mid-queue discards the remaining review groups.
+            // Cancelling mid-queue discards the remaining review groups. The
+            // review list behind keeps every row the flow never finished with.
             identifyQueueRef.current = null;
+            identifyKeyRef.current = null;
             setIdentifyTarget(null);
           }}
           onResolved={handleIdentifyResolved}

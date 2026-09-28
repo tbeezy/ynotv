@@ -2,11 +2,20 @@ import { useState, useMemo, useEffect, useRef, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VirtualList } from '../common/VirtualList';
 import type { LocalGroup } from '../../services/local-library/types';
+import { reviewGroupIds, reviewGroupKey } from '../../services/local-library/review-groups';
 
 interface ReviewUnmatchedModalProps {
   groups: LocalGroup[];
+  /**
+   * Review-group keys the identify flow has finished with (resolved, skipped or
+   * removed). A cancelled flow reports nothing, so its row stays listed.
+   */
+  handledKeys: Set<string>;
   onClose: () => void;
+  /** Queue a match review for every given group, one after another. */
   onMatch: (groups: LocalGroup[]) => void;
+  /** Open the match review for a single row. */
+  onMatchOne: (group: LocalGroup) => void;
   onRemove: (ids: string[]) => void;
   onSkip: (ids: string[]) => void;
 }
@@ -40,15 +49,6 @@ function groupFolder(g: LocalGroup): string {
   return commonFolder(g.episodes.map((e) => e.path));
 }
 
-function groupKey(g: LocalGroup): string {
-  return g.kind === 'movie' ? g.entry.id : g.key;
-}
-
-/** Every entry id in a review unit (a single movie, or all episodes of a show). */
-function groupIds(g: LocalGroup): string[] {
-  return g.kind === 'movie' ? [g.entry.id] : g.episodes.map((e) => e.id);
-}
-
 /**
  * Review step for unmatched items. Since folders are scanned as series (one
  * TMDB lookup per show), review is per SERIES FOLDER — one row per unmatched
@@ -57,8 +57,10 @@ function groupIds(g: LocalGroup): string[] {
  */
 export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
   groups,
+  handledKeys,
   onClose,
   onMatch,
+  onMatchOne,
   onRemove,
   onSkip,
 }: ReviewUnmatchedModalProps) {
@@ -68,7 +70,7 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
   // changes when the modal is reopened.
   const [working, setWorking] = useState<LocalGroup[]>(groups);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(
-    () => new Set(groups.map(groupKey)),
+    () => new Set(groups.map(reviewGroupKey)),
   );
   const [filter, setFilter] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -94,20 +96,39 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
   };
 
   const selected = useMemo(
-    () => working.filter((g) => selectedKeys.has(groupKey(g))),
+    () => working.filter((g) => selectedKeys.has(reviewGroupKey(g))),
     [working, selectedKeys],
   );
 
   // Drop rows after a per-row or batch remove/skip; prune their keys from the
-  // selection.
+  // selection. Matching never drops here — a matched row leaves the list only
+  // when the parent reports it as handled (see the `handledKeys` effect below),
+  // so cancelling the identify flow leaves the row in place.
   const dropKeys = (keys: Set<string>) => {
-    setWorking((prev) => prev.filter((g) => !keys.has(groupKey(g))));
+    setWorking((prev) => prev.filter((g) => !keys.has(reviewGroupKey(g))));
     setSelectedKeys((prev) => {
       const pruned = new Set(prev);
       for (const k of keys) pruned.delete(k);
       return pruned;
     });
   };
+
+  // Adopt the rows the parent reported as handled. The parent reports a group
+  // only once its identify flow truly ended (resolved, skipped or removed), so a
+  // cancelled flow leaves its row — and everything still queued behind it — in
+  // the list for another attempt.
+  useEffect(() => {
+    if (handledKeys.size === 0) return;
+    setWorking((prev) => prev.filter((g) => !handledKeys.has(reviewGroupKey(g))));
+    setSelectedKeys((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const k of handledKeys) {
+        if (next.delete(k)) changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [handledKeys]);
 
   // Close the modal once every review unit has been handled.
   useEffect(() => {
@@ -117,27 +138,42 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
   }, [working, groups, onClose]);
 
   const removeGroup = (g: LocalGroup) => {
-    const ids = groupIds(g);
+    const ids = reviewGroupIds(g);
     if (ids.length > 0) onRemove(ids);
-    dropKeys(new Set([groupKey(g)]));
+    dropKeys(new Set([reviewGroupKey(g)]));
   };
 
   const skipGroup = (g: LocalGroup) => {
-    const ids = groupIds(g);
+    const ids = reviewGroupIds(g);
     if (ids.length > 0) onSkip(ids);
-    dropKeys(new Set([groupKey(g)]));
+    dropKeys(new Set([reviewGroupKey(g)]));
   };
 
   const removeSelected = () => {
-    const ids = selected.flatMap(groupIds);
+    const ids = selected.flatMap(reviewGroupIds);
     if (ids.length > 0) onRemove(ids);
     dropKeys(selectedKeys);
   };
 
   const skipSelected = () => {
-    const ids = selected.flatMap(groupIds);
+    const ids = selected.flatMap(reviewGroupIds);
     if (ids.length > 0) onSkip(ids);
     dropKeys(selectedKeys);
+  };
+
+  // Review the match for one row without leaving the list: the parent opens the
+  // identify modal above it. The row is dropped once the parent reports it as
+  // handled, so cancelling the review leaves it listed.
+  const matchGroup = (g: LocalGroup) => {
+    onMatchOne(g);
+  };
+
+  // Review the match for every checked row, one at a time. The parent queues the
+  // reviews and the list stays open underneath; rows leave as they are reported
+  // handled, and anything cancelled — checked or not — is still there.
+  const matchSelected = () => {
+    if (selected.length === 0) return;
+    onMatch(selected);
   };
 
   return (
@@ -145,8 +181,7 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
     // discard the user's place, and mis-clicks are common around modals.
     <div className="local-modal-overlay">
       <div
-        className="local-modal-content"
-        style={{ maxWidth: '620px' }}
+        className="local-modal-content local-modal-content--review"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="local-modal-header">
@@ -200,7 +235,7 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
                 <button
                   type="button"
                   className="local-btn local-btn--primary"
-                  onClick={() => setSelectedKeys(new Set(filtered.map(groupKey)))}
+                  onClick={() => setSelectedKeys(new Set(filtered.map(reviewGroupKey)))}
                   disabled={filtered.length === 0}
                 >
                   {t('selectFiltered', 'Select filtered')}
@@ -209,7 +244,7 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
               <button
                 type="button"
                 className="local-btn local-btn--secondary"
-                onClick={() => setSelectedKeys(new Set(working.map(groupKey)))}
+                onClick={() => setSelectedKeys(new Set(working.map(reviewGroupKey)))}
                 disabled={selectedKeys.size === working.length}
               >
                 {t('selectAll', 'Select All')}
@@ -231,9 +266,9 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
               scrollRef={listRef}
               items={filtered}
               estimateItemHeight={56}
-              getKey={(g) => groupKey(g)}
+              getKey={(g) => reviewGroupKey(g)}
               renderItem={(g) => {
-                const key = groupKey(g);
+                const key = reviewGroupKey(g);
                 const checked = selectedKeys.has(key);
                 const isMovie = g.kind === 'movie';
                 const title = isMovie ? g.entry.title : g.head.title;
@@ -262,8 +297,22 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
                         {folder ? ` · ${folder}` : ''}
                       </span>
                     </div>
-                    {/* Per-row actions: remove from library, or skip matching and move to the next item */}
+                    {/* Per-row actions: match this item, skip it, or remove it from the library */}
                     <div className="local-batch-row__actions">
+                      <button
+                        type="button"
+                        className="local-row-btn local-row-btn--match"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          matchGroup(g);
+                        }}
+                        title={t('reviewMatchRow', 'Fix the match for this item')}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5" />
+                        </svg>
+                        {t('fixMatch', 'Fix match')}
+                      </button>
                       <button
                         type="button"
                         className="local-row-btn local-row-btn--skip"
@@ -299,7 +348,8 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
           </div>
         </div>
 
-        {/* Footer actions: match the selected series, skip them, or remove them */}
+        {/* Footer actions: fix the match for each selected item, or skip /
+            remove them. The batch match lives with the other batch actions. */}
         <div className="local-modal-footer">
           <button
             type="button"
@@ -318,19 +368,17 @@ export const ReviewUnmatchedModal = memo(function ReviewUnmatchedModal({
           >
             {t('skipSelected', 'Skip selected')}
           </button>
-          <span style={{ flex: 1 }} />
-          <button type="button" className="local-btn local-btn--secondary" onClick={onClose}>
-            {t('common:cancel', 'Cancel')}
-          </button>
           <button
             type="button"
             className="local-btn local-btn--primary"
-            onClick={() => {
-              if (selected.length > 0) onMatch(selected);
-            }}
+            onClick={matchSelected}
             disabled={selectedKeys.size === 0}
           >
-            {t('matchSelected', 'Match selected')}
+            {t('fixMatchSelected', 'Fix match selected')}
+          </button>
+          <span style={{ flex: 1 }} />
+          <button type="button" className="local-btn local-btn--secondary" onClick={onClose}>
+            {t('common:cancel', 'Cancel')}
           </button>
         </div>
       </div>

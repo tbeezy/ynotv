@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Sezoni",
     "editEpisodeMetadataTitle": "Ndrysho metatëdhënat e episodit",
     "matchSelected": "Përputh të zgjedhurat",
+    "fixMatchSelected": "Rregullo përputhjen e të zgjedhurave",
+    "reviewMatchRow": "Rregullo përputhjen për këtë artikull",
     "removeSelected": "Hiq të zgjedhurat",
     "reviewUnmatchedSubtitle": "Zgjidhni artikuj për t'i përputhur me një serial, ose hiqini nga biblioteka juaj.",
     "reviewUnmatchedTitle": "Rishikoni artikujt e papërputhur",

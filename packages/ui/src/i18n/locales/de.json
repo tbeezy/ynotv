@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Staffel",
     "editEpisodeMetadataTitle": "Episoden-Metadaten bearbeiten",
     "matchSelected": "Ausgewählte zuordnen",
+    "fixMatchSelected": "Zuordnung für Ausgewählte korrigieren",
+    "reviewMatchRow": "Zuordnung für dieses Element korrigieren",
     "removeSelected": "Ausgewählte entfernen",
     "reviewUnmatchedSubtitle": "Wählen Sie Elemente aus, um sie einer Serie zuzuordnen oder aus der Bibliothek zu entfernen.",
     "reviewUnmatchedTitle": "Nicht zugeordnete Elemente überprüfen",

@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "الموسم",
     "editEpisodeMetadataTitle": "تعديل البيانات الوصفية للحلقة",
     "matchSelected": "مطابقة المحدد",
+    "fixMatchSelected": "إصلاح مطابقة المحدد",
+    "reviewMatchRow": "إصلاح مطابقة هذا العنصر",
     "removeSelected": "إزالة المحدد",
     "reviewUnmatchedSubtitle": "حدد العناصر لمطابقتها مع مسلسل، أو إزالتها من مكتبتك.",
     "reviewUnmatchedTitle": "مراجعة العناصر غير المطابقة",

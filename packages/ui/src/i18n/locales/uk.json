@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Сезон",
     "editEpisodeMetadataTitle": "Редагувати метадані серії",
     "matchSelected": "Зіставити вибрані",
+    "fixMatchSelected": "Виправити зіставлення вибраних",
+    "reviewMatchRow": "Виправити зіставлення для цього елемента",
     "removeSelected": "Видалити вибрані",
     "reviewUnmatchedSubtitle": "Виберіть елементи для зіставлення з серіалом або видаліть їх з медіатеки.",
     "reviewUnmatchedTitle": "Перевірка незіставлених елементів",

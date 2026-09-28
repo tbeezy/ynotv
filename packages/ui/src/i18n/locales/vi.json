@@ -4976,6 +4976,8 @@
     "editEpisodeSeason": "Mùa",
     "editEpisodeMetadataTitle": "Chỉnh sửa siêu dữ liệu tập phim",
     "matchSelected": "Ghép nối các mục đã chọn",
+    "fixMatchSelected": "Sửa ghép nối các mục đã chọn",
+    "reviewMatchRow": "Sửa ghép nối cho mục này",
     "removeSelected": "Xóa các mục đã chọn",
     "reviewUnmatchedSubtitle": "Chọn các mục để ghép nối với một phim bộ hoặc xóa chúng khỏi thư viện của bạn.",
     "reviewUnmatchedTitle": "Xem lại các mục chưa ghép nối",

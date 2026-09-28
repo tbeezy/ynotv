@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "季",
     "editEpisodeMetadataTitle": "编辑剧集元数据",
     "matchSelected": "匹配选中项",
+    "fixMatchSelected": "修复选中项的匹配",
+    "reviewMatchRow": "修复此项目的匹配",
     "removeSelected": "移除选中项",
     "reviewUnmatchedSubtitle": "选择要与剧集匹配的项目，或将其从媒体库中移除。",
     "reviewUnmatchedTitle": "审核未匹配项目",

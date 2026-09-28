@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Seizoen",
     "editEpisodeMetadataTitle": "Afleveringsmetadata bewerken",
     "matchSelected": "Geselecteerde koppelen",
+    "fixMatchSelected": "Koppeling van geselecteerde corrigeren",
+    "reviewMatchRow": "Koppeling voor dit item corrigeren",
     "removeSelected": "Geselecteerde verwijderen",
     "reviewUnmatchedSubtitle": "Selecteer items om aan een serie te koppelen of verwijder ze uit uw bibliotheek.",
     "reviewUnmatchedTitle": "Niet-gekoppelde items controleren",

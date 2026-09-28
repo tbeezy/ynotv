@@ -88,4 +88,16 @@ describe('EpisodeContextMenu positioning & boundary clamping', () => {
     // 900 + 86 = 986 <= 1070 (1080 - 10), so no flip or clamp needed
     expect(pos.y).toBe(900);
   });
+
+  it('exports identical computeEpisodeContextMenuPosition from EpisodeContextMenu and LocalDetail', async () => {
+    const fromLocalDetail = await import('../LocalDetail');
+    const fromEpisodeContextMenu = await import('../EpisodeContextMenu');
+    expect(fromLocalDetail.computeEpisodeContextMenuPosition).toBe(
+      fromEpisodeContextMenu.computeEpisodeContextMenuPosition,
+    );
+    expect(fromLocalDetail.EpisodeContextMenu).toBe(
+      fromEpisodeContextMenu.EpisodeContextMenu,
+    );
+  });
 });
+

@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Sezon",
     "editEpisodeMetadataTitle": "Edytuj metadane odcinka",
     "matchSelected": "Dopasuj wybrane",
+    "fixMatchSelected": "Popraw dopasowanie wybranych",
+    "reviewMatchRow": "Popraw dopasowanie tego elementu",
     "removeSelected": "Usuń wybrane",
     "reviewUnmatchedSubtitle": "Wybierz elementy, aby dopasować je do serialu lub usunąć z biblioteki.",
     "reviewUnmatchedTitle": "Przejrzyj niedopasowane elementy",

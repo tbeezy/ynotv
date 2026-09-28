@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Évad",
     "editEpisodeMetadataTitle": "Epizód metaadatainak szerkesztése",
     "matchSelected": "Kiválasztottak párosítása",
+    "fixMatchSelected": "Kiválasztottak párosításának javítása",
+    "reviewMatchRow": "Elem párosításának javítása",
     "removeSelected": "Kiválasztottak eltávolítása",
     "reviewUnmatchedSubtitle": "Válasszon elemeket egy sorozathoz való párosításhoz vagy könyvtárból való eltávolításhoz.",
     "reviewUnmatchedTitle": "Párosítatlan elemek áttekintése",

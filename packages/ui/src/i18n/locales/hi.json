@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "सीज़न",
     "editEpisodeMetadataTitle": "एपिसोड मेटाडेटा संपादित करें",
     "matchSelected": "चयनित का मिलान करें",
+    "fixMatchSelected": "चयनित का मिलान ठीक करें",
+    "reviewMatchRow": "इस आइटम का मिलान ठीक करें",
     "removeSelected": "चयनित हटाएं",
     "reviewUnmatchedSubtitle": "किसी सीरीज़ से मिलान करने के लिए आइटम चुनें, या उन्हें अपनी लाइब्रेरी से हटाएं।",
     "reviewUnmatchedTitle": "अमेल आइटमों की समीक्षा करें",

@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "فصل",
     "editEpisodeMetadataTitle": "ویرایش متادیتای قسمت",
     "matchSelected": "تطبیق موارد انتخابی",
+    "fixMatchSelected": "اصلاح تطبیق موارد انتخابی",
+    "reviewMatchRow": "اصلاح تطبیق این مورد",
     "removeSelected": "حذف موارد انتخابی",
     "reviewUnmatchedSubtitle": "مواردی را برای تطبیق با یک سریال انتخاب کنید، یا آن‌ها را از کتابخانه حذف کنید.",
     "reviewUnmatchedTitle": "بررسی موارد تطبیق‌نیافته",

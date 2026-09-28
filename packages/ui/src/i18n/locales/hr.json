@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Sezona",
     "editEpisodeMetadataTitle": "Uredi metapodatke epizode",
     "matchSelected": "Podudari odabrano",
+    "fixMatchSelected": "Ispravi podudaranje odabranog",
+    "reviewMatchRow": "Ispravi podudaranje ove stavke",
     "removeSelected": "Ukloni odabrano",
     "reviewUnmatchedSubtitle": "Odaberite stavke za podudaranje sa serijom ili ih uklonite iz knjižnice.",
     "reviewUnmatchedTitle": "Pregledajte nepodudarne stavke",

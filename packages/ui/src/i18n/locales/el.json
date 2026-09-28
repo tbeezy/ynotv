@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Σεζόν",
     "editEpisodeMetadataTitle": "Επεξεργασία μεταδεδομένων επεισοδίου",
     "matchSelected": "Αντιστοίχιση επιλεγμένων",
+    "fixMatchSelected": "Διόρθωση αντιστοίχισης επιλεγμένων",
+    "reviewMatchRow": "Διόρθωση αντιστοίχισης για αυτό το στοιχείο",
     "removeSelected": "Αφαίρεση επιλεγμένων",
     "reviewUnmatchedSubtitle": "Επιλέξτε στοιχεία για αντιστοίχιση με σειρά ή αφαιρέστε τα από τη βιβλιοθήκη σας.",
     "reviewUnmatchedTitle": "Έλεγχος μη αντιστοιχισμένων στοιχείων",

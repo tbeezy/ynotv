@@ -3383,6 +3383,8 @@
     "reviewUnmatchedSubtitle": "Select the items to match against a series, or remove them from your library.",
     "removeSelected": "Remove selected",
     "matchSelected": "Match selected",
+    "fixMatchSelected": "Fix match selected",
+    "reviewMatchRow": "Fix the match for this item",
     "editEpisodeMetadataTitle": "Edit episode metadata",
     "editEpisodeSeason": "Season",
     "editEpisodeNumber": "Episode",

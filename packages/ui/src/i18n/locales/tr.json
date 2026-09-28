@@ -3414,6 +3414,8 @@
     "editEpisodeSeason": "Sezon",
     "editEpisodeMetadataTitle": "Bölüm meta verilerini düzenle",
     "matchSelected": "Seçilenleri eşleştir",
+    "fixMatchSelected": "Seçilenlerin eşleşmesini düzelt",
+    "reviewMatchRow": "Bu öğenin eşleşmesini düzelt",
     "removeSelected": "Seçilenleri kaldır",
     "reviewUnmatchedSubtitle": "Bir diziyle eşleştirmek veya kütüphanenizden kaldırmak için öğeleri seçin.",
     "reviewUnmatchedTitle": "Eşleşmeyen öğeleri inceleyin",
