@@ -8,6 +8,8 @@ import {
     createFailoverGroup,
     deleteFailoverGroup,
     deleteAllFailoverGroups,
+    deleteEmptyFailoverGroups,
+    isFailoverGroupEmpty,
     renameFailoverGroup,
     getFailoverGroupMembers,
     removeChannelFromFailoverGroup,
@@ -45,6 +47,7 @@ interface FailoverGroupItem {
     group_id: string;
     name: string;
     memberCount: number;
+    rawMemberCount?: number;
     created_at: number;
 }
 
@@ -307,6 +310,8 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
     const [deletingAll, setDeletingAll] = useState(false);
+    const [showDeleteEmptyConfirm, setShowDeleteEmptyConfirm] = useState(false);
+    const [deletingEmpty, setDeletingEmpty] = useState(false);
 
     const newNameInputRef = useRef<HTMLInputElement>(null);
     const editNameInputRef = useRef<HTMLInputElement>(null);
@@ -359,6 +364,8 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
                     setCreating(false);
                 } else if (showDeleteAllConfirm && !deletingAll) {
                     setShowDeleteAllConfirm(false);
+                } else if (showDeleteEmptyConfirm && !deletingEmpty) {
+                    setShowDeleteEmptyConfirm(false);
                 } else if (deleteConfirmId) {
                     setDeleteConfirmId(null);
                 } else {
@@ -368,7 +375,7 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [editingId, creating, deleteConfirmId, showDeleteAllConfirm, deletingAll, onClose]);
+    }, [editingId, creating, deleteConfirmId, showDeleteAllConfirm, deletingAll, showDeleteEmptyConfirm, deletingEmpty, onClose]);
 
     // Expand & load channels for a specific group
     const toggleExpandGroup = async (groupId: string) => {
@@ -507,6 +514,39 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
         }
     };
 
+    const emptyGroups = useMemo(() => {
+        return groups.filter(isFailoverGroupEmpty);
+    }, [groups]);
+
+    const emptyGroupCount = emptyGroups.length;
+
+    // Delete all empty groups at once (after confirmation dialog)
+    const handleDeleteEmpty = async () => {
+        if (deletingEmpty) return;
+        setDeletingEmpty(true);
+        try {
+            const emptyIds = emptyGroups.map((g) => g.group_id);
+            await deleteEmptyFailoverGroups(emptyIds);
+            setGroupMembersMap((m) => {
+                const next = new Map(m);
+                for (const id of emptyIds) next.delete(id);
+                return next;
+            });
+            setExpandedGroupIds((prev) => {
+                const next = new Set(prev);
+                for (const id of emptyIds) next.delete(id);
+                return next;
+            });
+            setDeleteConfirmId(null);
+            setShowDeleteEmptyConfirm(false);
+            await loadGroups();
+        } catch (e) {
+            console.error('Failed to delete empty failover groups:', e);
+        } finally {
+            setDeletingEmpty(false);
+        }
+    };
+
     // Filter groups by search
     const filteredGroups = useMemo(() => {
         if (!searchQuery.trim()) return groups;
@@ -612,6 +652,17 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
                                         <ZapSvg size={13} />
                                         <span>{i18n.t('settings:failover.smartAutoGroup', { defaultValue: 'Smart Auto-Group' })}</span>
                                     </button>
+
+                                    {emptyGroupCount > 0 && (
+                                        <button
+                                            className="fgl-delete-empty-btn"
+                                            onClick={() => setShowDeleteEmptyConfirm(true)}
+                                            title={t('failover.deleteEmptyTooltip', { defaultValue: 'Remove all failover groups that contain no channels' })}
+                                        >
+                                            <TrashSvg size={13} />
+                                            <span>{t('failover.deleteEmpty', { defaultValue: 'Delete Empty' })} ({emptyGroupCount})</span>
+                                        </button>
+                                    )}
 
                                     {groups.length > 0 && (
                                         <button
@@ -955,6 +1006,42 @@ export function FailoverGroupListModal({ onClose }: FailoverGroupListModalProps)
                                 disabled={deletingAll}
                             >
                                 {deletingAll ? i18n.t('common:deleting') : i18n.t('common:yesDelete')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showDeleteEmptyConfirm && (
+                <div
+                    className="fgl-confirm-overlay"
+                    onClick={() => { if (!deletingEmpty) setShowDeleteEmptyConfirm(false); }}
+                >
+                    <div className="fgl-confirm-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="fgl-confirm-title">
+                            <WarningSvg size={18} />
+                            <span>{t('failover.deleteEmptyTitle', { defaultValue: 'Remove Empty Failover Groups' })}</span>
+                        </h3>
+                        <p className="fgl-confirm-desc">
+                            {t('failover.deleteEmptyConfirm', {
+                                defaultValue: 'This permanently removes {{count}} empty failover group(s) with no channels. Groups with active channels will not be affected.',
+                                count: emptyGroupCount,
+                            })}
+                        </p>
+                        <div className="fgl-confirm-actions">
+                            <button
+                                className="fgl-confirm-cancel"
+                                onClick={() => setShowDeleteEmptyConfirm(false)}
+                                disabled={deletingEmpty}
+                            >
+                                {i18n.t('common:cancel')}
+                            </button>
+                            <button
+                                className="fgl-confirm-danger"
+                                onClick={handleDeleteEmpty}
+                                disabled={deletingEmpty}
+                            >
+                                {deletingEmpty ? i18n.t('common:deleting') : t('failover.deleteEmptyAction', { defaultValue: 'Remove Empty Groups' })}
                             </button>
                         </div>
                     </div>

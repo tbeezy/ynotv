@@ -2254,7 +2254,12 @@
       "sortByLabel": "ترتیب دیں",
       "sortChannels": "سب سے زیادہ چینلز",
       "sortCreated": "تخلیق کی تاریخ",
-      "sortName": "نام"
+      "sortName": "نام",
+      "deleteEmpty": "خالی کو حذف کریں",
+      "deleteEmptyTooltip": "وہ تمام فیل اوور گروپس ہٹا دیں جن میں کوئی چینل نہیں ہے",
+      "deleteEmptyTitle": "خالی فیل اوور گروپس ہٹائیں",
+      "deleteEmptyConfirm": "اس سے بغیر چینلز والے {{count}} خالی فیل اوور گروپس مستقل طور پر ہٹ جائیں گے۔ فعال چینلز والے گروپس متاثر نہیں ہوں گے۔",
+      "deleteEmptyAction": "خالی گروپس ہٹائیں"
     },
     "movies": {
       "genreCarousels": "مووی صنف کیروسلز",

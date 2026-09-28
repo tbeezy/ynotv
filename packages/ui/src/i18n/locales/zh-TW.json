@@ -2254,7 +2254,12 @@
       "sortByLabel": "排序方式",
       "sortChannels": "頻道最多",
       "sortCreated": "創建日期",
-      "sortName": "名稱"
+      "sortName": "名稱",
+      "deleteEmpty": "刪除空白組",
+      "deleteEmptyTooltip": "移除所有不包含任何頻道的故障轉移組",
+      "deleteEmptyTitle": "移除空白的故障轉移組",
+      "deleteEmptyConfirm": "這將永久刪除 {{count}} 個未分配頻道的空白故障轉移組。包含有效頻道的組不會受到影響。",
+      "deleteEmptyAction": "移除空白組"
     },
     "movies": {
       "genreCarousels": "電影類型輪播",

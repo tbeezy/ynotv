@@ -2254,7 +2254,12 @@
       "sortByLabel": "مرتبسازی بر اساس",
       "sortChannels": "بیشترین کانالها",
       "sortCreated": "تاریخ ایجاد",
-      "sortName": "نام"
+      "sortName": "نام",
+      "deleteEmpty": "حذف خالی‌ها",
+      "deleteEmptyTooltip": "حذف همه گروه‌های جایگزین که هیچ کانالی ندارند",
+      "deleteEmptyTitle": "حذف گروه‌های جایگزین خالی",
+      "deleteEmptyConfirm": "با این کار {{count}} گروه جایگزین خالی بدون کانال برای همیشه حذف می‌شوند. گروه‌های دارای کانال‌های فعال تحت تأثیر قرار نمی‌گیرند.",
+      "deleteEmptyAction": "حذف گروه‌های خالی"
     },
     "movies": {
       "genreCarousels": "چرخ‌فلکی ژانر فیلم",

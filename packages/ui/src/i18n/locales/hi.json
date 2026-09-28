@@ -2254,7 +2254,12 @@
       "sortByLabel": "क्रमबद्ध करें",
       "sortChannels": "सबसे अधिक चैनल",
       "sortCreated": "निर्माण तिथि",
-      "sortName": "नाम"
+      "sortName": "नाम",
+      "deleteEmpty": "खाली हटाएं",
+      "deleteEmptyTooltip": "उन सभी फ़ेलओवर समूहों को हटाएं जिनमें कोई चैनल नहीं है",
+      "deleteEmptyTitle": "खाली फ़ेलओवर समूह हटाएं",
+      "deleteEmptyConfirm": "यह बिना किसी चैनल वाले {{count}} खाली फ़ेलओवर समूहों को स्थायी रूप से हटा देगा। सक्रिय चैनलों वाले समूह प्रभावित नहीं होंगे।",
+      "deleteEmptyAction": "खाली समूह हटाएं"
     },
     "movies": {
       "genreCarousels": "मूवी शैली कैरोसेल",

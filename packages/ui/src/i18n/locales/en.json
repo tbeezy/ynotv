@@ -2254,7 +2254,12 @@
       "sortByLabel": "Sort by",
       "sortChannels": "Most Channels",
       "sortCreated": "Date Created",
-      "sortName": "Name"
+      "sortName": "Name",
+      "deleteEmpty": "Delete Empty",
+      "deleteEmptyTooltip": "Remove all failover groups that contain no channels",
+      "deleteEmptyTitle": "Remove Empty Failover Groups",
+      "deleteEmptyConfirm": "This permanently removes {{count}} empty failover group(s) with no channels. Groups with active channels will not be affected.",
+      "deleteEmptyAction": "Remove Empty Groups"
     },
     "movies": {
       "genreCarousels": "Movie Genre Carousels",

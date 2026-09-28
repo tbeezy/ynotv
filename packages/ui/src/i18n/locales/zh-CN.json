@@ -2254,7 +2254,12 @@
       "sortByLabel": "排序方式",
       "sortChannels": "频道最多",
       "sortCreated": "创建日期",
-      "sortName": "名称"
+      "sortName": "名称",
+      "deleteEmpty": "删除空组",
+      "deleteEmptyTooltip": "删除所有不包含任何频道的故障转移组",
+      "deleteEmptyTitle": "删除空的故障转移组",
+      "deleteEmptyConfirm": "这将永久删除 {{count}} 个未分配频道的空故障转移组。包含有效频道的组不会受到影响。",
+      "deleteEmptyAction": "删除空组"
     },
     "movies": {
       "genreCarousels": "电影类型轮播",

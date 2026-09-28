@@ -2254,7 +2254,12 @@
       "sortByLabel": "Sırala",
       "sortChannels": "En çok kanal",
       "sortCreated": "Oluşturulma Tarihi",
-      "sortName": "Ad"
+      "sortName": "Ad",
+      "deleteEmpty": "Boş olanları sil",
+      "deleteEmptyTooltip": "Kanal içermeyen tüm yük devretme gruplarını kaldırın",
+      "deleteEmptyTitle": "Boş Yük Devretme Gruplarını Kaldır",
+      "deleteEmptyConfirm": "Bu işlem kanal atanmamış {{count}} boş yük devretme grubunu kalıcı olarak kaldırır. Aktif kanalları olan gruplar etkilenmez.",
+      "deleteEmptyAction": "Boş Grupları Kaldır"
     },
     "movies": {
       "genreCarousels": "Film Türü Karuselleri",

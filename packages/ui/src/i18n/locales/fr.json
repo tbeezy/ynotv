@@ -2254,7 +2254,12 @@
       "sortByLabel": "Trier par",
       "sortChannels": "Plus de chaînes",
       "sortCreated": "Date de création",
-      "sortName": "Nom"
+      "sortName": "Nom",
+      "deleteEmpty": "Supprimer les vides",
+      "deleteEmptyTooltip": "Supprimer tous les groupes de basculement qui ne contiennent aucune chaîne",
+      "deleteEmptyTitle": "Supprimer les groupes de basculement vides",
+      "deleteEmptyConfirm": "Cela supprimera définitivement {{count}} groupe(s) de basculement vide(s) sans chaîne. Les groupes contenant des chaînes actives ne seront pas affectés.",
+      "deleteEmptyAction": "Supprimer les groupes vides"
     },
     "movies": {
       "genreCarousels": "Carrousels de genres de films",

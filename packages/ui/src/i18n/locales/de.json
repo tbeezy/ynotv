@@ -2254,7 +2254,12 @@
       "sortByLabel": "Sortieren nach",
       "sortChannels": "Meiste Sender",
       "sortCreated": "Erstellungsdatum",
-      "sortName": "Name"
+      "sortName": "Name",
+      "deleteEmpty": "Leere löschen",
+      "deleteEmptyTooltip": "Alle Failover-Gruppen entfernen, die keine Kanäle enthalten",
+      "deleteEmptyTitle": "Leere Failover-Gruppen entfernen",
+      "deleteEmptyConfirm": "Dadurch werden {{count}} leere Failover-Gruppe(n) ohne Kanäle dauerhaft entfernt. Gruppen mit aktiven Kanälen sind nicht betroffen.",
+      "deleteEmptyAction": "Leere Gruppen entfernen"
     },
     "movies": {
       "genreCarousels": "Genre-Karussells für Filme",

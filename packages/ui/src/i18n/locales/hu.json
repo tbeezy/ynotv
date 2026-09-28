@@ -2254,7 +2254,12 @@
       "sortByLabel": "Rendezés",
       "sortChannels": "Legtöbb csatorna",
       "sortCreated": "Létrehozás dátuma",
-      "sortName": "Név"
+      "sortName": "Név",
+      "deleteEmpty": "Üresek törlése",
+      "deleteEmptyTooltip": "Az összes olyan feladatátvételi csoport eltávolítása, amely nem tartalmaz csatornákat",
+      "deleteEmptyTitle": "Üres feladatátvételi csoportok eltávolítása",
+      "deleteEmptyConfirm": "Ez véglegesen eltávolít {{count}} üres feladatátvételi csoportot, amelyhez nem tartozik csatorna. Az aktív csatornákkal rendelkező csoportok nem változnak.",
+      "deleteEmptyAction": "Üres csoportok eltávolítása"
     },
     "movies": {
       "genreCarousels": "Film műfaji körhinták",

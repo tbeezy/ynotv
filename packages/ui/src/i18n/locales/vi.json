@@ -3888,7 +3888,12 @@
       "sortByLabel": "Sắp Xếp Theo",
       "sortChannels": "Nhiều Kênh Nhất",
       "sortCreated": "Ngày Tạo",
-      "sortName": "Tên"
+      "sortName": "Tên",
+      "deleteEmpty": "Xóa nhóm trống",
+      "deleteEmptyTooltip": "Xóa tất cả các nhóm chuyển đổi dự phòng không có kênh nào",
+      "deleteEmptyTitle": "Xóa nhóm chuyển đổi dự phòng trống",
+      "deleteEmptyConfirm": "Thao tác này sẽ xóa vĩnh viễn {{count}} nhóm chuyển đổi dự phòng trống không có kênh. Các nhóm có kênh đang hoạt động sẽ không bị ảnh hưởng.",
+      "deleteEmptyAction": "Xóa nhóm trống"
     }
   },
   "sports": {

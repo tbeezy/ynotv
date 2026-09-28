@@ -2254,7 +2254,12 @@
       "sortByLabel": "Sortiraj po",
       "sortChannels": "Najviše kanala",
       "sortCreated": "Datum kreiranja",
-      "sortName": "Naziv"
+      "sortName": "Naziv",
+      "deleteEmpty": "Obriši prazne",
+      "deleteEmptyTooltip": "Ukloni sve grupe za prebacivanje koje ne sadrže kanale",
+      "deleteEmptyTitle": "Ukloni prazne grupe za prebacivanje",
+      "deleteEmptyConfirm": "Ovo će trajno ukloniti {{count}} praznih grupa za prebacivanje bez kanala. Grupe s aktivnim kanalima neće biti promijenjene.",
+      "deleteEmptyAction": "Ukloni prazne grupe"
     },
     "movies": {
       "genreCarousels": "Karuzele žanrova filmova",

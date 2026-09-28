@@ -2254,7 +2254,12 @@
       "sortByLabel": "Sorteren op",
       "sortChannels": "Meeste kanalen",
       "sortCreated": "Aanmaakdatum",
-      "sortName": "Naam"
+      "sortName": "Naam",
+      "deleteEmpty": "Lege verwijderen",
+      "deleteEmptyTooltip": "Verwijder alle failover-groepen die geen kanalen bevatten",
+      "deleteEmptyTitle": "Lege failover-groepen verwijderen",
+      "deleteEmptyConfirm": "Hiermee worden {{count}} lege failover-groep(en) zonder kanalen permanent verwijderd. Groepen met actieve kanalen worden niet beïnvloed.",
+      "deleteEmptyAction": "Lege groepen verwijderen"
     },
     "movies": {
       "genreCarousels": "Filmgenrecarrousels",

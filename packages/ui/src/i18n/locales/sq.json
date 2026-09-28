@@ -2254,7 +2254,12 @@
       "sortByLabel": "Rendit sipas",
       "sortChannels": "Më shumë kanale",
       "sortCreated": "Data e krijimit",
-      "sortName": "Emri"
+      "sortName": "Emri",
+      "deleteEmpty": "Fshi të zbrazëtat",
+      "deleteEmptyTooltip": "Hiq të gjitha grupet e zëvendësimit që nuk përmbajnë kanale",
+      "deleteEmptyTitle": "Hiq grupet e zbrazëta të zëvendësimit",
+      "deleteEmptyConfirm": "Kjo do të heqë përfundimisht {{count}} grup(e) të zbrazët(a) të zëvendësimit pa kanale. Grupet me kanale aktive nuk do të preken.",
+      "deleteEmptyAction": "Hiq grupet e zbrazëta"
     },
     "movies": {
       "genreCarousels": "Karuselët e zhanreve të filmave",

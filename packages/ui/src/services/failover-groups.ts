@@ -366,6 +366,47 @@ export async function deleteAllFailoverGroups(): Promise<number> {
   return groupCount;
 }
 
+/**
+ * Delete all failover groups that have no channels (or the specified empty group IDs).
+ * A group is considered empty only if it has zero member mappings assigned (regardless
+ * of whether sources are currently enabled or disabled).
+ * Returns how many groups were removed.
+ */
+export async function deleteEmptyFailoverGroups(targetGroupIds?: string[]): Promise<number> {
+  let idsToDelete: string[];
+  if (targetGroupIds !== undefined) {
+    idsToDelete = targetGroupIds;
+  } else {
+    const [groups, allMembers] = await Promise.all([
+      db.failoverGroups.toArray(),
+      db.failoverGroupMembers.toArray(),
+    ]);
+    const populatedGroupIds = new Set(allMembers.map((m) => m.group_id));
+    idsToDelete = groups.filter((g) => !populatedGroupIds.has(g.group_id)).map((g) => g.group_id);
+  }
+
+  if (idsToDelete.length === 0) return 0;
+
+  await db.transaction('rw', [db.failoverGroups, db.failoverGroupMembers], async () => {
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
+      const chunk = idsToDelete.slice(i, i + CHUNK_SIZE);
+      await db.failoverGroupMembers.where('group_id').anyOf(chunk).delete();
+      await db.failoverGroups.bulkDelete(chunk);
+    }
+  });
+
+  return idsToDelete.length;
+}
+
+/** Helper to determine if a failover group has no channels assigned */
+export function isFailoverGroupEmpty(group: { rawMemberCount?: number; memberCount?: number }): boolean {
+  if (group.rawMemberCount !== undefined) {
+    return group.rawMemberCount === 0;
+  }
+  return (group.memberCount ?? 0) === 0;
+}
+
 /** Rename a failover group */
 export async function renameFailoverGroup(groupId: string, newName: string): Promise<void> {
   await db.failoverGroups.update(groupId, { name: newName });
@@ -387,7 +428,7 @@ export async function getFailoverGroupForChannel(
 
 /** List all failover groups with their member count */
 export async function listFailoverGroups(): Promise<
-  Array<FailoverGroup & { memberCount: number }>
+  Array<FailoverGroup & { memberCount: number; rawMemberCount: number }>
 > {
   const [groups, allMembers] = await Promise.all([
     db.failoverGroups.toArray(),
@@ -395,7 +436,13 @@ export async function listFailoverGroups(): Promise<
   ]);
 
   if (allMembers.length === 0) {
-    return groups.map((g) => ({ ...g, memberCount: 0 }));
+    return groups.map((g) => ({ ...g, memberCount: 0, rawMemberCount: 0 }));
+  }
+
+  // Count raw members per group (regardless of whether source is currently enabled)
+  const rawMemberCounts = new Map<string, number>();
+  for (const m of allMembers) {
+    rawMemberCounts.set(m.group_id, (rawMemberCounts.get(m.group_id) || 0) + 1);
   }
 
   const streamIds = allMembers.map((m) => m.stream_id);
@@ -425,6 +472,7 @@ export async function listFailoverGroups(): Promise<
   return groups.map((g) => ({
     ...g,
     memberCount: memberCounts.get(g.group_id) || 0,
+    rawMemberCount: rawMemberCounts.get(g.group_id) || 0,
   }));
 }
 

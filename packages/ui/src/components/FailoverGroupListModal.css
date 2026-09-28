@@ -150,6 +150,29 @@
     color: var(--status-danger-text, #ff6b6b);
 }
 
+/* ── Delete Empty (cleanup) ── */
+.fgl-delete-empty-btn {
+    padding: 8px 14px;
+    border-radius: 7px;
+    border: 1px solid rgba(255, 170, 0, 0.35);
+    background: rgba(255, 170, 0, 0.12);
+    color: var(--status-warning-text, #ffaa00);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.fgl-delete-empty-btn:hover {
+    background: rgba(255, 170, 0, 0.22);
+    border-color: rgba(255, 170, 0, 0.55);
+    color: var(--status-warning-text, #ffaa00);
+}
+
 .fgl-create-row {
     display: flex;
     gap: 8px;

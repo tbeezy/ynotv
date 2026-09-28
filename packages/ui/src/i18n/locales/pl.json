@@ -2254,7 +2254,12 @@
       "sortByLabel": "Sortuj wg",
       "sortChannels": "Najwięcej kanałów",
       "sortCreated": "Data utworzenia",
-      "sortName": "Nazwa"
+      "sortName": "Nazwa",
+      "deleteEmpty": "Usuń puste",
+      "deleteEmptyTooltip": "Usuń wszystkie grupy przełączania awaryjnego, które nie zawierają kanałów",
+      "deleteEmptyTitle": "Usuń puste grupy awaryjne",
+      "deleteEmptyConfirm": "To trwale usunie {{count}} pustych grup awaryjnych bez przypisanych kanałów. Grupy z aktywnymi kanałami nie zostaną zmienione.",
+      "deleteEmptyAction": "Usuń puste grupy"
     },
     "movies": {
       "genreCarousels": "Karuzele gatunków filmów",

@@ -2254,7 +2254,12 @@
       "sortByLabel": "Ordenar por",
       "sortChannels": "Más canales",
       "sortCreated": "Fecha de creación",
-      "sortName": "Nombre"
+      "sortName": "Nombre",
+      "deleteEmpty": "Eliminar vacíos",
+      "deleteEmptyTooltip": "Eliminar todos los grupos de conmutación por error que no contengan canales",
+      "deleteEmptyTitle": "Eliminar grupos de conmutación vacíos",
+      "deleteEmptyConfirm": "Esto eliminará permanentemente {{count}} grupo(s) de conmutación por error vacíos sin canales. Los grupos con canales activos no se verán afectados.",
+      "deleteEmptyAction": "Eliminar grupos vacíos"
     },
     "movies": {
       "genreCarousels": "Carruseles de géneros de películas",

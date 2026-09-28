@@ -2254,7 +2254,12 @@
       "sortByLabel": "Ordina per",
       "sortChannels": "Più canali",
       "sortCreated": "Data di creazione",
-      "sortName": "Nome"
+      "sortName": "Nome",
+      "deleteEmpty": "Elimina vuoti",
+      "deleteEmptyTooltip": "Rimuove tutti i gruppi di failover che non contengono canali",
+      "deleteEmptyTitle": "Rimuovi gruppi di failover vuoti",
+      "deleteEmptyConfirm": "Questo rimuoverà definitivamente {{count}} gruppo/i di failover vuoto/i senza canali. I gruppi con canali attivi non saranno modificati.",
+      "deleteEmptyAction": "Rimuovi gruppi vuoti"
     },
     "movies": {
       "genreCarousels": "Caroselli generi film",
