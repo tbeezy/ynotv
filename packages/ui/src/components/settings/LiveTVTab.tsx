@@ -1114,7 +1114,7 @@ export function LiveTVTab({
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <input
                   type="range"
-                  min="10"
+                  min="8"
                   max="24"
                   value={channelFontSize}
                   onChange={(e) => onChannelFontSizeChange(parseInt(e.target.value))}
@@ -1135,7 +1135,7 @@ export function LiveTVTab({
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <input
                   type="range"
-                  min="10"
+                  min="8"
                   max="24"
                   value={categoryFontSize}
                   onChange={(e) => onCategoryFontSizeChange(parseInt(e.target.value))}
@@ -1157,7 +1157,7 @@ export function LiveTVTab({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <input
                     type="range"
-                    min="10"
+                    min="8"
                     max="24"
                     value={sourceFontSize}
                     onChange={(e) => onSourceFontSizeChange(parseInt(e.target.value))}
@@ -1179,7 +1179,7 @@ export function LiveTVTab({
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <input
                   type="range"
-                  min="10"
+                  min="8"
                   max="24"
                   value={epgProgramFontSize}
                   onChange={(e) => onEpgProgramFontSizeChange(parseInt(e.target.value))}
