@@ -1829,7 +1829,8 @@
         "toggleStrem": "Prebaci Strem",
         "toggleJellyfin": "Prebaci Jellyfin",
         "toggleShortcutsOverlay": "Prebaci preklop prečica",
-        "mouseBackNavigation": "Navigacija unazad (dugme miša)"
+        "mouseBackNavigation": "Navigacija unazad (dugme miša)",
+        "toggleConnectionInfo": "Prikaži / sakrij informacije o vezi"
       },
       "closeOverlay": "Zatvori preklop prečica",
       "unbound": "Nedodeljeno",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} preuzimanja su u toku",
     "downloadsInProgress_zero": "{{count}} preuzimanja su u toku",
     "hdrToSdrOn": "HDR u SDR: Uključeno",
-    "hdrToSdrOff": "HDR u SDR: Isključeno"
+    "hdrToSdrOff": "HDR u SDR: Isključeno",
+    "toggleConnectionInfo": "Uključi/isključi informacije o vezi (O)",
+    "connectionInfo": {
+      "title": "Informacije o vezi",
+      "activeConnections": "Veze",
+      "maxConnections": "Maks. veza",
+      "status": "Status",
+      "statusActive": "Aktivno",
+      "statusExpired": "Isteklo",
+      "statusDisabled": "Onemogućeno",
+      "statusBanned": "Blokirano",
+      "statusError": "Greška",
+      "expiryDate": "Datum isteka",
+      "account": "Račun",
+      "mac": "MAC",
+      "server": "Server",
+      "type": "Vrsta",
+      "unlimited": "Neograničeno",
+      "refresh": "Osvježi",
+      "close": "Zatvori",
+      "noStream": "Nema aktivnog strima",
+      "noStreamDesc": "Pustite kanal ili video da provjerite veze provajdera.",
+      "fetching": "Preuzimanje informacija...",
+      "dismissHintEsc": "Automatski se zatvara za {{seconds}}s · Pritisnite Esc za zatvaranje",
+      "dismissHint": "Automatski se zatvara za {{seconds}}s · Pritisnite Esc ili {{key}} za zatvaranje"
+    }
   },
   "stremio": {
     "account": "Nalog",

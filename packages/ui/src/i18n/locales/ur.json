@@ -1829,7 +1829,8 @@
         "toggleStrem": "اسٹریم ٹوگل",
         "toggleJellyfin": "جیلی فن ٹوگل",
         "toggleShortcutsOverlay": "شارٹ کٹس اوورلے ٹوگل",
-        "mouseBackNavigation": "واپس نیویگیشن (ماؤس بٹن)"
+        "mouseBackNavigation": "واپس نیویگیشن (ماؤس بٹن)",
+        "toggleConnectionInfo": "کنکشن کی معلومات دکھائیں / چھپائیں"
       },
       "closeOverlay": "شارٹ کٹس اوورلے بند کریں",
       "unbound": "غیر منسلک",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} ڈاؤن لوڈز جاری",
     "downloadsInProgress_zero": "{{count}} ڈاؤن لوڈز جاری",
     "hdrToSdrOn": "HDR سے SDR: آن",
-    "hdrToSdrOff": "HDR سے SDR: آف"
+    "hdrToSdrOff": "HDR سے SDR: آف",
+    "toggleConnectionInfo": "کنکشن کی معلومات ٹوگل کریں (O)",
+    "connectionInfo": {
+      "title": "کنکشن کی معلومات",
+      "activeConnections": "کنکشنز",
+      "maxConnections": "زیادہ سے زیادہ کنکشنز",
+      "status": "حیثیت",
+      "statusActive": "فعال",
+      "statusExpired": "میعاد ختم",
+      "statusDisabled": "غیر فعال",
+      "statusBanned": "پابندی عائد",
+      "statusError": "خرابی",
+      "expiryDate": "میعاد ختم ہونے کی تاریخ",
+      "account": "اکاؤنٹ",
+      "mac": "MAC",
+      "server": "سرور",
+      "type": "قسم",
+      "unlimited": "لامحدود",
+      "refresh": "تازہ کریں",
+      "close": "بند کریں",
+      "noStream": "کوئی فعال سلسلہ نہیں",
+      "noStreamDesc": "کنکشن چیک کرنے کے لیے کوئی چینل یا ویڈیو چلائیں۔",
+      "fetching": "معلومات حاصل کی جا رہی ہیں...",
+      "dismissHintEsc": "{{seconds}} سیکنڈ میں خودکار بند ہو جائے گا · بند کرنے کے لیے Esc دبائیں",
+      "dismissHint": "{{seconds}} سیکنڈ میں خودکار بند ہو جائے گا · بند کرنے کے لیے Esc یا {{key}} دبائیں"
+    }
   },
   "stremio": {
     "account": "اکاؤنٹ",

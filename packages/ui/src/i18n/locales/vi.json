@@ -1417,7 +1417,32 @@
     "downloadsInProgress_two": "{{count}} lượt tải xuống đang tiến hành",
     "downloadsInProgress_zero": "{{count}} lượt tải xuống đang tiến hành",
     "hdrToSdrOn": "HDR sang SDR: Bật",
-    "hdrToSdrOff": "HDR sang SDR: Tắt"
+    "hdrToSdrOff": "HDR sang SDR: Tắt",
+    "toggleConnectionInfo": "Bật/tắt thông tin kết nối (O)",
+    "connectionInfo": {
+      "title": "Thông tin kết nối",
+      "activeConnections": "Kết nối",
+      "maxConnections": "Kết nối tối đa",
+      "status": "Trạng thái",
+      "statusActive": "Hoạt động",
+      "statusExpired": "Hết hạn",
+      "statusDisabled": "Đã tắt",
+      "statusBanned": "Bị cấm",
+      "statusError": "Lỗi",
+      "expiryDate": "Ngày hết hạn",
+      "account": "Tài khoản",
+      "mac": "MAC",
+      "server": "Máy chủ",
+      "type": "Loại",
+      "unlimited": "Không giới hạn",
+      "refresh": "Làm mới",
+      "close": "Đóng",
+      "noStream": "Không có luồng đang phát",
+      "noStreamDesc": "Phát một kênh hoặc video để kiểm tra kết nối nhà cung cấp.",
+      "fetching": "Đang tải thông tin...",
+      "dismissHintEsc": "Tự động đóng sau {{seconds}}s · Nhấn Esc để đóng",
+      "dismissHint": "Tự động đóng sau {{seconds}}s · Nhấn Esc hoặc {{key}} để đóng"
+    }
   },
   "subtitles": {
     "header": "Phụ Đề",
@@ -3472,7 +3497,8 @@
         "toggleStrem": "Bật/Tắt Strem",
         "toggleJellyfin": "Bật/Tắt Jellyfin",
         "toggleShortcutsOverlay": "Bật/Tắt Lớp Phủ Phím Tắt",
-        "mouseBackNavigation": "Điều Hướng Quay Lại (Nút Chuột)"
+        "mouseBackNavigation": "Điều Hướng Quay Lại (Nút Chuột)",
+        "toggleConnectionInfo": "Hiện / Ẩn thông tin kết nối"
       },
       "closeOverlay": "Đóng lớp phủ phím tắt",
       "unbound": "Chưa Gán",

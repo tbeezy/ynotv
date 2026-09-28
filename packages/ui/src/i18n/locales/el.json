@@ -1829,7 +1829,8 @@
         "toggleStrem": "Εναλλαγή Strem",
         "toggleJellyfin": "Εναλλαγή Jellyfin",
         "toggleShortcutsOverlay": "Εναλλαγή Επικάλυψης Συντομεύσεων",
-        "mouseBackNavigation": "Πλοήγηση Πίσω (Κουμπί Ποντικιού)"
+        "mouseBackNavigation": "Πλοήγηση Πίσω (Κουμπί Ποντικιού)",
+        "toggleConnectionInfo": "Εμφάνιση / Απόκρυψη πληροφοριών σύνδεσης"
       },
       "closeOverlay": "Κλείσιμο επικάλυψης συντομεύσεων",
       "unbound": "Χωρίς σύνδεση",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} λήψεις σε εξέλιξη",
     "downloadsInProgress_zero": "{{count}} λήψεις σε εξέλιξη",
     "hdrToSdrOn": "HDR σε SDR: Ενεργό",
-    "hdrToSdrOff": "HDR σε SDR: Ανενεργό"
+    "hdrToSdrOff": "HDR σε SDR: Ανενεργό",
+    "toggleConnectionInfo": "Εναλλαγή πληροφοριών σύνδεσης (O)",
+    "connectionInfo": {
+      "title": "Πληροφορίες σύνδεσης",
+      "activeConnections": "Συνδέσεις",
+      "maxConnections": "Μέγιστες συνδέσεις",
+      "status": "Κατάσταση",
+      "statusActive": "Ενεργό",
+      "statusExpired": "Έληξε",
+      "statusDisabled": "Απενεργοποιημένο",
+      "statusBanned": "Αποκλεισμένο",
+      "statusError": "Σφάλμα",
+      "expiryDate": "Ημερομηνία λήξης",
+      "account": "Λογαριασμός",
+      "mac": "MAC",
+      "server": "Διακομιστής",
+      "type": "Τύπος",
+      "unlimited": "Απεριόριστο",
+      "refresh": "Ανανέωση",
+      "close": "Κλείσιμο",
+      "noStream": "Δεν υπάρχει ενεργή ροή",
+      "noStreamDesc": "Αναπαραγάγετε ένα κανάλι ή βίντεο για να δείτε τις συνδέσεις.",
+      "fetching": "Ανάκτηση πληροφοριών παρόχου...",
+      "dismissHintEsc": "Αυτόματο κλείσιμο σε {{seconds}}δ · Πατήστε Esc για κλείσιμο",
+      "dismissHint": "Αυτόματο κλείσιμο σε {{seconds}}δ · Πατήστε Esc ή {{key}} για κλείσιμο"
+    }
   },
   "stremio": {
     "account": "Λογαριασμός",

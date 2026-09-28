@@ -1829,7 +1829,8 @@
         "toggleStrem": "Strem'i Aç / Kapat",
         "toggleJellyfin": "Jellyfin'i Aç / Kapat",
         "toggleShortcutsOverlay": "Kısayol Kaplamasını Aç / Kapat",
-        "mouseBackNavigation": "Geri Gezinme (Fare Düğmesi)"
+        "mouseBackNavigation": "Geri Gezinme (Fare Düğmesi)",
+        "toggleConnectionInfo": "Bağlantı Bilgilerini Göster / Gizle"
       },
       "closeOverlay": "Kısayol kaplamasını kapat",
       "unbound": "Atanmamış",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} indirme sürüyor",
     "downloadsInProgress_zero": "{{count}} indirme sürüyor",
     "hdrToSdrOn": "HDR'den SDR'ye: Açık",
-    "hdrToSdrOff": "HDR'den SDR'ye: Kapalı"
+    "hdrToSdrOff": "HDR'den SDR'ye: Kapalı",
+    "toggleConnectionInfo": "Bağlantı bilgilerini aç/kapat (O)",
+    "connectionInfo": {
+      "title": "Bağlantı Bilgileri",
+      "activeConnections": "Bağlantılar",
+      "maxConnections": "Maks. Bağlantı",
+      "status": "Durum",
+      "statusActive": "Aktif",
+      "statusExpired": "Süresi Doldu",
+      "statusDisabled": "Devre Dışı",
+      "statusBanned": "Yasaklı",
+      "statusError": "Hata",
+      "expiryDate": "Bitiş Tarihi",
+      "account": "Hesap",
+      "mac": "MAC",
+      "server": "Sunucu",
+      "type": "Tür",
+      "unlimited": "Sınırsız",
+      "refresh": "Yenile",
+      "close": "Kapat",
+      "noStream": "Aktif yayın yok",
+      "noStreamDesc": "Sağlayıcı bağlantı durumunu görmek için bir kanal veya video oynatın.",
+      "fetching": "Sağlayıcı bilgileri alınıyor...",
+      "dismissHintEsc": "{{seconds}} sn içinde otomatik kapanır · Kapatmak için Esc tuşuna basın",
+      "dismissHint": "{{seconds}} sn içinde otomatik kapanır · Kapatmak için Esc veya {{key}} tuşuna basın"
+    }
   },
   "stremio": {
     "account": "Hesap",

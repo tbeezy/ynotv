@@ -1,0 +1,355 @@
+/* Connection Info Overlay - floating provider connections & status card */
+.conn-info-overlay-root {
+  position: fixed;
+  top: 40px;
+  right: 40px;
+  z-index: 10000;
+  pointer-events: auto;
+  user-select: none;
+  font-family: inherit;
+  animation: conn-info-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes conn-info-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.conn-info-card {
+  width: 380px;
+  max-width: calc(100vw - 48px);
+  background: rgba(18, 20, 28, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text-primary, #ffffff);
+  box-sizing: border-box;
+  user-select: text;
+}
+
+/* Card Header */
+.conn-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.conn-info-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.conn-info-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.conn-info-title-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.conn-info-provider-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.conn-info-stream-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.conn-info-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Status Chip */
+.conn-info-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.conn-info-status-chip--active {
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+}
+
+.conn-info-status-chip--expired,
+.conn-info-status-chip--banned,
+.conn-info-status-chip--error {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.conn-info-status-chip--disabled,
+.conn-info-status-chip--unknown {
+  background: rgba(156, 163, 175, 0.16);
+  border: 1px solid rgba(156, 163, 175, 0.35);
+  color: #d1d5db;
+}
+
+.conn-info-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* Action Buttons */
+.conn-info-action-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.conn-info-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.conn-info-action-btn:active {
+  transform: scale(0.95);
+}
+
+.conn-info-action-btn.is-spinning svg {
+  animation: conn-info-spin 0.8s linear infinite;
+}
+
+@keyframes conn-info-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Connections Highlight Area */
+.conn-info-highlight-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conn-info-highlight-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.conn-info-highlight-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+
+.conn-info-highlight-values {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.conn-info-val-active {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #38bdf8;
+  line-height: 1;
+}
+
+.conn-info-val-active.is-limit {
+  color: #f87171;
+}
+
+.conn-info-val-divider {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 400;
+}
+
+.conn-info-val-max {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1;
+}
+
+/* Meter Bar */
+.conn-info-meter-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.conn-info-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.conn-info-meter-fill.meter-normal {
+  background: linear-gradient(90deg, #38bdf8, #60a5fa);
+}
+
+.conn-info-meter-fill.meter-warning {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+/* Detail Table */
+.conn-info-details-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.conn-info-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.conn-info-detail-key {
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  font-size: 0.8rem;
+}
+
+.conn-info-detail-val {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.conn-info-detail-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  letter-spacing: -0.01em;
+}
+
+.conn-info-cached-badge {
+  font-size: 0.7rem;
+  color: #fbbf24;
+  margin-left: 6px;
+  font-weight: normal;
+}
+
+/* Loading & Empty States */
+.conn-info-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 0;
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+  font-size: 0.85rem;
+}
+
+.conn-info-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #60a5fa;
+  border-radius: 50%;
+  animation: conn-info-spin 0.7s linear infinite;
+}
+
+.conn-info-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 8px;
+  gap: 8px;
+}
+
+.conn-info-empty-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.conn-info-empty-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Footer */
+.conn-info-footer {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding-top: 4px;
+  user-select: none;
+}

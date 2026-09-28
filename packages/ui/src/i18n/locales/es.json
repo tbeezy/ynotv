@@ -1829,7 +1829,8 @@
         "toggleStrem": "Alternar Strem",
         "toggleJellyfin": "Alternar Jellyfin",
         "toggleShortcutsOverlay": "Alternar superposición de atajos",
-        "mouseBackNavigation": "Navegación atrás (botón del ratón)"
+        "mouseBackNavigation": "Navegación atrás (botón del ratón)",
+        "toggleConnectionInfo": "Mostrar / Ocultar información de conexión"
       },
       "closeOverlay": "Cerrar superposición de atajos",
       "unbound": "Sin asignar",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} descargas en curso",
     "downloadsInProgress_zero": "{{count}} descargas en curso",
     "hdrToSdrOn": "HDR a SDR: Activado",
-    "hdrToSdrOff": "HDR a SDR: Desactivado"
+    "hdrToSdrOff": "HDR a SDR: Desactivado",
+    "toggleConnectionInfo": "Alternar información de conexión (O)",
+    "connectionInfo": {
+      "title": "Información de conexión",
+      "activeConnections": "Conexiones",
+      "maxConnections": "Conexiones máx.",
+      "status": "Estado",
+      "statusActive": "Activo",
+      "statusExpired": "Caducado",
+      "statusDisabled": "Desactivado",
+      "statusBanned": "Bloqueado",
+      "statusError": "Error",
+      "expiryDate": "Fecha de caducidad",
+      "account": "Cuenta",
+      "mac": "MAC",
+      "server": "Servidor",
+      "type": "Tipo",
+      "unlimited": "Ilimitado",
+      "refresh": "Actualizar",
+      "close": "Cerrar",
+      "noStream": "Sin transmisión activa",
+      "noStreamDesc": "Reproduzca un canal o video para inspeccionar las conexiones del proveedor.",
+      "fetching": "Obteniendo información del proveedor...",
+      "dismissHintEsc": "Se cierra automáticamente en {{seconds}}s · Presione Esc para cerrar",
+      "dismissHint": "Se cierra automáticamente en {{seconds}}s · Presione Esc u {{key}} para cerrar"
+    }
   },
   "stremio": {
     "account": "Cuenta",

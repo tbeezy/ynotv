@@ -1829,7 +1829,8 @@
         "toggleStrem": "Przełącz Strem",
         "toggleJellyfin": "Przełącz Jellyfin",
         "toggleShortcutsOverlay": "Przełącz nakładkę skrótów",
-        "mouseBackNavigation": "Nawigacja wstecz (przycisk myszy)"
+        "mouseBackNavigation": "Nawigacja wstecz (przycisk myszy)",
+        "toggleConnectionInfo": "Pokaż / ukryj informacje o połączeniu"
       },
       "closeOverlay": "Zamknij nakładkę skrótów",
       "unbound": "Nieprzypisany",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "Trwają {{count}} pobrania",
     "downloadsInProgress_zero": "Trwają {{count}} pobrania",
     "hdrToSdrOn": "HDR do SDR: Wł.",
-    "hdrToSdrOff": "HDR do SDR: Wył."
+    "hdrToSdrOff": "HDR do SDR: Wył.",
+    "toggleConnectionInfo": "Przełącz informacje o połączeniu (O)",
+    "connectionInfo": {
+      "title": "Informacje o połączeniu",
+      "activeConnections": "Połączenia",
+      "maxConnections": "Maks. połączeń",
+      "status": "Status",
+      "statusActive": "Aktywny",
+      "statusExpired": "Wygasły",
+      "statusDisabled": "Wyłączony",
+      "statusBanned": "Zablokowany",
+      "statusError": "Błąd",
+      "expiryDate": "Data wygaśnięcia",
+      "account": "Konto",
+      "mac": "MAC",
+      "server": "Serwer",
+      "type": "Typ",
+      "unlimited": "Bez limitu",
+      "refresh": "Odśwież",
+      "close": "Zamknij",
+      "noStream": "Brak aktywnego strumienia",
+      "noStreamDesc": "Włącz kanał lub wideo, aby sprawdzić połączenia dostawcy.",
+      "fetching": "Pobieranie informacji o dostawcy...",
+      "dismissHintEsc": "Zamyka się automatycznie za {{seconds}}s · Naciśnij Esc, aby zamknąć",
+      "dismissHint": "Zamyka się automatycznie za {{seconds}}s · Naciśnij Esc lub {{key}}, aby zamknąć"
+    }
   },
   "stremio": {
     "account": "Konto",

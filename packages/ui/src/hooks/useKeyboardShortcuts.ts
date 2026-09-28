@@ -41,6 +41,7 @@ export interface UseKeyboardShortcutsOptions {
     // --- Action callbacks ---
     showShortcutsOverlay: boolean;
     setShowShortcutsOverlay: React.Dispatch<React.SetStateAction<boolean>>;
+    handleToggleConnectionInfo?: () => void;
     handleTogglePlay: () => void;
     handleToggleMute: () => void;
     handleToggleStats: () => void;
@@ -125,6 +126,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 lastPlayedChannel,
                 showShortcutsOverlay,
                 setShowShortcutsOverlay,
+                handleToggleConnectionInfo,
                 handleTogglePlay,
                 handleToggleMute,
                 handleToggleStats,
@@ -156,6 +158,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             } else if (matches('toggleStats', key, code)) {
                 e.preventDefault();
                 handleToggleStats();
+            } else if (matches('toggleConnectionInfo', key, code)) {
+                e.preventDefault();
+                handleToggleConnectionInfo?.();
             } else if (matches('toggleFullscreen', key, code)) {
                 e.preventDefault();
                 handleToggleFullscreen();

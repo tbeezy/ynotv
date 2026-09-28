@@ -1829,7 +1829,8 @@
         "toggleStrem": "Strem in-/uitschakelen",
         "toggleJellyfin": "Jellyfin in-/uitschakelen",
         "toggleShortcutsOverlay": "Sneltoetsenoverlay in-/uitschakelen",
-        "mouseBackNavigation": "Terugnavigatie (muisknop)"
+        "mouseBackNavigation": "Terugnavigatie (muisknop)",
+        "toggleConnectionInfo": "Verbindingsinfo tonen / verbergen"
       },
       "closeOverlay": "Sneltoetsenoverlay sluiten",
       "unbound": "Niet toegewezen",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} downloads bezig",
     "downloadsInProgress_zero": "{{count}} downloads bezig",
     "hdrToSdrOn": "HDR naar SDR: Aan",
-    "hdrToSdrOff": "HDR naar SDR: Uit"
+    "hdrToSdrOff": "HDR naar SDR: Uit",
+    "toggleConnectionInfo": "Verbindingsinfo schakelen (O)",
+    "connectionInfo": {
+      "title": "Verbindingsinformatie",
+      "activeConnections": "Verbindingen",
+      "maxConnections": "Max. verbindingen",
+      "status": "Status",
+      "statusActive": "Actief",
+      "statusExpired": "Verlopen",
+      "statusDisabled": "Uitgeschakeld",
+      "statusBanned": "Geblokkeerd",
+      "statusError": "Fout",
+      "expiryDate": "Vervaldatum",
+      "account": "Account",
+      "mac": "MAC",
+      "server": "Server",
+      "type": "Type",
+      "unlimited": "Onbeperkt",
+      "refresh": "Vernieuwen",
+      "close": "Sluiten",
+      "noStream": "Geen actieve stream",
+      "noStreamDesc": "Speel een kanaal of video af om providerverbindingen te bekijken.",
+      "fetching": "Providerinformatie ophalen...",
+      "dismissHintEsc": "Sluit automatisch over {{seconds}}s · Druk op Esc om te sluiten",
+      "dismissHint": "Sluit automatisch over {{seconds}}s · Druk op Esc of {{key}} om te sluiten"
+    }
   },
   "stremio": {
     "account": "Account",

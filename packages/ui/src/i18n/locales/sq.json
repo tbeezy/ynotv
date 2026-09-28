@@ -1829,7 +1829,8 @@
         "toggleStrem": "Kalo te Strem",
         "toggleJellyfin": "Kalo te Jellyfin",
         "toggleShortcutsOverlay": "Kalo te mbivendosja e shkurtoreve",
-        "mouseBackNavigation": "Navigimi prapa (butoni i miut)"
+        "mouseBackNavigation": "Navigimi prapa (butoni i miut)",
+        "toggleConnectionInfo": "Shfaq / Fshih informacionin e lidhjes"
       },
       "closeOverlay": "Mbyll mbivendosjen e shkurtoreve",
       "unbound": "I palidhur",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} shkarkime në vazhdim",
     "downloadsInProgress_zero": "{{count}} shkarkime në vazhdim",
     "hdrToSdrOn": "HDR në SDR: Aktiv",
-    "hdrToSdrOff": "HDR në SDR: Joaktiv"
+    "hdrToSdrOff": "HDR në SDR: Joaktiv",
+    "toggleConnectionInfo": "Ndrysho informacionin e lidhjes (O)",
+    "connectionInfo": {
+      "title": "Informacioni i lidhjes",
+      "activeConnections": "Lidhjet",
+      "maxConnections": "Lidhjet maksimale",
+      "status": "Statusi",
+      "statusActive": "Aktiv",
+      "statusExpired": "Skaduar",
+      "statusDisabled": "Çaktivizuar",
+      "statusBanned": "Bllokuar",
+      "statusError": "Gabim",
+      "expiryDate": "Data e skadimit",
+      "account": "Llogaria",
+      "mac": "MAC",
+      "server": "Serveri",
+      "type": "Lloji",
+      "unlimited": "I pakufizuar",
+      "refresh": "Rifresko",
+      "close": "Mbyll",
+      "noStream": "Nuk ka transmetim aktiv",
+      "noStreamDesc": "Luani një kanal ose video për të kontrolluar lidhjet e ofruesit.",
+      "fetching": "Duke marrë informacionin e ofruesit...",
+      "dismissHintEsc": "Mbyllet automatikisht për {{seconds}}s · Shtypni Esc për të mbyllur",
+      "dismissHint": "Mbyllet automatikisht për {{seconds}}s · Shtypni Esc ose {{key}} për të mbyllur"
+    }
   },
   "stremio": {
     "account": "Llogaria",

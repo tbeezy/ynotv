@@ -137,6 +137,13 @@ const UNTRANSLATED_ALLOWLIST = new Set([
   // Stalker server-search label legitimately matches English there
   'bs:vod.stalkerServerSearchSource', 'de:vod.stalkerServerSearchSource',
   'it:vod.stalkerServerSearchSource', 'nl:vod.stalkerServerSearchSource',
+  'bs:player.connectionInfo.server', 'de:player.connectionInfo.server',
+  'it:player.connectionInfo.server', 'nl:player.connectionInfo.server',
+  // Identical terms in connection info ("Status", "Type", "Account", "Error") across languages
+  'bs:player.connectionInfo.status', 'de:player.connectionInfo.status', 'hr:player.connectionInfo.status',
+  'nl:player.connectionInfo.status', 'pl:player.connectionInfo.status', 'pt-BR:player.connectionInfo.status',
+  'sr:player.connectionInfo.status', 'fr:player.connectionInfo.type', 'nl:player.connectionInfo.type',
+  'it:player.connectionInfo.account', 'nl:player.connectionInfo.account', 'es:player.connectionInfo.statusError',
   // controller hardware labels (printed on the physical buttons) + universal terms
   'settings.controllers.mapping.buttons.select', 'settings.controllers.mapping.buttons.start',
   'settings.controllers.mapping.groups.dpad', 'settings.controllers.mapping.groups.menu',

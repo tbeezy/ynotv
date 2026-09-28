@@ -1829,7 +1829,8 @@
         "toggleStrem": "Basculer Strem",
         "toggleJellyfin": "Basculer Jellyfin",
         "toggleShortcutsOverlay": "Raccourcis en superposition",
-        "mouseBackNavigation": "Navigation retour (bouton souris)"
+        "mouseBackNavigation": "Navigation retour (bouton souris)",
+        "toggleConnectionInfo": "Afficher / Masquer les infos de connexion"
       },
       "closeOverlay": "Fermer la superposition des raccourcis",
       "unbound": "Non attribué",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} téléchargements en cours",
     "downloadsInProgress_zero": "{{count}} téléchargements en cours",
     "hdrToSdrOn": "HDR vers SDR : Activé",
-    "hdrToSdrOff": "HDR vers SDR : Désactivé"
+    "hdrToSdrOff": "HDR vers SDR : Désactivé",
+    "toggleConnectionInfo": "Basculer les infos de connexion (O)",
+    "connectionInfo": {
+      "title": "Infos de connexion",
+      "activeConnections": "Connexions",
+      "maxConnections": "Connexions max",
+      "status": "Statut",
+      "statusActive": "Actif",
+      "statusExpired": "Expiré",
+      "statusDisabled": "Désactivé",
+      "statusBanned": "Banni",
+      "statusError": "Erreur",
+      "expiryDate": "Date d'expiration",
+      "account": "Compte",
+      "mac": "MAC",
+      "server": "Serveur",
+      "type": "Type",
+      "unlimited": "Illimité",
+      "refresh": "Actualiser",
+      "close": "Fermer",
+      "noStream": "Aucun flux actif",
+      "noStreamDesc": "Lancez une chaîne ou une vidéo pour inspecter les connexions.",
+      "fetching": "Récupération des informations...",
+      "dismissHintEsc": "Fermeture automatique dans {{seconds}}s · Échap pour fermer",
+      "dismissHint": "Fermeture automatique dans {{seconds}}s · Échap ou {{key}} pour fermer"
+    }
   },
   "stremio": {
     "account": "Compte",

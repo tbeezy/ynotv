@@ -33,6 +33,7 @@ const GROUPS: ShortcutGroup[] = [
             { action: 'selectAudio', label: 'Select Audio Track' },
             { action: 'toggleFullscreen', label: 'Toggle Fullscreen' },
             { action: 'toggleStats', label: 'Stream Statistics' },
+            { action: 'toggleConnectionInfo', label: 'Connection / Account Info' },
             { action: 'replayLastStream', label: 'Replay Last Stream' }
         ]
     },

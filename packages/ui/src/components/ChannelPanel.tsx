@@ -375,6 +375,8 @@ interface ChannelPanelProps {
   onCycleSubtitle?: () => void;
   onCycleAudio?: () => void;
   onToggleStats?: () => void;
+  onToggleConnectionInfo?: () => void;
+  connectionInfoShortcut?: string;
   onToggleFullscreen?: () => void;
   onShowSubtitleModal?: () => void;
   onShowAudioModal?: () => void;
@@ -468,6 +470,8 @@ export function ChannelPanel({
   onCycleSubtitle,
   onCycleAudio,
   onToggleStats,
+  onToggleConnectionInfo,
+  connectionInfoShortcut,
   onToggleFullscreen,
   onShowSubtitleModal,
   onShowAudioModal,
@@ -3343,6 +3347,8 @@ export function ChannelPanel({
           onCycleSubtitle={onCycleSubtitle || (() => {})}
           onCycleAudio={onCycleAudio || (() => {})}
           onToggleStats={onToggleStats || (() => {})}
+          onToggleConnectionInfo={onToggleConnectionInfo}
+          connectionInfoShortcut={connectionInfoShortcut}
           onToggleFullscreen={onToggleFullscreen || (() => {})}
           onShowSubtitleModal={onShowSubtitleModal || (() => {})}
           onShowAudioModal={onShowAudioModal || (() => {})}

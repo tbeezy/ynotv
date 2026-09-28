@@ -27,6 +27,8 @@ import { useModal } from './components/Modal';
 import { NowPlayingBar } from './components/NowPlayingBar';
 import { PiPMediaBar } from './components/PiPMediaBar';
 import { ChannelInfoOverlay } from './components/ChannelInfoOverlay';
+import { ConnectionInfoOverlay } from './components/ConnectionInfoOverlay';
+import { DEFAULT_SHORTCUTS, formatShortcutKey } from './constants/shortcuts';
 import { TrackSelectionModal } from './components/TrackSelectionModal';
 import { SubtitleControlModal } from './components/SubtitleControlModal';
 import { StalkerSubtitleModal } from './components/StalkerSubtitleModal';
@@ -1898,6 +1900,15 @@ function useTmdbPresencePoster(
   }, [showSettingsPopup, settingsTab, nuvioHasUnsavedHomeLayout, nuvioTabSaveFn, rawSetShowSettingsPopup, showConfirm]);
 
   const [showShortcutsOverlay, setShowShortcutsOverlay] = useState(false);
+  const [showConnectionInfo, setShowConnectionInfo] = useState(false);
+  const handleToggleConnectionInfo = useCallback(() => {
+    setShowConnectionInfo((prev) => !prev);
+  }, []);
+  const handleCloseConnectionInfo = useCallback(() => {
+    setShowConnectionInfo(false);
+  }, []);
+  const rawConnShortcut = shortcuts.toggleConnectionInfo !== undefined ? shortcuts.toggleConnectionInfo : DEFAULT_SHORTCUTS.toggleConnectionInfo;
+  const connInfoShortcutKey = formatShortcutKey(rawConnShortcut);
 
   // When stopping a Jellyfin stream to "open details" from the playback modal,
   // the ended notification should carry the series id so the embedded webview
@@ -4886,6 +4897,7 @@ function useTmdbPresencePoster(
     showSettingsPopup,
     showShortcutsOverlay,
     setShowShortcutsOverlay,
+    handleToggleConnectionInfo,
     categoriesOpen,
     categoriesHidden,
     categoriesHiddenTransparent,
@@ -6635,6 +6647,8 @@ function useTmdbPresencePoster(
         onCycleSubtitle={handleCycleSubtitle}
         onCycleAudio={handleCycleAudio}
         onToggleStats={handleToggleStats}
+        onToggleConnectionInfo={handleToggleConnectionInfo}
+        connectionInfoShortcut={connInfoShortcutKey}
         onToggleFullscreen={handleToggleFullscreen}
         onShowSubtitleModal={handleShowSubtitleModal}
         onShowAudioModal={handleShowAudioModal}
@@ -6710,6 +6724,16 @@ function useTmdbPresencePoster(
         catchupInfo={catchupInfo}
         position={position}
         duration={duration}
+      />
+
+      {/* Connection Info Overlay */}
+      <ConnectionInfoOverlay
+        isOpen={showConnectionInfo}
+        onClose={handleCloseConnectionInfo}
+        channel={currentChannel}
+        vodInfo={vodInfo}
+        catchupInfo={catchupInfo}
+        shortcutKey={connInfoShortcutKey}
       />
 
       {/* Multiview slot layout over the Sports preview pane (root-level so the
@@ -7071,6 +7095,8 @@ function useTmdbPresencePoster(
         onCycleSubtitle={handleCycleSubtitle}
         onCycleAudio={handleCycleAudio}
         onToggleStats={handleToggleStats}
+        onToggleConnectionInfo={handleToggleConnectionInfo}
+        connectionInfoShortcut={connInfoShortcutKey}
         onToggleFullscreen={handleToggleFullscreen}
         onShowSubtitleModal={handleShowSubtitleModal}
         onShowAudioModal={handleShowAudioModal}

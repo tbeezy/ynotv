@@ -1829,7 +1829,8 @@
         "toggleStrem": "تغییر حالت Strem",
         "toggleJellyfin": "تغییر حالت Jellyfin",
         "toggleShortcutsOverlay": "تغییر حالت لایه میانبرها",
-        "mouseBackNavigation": "ناوبری بازگشت (دکمه ماوس)"
+        "mouseBackNavigation": "ناوبری بازگشت (دکمه ماوس)",
+        "toggleConnectionInfo": "نمایش / پنهان کردن اطلاعات اتصال"
       },
       "closeOverlay": "بستن لایه میانبرها",
       "unbound": "بدون اختصاص",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} دانلود در حال انجام",
     "downloadsInProgress_zero": "{{count}} دانلود در حال انجام",
     "hdrToSdrOn": "HDR به SDR: روشن",
-    "hdrToSdrOff": "HDR به SDR: خاموش"
+    "hdrToSdrOff": "HDR به SDR: خاموش",
+    "toggleConnectionInfo": "تغییر وضعیت اطلاعات اتصال (O)",
+    "connectionInfo": {
+      "title": "اطلاعات اتصال",
+      "activeConnections": "اتصال‌ها",
+      "maxConnections": "حداکثر اتصال‌ها",
+      "status": "وضعیت",
+      "statusActive": "فعال",
+      "statusExpired": "منقضی شده",
+      "statusDisabled": "غیرفعال",
+      "statusBanned": "مسدود شده",
+      "statusError": "خطا",
+      "expiryDate": "تاریخ انقضا",
+      "account": "حساب",
+      "mac": "MAC",
+      "server": "سرور",
+      "type": "نوع",
+      "unlimited": "نامحدود",
+      "refresh": "بازخوانی",
+      "close": "بستن",
+      "noStream": "پخشی در حال اجرا نیست",
+      "noStreamDesc": "برای بررسی اطلاعات اتصال، کانال یا ویدیویی پخش کنید.",
+      "fetching": "در حال دریافت اطلاعات ارائه‌دهنده...",
+      "dismissHintEsc": "بستن خودکار در {{seconds}} ثانیه · Esc برای بستن",
+      "dismissHint": "بستن خودکار در {{seconds}} ثانیه · Esc یا {{key}} برای بستن"
+    }
   },
   "stremio": {
     "account": "حساب",

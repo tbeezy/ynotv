@@ -1829,7 +1829,8 @@
         "toggleStrem": "切换 Strem",
         "toggleJellyfin": "切换 Jellyfin",
         "toggleShortcutsOverlay": "切换快捷键覆盖层",
-        "mouseBackNavigation": "返回导航（鼠标按钮）"
+        "mouseBackNavigation": "返回导航（鼠标按钮）",
+        "toggleConnectionInfo": "显示/隐藏连接信息"
       },
       "closeOverlay": "关闭快捷键覆盖层",
       "unbound": "未绑定",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} 个下载正在进行",
     "downloadsInProgress_zero": "{{count}} 个下载正在进行",
     "hdrToSdrOn": "HDR 转 SDR：开",
-    "hdrToSdrOff": "HDR 转 SDR：关"
+    "hdrToSdrOff": "HDR 转 SDR：关",
+    "toggleConnectionInfo": "切换连接信息 (O)",
+    "connectionInfo": {
+      "title": "连接信息",
+      "activeConnections": "连接数",
+      "maxConnections": "最大连接数",
+      "status": "状态",
+      "statusActive": "正常",
+      "statusExpired": "已过期",
+      "statusDisabled": "已禁用",
+      "statusBanned": "已封禁",
+      "statusError": "错误",
+      "expiryDate": "到期时间",
+      "account": "账户",
+      "mac": "MAC",
+      "server": "服务器",
+      "type": "类型",
+      "unlimited": "无限制",
+      "refresh": "刷新",
+      "close": "关闭",
+      "noStream": "无正在播放的内容",
+      "noStreamDesc": "播放频道或视频以查看提供商连接状态。",
+      "fetching": "正在获取提供商信息...",
+      "dismissHintEsc": "{{seconds}} 秒后自动关闭 · 按 Esc 关闭",
+      "dismissHint": "{{seconds}} 秒后自动关闭 · 按 Esc 或 {{key}} 关闭"
+    }
   },
   "stremio": {
     "account": "帐户",

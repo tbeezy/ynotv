@@ -1829,7 +1829,8 @@
         "toggleStrem": "Attiva/disattiva Strem",
         "toggleJellyfin": "Attiva/disattiva Jellyfin",
         "toggleShortcutsOverlay": "Attiva/disattiva overlay scorciatoie",
-        "mouseBackNavigation": "Navigazione indietro (pulsante mouse)"
+        "mouseBackNavigation": "Navigazione indietro (pulsante mouse)",
+        "toggleConnectionInfo": "Mostra / Nascondi info connessione"
       },
       "closeOverlay": "Chiudi overlay scorciatoie",
       "unbound": "Non assegnata",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} download in corso",
     "downloadsInProgress_zero": "{{count}} download in corso",
     "hdrToSdrOn": "HDR a SDR: Attivo",
-    "hdrToSdrOff": "HDR a SDR: Disattivato"
+    "hdrToSdrOff": "HDR a SDR: Disattivato",
+    "toggleConnectionInfo": "Mostra/Nascondi info connessione (O)",
+    "connectionInfo": {
+      "title": "Informazioni connessione",
+      "activeConnections": "Connessioni",
+      "maxConnections": "Connessioni max",
+      "status": "Stato",
+      "statusActive": "Attivo",
+      "statusExpired": "Scaduto",
+      "statusDisabled": "Disattivato",
+      "statusBanned": "Bannato",
+      "statusError": "Errore",
+      "expiryDate": "Data di scadenza",
+      "account": "Account",
+      "mac": "MAC",
+      "server": "Server",
+      "type": "Tipo",
+      "unlimited": "Illimitato",
+      "refresh": "Aggiorna",
+      "close": "Chiudi",
+      "noStream": "Nessun flusso attivo",
+      "noStreamDesc": "Riproduci un canale o un video per verificare le connessioni.",
+      "fetching": "Recupero informazioni fornitore...",
+      "dismissHintEsc": "Chiusura automatica tra {{seconds}}s · Premi Esc per chiudere",
+      "dismissHint": "Chiusura automatica tra {{seconds}}s · Premi Esc o {{key}} per chiudere"
+    }
   },
   "stremio": {
     "account": "Account",

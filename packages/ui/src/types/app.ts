@@ -73,6 +73,7 @@ export type ShortcutAction =
     | 'toggleStrem'
     | 'toggleJellyfin'
     | 'toggleShortcutsOverlay'
+    | 'toggleConnectionInfo'
     | 'mouseBackNavigation';
 
 export interface SavedChannelState {

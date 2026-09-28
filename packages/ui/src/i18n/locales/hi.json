@@ -1829,7 +1829,8 @@
         "toggleStrem": "Strem टॉगल करें",
         "toggleJellyfin": "Jellyfin टॉगल करें",
         "toggleShortcutsOverlay": "शॉर्टकट ओवरले टॉगल करें",
-        "mouseBackNavigation": "पीछे नेविगेशन (माउस बटन)"
+        "mouseBackNavigation": "पीछे नेविगेशन (माउस बटन)",
+        "toggleConnectionInfo": "कनेक्शन जानकारी दिखाएं / छिपाएं"
       },
       "closeOverlay": "शॉर्टकट ओवरले बंद करें",
       "unbound": "अनबाउंड",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} डाउनलोड प्रगति पर",
     "downloadsInProgress_zero": "{{count}} डाउनलोड प्रगति पर",
     "hdrToSdrOn": "HDR से SDR: चालू",
-    "hdrToSdrOff": "HDR से SDR: बंद"
+    "hdrToSdrOff": "HDR से SDR: बंद",
+    "toggleConnectionInfo": "कनेक्शन जानकारी टॉगल करें (O)",
+    "connectionInfo": {
+      "title": "कनेक्शन जानकारी",
+      "activeConnections": "सक्रिय कनेक्शन",
+      "maxConnections": "अधिकतम कनेक्शन",
+      "status": "स्थिति",
+      "statusActive": "सक्रिय",
+      "statusExpired": "समाप्त",
+      "statusDisabled": "अक्षम",
+      "statusBanned": "प्रतिबंधित",
+      "statusError": "त्रुटि",
+      "expiryDate": "समाप्ति तिथि",
+      "account": "खाता",
+      "mac": "MAC",
+      "server": "सर्वर",
+      "type": "प्रकार",
+      "unlimited": "असीमित",
+      "refresh": "रीफ्रेश",
+      "close": "बंद करें",
+      "noStream": "कोई सक्रिय स्ट्रीम नहीं",
+      "noStreamDesc": "कनेक्शन की जांच करने के लिए कोई चैनल या वीडियो चलाएं।",
+      "fetching": "प्रदाता जानकारी प्राप्त हो रही है...",
+      "dismissHintEsc": "{{seconds}}s में स्वतः बंद हो जाएगा · बंद करने के लिए Esc दबाएं",
+      "dismissHint": "{{seconds}}s में स्वतः बंद हो जाएगा · बंद करने के लिए Esc या {{key}} दबाएं"
+    }
   },
   "stremio": {
     "account": "खाता",

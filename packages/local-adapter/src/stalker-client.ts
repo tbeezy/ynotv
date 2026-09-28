@@ -2293,7 +2293,7 @@ export class StalkerClient {
     /**
      * Get account information including expiry date
      */
-    async getAccountInfo(): Promise<{ mac: string; expiry?: string }> {
+    async getAccountInfo(): Promise<{ mac: string; expiry?: string; error?: string }> {
         await this.ensureToken();
         try {
             const response = await this.fetchStalker<any>('get_main_info', 'account_info');
@@ -2304,9 +2304,9 @@ export class StalkerClient {
             console.log(`[Stalker] Account info: MAC=${mac}, Expiry=${expiry || 'N/A'}`);
 
             return { mac, expiry };
-        } catch (err) {
+        } catch (err: any) {
             console.error('[Stalker] Failed to fetch account info:', err);
-            return { mac: this.config.mac };
+            return { mac: this.config.mac, error: err?.message || String(err) };
         }
     }
 

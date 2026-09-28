@@ -1829,7 +1829,8 @@
         "toggleStrem": "Strem вкл / выкл",
         "toggleJellyfin": "Jellyfin вкл / выкл",
         "toggleShortcutsOverlay": "Оверлей сочетаний вкл / выкл",
-        "mouseBackNavigation": "Навигация назад (кнопка мыши)"
+        "mouseBackNavigation": "Навигация назад (кнопка мыши)",
+        "toggleConnectionInfo": "Показать / скрыть информацию о подключении"
       },
       "closeOverlay": "Закрыть оверлей сочетаний",
       "unbound": "Не назначено",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} загрузки в процессе",
     "downloadsInProgress_zero": "{{count}} загрузки в процессе",
     "hdrToSdrOn": "HDR в SDR: Вкл",
-    "hdrToSdrOff": "HDR в SDR: Выкл"
+    "hdrToSdrOff": "HDR в SDR: Выкл",
+    "toggleConnectionInfo": "Информация о подключении (O)",
+    "connectionInfo": {
+      "title": "Информация о подключении",
+      "activeConnections": "Подключения",
+      "maxConnections": "Макс. подключений",
+      "status": "Статус",
+      "statusActive": "Активен",
+      "statusExpired": "Истек",
+      "statusDisabled": "Отключен",
+      "statusBanned": "Заблокирован",
+      "statusError": "Ошибка",
+      "expiryDate": "Срок действия",
+      "account": "Аккаунт",
+      "mac": "MAC",
+      "server": "Сервер",
+      "type": "Тип",
+      "unlimited": "Безлимитно",
+      "refresh": "Обновить",
+      "close": "Закрыть",
+      "noStream": "Нет активного потока",
+      "noStreamDesc": "Включите канал или видео для просмотра информации о подключении.",
+      "fetching": "Получение данных провайдера...",
+      "dismissHintEsc": "Закроется через {{seconds}}с · Нажмите Esc для выхода",
+      "dismissHint": "Закроется через {{seconds}}с · Нажмите Esc или {{key}} для выхода"
+    }
   },
   "stremio": {
     "account": "Учётная запись",

@@ -1829,7 +1829,8 @@
         "toggleStrem": "Strem váltása",
         "toggleJellyfin": "Jellyfin váltása",
         "toggleShortcutsOverlay": "Gyorsbillentyű-fedvény váltása",
-        "mouseBackNavigation": "Vissza navigáció (egérgomb)"
+        "mouseBackNavigation": "Vissza navigáció (egérgomb)",
+        "toggleConnectionInfo": "Kapcsolati információk megjelenítése / elrejtése"
       },
       "closeOverlay": "Gyorsbillentyű-fedvény bezárása",
       "unbound": "Nem kötött",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} letöltés folyamatban",
     "downloadsInProgress_zero": "{{count}} letöltés folyamatban",
     "hdrToSdrOn": "HDR - SDR: Be",
-    "hdrToSdrOff": "HDR - SDR: Ki"
+    "hdrToSdrOff": "HDR - SDR: Ki",
+    "toggleConnectionInfo": "Kapcsolati információk váltása (O)",
+    "connectionInfo": {
+      "title": "Kapcsolati információk",
+      "activeConnections": "Kapcsolatok",
+      "maxConnections": "Max. kapcsolat",
+      "status": "Állapot",
+      "statusActive": "Aktív",
+      "statusExpired": "Lejárt",
+      "statusDisabled": "Letiltva",
+      "statusBanned": "Kitiltva",
+      "statusError": "Hiba",
+      "expiryDate": "Lejárati dátum",
+      "account": "Fiók",
+      "mac": "MAC",
+      "server": "Szerver",
+      "type": "Típus",
+      "unlimited": "Korlátlan",
+      "refresh": "Frissítés",
+      "close": "Bezárás",
+      "noStream": "Nincs aktív stream",
+      "noStreamDesc": "Indítson el egy csatornát vagy videót a kapcsolati adatok megtekintéséhez.",
+      "fetching": "Szolgáltatói adatok lekérése...",
+      "dismissHintEsc": "Automatikusan bezárul {{seconds}} mp múlva · Nyomja meg az Esc gombot",
+      "dismissHint": "Automatikusan bezárul {{seconds}} mp múlva · Nyomja meg az Esc vagy {{key}} gombot"
+    }
   },
   "stremio": {
     "account": "Fiók",

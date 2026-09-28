@@ -44,11 +44,12 @@ const ACTION_LABELS: Record<ShortcutAction, string> = {
     toggleStrem: 'Toggle Strem',
     toggleJellyfin: 'Toggle Jellyfin',
     toggleShortcutsOverlay: 'Toggle Shortcuts Overlay',
+    toggleConnectionInfo: 'Show / Hide Connection Info',
     mouseBackNavigation: 'Back Navigation (Mouse Button)'
 };
 
 const GROUPS: Record<string, ShortcutAction[]> = {
-    'Playback': ['togglePlay', 'seekForward', 'seekBackward', 'toggleMute', 'selectSubtitle', 'selectAudio', 'toggleFullscreen', 'replayLastStream'],
+    'Playback': ['togglePlay', 'seekForward', 'seekBackward', 'toggleMute', 'selectSubtitle', 'selectAudio', 'toggleFullscreen', 'toggleConnectionInfo', 'replayLastStream'],
     'Navigation': ['channelUp', 'channelDown'],
     'Interface': ['toggleShortcutsOverlay', 'toggleLiveTV', 'toggleGuide', 'toggleTransparentGuide', 'toggleCategories', 'toggleDvr', 'toggleSports', 'toggleCalendar', 'toggleSettings', 'toggleStats', 'focusSearch', 'toggleEpgView', 'close', 'mouseBackNavigation', 'toggleNuvio', 'toggleStrem', 'toggleJellyfin'],
     'Layout': ['layoutMain', 'layoutPip', 'layoutBigBottom', 'layout2x2']

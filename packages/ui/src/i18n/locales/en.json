@@ -1829,7 +1829,8 @@
         "toggleStrem": "Toggle Strem",
         "toggleJellyfin": "Toggle Jellyfin",
         "toggleShortcutsOverlay": "Toggle Shortcuts Overlay",
-        "mouseBackNavigation": "Back Navigation (Mouse Button)"
+        "mouseBackNavigation": "Back Navigation (Mouse Button)",
+        "toggleConnectionInfo": "Show / Hide Connection Info"
       },
       "closeOverlay": "Close shortcuts overlay",
       "unbound": "Unbound",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_two": "{{count}} downloads in progress",
     "downloadsInProgress_zero": "{{count}} downloads in progress",
     "hdrToSdrOn": "HDR to SDR: On",
-    "hdrToSdrOff": "HDR to SDR: Off"
+    "hdrToSdrOff": "HDR to SDR: Off",
+    "toggleConnectionInfo": "Toggle connection info (O)",
+    "connectionInfo": {
+      "title": "Connection Info",
+      "activeConnections": "Connections",
+      "maxConnections": "Max Connections",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusExpired": "Expired",
+      "statusDisabled": "Disabled",
+      "statusBanned": "Banned",
+      "statusError": "Error",
+      "expiryDate": "Expiry Date",
+      "account": "Account",
+      "mac": "MAC",
+      "server": "Server",
+      "type": "Type",
+      "unlimited": "Unlimited",
+      "refresh": "Refresh",
+      "close": "Close",
+      "noStream": "No Active Stream",
+      "noStreamDesc": "Play a channel or video to inspect provider connections.",
+      "fetching": "Fetching provider info...",
+      "dismissHintEsc": "Auto-dismisses in {{seconds}}s · Press Esc to close",
+      "dismissHint": "Auto-dismisses in {{seconds}}s · Press Esc or {{key}} to close"
+    }
   },
   "stremio": {
     "account": "Account",

@@ -1829,7 +1829,8 @@
         "toggleStrem": "تبديل Strem",
         "toggleJellyfin": "تبديل Jellyfin",
         "toggleShortcutsOverlay": "تبديل طبقة الاختصارات",
-        "mouseBackNavigation": "تنقل رجوع (زر الماوس)"
+        "mouseBackNavigation": "تنقل رجوع (زر الماوس)",
+        "toggleConnectionInfo": "إظهار / إخفاء معلومات الاتصال"
       },
       "closeOverlay": "إغلاق طبقة الاختصارات",
       "unbound": "غير مربوط",
@@ -4353,7 +4354,32 @@
     "downloadsInProgress_many": "{{count}} التنزيلات قيد التقدم",
     "downloadsInProgress_zero": "{{count}} تنزيل قيد التقدم",
     "hdrToSdrOn": "HDR إلى SDR: مفعل",
-    "hdrToSdrOff": "HDR إلى SDR: معطل"
+    "hdrToSdrOff": "HDR إلى SDR: معطل",
+    "toggleConnectionInfo": "تبديل معلومات الاتصال (O)",
+    "connectionInfo": {
+      "title": "معلومات الاتصال",
+      "activeConnections": "الاتصالات النشطة",
+      "maxConnections": "الحد الأقصى للاتصالات",
+      "status": "الحالة",
+      "statusActive": "نشط",
+      "statusExpired": "منتهي الصلاحية",
+      "statusDisabled": "معطل",
+      "statusBanned": "محظور",
+      "statusError": "خطأ",
+      "expiryDate": "تاريخ الانتهاء",
+      "account": "الحساب",
+      "mac": "MAC",
+      "server": "الخادم",
+      "type": "النوع",
+      "unlimited": "غير محدود",
+      "refresh": "تحديث",
+      "close": "إغلاق",
+      "noStream": "لا يوجد بث نشط",
+      "noStreamDesc": "قم بتشغيل قناة أو فيديو لعرض معلومات الاتصال بالخادم.",
+      "fetching": "جاري جلب معلومات الخادم...",
+      "dismissHintEsc": "يختفي تلقائياً خلال {{seconds}} ثوانٍ · اضغط Esc للإغلاق",
+      "dismissHint": "يختفي تلقائياً خلال {{seconds}} ثوانٍ · اضغط Esc أو {{key}} للإغلاق"
+    }
   },
   "stremio": {
     "account": "الحساب",
