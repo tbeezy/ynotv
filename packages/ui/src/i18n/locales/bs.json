@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Pregledajte, ponovno skenirajte ili uklonite izvore foldera u vašoj lokalnoj biblioteci.",
     "noFoldersAdded": "Još uvijek nije dodan nijedan folder.",
     "rescan": "Ponovno skeniraj",
+    "rescanAll": "Ponovo skeniraj sve",
+    "rescanAllTitle": "Skenirajte sve konfigurisane foldere za nove medijske datoteke",
     "confirmRemoveFolder": "Kliknite ponovo da uklonite sve datoteke u ovoj fascikli",
     "removeFolder": "Ukloni folder",
     "openFolder": "Prikaži u folderu",

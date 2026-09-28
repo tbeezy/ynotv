@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Yerel kitaplığınızdaki klasör kaynaklarını görüntüleyin, yeniden tarayın veya kaldırın.",
     "noFoldersAdded": "Henüz hiçbir klasör eklenmedi.",
     "rescan": "Yeniden tara",
+    "rescanAll": "Tümünü Yeniden Tara",
+    "rescanAllTitle": "Yeni medya dosyaları için yapılandırılmış tüm klasörleri tara",
     "confirmRemoveFolder": "Bu klasördeki tüm dosyaları kaldırmak için tekrar tıklayın",
     "removeFolder": "Klasörü kaldır",
     "openFolder": "Klasörde göster",

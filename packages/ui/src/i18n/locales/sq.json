@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Shikoni, skanoni ose hiqni burimet e dosjeve në bibliotekën tuaj lokale.",
     "noFoldersAdded": "Asnjë dosje nuk është shtuar ende.",
     "rescan": "Riskano",
+    "rescanAll": "Riskano të gjitha",
+    "rescanAllTitle": "Skanoni të gjitha dosjet e konfiguruara për skedarë të rinj mediash",
     "confirmRemoveFolder": "Klikoni përsëri për të hequr të gjithë skedarët në këtë dosje",
     "removeFolder": "Hiq dosjen",
     "openFolder": "Shfaq në dosje",

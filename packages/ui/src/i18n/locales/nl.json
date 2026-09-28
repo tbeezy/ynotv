@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Bekijk, scan opnieuw of verwijder mapbronnen in uw lokale bibliotheek.",
     "noFoldersAdded": "Er zijn nog geen mappen toegevoegd.",
     "rescan": "Opnieuw scannen",
+    "rescanAll": "Alles opnieuw scannen",
+    "rescanAllTitle": "Alle geconfigureerde mappen scannen op nieuwe mediabestanden",
     "confirmRemoveFolder": "Klik nogmaals om alle bestanden in deze map te verwijderen",
     "removeFolder": "Map verwijderen",
     "openFolder": "Toon in map",

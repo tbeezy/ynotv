@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Affichez, analysez à nouveau ou supprimez les sources de dossiers dans votre bibliothèque locale.",
     "noFoldersAdded": "Aucun dossier n'a encore été ajouté.",
     "rescan": "Nouvelle analyse",
+    "rescanAll": "Tout réanalyser",
+    "rescanAllTitle": "Analyser tous les dossiers configurés pour rechercher de nouveaux fichiers multimédias",
     "confirmRemoveFolder": "Cliquez à nouveau pour supprimer tous les fichiers de ce dossier",
     "removeFolder": "Supprimer le dossier",
     "openFolder": "Afficher dans le dossier",

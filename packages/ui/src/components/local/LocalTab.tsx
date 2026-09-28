@@ -331,8 +331,13 @@ export function LocalTab({
   );
   const [cleanModalOpen, setCleanModalOpen] = useState(false);
   const scannedFolders = useScannedFolders();
-
-  // Toast
+  const foldersToRescan = useMemo(() => {
+    const filter = effFilter === 'movies' ? 'movie' : effFilter === 'series' ? 'show' : undefined;
+    if (!filter) return scannedFolders;
+    const matching = scannedFolders.filter((f) => f.type === filter || f.type === 'mixed');
+    return matching.length > 0 ? matching : scannedFolders;
+  }, [scannedFolders, effFilter]);
+  const [rescanningAll, setRescanningAll] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -848,11 +853,13 @@ export function LocalTab({
           const idx = next++;
           if (idx >= parsed.length) return;
           const { file, info } = parsed[idx];
+          const targetFolderPath = file.folderPath ?? folderPath;
+          const targetFolderType = file.folderType ?? folderType;
           try {
             const entry =
               mode === 'nfo'
-                ? await buildNfoEntryForFolder(file, folderType, folderPath, tmdbToken, signal)
-                : await buildTmdbEntryForFolder(file, folderType, folderPath, tmdbToken, signal);
+                ? await buildNfoEntryForFolder(file, targetFolderType, targetFolderPath, tmdbToken, signal)
+                : await buildTmdbEntryForFolder(file, targetFolderType, targetFolderPath, tmdbToken, signal);
             if (signal.aborted) return;
             built[idx] = entry;
             // Crash-safe checkpoint: persist each completed entry to SQLite as
@@ -925,6 +932,58 @@ export function LocalTab({
         opts?.baseDone ?? 0,
       ),
     );
+
+  const handleRescanAllFolders = useCallback(async () => {
+    if (foldersToRescan.length === 0 || rescanningAll || scanning || walking) return;
+    setRescanningAll(true);
+    setWalking(true);
+    try {
+      clearSidecarCache();
+      await ensureLocalLibraryLoaded();
+      const allFiles: ScannedFile[] = [];
+      for (const folder of foldersToRescan) {
+        if (scanAbortRef.current?.signal.aborted) break;
+        try {
+          const exists = await invoke<boolean>('check_path_exists', { path: folder.path }).catch(() => true);
+          if (!exists) {
+            console.warn(`[LocalTab] Skipping offline folder: ${folder.path}`);
+            continue;
+          }
+          const files = await invoke<ScannedFile[]>('scan_local_folder', { folder: folder.path });
+          if (files && files.length > 0) {
+            addScannedFolder(folder.path, folder.type);
+            for (const f of files) {
+              f.folderPath = folder.path;
+              f.folderType = folder.type;
+              allFiles.push(f);
+            }
+          }
+        } catch (err) {
+          console.error(`[LocalTab] Folder walk failed for ${folder.path}:`, err);
+        }
+      }
+      setWalking(false);
+
+      if (allFiles.length === 0) {
+        showToast(t('noVideoFilesFound'));
+        return;
+      }
+
+      await executeScan(
+        allFiles,
+        'tmdb',
+        foldersToRescan.length === 1
+          ? { folderPath: foldersToRescan[0].path, folderType: foldersToRescan[0].type }
+          : undefined,
+      );
+    } catch (err: any) {
+      console.error('[LocalTab] Rescan all failed:', err);
+      setWalking(false);
+      showToast(err?.message || t('rescanFailed'));
+    } finally {
+      setRescanningAll(false);
+    }
+  }, [foldersToRescan, rescanningAll, scanning, walking, executeScan, showToast, t]);
 
   // Re-run TMDB matching only for entries that are still ambiguous/unmatched,
   // without re-scanning the disk or re-touching already-matched titles.
@@ -1470,6 +1529,31 @@ export function LocalTab({
             </svg>
             {t('folders', 'Folders')}
           </button>
+
+          {/* Rescan All Folders Button */}
+          {foldersToRescan.length > 0 && (
+            <button
+              type="button"
+              className="local-btn local-btn--secondary"
+              onClick={() => void handleRescanAllFolders()}
+              disabled={rescanningAll || scanning || walking}
+              title={t('rescanAllTitle', 'Scan all configured folders for new media files')}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className={rescanningAll || scanning ? 'local-spin' : ''}
+              >
+                <path d="M23 4v6h-6M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              {rescanningAll || scanning ? t('scanning', 'Scanning...') : t('rescanAll', 'Rescan All')}
+            </button>
+          )}
 
           {/* Select Mode Toggle */}
           {items.length > 0 && (
@@ -2031,6 +2115,7 @@ export function LocalTab({
           setFoldersModalOpen(false);
           await handleAddFolder(type);
         }}
+        onRescanAllFolders={handleRescanAllFolders}
       />
 
       {/* File Not Found Modal */}

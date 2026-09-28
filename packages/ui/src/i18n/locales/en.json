@@ -3411,6 +3411,8 @@
     "manageFoldersSubtitle": "View, rescan, or remove folder sources in your local library.",
     "noFoldersAdded": "No folders have been added yet.",
     "rescan": "Rescan",
+    "rescanAll": "Rescan All",
+    "rescanAllTitle": "Scan all configured folders for new media files",
     "confirmRemoveFolder": "Click again to remove all files in this folder",
     "removeFolder": "Remove folder",
     "openFolder": "Show in folder",

@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Wyświetl, przeskanuj ponownie lub usuń źródła folderów w bibliotece lokalnej.",
     "noFoldersAdded": "Nie dodano jeszcze żadnych folderów.",
     "rescan": "Skanuj ponownie",
+    "rescanAll": "Skanuj wszystko ponownie",
+    "rescanAllTitle": "Skanuj wszystkie skonfigurowane foldery w poszukiwaniu nowych plików multimedialnych",
     "confirmRemoveFolder": "Kliknij ponownie, aby usunąć wszystkie pliki z tego folderu",
     "removeFolder": "Usuń folder",
     "openFolder": "Pokaż w folderze",

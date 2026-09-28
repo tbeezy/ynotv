@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "檢視、重新掃描或刪除本機庫中的資料夾來源。",
     "noFoldersAdded": "尚未新增任何資料夾。",
     "rescan": "重新掃描",
+    "rescanAll": "全部重新掃描",
+    "rescanAllTitle": "掃描所有已設定的資料夾以尋找新的媒體檔案",
     "confirmRemoveFolder": "再次按一下可刪除該資料夾中的所有文件",
     "removeFolder": "刪除資料夾",
     "openFolder": "在資料夾中顯示",

@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Mappaforrások megtekintése, újraolvasása vagy eltávolítása a helyi könyvtárban.",
     "noFoldersAdded": "Még nem adtak hozzá mappákat.",
     "rescan": "Újraolvasás",
+    "rescanAll": "Összes újraolvasása",
+    "rescanAllTitle": "Az összes beállított mappa átvizsgálása új médiafájlokért",
     "confirmRemoveFolder": "Kattintson újra az összes fájl eltávolításához ebben a mappában",
     "removeFolder": "Mappa eltávolítása",
     "openFolder": "Megjelenítés mappában",

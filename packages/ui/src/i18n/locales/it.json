@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Visualizza, esegui nuovamente la scansione o rimuovi le origini delle cartelle nella libreria locale.",
     "noFoldersAdded": "Nessuna cartella è stata ancora aggiunta.",
     "rescan": "Nuova scansione",
+    "rescanAll": "Riesegui scansione di tutto",
+    "rescanAllTitle": "Scansiona tutte le cartelle configurate per nuovi file multimediali",
     "confirmRemoveFolder": "Fare di nuovo clic per rimuovere tutti i file in questa cartella",
     "removeFolder": "Rimuovi cartella",
     "openFolder": "Mostra nella cartella",

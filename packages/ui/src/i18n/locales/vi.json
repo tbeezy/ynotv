@@ -4957,6 +4957,8 @@
     "manageFoldersSubtitle": "Xem, quét lại hoặc xóa nguồn thư mục trong thư viện cục bộ của bạn.",
     "noFoldersAdded": "Chưa có thư mục nào được thêm vào.",
     "rescan": "Quét lại",
+    "rescanAll": "Quét lại tất cả",
+    "rescanAllTitle": "Quét tất cả các thư mục đã cấu hình để tìm tệp phương tiện mới",
     "confirmRemoveFolder": "Nhấp lại để xóa tất cả các tệp trong thư mục này",
     "removeFolder": "Xóa thư mục",
     "openFolder": "Hiển thị trong thư mục",

@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "查看、重新扫描或删除本地库中的文件夹源。",
     "noFoldersAdded": "尚未添加任何文件夹。",
     "rescan": "重新扫描",
+    "rescanAll": "重新扫描全部",
+    "rescanAllTitle": "扫描所有已配置文件夹以查找新的媒体文件",
     "confirmRemoveFolder": "再次单击可删除该文件夹中的所有文件",
     "removeFolder": "删除文件夹",
     "openFolder": "在文件夹中显示",

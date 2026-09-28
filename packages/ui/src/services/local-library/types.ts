@@ -60,6 +60,8 @@ export type ScannedFile = {
   path: string;
   filename: string;
   size: number;
+  folderPath?: string;
+  folderType?: FolderType;
 };
 
 export type ParsedNfo = {

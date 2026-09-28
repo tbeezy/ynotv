@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Pregledajte, ponovno skenirajte ili uklonite izvore mapa u svojoj lokalnoj knjižnici.",
     "noFoldersAdded": "Još nije dodana nijedna mapa.",
     "rescan": "Ponovno skeniranje",
+    "rescanAll": "Ponovno skeniraj sve",
+    "rescanAllTitle": "Skenirajte sve konfigurirane mape za nove medijske datoteke",
     "confirmRemoveFolder": "Kliknite ponovno za uklanjanje svih datoteka u ovoj mapi",
     "removeFolder": "Ukloni mapu",
     "openFolder": "Prikaži u mapi",

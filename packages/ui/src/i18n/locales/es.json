@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Vea, vuelva a escanear o elimine fuentes de carpetas en su biblioteca local.",
     "noFoldersAdded": "Aún no se han agregado carpetas.",
     "rescan": "Volver a escanear",
+    "rescanAll": "Reescanear todo",
+    "rescanAllTitle": "Escanear todas las carpetas configuradas en busca de nuevos archivos multimedia",
     "confirmRemoveFolder": "Haga clic nuevamente para eliminar todos los archivos de esta carpeta.",
     "removeFolder": "Quitar carpeta",
     "openFolder": "Mostrar en carpeta",

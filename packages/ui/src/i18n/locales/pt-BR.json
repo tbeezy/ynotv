@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Visualize, verifique novamente ou remova fontes de pasta em sua biblioteca local.",
     "noFoldersAdded": "Nenhuma pasta foi adicionada ainda.",
     "rescan": "Digitalizar novamente",
+    "rescanAll": "Verificar tudo novamente",
+    "rescanAllTitle": "Examinar todas as pastas configuradas em busca de novos arquivos de mídia",
     "confirmRemoveFolder": "Clique novamente para remover todos os arquivos desta pasta",
     "removeFolder": "Remover pasta",
     "openFolder": "Mostrar na pasta",

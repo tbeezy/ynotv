@@ -3395,6 +3395,8 @@
     "manageFoldersSubtitle": "Ordnerquellen in Ihrer lokalen Bibliothek anzeigen, erneut scannen oder entfernen.",
     "noFoldersAdded": "Es wurden noch keine Ordner hinzugefügt.",
     "rescan": "Erneut scannen",
+    "rescanAll": "Alles erneut scannen",
+    "rescanAllTitle": "Alle konfigurierten Ordner nach neuen Mediendateien durchsuchen",
     "confirmRemoveFolder": "Klicken Sie erneut, um alle Dateien in diesem Ordner zu entfernen",
     "removeFolder": "Ordner entfernen",
     "openFolder": "Im Ordner anzeigen",
