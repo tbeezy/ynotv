@@ -681,13 +681,13 @@
 .local-ctx-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 10000;
   background: transparent;
 }
 
 .local-ctx-menu {
   position: fixed;
-  z-index: 1001;
+  z-index: 10001;
   min-width: 190px;
   padding: 6px;
   border-radius: 12px;
@@ -696,6 +696,7 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(16px);
   animation: localCtxFadeIn 0.12s ease;
+  user-select: none;
 }
 
 @keyframes localCtxFadeIn {
