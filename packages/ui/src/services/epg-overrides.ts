@@ -111,6 +111,7 @@ export async function batchUpsertLogoOverrides(
       existing?.stream_icon ||
       existing?.epg_source_id ||
       existing?.match_by_alias ||
+      existing?.logo_locked ||
       (existing?.timeshift_hours && existing.timeshift_hours !== 0)
     );
 
@@ -128,9 +129,10 @@ export async function batchUpsertLogoOverrides(
         logo_padding: nextPad,
         // `put` is INSERT OR REPLACE, so the feed pin must be carried over
         // explicitly or a logo edit would erase it. Same for the
-        // "match on my name" flag.
+        // "match on my name" flag and the logo lock flag.
         epg_source_id: existing?.epg_source_id,
         match_by_alias: existing?.match_by_alias,
+        logo_locked: existing?.logo_locked,
       });
     }
   }

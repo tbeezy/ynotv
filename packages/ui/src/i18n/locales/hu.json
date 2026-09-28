@@ -3899,7 +3899,12 @@
     "nowAiring": "Jelenleg adásban",
     "jumpToCurrent": "Görgessen az aktuálisan sugárzott programhoz",
     "jumpToUpcoming": "Görgessen a következő közelgő programhoz",
-    "filter": "Szűrő"
+    "filter": "Szűrő",
+    "logoLocked": "Zárolva",
+    "lockLogo": "Zárolás",
+    "logoLockedTooltip": "Logó zárolva — az EPG-egyezés vagy -forrás módosítása nem cseréli le ezt a logót",
+    "logoUnlockedTooltip": "Kattintson ide a logó URL zárolásához az EPG-forrás változásai ellen",
+    "logoLockedHint": "A logó zárolva van — az EPG-egyezés, forrás vagy automatikus egyezés módosítása megőrzi ezt a logót."
   },
   "live": {
     "active": "Aktív",

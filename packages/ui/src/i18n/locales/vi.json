@@ -781,7 +781,12 @@
     "nowAiring": "Hiện đang phát sóng",
     "jumpToCurrent": "Cuộn đến chương trình đang phát sóng",
     "jumpToUpcoming": "Cuộn đến chương trình sắp tới",
-    "filter": "Lọc"
+    "filter": "Lọc",
+    "logoLocked": "Đã khóa",
+    "lockLogo": "Khóa",
+    "logoLockedTooltip": "Logo đã khóa — thay đổi nguồn hoặc khớp EPG sẽ không thay thế logo này",
+    "logoUnlockedTooltip": "Nhấp để khóa URL logo này tránh thay đổi từ nguồn EPG",
+    "logoLockedHint": "Logo đã bị khóa — việc thay đổi khớp EPG, nguồn hoặc tự động khớp sẽ giữ nguyên logo này."
   },
   "live": {
     "active": "Hoạt Động",

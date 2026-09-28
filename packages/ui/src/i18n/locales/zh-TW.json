@@ -3899,7 +3899,12 @@
     "nowAiring": "目前正在播出",
     "jumpToCurrent": "滾動到當前播出的節目",
     "jumpToUpcoming": "滾動到下一個即將播出的節目",
-    "filter": "篩選"
+    "filter": "篩選",
+    "logoLocked": "已鎖定",
+    "lockLogo": "鎖定",
+    "logoLockedTooltip": "徽標已鎖定 — 變更 EPG 配對或來源不會取代此徽標",
+    "logoUnlockedTooltip": "點擊以鎖定此徽標 URL，防止 EPG 來源變更時被覆蓋",
+    "logoLockedHint": "徽標已鎖定 — 變更 EPG 配對、來源或自動配對將保留此徽標。"
   },
   "live": {
     "active": "活躍",

@@ -3899,7 +3899,12 @@
     "nowAiring": "Wird derzeit ausgestrahlt",
     "jumpToCurrent": "Scrollen Sie zum aktuell ausgestrahlten Programm",
     "jumpToUpcoming": "Scrollen Sie zum nächsten bevorstehenden Programm",
-    "filter": "Filter"
+    "filter": "Filter",
+    "logoLocked": "Gesperrt",
+    "lockLogo": "Sperren",
+    "logoLockedTooltip": "Logo gesperrt – das Ändern der EPG-Zuordnung oder -Quelle ersetzt dieses Logo nicht",
+    "logoUnlockedTooltip": "Klicken, um diese Logo-URL gegen Änderungen der EPG-Quelle zu sperren",
+    "logoLockedHint": "Logo ist gesperrt – EPG-Zuordnung, Quelle oder automatische Zuordnung ändern behält dieses Logo bei."
   },
   "live": {
     "active": "Aktiv",

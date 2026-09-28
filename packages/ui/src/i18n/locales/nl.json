@@ -3899,7 +3899,12 @@
     "nowAiring": "Momenteel uitgezonden",
     "jumpToCurrent": "Scroll naar het momenteel uitgezonden programma",
     "jumpToUpcoming": "Scroll naar het volgende komende programma",
-    "filter": "Filter"
+    "filter": "Filter",
+    "logoLocked": "Vergrendeld",
+    "lockLogo": "Vergrendelen",
+    "logoLockedTooltip": "Logo vergrendeld — het wijzigen van EPG-overeenkomst of bron zal dit logo niet vervangen",
+    "logoUnlockedTooltip": "Klik om deze logo-URL te vergrendelen tegen wijzigingen in de EPG-bron",
+    "logoLockedHint": "Logo is vergrendeld — wijziging van EPG-overeenkomst, bron of automatische overeenkomst behoudt dit logo."
   },
   "live": {
     "active": "Actief",

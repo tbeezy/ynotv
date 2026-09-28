@@ -117,6 +117,8 @@ export interface ExportData {
         epgSourceId?: string;
         /** Match EPG on the channel's renamed name instead of the provider's. */
         matchByAlias?: boolean;
+        /** Lock custom logo URL so changing EPG matches, feeds, or automatching does not overwrite it. */
+        logoLocked?: boolean;
     }>;
     epgProgramOverrides: Array<{
         id: string;
@@ -417,7 +419,8 @@ async function buildExportData(): Promise<ExportData> {
             logoPadding: o.logo_padding,
             timeshiftHours: o.timeshift_hours,
             epgSourceId: o.epg_source_id,
-            matchByAlias: o.match_by_alias
+            matchByAlias: o.match_by_alias,
+            logoLocked: o.logo_locked
         }));
 
         const epgProgramOverrides = (await db.epgProgramOverrides.toArray()).map(o => ({
@@ -1196,7 +1199,8 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
                         logo_padding: (o as any).logoPadding !== undefined ? (o as any).logoPadding : (o as any).logo_padding,
                         timeshift_hours: o.timeshiftHours !== undefined ? o.timeshiftHours : (o as any).timeshift_hours,
                         epg_source_id: (o as any).epgSourceId !== undefined ? (o as any).epgSourceId : (o as any).epg_source_id,
-                        match_by_alias: (o as any).matchByAlias !== undefined ? (o as any).matchByAlias : (o as any).match_by_alias
+                        match_by_alias: (o as any).matchByAlias !== undefined ? (o as any).matchByAlias : (o as any).match_by_alias,
+                        logo_locked: (o as any).logoLocked !== undefined ? (o as any).logoLocked : (o as any).logo_locked
                     }));
                     await db.epgChannelOverrides.bulkAdd(overrides);
                 }

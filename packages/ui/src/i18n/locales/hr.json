@@ -3899,7 +3899,12 @@
     "nowAiring": "Trenutno se emitira",
     "jumpToCurrent": "Pomaknite se na program koji se trenutno emitira",
     "jumpToUpcoming": "Pomaknite se na sljedeći nadolazeći program",
-    "filter": "Filter"
+    "filter": "Filter",
+    "logoLocked": "Zaključano",
+    "lockLogo": "Zaključaj",
+    "logoLockedTooltip": "Logotip zaključan — promjena EPG podudaranja ili izvora neće zamijeniti ovaj logotip",
+    "logoUnlockedTooltip": "Kliknite za zaključavanje ovog URL-a logotipa protiv promjena izvora EPG-a",
+    "logoLockedHint": "Logotip je zaključan — promjena EPG podudaranja, izvora ili automatskog podudaranja sačuvat će ovaj logotip."
   },
   "live": {
     "active": "Aktivan",

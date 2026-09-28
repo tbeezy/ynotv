@@ -3899,7 +3899,12 @@
     "nowAiring": "Şu anda yayınlanıyor",
     "jumpToCurrent": "Şu anda yayınlanmakta olan programa ilerleyin",
     "jumpToUpcoming": "Gelecek programa ilerleyin",
-    "filter": "Filtre"
+    "filter": "Filtre",
+    "logoLocked": "Kilitli",
+    "lockLogo": "Kilitle",
+    "logoLockedTooltip": "Logo kilitli — EPG eşleşmesini veya kaynağını değiştirmek bu logoyu değiştirmez",
+    "logoUnlockedTooltip": "Bu logo URL'sini EPG kaynak değişikliklerine karşı kilitlemek için tıklayın",
+    "logoLockedHint": "Logo kilitli — EPG eşleşmesi, kaynak veya otomatik eşleşme değiştirildiğinde bu logo korunur."
   },
   "live": {
     "active": "Etkin",

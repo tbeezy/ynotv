@@ -118,7 +118,7 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
     'categories': ['enabled'],
     'vodCategories': ['enabled'],
     'watchlist': ['reminder_enabled', 'autoswitch_enabled', 'reminder_shown', 'autoswitch_triggered'],
-    'epg_channel_overrides': ['match_by_alias'],
+    'epg_channel_overrides': ['match_by_alias', 'logo_locked'],
     'local_entries': ['needsReview', 'metadataLocked', 'reviewSkipped'],
 };
 

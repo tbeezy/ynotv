@@ -11,6 +11,7 @@ const noRow = {
   override_logo_padding: null,
   override_epg_source_id: null,
   match_by_alias: 0,
+  override_logo_locked: 0,
 };
 
 describe('priorOverrideSnapshot', () => {
@@ -22,6 +23,7 @@ describe('priorOverrideSnapshot', () => {
       override_logo_padding: 'none',
       override_epg_source_id: 'global_epg_link-1',
       match_by_alias: 1,
+      override_logo_locked: 1,
     });
 
     expect(snapshot).toEqual({
@@ -31,6 +33,7 @@ describe('priorOverrideSnapshot', () => {
       logoPadding: 'none',
       feedSourceId: 'global_epg_link-1',
       matchByAlias: true,
+      logoLocked: true,
     });
   });
 
@@ -43,6 +46,7 @@ describe('priorOverrideSnapshot', () => {
       logoPadding: null,
       feedSourceId: null,
       matchByAlias: null,
+      logoLocked: null,
     });
   });
 
@@ -99,5 +103,10 @@ describe('buildRestoredOverride', () => {
   it('keeps a stale feed lock so an undo cannot drop it', () => {
     const restored = buildRestoredOverride('ch-1', { feedSourceId: 'src-9' });
     expect(restored?.epg_source_id).toBe('src-9');
+  });
+
+  it('keeps locked logo flag so an undo restores the lock', () => {
+    const restored = buildRestoredOverride('ch-1', { logoLocked: true });
+    expect(restored?.logo_locked).toBe(true);
   });
 });

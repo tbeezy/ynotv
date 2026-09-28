@@ -3899,7 +3899,12 @@
     "nowAiring": "Atualmente no ar",
     "jumpToCurrent": "Role até o programa atualmente em exibição",
     "jumpToUpcoming": "Role para o próximo programa",
-    "filter": "Filtro"
+    "filter": "Filtro",
+    "logoLocked": "Bloqueado",
+    "lockLogo": "Bloquear",
+    "logoLockedTooltip": "Logo bloqueado — alterar a correspondência ou fonte do EPG não substituirá este logo",
+    "logoUnlockedTooltip": "Clique para bloquear este URL de logo contra alterações na fonte do EPG",
+    "logoLockedHint": "O logo está bloqueado — alterar correspondência, fonte ou correspondência automática do EPG manterá este logo."
   },
   "live": {
     "active": "Ativo",

@@ -296,6 +296,15 @@ function LockSvg({ size = 13 }: { size?: number }) {
   );
 }
 
+function UnlockSvg({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+    </svg>
+  );
+}
+
 function SwapSvg({ size = 13 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
@@ -667,6 +676,7 @@ export function EpgEditorModal({
   const [pinnedInPlaylist, setPinnedInPlaylist] = useState(0);
   const [confirmReleaseAll, setConfirmReleaseAll] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoLocked, setLogoLocked] = useState(false);
   const [logoBackground, setLogoBackground] = useState<'auto' | 'light' | 'dark'>('auto');
   /**
    * No choice (`undefined`) by default: the channel's tile then follows the global
@@ -888,6 +898,18 @@ export function EpgEditorModal({
     }
 
     let active = true;
+    const initialTvgId = channel.epg_channel_id ?? '';
+    setRawChannel(null);
+    setTvgId(initialTvgId);
+    setOriginalTvgId(initialTvgId);
+    setPinnedFeed(undefined);
+    setMatchByAlias(false);
+    setMatchNameDraft('');
+    setLogoUrl(channel.stream_icon ?? '');
+    setLogoBackground('auto');
+    setLogoPadding(undefined);
+    setLogoLocked(false);
+    setTimeshiftHours('0');
     Promise.all([
       db.channels.get(channel.stream_id),
       getChannelOverride(channel.stream_id)
@@ -907,6 +929,7 @@ export function EpgEditorModal({
       setLogoUrl(ov?.stream_icon ?? playlistIcon);
       setLogoBackground((ov?.logo_background as 'auto' | 'light' | 'dark') ?? 'auto');
       setLogoPadding(storedLogoPaddingOverride(ov?.logo_padding));
+      setLogoLocked(Boolean(ov?.logo_locked));
       
       setTimeshiftHours(ov?.timeshift_hours != null ? String(ov.timeshift_hours) : '0');
     }).catch(err => {
@@ -1233,6 +1256,7 @@ export function EpgEditorModal({
         timeshift_hours: isNaN(hours) ? 0 : hours,
         epg_source_id: idChanged ? undefined : pinnedFeed,
         match_by_alias: matchByAlias,
+        logo_locked: logoLocked,
       });
       if (idChanged) setPinnedFeed(undefined);
       setChannelSaved(true);
@@ -1345,11 +1369,15 @@ export function EpgEditorModal({
     setApplyingId(epgChan.id);
     try {
       const current = await getChannelOverride(channel.stream_id);
+      const isLocked = logoLocked;
+      const targetIcon = isLocked
+        ? (logoUrl.trim() || current?.stream_icon || channel.stream_icon || undefined)
+        : (epgChan.icon_url || current?.stream_icon || channel.stream_icon);
       const pin = servablePin(epgChan.source_id, channel.source_id);
       await upsertChannelOverride({
         stream_id: channel.stream_id,
         epg_channel_id: epgChan.id,
-        stream_icon: epgChan.icon_url || current?.stream_icon || channel.stream_icon,
+        stream_icon: targetIcon,
         timeshift_hours: current?.timeshift_hours ?? 0,
         // Pin the channel to the feed the user picked. Ids are shared between
         // feeds, so without this a higher-priority global EPG could refill the
@@ -1358,11 +1386,12 @@ export function EpgEditorModal({
         // Kept as-is: an explicit id wins over the name, so the flag is inert
         // here, but silently dropping the user's setting would be surprising.
         match_by_alias: current?.match_by_alias,
+        logo_locked: isLocked,
       });
       setTvgId(epgChan.id);
       setOriginalTvgId(epgChan.id);
       setPinnedFeed(pin);
-      if (epgChan.icon_url) setLogoUrl(epgChan.icon_url);
+      if (!isLocked && epgChan.icon_url) setLogoUrl(epgChan.icon_url);
       setChannelSaved(true);
       setTimeout(() => setChannelSaved(false), 2500);
 
@@ -1576,13 +1605,17 @@ export function EpgEditorModal({
             const feedPin = topMatch.source_id && topMatch.source_id !== ch.source_id
               ? servablePin(topMatch.source_id, ch.source_id)
               : undefined;
+            const isLogoLocked = Boolean(prior.logoLocked);
             await upsertChannelOverride({
               stream_id: ch.stream_id,
               epg_channel_id: topMatch.id,
-              stream_icon: topMatch.icon_url || ch.stream_icon,
+              stream_icon: isLogoLocked
+                ? (prior.streamIcon || ch.stream_icon)
+                : (topMatch.icon_url || ch.stream_icon),
               timeshift_hours: 0,
               epg_source_id: feedPin,
               match_by_alias: Boolean((ch as any).match_by_alias),
+              logo_locked: isLogoLocked,
             });
 
             try {
@@ -1654,16 +1687,18 @@ export function EpgEditorModal({
     setResolvingRefusal(refusal.streamId);
     try {
       const current = await getChannelOverride(refusal.streamId);
+      const isLocked = Boolean(current?.logo_locked);
       const pin = servablePin(choice.source_id, refusal.sourceId);
       await upsertChannelOverride({
         stream_id: refusal.streamId,
         epg_channel_id: choice.id,
-        stream_icon: choice.icon_url || current?.stream_icon,
+        stream_icon: isLocked ? current?.stream_icon : (choice.icon_url || current?.stream_icon),
         timeshift_hours: current?.timeshift_hours ?? 0,
         // Same reasoning as an explicit Apply: the id alone is ambiguous across
         // feeds, so the feed the user picked is pinned to the channel.
         epg_source_id: pin,
         match_by_alias: current?.match_by_alias,
+        logo_locked: isLocked,
       });
 
       try {
@@ -1680,7 +1715,7 @@ export function EpgEditorModal({
         setTvgId(choice.id);
         setOriginalTvgId(choice.id);
         setPinnedFeed(pin);
-        if (choice.icon_url) setLogoUrl(choice.icon_url);
+        if (!isLocked && choice.icon_url) setLogoUrl(choice.icon_url);
         setChannelSaved(true);
         setTimeout(() => setChannelSaved(false), 2500);
       }
@@ -1708,6 +1743,7 @@ export function EpgEditorModal({
     setLogoUrl(prior.streamIcon ?? rawChannel?.stream_icon ?? channel.stream_icon ?? '');
     setLogoBackground((prior.logoBackground as 'auto' | 'light' | 'dark') ?? 'auto');
     setLogoPadding(storedLogoPaddingOverride(prior.logoPadding));
+    setLogoLocked(Boolean(prior.logoLocked));
     setTimeshiftHours(String(prior.timeshiftHours ?? 0));
     setMatchByAlias(Boolean(prior.matchByAlias));
   }
@@ -2319,15 +2355,32 @@ export function EpgEditorModal({
                     {/* Right: URL & Quick Select */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div className="epg-editor-field" style={{ margin: 0 }}>
-                        <label className="epg-editor-label">{t('logoUrlLabel')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <label className="epg-editor-label" style={{ margin: 0 }}>{t('logoUrlLabel')}</label>
+                          <button
+                            type="button"
+                            className={`epg-logo-lock-btn${logoLocked ? ' active' : ''}`}
+                            onClick={() => setLogoLocked(prev => !prev)}
+                            title={logoLocked ? t('logoLockedTooltip') : t('logoUnlockedTooltip')}
+                          >
+                            {logoLocked ? <LockSvg size={11} /> : <UnlockSvg size={11} />}
+                            <span>{logoLocked ? t('logoLocked') : t('lockLogo')}</span>
+                          </button>
+                        </div>
                         <input
                           className="epg-editor-input"
                           value={logoUrl}
-                          onChange={e => setLogoUrl(e.target.value)}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setLogoUrl(val);
+                            if (val.trim() && !logoLocked) {
+                              setLogoLocked(true);
+                            }
+                          }}
                           placeholder={t('logoUrlPlaceholder')}
                         />
                         <div className="epg-editor-hint">
-                          {t('logoBgHint')}
+                          {logoLocked ? t('logoLockedHint') : t('logoBgHint')}
                         </div>
                       </div>
 
@@ -2341,8 +2394,11 @@ export function EpgEditorModal({
                               {playlistIcon && (
                                 <button
                                   type="button"
-                                  className={`epg-quick-select-chip${logoUrl === playlistIcon ? ' active' : ''}`}
-                                  onClick={() => setLogoUrl(playlistIcon)}
+                                  className={`epg-quick-select-chip${logoUrl === playlistIcon && !logoLocked ? ' active' : ''}`}
+                                  onClick={() => {
+                                    setLogoUrl(playlistIcon);
+                                    setLogoLocked(false);
+                                  }}
                                   title={t('playlistLogo')}
                                 >
                                   <img src={playlistIcon} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -2352,8 +2408,11 @@ export function EpgEditorModal({
                               {epgLogoUrl && (
                                 <button
                                   type="button"
-                                  className={`epg-quick-select-chip${logoUrl === epgLogoUrl ? ' active' : ''}`}
-                                  onClick={() => setLogoUrl(epgLogoUrl)}
+                                  className={`epg-quick-select-chip${logoUrl === epgLogoUrl && !logoLocked ? ' active' : ''}`}
+                                  onClick={() => {
+                                    setLogoUrl(epgLogoUrl);
+                                    setLogoLocked(false);
+                                  }}
                                   title={t('epgLogo')}
                                 >
                                   <img src={epgLogoUrl} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />

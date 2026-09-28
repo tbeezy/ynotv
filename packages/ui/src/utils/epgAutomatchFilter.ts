@@ -117,7 +117,8 @@ export function buildMissingEpgQuery(scope: MissingEpgScope): { sql: string; par
              o.timeshift_hours AS override_timeshift_hours,
              o.logo_background AS override_logo_background,
              o.logo_padding AS override_logo_padding,
-             o.epg_source_id AS override_epg_source_id
+             o.epg_source_id AS override_epg_source_id,
+             COALESCE(o.logo_locked, 0) AS override_logo_locked
       FROM channels c
       LEFT JOIN epg_channel_overrides o ON o.stream_id = c.stream_id
       WHERE ${where}

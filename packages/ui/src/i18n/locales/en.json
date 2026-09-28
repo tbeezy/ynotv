@@ -3899,7 +3899,12 @@
     "nowAiring": "Currently Airing",
     "jumpToCurrent": "Scroll to currently airing program",
     "jumpToUpcoming": "Scroll to next upcoming program",
-    "filter": "Filter"
+    "filter": "Filter",
+    "logoLocked": "Locked",
+    "lockLogo": "Lock",
+    "logoLockedTooltip": "Logo locked — changing EPG match or feed will not replace this logo",
+    "logoUnlockedTooltip": "Click to lock this logo URL against EPG source changes",
+    "logoLockedHint": "Logo is locked — changing EPG match, source, or automatch will preserve this logo."
   },
   "live": {
     "active": "Active",

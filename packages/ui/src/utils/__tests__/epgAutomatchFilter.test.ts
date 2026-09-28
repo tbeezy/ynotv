@@ -21,7 +21,8 @@ function legacyQuery(sourceId: string | undefined, categoryIds: string[]) {
              o.timeshift_hours AS override_timeshift_hours,
              o.logo_background AS override_logo_background,
              o.logo_padding AS override_logo_padding,
-             o.epg_source_id AS override_epg_source_id
+             o.epg_source_id AS override_epg_source_id,
+             COALESCE(o.logo_locked, 0) AS override_logo_locked
       FROM channels c
       LEFT JOIN epg_channel_overrides o ON o.stream_id = c.stream_id
       WHERE (COALESCE(o.epg_channel_id, c.epg_channel_id) IS NULL OR TRIM(COALESCE(o.epg_channel_id, c.epg_channel_id)) = '')
@@ -100,6 +101,7 @@ describe('buildMissingEpgQuery', () => {
     expect(built).toContain('o.logo_background AS override_logo_background');
     expect(built).toContain('o.logo_padding AS override_logo_padding');
     expect(built).toContain('o.epg_source_id AS override_epg_source_id');
+    expect(built).toContain('COALESCE(o.logo_locked, 0) AS override_logo_locked');
     expect(built).not.toContain('c.stream_icon AS');
   });
 

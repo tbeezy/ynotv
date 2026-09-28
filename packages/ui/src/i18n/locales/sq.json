@@ -3899,7 +3899,12 @@
     "nowAiring": "Aktualisht po transmetohet",
     "jumpToCurrent": "Shkoni te programi që transmetohet aktualisht",
     "jumpToUpcoming": "Shkoni te programi tjetër i ardhshëm",
-    "filter": "Filtro"
+    "filter": "Filtro",
+    "logoLocked": "Kyçur",
+    "lockLogo": "Kyç",
+    "logoLockedTooltip": "Logoja është e kyçur — ndryshimi i përputhjes ose burimit EPG nuk do ta zëvendësojë këtë logo",
+    "logoUnlockedTooltip": "Kliko për të kyçur këtë URL logoje kundër ndryshimeve të burimit EPG",
+    "logoLockedHint": "Logoja është e kyçur — ndryshimi i përputhjes, burimit ose përputhjes automatike EPG do ta ruajë këtë logo."
   },
   "live": {
     "active": "Aktiv",

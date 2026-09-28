@@ -208,4 +208,14 @@ describe('batchUpsertLogoOverrides', () => {
     expect(bulkDelete).toHaveBeenCalledWith(['playlist-a_100']);
     expect(bulkPut).not.toHaveBeenCalled();
   });
+
+  it('preserves logo_locked and does not delete row when clearing padding if logo is locked', async () => {
+    storedRows.current = [{ stream_id: 'playlist-a_100', logo_padding: 'none', logo_locked: 1 }];
+
+    await batchUpsertLogoOverrides([{ streamId: 'playlist-a_100', logoPadding: null }]);
+
+    expect(bulkDelete).not.toHaveBeenCalled();
+    const written = bulkPut.mock.calls[0][0][0];
+    expect(written.logo_locked).toBe(1);
+  });
 });

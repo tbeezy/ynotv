@@ -385,6 +385,8 @@ export interface EpgChannelOverride {
   // a feed channel that happens to match the raw name can no longer fill this
   // channel — it's replaced, not added as a fallback. Requires channels.alias.
   match_by_alias?: boolean;
+  // Lock custom logo URL so changing EPG matches, feeds, or automatching does not overwrite it
+  logo_locked?: boolean;
 }
 
 // EPG Program Override — overrides or tombstones for synced programs, plus user-created programs
@@ -647,7 +649,7 @@ class YnotvDatabase extends SqliteDatabase {
     // Each version block runs exactly ONCE. To add new columns in the future,
     // increment DB_VERSION and add a new case (do NOT modify existing cases).
     // ─────────────────────────────────────────────────────────────────────────
-    const DB_VERSION = 29;
+    const DB_VERSION = 30;
     const versionResult = await db.select('PRAGMA user_version') as Array<{ user_version: number }>;
     const currentVersion = versionResult[0]?.user_version ?? 0;
 
@@ -1096,6 +1098,15 @@ class YnotvDatabase extends SqliteDatabase {
           try { await db.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); } catch { /* already exists */ }
         };
         await addColumn('epg_channel_overrides', 'match_by_alias', 'INTEGER');
+      }
+
+      // v30: Per-channel "lock logo URL" flag (protects custom logos against EPG source/match changes).
+      if (currentVersion < 30) {
+        console.log('[DB] v30 migration: Adding logo_locked column to epg_channel_overrides');
+        const addColumn = async (table: string, col: string, type: string) => {
+          try { await db.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); } catch { /* already exists */ }
+        };
+        await addColumn('epg_channel_overrides', 'logo_locked', 'INTEGER DEFAULT 0');
       }
 
       // Bump the stored version so these migrations never run again
@@ -1559,6 +1570,7 @@ class YnotvDatabase extends SqliteDatabase {
     try { await db.execute(`ALTER TABLE epg_channel_overrides ADD COLUMN logo_padding TEXT`); } catch (e) {}
     try { await db.execute(`ALTER TABLE epg_channel_overrides ADD COLUMN epg_source_id TEXT`); } catch (e) {}
     try { await db.execute(`ALTER TABLE epg_channel_overrides ADD COLUMN match_by_alias INTEGER`); } catch (e) {}
+    try { await db.execute(`ALTER TABLE epg_channel_overrides ADD COLUMN logo_locked INTEGER DEFAULT 0`); } catch (e) {}
 
     // Self-healing migrations: Ensure critical columns from standard migrations exist
     try { await db.execute(`ALTER TABLE categories ADD COLUMN alias TEXT`); } catch (e) {}
@@ -1582,7 +1594,8 @@ class YnotvDatabase extends SqliteDatabase {
       logo_padding    TEXT,
       timeshift_hours REAL,
       epg_source_id   TEXT,
-      match_by_alias  INTEGER
+      match_by_alias  INTEGER,
+      logo_locked     INTEGER DEFAULT 0
     )`);
 
     // Feed locks are read on every EPG pass (the pin map, the needing-mappings,

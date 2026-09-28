@@ -3899,7 +3899,12 @@
     "nowAiring": "Attualmente in onda",
     "jumpToCurrent": "Scorri fino al programma attualmente in onda",
     "jumpToUpcoming": "Scorri fino al programma successivo",
-    "filter": "Filtro"
+    "filter": "Filtro",
+    "logoLocked": "Bloccato",
+    "lockLogo": "Blocca",
+    "logoLockedTooltip": "Logo bloccato: la modifica della corrispondenza o sorgente EPG non sostituirà questo logo",
+    "logoUnlockedTooltip": "Fai clic per bloccare questo URL del logo contro le modifiche alla sorgente EPG",
+    "logoLockedHint": "Il logo è bloccato: la modifica della corrispondenza, della sorgente o dell'abbinamento automatico EPG manterrà questo logo."
   },
   "live": {
     "active": "Attivo",

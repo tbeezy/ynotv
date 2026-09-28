@@ -2000,6 +2000,36 @@ select.epg-editor-input option {
   color: var(--accent-primary, #00d4ff);
 }
 
+.epg-logo-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.epg-logo-lock-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary, #fff);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.epg-logo-lock-btn.active {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: var(--accent-primary, #00d4ff);
+  color: var(--accent-primary, #00d4ff);
+}
+
 /* ── Timeshift Presets ── */
 .epg-timeshift-deck {
   display: flex;

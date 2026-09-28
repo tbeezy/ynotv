@@ -23,6 +23,7 @@ export interface PriorOverrideSnapshot {
   logoPadding?: string | null;
   feedSourceId?: string | null;
   matchByAlias?: boolean | null;
+  logoLocked?: boolean | null;
 }
 
 /** The pre-run override aliases the Automatch query selects alongside each channel. */
@@ -33,6 +34,7 @@ interface SnapshotRow {
   override_logo_padding?: unknown;
   override_epg_source_id?: unknown;
   match_by_alias?: unknown;
+  override_logo_locked?: unknown;
 }
 
 function text(value: unknown): string | null {
@@ -59,6 +61,7 @@ export function priorOverrideSnapshot(row: SnapshotRow): PriorOverrideSnapshot {
     logoPadding: text(row.override_logo_padding),
     feedSourceId: text(row.override_epg_source_id),
     matchByAlias: flag(row.match_by_alias),
+    logoLocked: flag(row.override_logo_locked),
   };
 }
 
@@ -82,6 +85,7 @@ export function buildRestoredOverride(
       prior.logoPadding ||
       prior.feedSourceId ||
       prior.matchByAlias ||
+      prior.logoLocked ||
       (typeof prior.timeshiftHours === 'number' && prior.timeshiftHours !== 0)
   );
   if (!kept) return null;
@@ -95,5 +99,6 @@ export function buildRestoredOverride(
     timeshift_hours: prior.timeshiftHours ?? undefined,
     epg_source_id: prior.feedSourceId ?? undefined,
     match_by_alias: prior.matchByAlias ?? undefined,
+    logo_locked: prior.logoLocked ?? undefined,
   };
 }
