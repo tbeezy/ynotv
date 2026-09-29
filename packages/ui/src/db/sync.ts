@@ -15,6 +15,7 @@ import { useUIStore } from '../stores/uiStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { bulkOps, type BulkChannel, type BulkCategory } from '../services/bulk-ops';
 import { epgStreaming, getEpgUrlCandidates, type EpgProgressCallback, type EpgParseResult } from '../services/epg-streaming';
+import { pruneStaleGlobalEpgSourcesFromStoredSources } from '../services/globalEpgSourcePrune';
 import { dbEvents, withSyncGate } from './sqlite-adapter';
 import { matchAllMoviesLazy, matchAllSeriesLazy } from '../services/title-match';
 import type { GlobalEpgLink } from '../types/app';
@@ -4450,6 +4451,12 @@ export async function clearEpgCacheOnly(): Promise<void> {
   // 2. Clear offline full-EPG caches and reset their freshness so they are
   //    re-downloaded on the next global EPG sync.
   try {
+    // A link can still be holding the id of a playlist the user deleted (only
+    // the link editor rewrote that list), and this clear is expected to leave
+    // no reference to a feed that no longer exists. Sweep first so the reset
+    // below writes back the pruned links, not the stale ones.
+    await pruneStaleGlobalEpgSourcesFromStoredSources();
+
     const globalEpgLinks = useSettingsStore.getState().globalEpgLinks;
     for (const link of globalEpgLinks) {
       await cleanupGlobalEpgCache(link.id);

@@ -4,8 +4,8 @@
  * Both directions answer the same question — which feeds can actually serve a
  * pin (`ServableFeedIds` / `isServableFeedPin`) — so the rule lives here once.
  *
- * A backup restores *configuration*, and two pieces of the EPG state it carries
- * can't be handed over as-is:
+ * A backup restores *configuration*, and three pieces of the EPG state it
+ * carries can't be handed over as-is:
  *
  *  - A feed pin (`epg_channel_overrides.epg_source_id`) names the one feed that
  *    may fill a channel: `global_epg_<linkId>` for an EPG source attached to a
@@ -22,9 +22,16 @@
  *    install skip a feed — leaving the imported channels with no guide at all
  *    until the freshness window passes.
  *
- * Both helpers are pure so the rules can be tested without a database.
+ *  - A link's attached playlists (`sourceIds`) name sources the file has to
+ *    carry. The restore replaces the source list with the backup's own, so an
+ *    attachment the file has no playlist for is dead on arrival — and the
+ *    settings card renders an id it cannot resolve as the raw id, so it would
+ *    show up as a pill of UUID text (see `globalEpgSourcePrune`).
+ *
+ * Every helper is pure so the rules can be tested without a database.
  */
 import type { GlobalEpgLink } from '../types/app';
+import { pruneGlobalEpgLinkSources } from './globalEpgSourcePrune';
 
 /** Prefix of a pin that points at a global EPG link rather than a playlist. */
 export const GLOBAL_EPG_PIN_PREFIX = 'global_epg_';
@@ -217,6 +224,8 @@ export interface ImportedEpgRepair<T, S> {
   settings: S;
   droppedPins: DroppedFeedPin[];
   resetLinks: number;
+  /** Playlist ids dropped from the links because the backup has no such source. */
+  prunedSourceIds: string[];
 }
 
 /**
@@ -241,16 +250,28 @@ export function repairImportedEpgState<
     return out;
   };
 
+  const sourceIds = ids(backup.sources);
   const pins = sanitizeImportedFeedPins(backup.epgChannelOverrides, {
-    sourceIds: ids(backup.sources),
+    sourceIds,
     linkIds: ids(settings.globalEpgLinks),
   });
   const linkRunState = stripImportedEpgLinkRunState(settings);
 
+  // A link's attachment list is configuration, but it names playlists the file
+  // has to carry: the restore replaces the source list with the backup's own, so
+  // an id without a matching source is stale the moment it lands — and a link
+  // renders an id it cannot resolve as the raw id, the same orphan the app now
+  // clears when a playlist is deleted here. Runs after the run-state strip so
+  // `resetLinks` still counts the links that carried one.
+  const pruned = pruneGlobalEpgLinkSources(linkRunState.settings.globalEpgLinks, sourceIds);
+
   return {
     epgChannelOverrides: pins.overrides,
-    settings: linkRunState.settings,
+    settings: pruned.changedLinks > 0
+      ? { ...linkRunState.settings, globalEpgLinks: pruned.links }
+      : linkRunState.settings,
     droppedPins: pins.dropped,
     resetLinks: linkRunState.reset,
+    prunedSourceIds: pruned.removedSourceIds,
   };
 }

@@ -32,6 +32,7 @@ import { useSettingsStore, DEFAULT_MAX_SEARCH_RESULTS, clampMaxSearchResults } f
 import type { ShortcutsMap, ThemeId, CustomThemeConfig, SavedProxyProfile } from '../types/app';
 import type { StremioStreamPickerMode, BadgeSource, StreamAutoPlayMode, StreamAutoPlaySourceScope } from '../types/stremio';
 import { DEFAULT_BADGE_SOURCES, mergeDefaultBadgeSources } from '../utils/streamBadges';
+import { pruneStaleGlobalEpgSources } from '../services/globalEpgSourcePrune';
 import { useTranslation } from 'react-i18next';
 import i18n, { SUPPORTED_LOCALES } from '../i18n';
 import './Settings.css';
@@ -931,6 +932,13 @@ export function Settings({
         }
       });
       setSources(result.data);
+
+      // Self-heal for installs that lost a playlist before this cleanup existed:
+      // a Global EPG link can still be holding the id of a playlist that is gone
+      // (only the link editor ever rewrote its attachment list), and the card
+      // shows an unresolvable id as raw UUID text. Prune against the list just
+      // read, never a snapshot, so this can't detach a live playlist.
+      pruneStaleGlobalEpgSources(new Set(result.data.map((source: Source) => source.id)));
     }
   }
 

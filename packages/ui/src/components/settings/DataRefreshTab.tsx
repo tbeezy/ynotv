@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { clearAllCachedData } from '../../db';
 import { syncAllSources, clearEpgCacheOnly } from '../../db/sync';
+import { pruneStaleGlobalEpgSourcesFromStoredSources } from '../../services/globalEpgSourcePrune';
 import { useCacheClearing, useSetCacheClearing, useSetChannelSyncing, useSetSyncStatusMessage } from '../../stores/uiStore';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -42,6 +43,10 @@ export function DataRefreshTab({
     setShowConfirm(false);
     try {
       await clearAllCachedData();
+      // The cache holds no playlists, but a Global EPG link can still be naming
+      // one the user deleted — clearing everything is exactly when the user
+      // expects those dangling references to go too.
+      await pruneStaleGlobalEpgSourcesFromStoredSources();
       // Trigger fresh sync (no page reload needed)
       setCacheClearing(false);
       setChannelSyncing(true);

@@ -301,6 +301,67 @@ describe('repairImportedEpgState', () => {
       settings: {},
       droppedPins: [],
       resetLinks: 0,
+      prunedSourceIds: [],
     });
+  });
+
+  it('detaches a link from a playlist the backup does not carry', () => {
+    const result = repairImportedEpgState({
+      sources: [{ id: 'playlist-a' }],
+      settings: { globalEpgLinks: [link({ sourceIds: ['playlist-a', 'gone-playlist'] })] },
+      epgChannelOverrides: [],
+    });
+
+    // The restore replaces the source list with the backup's, so the id can
+    // never resolve again — the card would render it as raw UUID text.
+    expect(result.settings.globalEpgLinks?.[0].sourceIds).toEqual(['playlist-a']);
+    expect(result.prunedSourceIds).toEqual(['gone-playlist']);
+  });
+
+  it('leaves the settings object alone when every attachment is carried', () => {
+    const settings = { globalEpgLinks: [link({ sourceIds: ['playlist-a', 'playlist-b'] })] };
+    const result = repairImportedEpgState({
+      sources: [{ id: 'playlist-a' }, { id: 'playlist-b' }],
+      settings,
+      epgChannelOverrides: [],
+    });
+
+    expect(result.prunedSourceIds).toEqual([]);
+    // Same object back: there is nothing to persist differently.
+    expect(result.settings).toBe(settings);
+  });
+
+  it('keeps counting a link that only ever filled a playlist the backup lacks', () => {
+    const result = repairImportedEpgState({
+      sources: [],
+      settings: {
+        globalEpgLinks: [
+          link({
+            sourceIds: ['gone-playlist'],
+            lastSynced: 5,
+            lastSyncResult: { timestamp: 1, totalInserted: 2, perSource: { 'gone-playlist': 2 } },
+          }),
+        ],
+      },
+      epgChannelOverrides: [],
+    });
+
+    // `resetLinks` keeps meaning "links that carried run state", whatever the
+    // prune does to their attachments.
+    expect(result.resetLinks).toBe(1);
+    expect(result.prunedSourceIds).toEqual(['gone-playlist']);
+    expect(result.settings.globalEpgLinks?.[0].sourceIds).toEqual([]);
+    expect(result.settings.globalEpgLinks?.[0]).not.toHaveProperty('lastSynced');
+  });
+
+  it('detaches everything when the backup carries no playlists at all', () => {
+    const result = repairImportedEpgState({
+      sources: [],
+      settings: { globalEpgLinks: [link({ sourceIds: ['playlist-a'] })] },
+      epgChannelOverrides: [],
+    });
+
+    expect(result.settings.globalEpgLinks?.[0].sourceIds).toEqual([]);
+    expect(result.prunedSourceIds).toEqual(['playlist-a']);
   });
 });

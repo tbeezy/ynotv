@@ -779,9 +779,10 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
         // Repair the EPG state a backup can't hand over as-is, before anything is
         // written. A feed pin whose feed isn't part of this backup would leave its
         // channel skipped by every other feed — blank for good, with nothing in the
-        // UI to explain it — and the per-feed run stamps would make the restored
+        // UI to explain it — the per-feed run stamps would make the restored
         // library skip a feed it hasn't run here while it has no guide at all
-        // (programmes are not part of a backup).
+        // (programmes are not part of a backup), and a link attached to a playlist
+        // the file doesn't carry would keep that id forever.
         const epgRepair = repairImportedEpgState(data);
         data.epgChannelOverrides = epgRepair.epgChannelOverrides;
         data.settings = epgRepair.settings;
@@ -794,6 +795,11 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
         if (epgRepair.resetLinks > 0) {
             console.log(
                 `[Import] Reset the sync state of ${epgRepair.resetLinks} EPG source(s) so the restored channels refill on the next sync`
+            );
+        }
+        if (epgRepair.prunedSourceIds.length > 0) {
+            console.log(
+                `[Import] Detached ${epgRepair.prunedSourceIds.length} playlist reference(s) this backup does not carry from its Global EPG sources`
             );
         }
 

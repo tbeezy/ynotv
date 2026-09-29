@@ -24,6 +24,7 @@ import {
 } from '../../stores/uiStore';
 import { useToastStore } from '../../stores/toastStore';
 import { releasePinsForFeed } from '../../services/epg-overrides';
+import { dropDeletedGlobalEpgSourceRefs } from '../../services/globalEpgSourcePrune';
 import { parseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
 import { CategoryManager } from './CategoryManager';
 import { DataRefreshTab } from './DataRefreshTab';
@@ -776,12 +777,24 @@ export function SourcesTab({
   const [editingEpgId, setEditingEpgId] = useState<string | null>(null);
   const [epgFormData, setEpgFormData] = useState({ name: '', url: '', sourceIds: [] as string[], saveEntireEpg: false });
   const [epgFormError, setEpgFormError] = useState<string | null>(null);
+  // Hide disabled playlists in the link form — same view toggle the Playlist
+  // Sources list has, so the list of playlists to attach can be narrowed down
+  // to the ones that are actually in use. View state only: never persisted, and
+  // it never changes what is attached.
+  const [epgHideDisabled, setEpgHideDisabled] = useState(false);
   const [deleteEpgConfirm, setDeleteEpgConfirm] = useState<GlobalEpgLink | null>(null);
   const [viewMatchesEpg, setViewMatchesEpg] = useState<GlobalEpgLink | null>(null);
   const [syncingEpgId, setSyncingEpgId] = useState<string | null>(null);
   const [syncingAllEpg, setSyncingAllEpg] = useState(false);
 
   const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
+
+  // The playlists the Global EPG form offers (the toggle above). Ordered like
+  // the prop it came from, so the form matches the Playlist Sources list.
+  const epgLinkableSources = useMemo(
+    () => (epgHideDisabled ? sources.filter(s => s.enabled !== false) : sources),
+    [sources, epgHideDisabled]
+  );
 
   // Sorted global EPG links for rendering (lower display_order = higher priority)
   const sortedEpgLinks = useMemo(() => {
@@ -986,6 +999,20 @@ export function SourcesTab({
       }
 
       await window.storage.deleteSource(id);
+
+      // A playlist that is gone can no longer fill a Global EPG link's gaps, so
+      // its id is removed from every link's attachment list (and from the
+      // per-source run state that describes it). Otherwise the link keeps the
+      // id and renders it as a UUID pill forever — deleting the EPG source and
+      // re-adding it used to be the only way to get rid of it.
+      try {
+        const pruned = dropDeletedGlobalEpgSourceRefs(new Set([id]));
+        if (pruned > 0) {
+          console.log(`[Sources] Removed playlist ${name} from ${pruned} Global EPG source(s)`);
+        }
+      } catch (e) {
+        console.warn('[Sources] Failed to remove the deleted playlist from Global EPG sources:', e);
+      }
 
       // Small delay to ensure all async state updates complete
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -3324,11 +3351,31 @@ export function SourcesTab({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <label style={{ marginBottom: 0 }}>{i18n.t('settings:sources.linkedSources')}</label>
                 {sources.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className={`sources-hide-toggle${epgHideDisabled ? ' active' : ''}`}
+                      aria-pressed={epgHideDisabled}
+                      title={i18n.t('settings:channelManager.hideDisabled')}
+                      onClick={() => setEpgHideDisabled(v => !v)}
+                    >
+                      {epgHideDisabled
+                        ? '👁 ' + i18n.t('common:showAll')
+                        : '👁‍🗨 ' + i18n.t('settings:channelManager.hideDisabled')}
+                    </button>
                     <button
                       type="button"
                       style={{ padding: '4px 8px', fontSize: '12px', cursor: 'pointer', background: 'var(--surface-color)', border: '1px solid var(--surface-border)', borderRadius: '4px', color: 'var(--text-primary)' }}
-                      onClick={() => setEpgFormData({ ...epgFormData, sourceIds: sources.map(s => s.id) })}
+                      onClick={() => setEpgFormData(prev => ({
+                        ...prev,
+                        // Everything the list is showing, plus anything already
+                        // attached that the toggle is hiding — the toggle is a
+                        // view, so it must not silently detach a playlist.
+                        sourceIds: Array.from(new Set([
+                          ...prev.sourceIds,
+                          ...epgLinkableSources.map(s => s.id),
+                        ])),
+                      }))}
                     >
                       {i18n.t('settings:sources.selectAll')}
                     </button>
@@ -3347,9 +3394,11 @@ export function SourcesTab({
               </span>
               {sources.length === 0 ? (
                 <p className="hint">{i18n.t('settings:sources.noSourcesAvailable')}</p>
+              ) : epgLinkableSources.length === 0 ? (
+                <p className="hint">{i18n.t('common:noResultsFound')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {sources.map(source => (
+                  {epgLinkableSources.map(source => (
                     <label
                       key={source.id}
                       className="checkbox-label"
