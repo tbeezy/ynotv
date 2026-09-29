@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Keine exakte Übereinstimmung für Ihre Wörter — es werden Titel gezeigt, die alle enthalten",
     "stalkerServerSearchNoSources": "Keine aktivierte Stalker-Quelle gefunden. Füge eine in den Einstellungen hinzu oder schalte dies aus.",
     "stalkerServerSearchTab": "Stalker Server-Suche",
-    "stalkerServerSearchLoadAllResults": "Alle Ergebnisse laden"
+    "stalkerServerSearchLoadAllResults": "Alle Ergebnisse laden",
+    "stalkerServerSearchAllSources": "Alle Stalker-Quellen",
+    "stalkerServerSearchProgressSources": "Server durchsuchen ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Aufnahme planen",

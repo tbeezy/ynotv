@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "No exact match for your words — showing titles that contain all of them",
     "stalkerServerSearchNoSources": "No enabled Stalker source was found. Add one in Settings, or turn this off.",
     "stalkerServerSearchTab": "Stalker Server Search",
-    "stalkerServerSearchLoadAllResults": "Load all results"
+    "stalkerServerSearchLoadAllResults": "Load all results",
+    "stalkerServerSearchAllSources": "All Stalker Sources",
+    "stalkerServerSearchProgressSources": "Searching servers ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Schedule Recording",

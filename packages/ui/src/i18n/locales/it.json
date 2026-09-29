@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Nessuna corrispondenza esatta per le tue parole: vengono mostrati i titoli che le contengono tutte",
     "stalkerServerSearchNoSources": "Nessuna sorgente Stalker attiva. Aggiungine una nelle impostazioni o disattiva questa opzione.",
     "stalkerServerSearchTab": "Stalker Ricerca sul server",
-    "stalkerServerSearchLoadAllResults": "Carica tutti i risultati"
+    "stalkerServerSearchLoadAllResults": "Carica tutti i risultati",
+    "stalkerServerSearchAllSources": "Tutte le fonti Stalker",
+    "stalkerServerSearchProgressSources": "Ricerca sui server ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Programma registrazione",

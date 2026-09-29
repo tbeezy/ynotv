@@ -75,6 +75,8 @@ export interface StalkerServerSearchPage {
      * re-decided would splice the other endpoint's page N into the walk.
      */
     endpoint: StalkerSearchEndpoint;
+    /** Non-empty if an individual source query failed during multi-source search. */
+    error?: string;
 }
 
 export interface StalkerServerSearchParams {
@@ -183,6 +185,24 @@ export async function getStalkerSearchCategoryNames(
     return names;
 }
 
+/**
+ * Category names for all Stalker sources of a given type.
+ *
+ * Used when searching across all sources so cards can resolve their category labels
+ * regardless of which source they came from.
+ */
+export async function getAllStalkerSearchCategoryNames(
+    type: 'movies' | 'series'
+): Promise<Record<string, string>> {
+    const rows = await db.vodCategories.where('type').equals(type === 'movies' ? 'movie' : 'series').toArray();
+    const names: Record<string, string> = {};
+    for (const c of rows) {
+        if (!c.category_id || !c.name) continue;
+        names[c.category_id] = c.name;
+    }
+    return names;
+}
+
 /** A row's category membership, from a stored JSON string or an in-memory array. */
 function parseCategoryIds(value: unknown): string[] {
     if (Array.isArray(value)) return value.map(String).filter(Boolean);
@@ -268,5 +288,74 @@ export async function searchStalkerServer(params: StalkerServerSearchParams): Pr
         phrase: result.phrase,
         matchKind: result.matchKind,
         endpoint: result.endpoint,
+    };
+}
+
+/**
+ * Merge individual StalkerServerSearchPage results from multiple sources into a combined page.
+ *
+ * Rules:
+ * - Omits rows and totals from portals where `unsupported === true` or where an error occurred.
+ * - Deduplicates rows by stream_id / series_id.
+ * - Sorts rows alphabetically by title.
+ * - Aggregates matchKind: 'verbatim' if any portal found verbatim matches (so the UI doesn't
+ *   falsely claim no exact matches were found); 'word' if all working portals used the same
+ *   fallback phrase; 'all-words' if all working portals fell back to matching all words.
+ * - `unsupported` is true only if ALL portals answered as unsupported.
+ */
+export function mergeStalkerServerSearchPages(
+    sourceResults: Record<string, StalkerServerSearchPage>,
+    query: string
+): StalkerServerSearchPage {
+    const pages = Object.values(sourceResults);
+    const workingPages = pages.filter(p => !p.unsupported && !p.error);
+
+    const mergedRows: Array<StoredMovie | StoredSeries> = [];
+    const seenRowIds = new Set<string>();
+    let totalCount = 0;
+    let anyHasMore = false;
+
+    for (const p of workingPages) {
+        totalCount += p.total;
+        if (p.hasMore) anyHasMore = true;
+        for (const r of p.rows) {
+            const id = (r as StoredSeries).series_id ?? (r as StoredMovie).stream_id;
+            if (!seenRowIds.has(id)) {
+                seenRowIds.add(id);
+                mergedRows.push(r);
+            }
+        }
+    }
+    mergedRows.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    let matchKind: StalkerSearchMatchKind = 'verbatim';
+    let phrase = query;
+
+    if (workingPages.length > 0) {
+        const kinds = workingPages.map(p => p.matchKind);
+        if (kinds.some(k => k === 'verbatim')) {
+            matchKind = 'verbatim';
+            phrase = query;
+        } else if (kinds.every(k => k === 'word') && workingPages.every(p => p.phrase === workingPages[0].phrase)) {
+            matchKind = 'word';
+            phrase = workingPages[0].phrase;
+        } else if (kinds.some(k => k === 'all-words' || k === 'word')) {
+            matchKind = 'all-words';
+            phrase = query;
+        }
+    }
+
+    const allUnsupported = pages.length > 0 && pages.every(p => p.unsupported);
+
+    return {
+        rows: mergedRows,
+        total: totalCount,
+        shown: mergedRows.length,
+        nextPage: 1,
+        hasMore: anyHasMore,
+        unsupported: allUnsupported,
+        phrase,
+        matchKind,
+        endpoint: workingPages[0]?.endpoint ?? 'vod',
     };
 }

@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "आपके शब्दों का सटीक मेल नहीं मिला — ऐसे शीर्षक दिखाए जा रहे हैं जिनमें ये सभी शब्द हैं",
     "stalkerServerSearchNoSources": "कोई सक्षम Stalker स्रोत नहीं मिला। सेटिंग्स में जोड़ें या इसे बंद करें।",
     "stalkerServerSearchTab": "Stalker सर्वर खोज",
-    "stalkerServerSearchLoadAllResults": "सभी परिणाम लोड करें"
+    "stalkerServerSearchLoadAllResults": "सभी परिणाम लोड करें",
+    "stalkerServerSearchAllSources": "सभी Stalker स्रोत",
+    "stalkerServerSearchProgressSources": "सर्वर खोज रहे हैं ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "रिकॉर्डिंग शेड्यूल करें",

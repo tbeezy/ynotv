@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "تطابق دقیقی برای واژه‌های شما یافت نشد — عنوان‌هایی نمایش داده می‌شوند که همه آن‌ها را دارند",
     "stalkerServerSearchNoSources": "هیچ منبع Stalker فعالی یافت نشد. یکی را در تنظیمات اضافه کنید یا این گزینه را خاموش کنید.",
     "stalkerServerSearchTab": "Stalker جستجوی سرور",
-    "stalkerServerSearchLoadAllResults": "بارگذاری همه نتایج"
+    "stalkerServerSearchLoadAllResults": "بارگذاری همه نتایج",
+    "stalkerServerSearchAllSources": "همه منابع Stalker",
+    "stalkerServerSearchProgressSources": "در حال جستجوی سرورها ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "زمان‌بندی ضبط",

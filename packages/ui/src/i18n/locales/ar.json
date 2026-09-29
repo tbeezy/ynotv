@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "لا تطابق تام لكلماتك — يتم عرض العناوين التي تحتوي على كل هذه الكلمات",
     "stalkerServerSearchNoSources": "لم يتم العثور على مصدر Stalker مُفعَّل. أضف واحدًا في الإعدادات أو أوقف هذا الخيار.",
     "stalkerServerSearchTab": "Stalker البحث في الخادم",
-    "stalkerServerSearchLoadAllResults": "تحميل كل النتائج"
+    "stalkerServerSearchLoadAllResults": "تحميل كل النتائج",
+    "stalkerServerSearchAllSources": "جميع مصادر Stalker",
+    "stalkerServerSearchProgressSources": "جارٍ البحث في الخوادم ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "جدولة التسجيل",

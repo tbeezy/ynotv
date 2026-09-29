@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Nuk ka përputhje të saktë për fjalët e tua — po shfaqen titujt që i përmbajnë të gjitha",
     "stalkerServerSearchNoSources": "Nuk u gjet asnjë burim Stalker i aktivizuar. Shto një në Cilësimet ose çaktivizo këtë.",
     "stalkerServerSearchTab": "Stalker Kërkim në server",
-    "stalkerServerSearchLoadAllResults": "Ngarko të gjitha rezultatet"
+    "stalkerServerSearchLoadAllResults": "Ngarko të gjitha rezultatet",
+    "stalkerServerSearchAllSources": "Të gjitha burimet Stalker",
+    "stalkerServerSearchProgressSources": "Duke kërkuar serverët ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Planifiko regjistrimin",

@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "没有与您的关键词完全匹配的结果 — 显示包含全部关键词的标题",
     "stalkerServerSearchNoSources": "未找到已启用的 Stalker 源。请在设置中添加，或关闭此功能。",
     "stalkerServerSearchTab": "Stalker 服务器搜索",
-    "stalkerServerSearchLoadAllResults": "加载全部结果"
+    "stalkerServerSearchLoadAllResults": "加载全部结果",
+    "stalkerServerSearchAllSources": "所有 Stalker 源",
+    "stalkerServerSearchProgressSources": "正在搜索服务器 ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "安排录制",

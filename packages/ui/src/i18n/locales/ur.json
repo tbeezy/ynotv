@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "آپ کے الفاظ کا عین مطابق میچ نہیں ملا — وہ عنوانات دکھائے جا رہے ہیں جن میں یہ سب شامل ہیں",
     "stalkerServerSearchNoSources": "کوئی فعال Stalker ذریعہ نہیں ملا۔ ترتیبات میں شامل کریں یا اسے بند کر دیں۔",
     "stalkerServerSearchTab": "Stalker سرور تلاش",
-    "stalkerServerSearchLoadAllResults": "تمام نتائج لوڈ کریں"
+    "stalkerServerSearchLoadAllResults": "تمام نتائج لوڈ کریں",
+    "stalkerServerSearchAllSources": "تمام Stalker ذرائع",
+    "stalkerServerSearchProgressSources": "سرورز تلاش کیے جا رہے ہیں ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "ریکارڈنگ شیڈول کریں",

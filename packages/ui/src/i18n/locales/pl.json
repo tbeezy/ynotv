@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Brak dokładnego dopasowania do Twoich słów — pokazano tytuły zawierające je wszystkie",
     "stalkerServerSearchNoSources": "Nie znaleziono włączonego źródła Stalker. Dodaj je w ustawieniach lub wyłącz tę opcję.",
     "stalkerServerSearchTab": "Stalker Wyszukiwanie na serwerze",
-    "stalkerServerSearchLoadAllResults": "Wczytaj wszystkie wyniki"
+    "stalkerServerSearchLoadAllResults": "Wczytaj wszystkie wyniki",
+    "stalkerServerSearchAllSources": "Wszystkie źródła Stalker",
+    "stalkerServerSearchProgressSources": "Przeszukiwanie serwerów ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Zaplanuj nagranie",

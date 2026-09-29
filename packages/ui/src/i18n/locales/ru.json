@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Точного совпадения по вашим словам нет — показаны названия, содержащие все эти слова",
     "stalkerServerSearchNoSources": "Не найдено включённых источников Stalker. Добавьте его в настройках или отключите эту опцию.",
     "stalkerServerSearchTab": "Stalker Поиск на сервере",
-    "stalkerServerSearchLoadAllResults": "Загрузить все результаты"
+    "stalkerServerSearchLoadAllResults": "Загрузить все результаты",
+    "stalkerServerSearchAllSources": "Все источники Stalker",
+    "stalkerServerSearchProgressSources": "Поиск по серверам ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Планирование записи",

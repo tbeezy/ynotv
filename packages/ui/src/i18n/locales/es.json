@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "No hay coincidencia exacta con tus palabras: se muestran títulos que las contienen todas",
     "stalkerServerSearchNoSources": "No se encontró ninguna fuente Stalker activada. Añade una en Ajustes o desactiva esto.",
     "stalkerServerSearchTab": "Stalker Búsqueda en el servidor",
-    "stalkerServerSearchLoadAllResults": "Cargar todos los resultados"
+    "stalkerServerSearchLoadAllResults": "Cargar todos los resultados",
+    "stalkerServerSearchAllSources": "Todas las fuentes Stalker",
+    "stalkerServerSearchProgressSources": "Buscando en servidores ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Programar grabación",

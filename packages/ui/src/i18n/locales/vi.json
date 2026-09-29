@@ -5152,7 +5152,9 @@
     "stalkerServerSearchMatchingAllWords": "Không có kết quả khớp chính xác cho các từ của bạn — đang hiển thị tiêu đề chứa tất cả các từ đó",
     "stalkerServerSearchNoSources": "Không tìm thấy nguồn Stalker nào đang bật. Hãy thêm trong Cài đặt hoặc tắt tính năng này.",
     "stalkerServerSearchTab": "Stalker Tìm kiếm trên máy chủ",
-    "stalkerServerSearchLoadAllResults": "Tải tất cả kết quả"
+    "stalkerServerSearchLoadAllResults": "Tải tất cả kết quả",
+    "stalkerServerSearchAllSources": "Tất cả nguồn Stalker",
+    "stalkerServerSearchProgressSources": "Đang tìm kiếm máy chủ ({{current}}/{{total}})..."
   },
   "probe": {
     "title": "Kiểm tra luồng phát kênh và trình kiểm tra IPTV",

@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Kelimeleriniz için tam eşleşme yok — hepsini içeren başlıklar gösteriliyor",
     "stalkerServerSearchNoSources": "Etkin bir Stalker kaynağı bulunamadı. Ayarlardan bir tane ekleyin veya bunu kapatın.",
     "stalkerServerSearchTab": "Stalker Sunucuda arama",
-    "stalkerServerSearchLoadAllResults": "Tüm sonuçları yükle"
+    "stalkerServerSearchLoadAllResults": "Tüm sonuçları yükle",
+    "stalkerServerSearchAllSources": "Tüm Stalker Kaynakları",
+    "stalkerServerSearchProgressSources": "Sunucular aranıyor ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Kaydı Planla",

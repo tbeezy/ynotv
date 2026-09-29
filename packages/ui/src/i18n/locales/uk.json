@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Точного збігу за вашими словами немає — показано назви, що містять усі ці слова",
     "stalkerServerSearchNoSources": "Не знайдено увімкнених джерел Stalker. Додайте його в налаштуваннях або вимкніть це.",
     "stalkerServerSearchTab": "Stalker Пошук на сервері",
-    "stalkerServerSearchLoadAllResults": "Завантажити всі результати"
+    "stalkerServerSearchLoadAllResults": "Завантажити всі результати",
+    "stalkerServerSearchAllSources": "Усі джерела Stalker",
+    "stalkerServerSearchProgressSources": "Пошук по серверах ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Планування запису",

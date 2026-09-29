@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Нема тачног поклапања за ваше речи — приказани су наслови који их садрже све",
     "stalkerServerSearchNoSources": "Није пронађен ниједан омогућен Stalker извор. Додајте га у подешавањима или искључите ово.",
     "stalkerServerSearchTab": "Stalker Претрага на серверу",
-    "stalkerServerSearchLoadAllResults": "Учитај све резултате"
+    "stalkerServerSearchLoadAllResults": "Учитај све резултате",
+    "stalkerServerSearchAllSources": "Сви Stalker извори",
+    "stalkerServerSearchProgressSources": "Претраживање сервера ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Заказивање снимка",

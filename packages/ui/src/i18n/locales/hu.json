@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Nincs pontos találat a szavaira — az összes szót tartalmazó címek láthatók",
     "stalkerServerSearchNoSources": "Nem található engedélyezett Stalker forrás. Adj hozzá egyet a beállításokban, vagy kapcsold ki ezt.",
     "stalkerServerSearchTab": "Stalker Szerverkeresés",
-    "stalkerServerSearchLoadAllResults": "Összes találat betöltése"
+    "stalkerServerSearchLoadAllResults": "Összes találat betöltése",
+    "stalkerServerSearchAllSources": "Minden Stalker forrás",
+    "stalkerServerSearchProgressSources": "Kiszolgálók keresése ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Felvétel ütemezése",

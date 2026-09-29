@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Geen exacte overeenkomst voor je woorden — titels met alle woorden worden getoond",
     "stalkerServerSearchNoSources": "Geen ingeschakelde Stalker-bron gevonden. Voeg er een toe in Instellingen of schakel dit uit.",
     "stalkerServerSearchTab": "Stalker Zoeken op server",
-    "stalkerServerSearchLoadAllResults": "Alle resultaten laden"
+    "stalkerServerSearchLoadAllResults": "Alle resultaten laden",
+    "stalkerServerSearchAllSources": "Alle Stalker-bronnen",
+    "stalkerServerSearchProgressSources": "Servers doorzoeken ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Opname plannen",

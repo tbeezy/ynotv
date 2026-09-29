@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Δεν υπάρχει ακριβής αντιστοιχία για τις λέξεις σας — εμφανίζονται τίτλοι που τις περιέχουν όλες",
     "stalkerServerSearchNoSources": "Δεν βρέθηκε ενεργή πηγή Stalker. Πρόσθεσε μία στις Ρυθμίσεις ή απενεργοποίησε αυτό.",
     "stalkerServerSearchTab": "Stalker Αναζήτηση διακομιστή",
-    "stalkerServerSearchLoadAllResults": "Φόρτωση όλων των αποτελεσμάτων"
+    "stalkerServerSearchLoadAllResults": "Φόρτωση όλων των αποτελεσμάτων",
+    "stalkerServerSearchAllSources": "Όλες οι πηγές Stalker",
+    "stalkerServerSearchProgressSources": "Αναζήτηση διακομιστών ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Προγραμματισμός εγγραφής",

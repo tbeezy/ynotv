@@ -3585,7 +3585,9 @@
     "stalkerServerSearchMatchingAllWords": "Aucune correspondance exacte pour vos mots — titres qui les contiennent tous affichés",
     "stalkerServerSearchNoSources": "Aucune source Stalker activée. Ajoutez-en une dans les réglages ou désactivez cette option.",
     "stalkerServerSearchTab": "Stalker Recherche serveur",
-    "stalkerServerSearchLoadAllResults": "Charger tous les résultats"
+    "stalkerServerSearchLoadAllResults": "Charger tous les résultats",
+    "stalkerServerSearchAllSources": "Toutes les sources Stalker",
+    "stalkerServerSearchProgressSources": "Recherche sur les serveurs ({{current}}/{{total}})..."
   },
   "dvr": {
     "scheduleOptionsTitle": "Programmer un enregistrement",

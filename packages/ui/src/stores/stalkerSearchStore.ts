@@ -17,13 +17,19 @@ export type StalkerSearchType = 'movies' | 'series';
 export const STALKER_SERVER_SEARCH_ID = '__stalker_server_search__';
 
 export interface StalkerSearchSlice {
-  /** Selected portal; '' until the source list loads and a default is picked. */
+  /** Selected portal; '' until the source list loads and a default is picked. '*' = All Stalker sources. */
   sourceId: string;
   /** '*' = whole library, otherwise the app-namespaced category id. */
   categoryId: string;
   query: string;
   /** null until a search has been run for the current selection. */
   result: StalkerServerSearchPage | null;
+  /** Per-source search page results when searching all sources or individual source. Keyed by sourceId. */
+  sourceResults?: Record<string, StalkerServerSearchPage>;
+  /** Pages loaded per source when searching all sources. Keyed by sourceId. */
+  sourcePagesLoaded?: Record<string, number>;
+  /** Selected results tab: 'all' or a specific sourceId. */
+  activeTab?: string;
   /** Pages walked so far, used to bound "Load all". */
   pagesLoaded: number;
 }
@@ -33,6 +39,9 @@ const emptySlice = (): StalkerSearchSlice => ({
   categoryId: '*',
   query: '',
   result: null,
+  sourceResults: {},
+  sourcePagesLoaded: {},
+  activeTab: 'all',
   pagesLoaded: 0,
 });
 

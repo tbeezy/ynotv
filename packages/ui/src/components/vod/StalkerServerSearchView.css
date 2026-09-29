@@ -145,3 +145,69 @@
     opacity: 0.55;
     cursor: default;
 }
+
+/* Source tabs separating multi-source results */
+.stalker-search-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.1rem;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.stalker-search-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    background: var(--bg-tertiary, #121212);
+    color: var(--text-secondary, #aaa);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.stalker-search-tab:hover {
+    background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+    color: var(--text-primary, #fff);
+}
+
+.stalker-search-tab.active {
+    background: var(--accent-color, #4a9eff);
+    color: #fff;
+    border-color: var(--accent-color, #4a9eff);
+}
+
+.stalker-search-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.12);
+    color: inherit;
+}
+
+.stalker-search-tab.active .stalker-search-tab-count {
+    background: rgba(0, 0, 0, 0.25);
+    color: #fff;
+}
+
+.stalker-search-tab-count.error {
+    background: var(--danger-color, #e5484d);
+    color: #fff;
+}
+
+.stalker-search-tab-count.warning {
+    background: var(--warning-color, #f5a623);
+    color: #fff;
+}
