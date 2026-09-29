@@ -416,6 +416,15 @@ struct PlayPayload {
     episode_parent_index: Option<i64>,
     episode_name: Option<String>,
     episodes: Option<Vec<serde_json::Value>>,
+    /// The web client's own play queue at handoff ({ items, index,
+    /// playlistId, playlistName }): the authoritative play order when playback
+    /// started from a Jellyfin playlist (or album / "play next" queue), so
+    /// prev/next and auto-play follow it instead of the series episode list.
+    /// Nested field names are camelCase — the value is forwarded verbatim.
+    play_queue: Option<serde_json::Value>,
+    /// Current Jellyfin user id, so the frontend can resolve item details for
+    /// queue entries that were never opened in the page.
+    user_id: Option<String>,
     /// Remembered per-item subtitle selections (itemId -> stream index) so
     /// prev/next episodes and re-plays can start with the user's subtitle.
     subtitle_prefs: Option<serde_json::Value>,
@@ -693,6 +702,8 @@ pub async fn jellyfin_embed_open<R: Runtime>(
                                         "episodeParentIndex": payload.episode_parent_index,
                                         "episodeName": payload.episode_name,
                                         "episodes": payload.episodes,
+                                        "queue": payload.play_queue,
+                                        "userId": payload.user_id,
                                         "subtitlePrefs": payload.subtitle_prefs,
                                     }),
                                 );
@@ -1323,6 +1334,157 @@ const INIT_SCRIPT: &str = r##"
     var playbackInfoByItem = {}; // cleanItemId -> PlaybackInfo response body
     var lastPlaybackInfoAt = 0;
     var lastHlsStream = null;  // { url: string, itemId: string, at: number } captured from HLS request
+    var playQueueCapture = null;  // { items: [{id, rawId, playlistItemId}], itemId, at } the page reported as playing
+    var playlistCapture = null;   // { id, name, items, byPlaylistItemId, at } from Playlists/{id}/Items
+    // The queue-capture writers live in the network-patch closure (that is where
+    // the page's session reports and playlist responses pass through); it hands
+    // them over here so the test-only internals seam can drive them.
+    var rememberPlayQueueRef = null;
+    var rememberPlaylistItemsRef = null;
+
+    // ---------------------------------------------------------------------
+    // Play-queue capture
+    // ---------------------------------------------------------------------
+    // A Jellyfin playlist (or an album, or "play next" additions) is played by
+    // handing the whole list to the web client's playback manager, so only the
+    // page knows the real play order. The page reports that queue to the server
+    // on every playback start/progress update (`NowPlayingQueue` plus the
+    // current `PlaylistItemId`); this bridge reads those reports on their way
+    // past (it suppresses them, ynoTV does its own reporting) so the handoff
+    // can carry the queue. Without it the app can only guess "next episode in
+    // this series", which is exactly wrong when the queue is a playlist that
+    // mixes series, movies and episodes.
+    function normalizeQueueItem(it) {
+        try {
+            if (!it) return null;
+            var id = String(it.Id || '').replace(/-/g, '');
+            if (!id) return null;
+            return {
+                id: id,
+                rawId: it.Id || '',
+                playlistItemId: it.PlaylistItemId || '',
+                name: it.Name || '',
+                type: it.Type || '',
+                mediaType: it.MediaType || '',
+                seriesId: it.SeriesId || '',
+                seriesName: it.SeriesName || '',
+                indexNumber: it.IndexNumber != null ? it.IndexNumber : null,
+                parentIndexNumber: it.ParentIndexNumber != null ? it.ParentIndexNumber : null,
+                runTimeTicks: it.RunTimeTicks != null ? it.RunTimeTicks : null
+            };
+        } catch (e) { return null; }
+    }
+
+    // Enrich one queued entry with whatever the bridge already knows: the item
+    // DTO cache (every item DTO the page fetched) and, when the queue is a real
+    // playlist, that playlist's own item list (full DTOs with names/S-E).
+    function describeQueueEntry(entry, playlist) {
+        var dto = itemById[entry.id] || null;
+        var listItem = (playlist && playlist.byPlaylistItemId && entry.playlistItemId)
+            ? playlist.byPlaylistItemId[entry.playlistItemId] || null
+            : null;
+        var src = listItem || dto || null;
+        return {
+            id: entry.id,
+            rawId: entry.rawId,
+            playlistItemId: entry.playlistItemId,
+            name: (src && src.name) || '',
+            type: (src && src.type) || '',
+            mediaType: (src && src.mediaType) || '',
+            seriesId: (src && src.seriesId) || '',
+            seriesName: (src && src.seriesName) || '',
+            indexNumber: src && src.indexNumber != null ? src.indexNumber : null,
+            parentIndexNumber: src && src.parentIndexNumber != null ? src.parentIndexNumber : null,
+            runTimeTicks: src && src.runTimeTicks != null ? src.runTimeTicks : (entry.runTimeTicks != null ? entry.runTimeTicks : null)
+        };
+    }
+
+    // The playlist whose items the page most recently loaded, but only when the
+    // reported queue really is that playlist: every playlist entry carries its
+    // own server-side PlaylistItemId, and client-built queues use synthetic
+    // "playlistItemN" ids, so a genuine match hits most of the queue.
+    function matchCapturedPlaylist(queueItems) {
+        try {
+            if (!playlistCapture || !playlistCapture.byPlaylistItemId) return null;
+            var hits = 0;
+            for (var i = 0; i < queueItems.length; i++) {
+                var pid = queueItems[i].playlistItemId;
+                if (pid && playlistCapture.byPlaylistItemId[pid]) hits++;
+            }
+            return hits >= Math.min(2, queueItems.length) ? playlistCapture : null;
+        } catch (e) { return null; }
+    }
+
+    // The play queue for the item being handed off, or null when the page is
+    // playing a single item / no queue is known (the caller then falls back to
+    // the series episode list as before). The queue the page reported wins; the
+    // playlist it loaded is the fallback for the very first play, before that
+    // report has been seen.
+    // How long a playlist the page loaded is still assumed to be what the next
+    // play comes from. The page hands the whole playlist to its player when a
+    // playlist item is started, so this covers the first play after the queue
+    // report itself has been read (and any play the page did not report at all).
+    var PLAYLIST_TRUST_MS = 30 * 60 * 1000;
+
+    // Fallback queue: the playlist whose items the page loaded, when the item
+    // being played is one of them.
+    function playlistAsQueue(itemId) {
+        try {
+            if (!playlistCapture || !playlistCapture.items || playlistCapture.items.length < 2) return null;
+            if (Date.now() - (playlistCapture.at || 0) > PLAYLIST_TRUST_MS) return null;
+            var clean = itemId ? String(itemId).replace(/-/g, '') : '';
+            if (!clean) return null;
+            var idx = -1;
+            for (var i = 0; i < playlistCapture.items.length; i++) {
+                if (playlistCapture.items[i].id === clean) { idx = i; break; }
+            }
+            if (idx < 0) return null;
+            var items = [];
+            for (var j = 0; j < playlistCapture.items.length; j++) {
+                items.push(describeQueueEntry(playlistCapture.items[j], playlistCapture));
+            }
+            return {
+                items: items,
+                index: idx,
+                playlistId: playlistCapture.id,
+                playlistName: playlistCapture.name || ''
+            };
+        } catch (e) { return null; }
+    }
+
+    function readPlayQueue(itemId) {
+        try {
+            var fromPlaylist = playlistAsQueue(itemId);
+            var capture = playQueueCapture;
+            if (!capture || !capture.items || capture.items.length < 2) return fromPlaylist;
+            if (Date.now() - (capture.at || 0) > 6 * 60 * 60 * 1000) return fromPlaylist;
+            var clean = itemId ? String(itemId).replace(/-/g, '') : '';
+            var idx = -1;
+            for (var i = 0; i < capture.items.length; i++) {
+                if (clean && capture.items[i].id === clean) { idx = i; break; }
+            }
+            // The report's own ItemId is only a fallback for a handoff with no
+            // id at all: matching the item being played is what proves the queue
+            // belongs to THIS playback.
+            if (idx < 0 && !clean && capture.itemId) {
+                for (var k = 0; k < capture.items.length; k++) {
+                    if (capture.items[k].id === capture.itemId) { idx = k; break; }
+                }
+            }
+            if (idx < 0) return fromPlaylist;
+            var playlist = matchCapturedPlaylist(capture.items);
+            var items = [];
+            for (var j = 0; j < capture.items.length; j++) {
+                items.push(describeQueueEntry(capture.items[j], playlist));
+            }
+            return {
+                items: items,
+                index: idx,
+                playlistId: playlist ? playlist.id : null,
+                playlistName: playlist ? (playlist.name || '') : ''
+            };
+        } catch (e) { return null; }
+    }
 
     function playbackInfoFor(targetItemId) {
         try {
@@ -2692,6 +2854,7 @@ const INIT_SCRIPT: &str = r##"
                 // Series/episode context so the frontend can show proper
                 // S/E info in the header pill and play prev/next episodes.
                 server_url: serverBase(),
+                user_id: currentUserId(),
                 api_key: accessToken(),
                 series_id: itemInfo && itemInfo.seriesId ? itemInfo.seriesId : null,
                 series_name: (itemInfo && itemInfo.seriesName) || null,
@@ -2724,6 +2887,10 @@ const INIT_SCRIPT: &str = r##"
                 episode_parent_index: itemInfo ? itemInfo.parentIndexNumber : null,
                 episode_name: (itemInfo && itemInfo.name) || null,
                 episodes: Array.isArray(episodes) ? episodes : null,
+                // The page's own play queue (playlist/album/queue-next). When
+                // present, prev/next and auto-play follow THIS order instead of
+                // the series episode list above.
+                play_queue: readPlayQueue(subtitle.itemId),
                 subtitle_prefs: readAllSubPrefs(),
                 diags: diags
             });
@@ -3080,6 +3247,94 @@ const INIT_SCRIPT: &str = r##"
             } catch (e) {}
         }
         try {
+            // The page reports what it is playing (and its whole queue) to
+            // /Sessions/Playing*; the bridge suppresses those reports but reads them
+            // first, which is how the play queue reaches the handoff payload.
+            function rememberPlayQueue(body) {
+                try {
+                    var parsed = body;
+                    if (typeof parsed === 'string') {
+                        if (parsed.charAt(0) !== '{') return;
+                        parsed = JSON.parse(parsed);
+                    }
+                    if (!parsed || typeof parsed !== 'object') return;
+                    var raw = parsed.NowPlayingQueue;
+                    if (!Array.isArray(raw) || raw.length < 2) return;
+                    var items = [];
+                    for (var i = 0; i < raw.length; i++) {
+                        var entry = normalizeQueueItem(raw[i]);
+                        if (entry) items.push({ id: entry.id, rawId: entry.rawId, playlistItemId: entry.playlistItemId });
+                    }
+                    if (items.length < 2) return;
+                    playQueueCapture = {
+                        items: items,
+                        itemId: parsed.ItemId ? String(parsed.ItemId).replace(/-/g, '') : null,
+                        playlistItemId: parsed.PlaylistItemId || null,
+                        at: Date.now()
+                    };
+                    diag('play-queue-captured', {
+                        count: items.length,
+                        playlistItemId: !!parsed.PlaylistItemId
+                    });
+                } catch (e) {}
+            }
+
+            // Playlists/{id}/Items responses carry the playlist's ordered items
+            // (each with its server-side PlaylistItemId), which both recognises the
+            // captured queue as that playlist and supplies the entries' real names
+            // and S/E numbers for the queue list.
+            function rememberPlaylistItems(reqUrl, body) {
+                try {
+                    var m = String(reqUrl || '').match(/\/Playlists\/([^/?#]+)\/Items/i);
+                    if (!m || !body) return;
+                    var list = body;
+                    if (typeof list === 'string') {
+                        if (list.charAt(0) !== '{' && list.charAt(0) !== '[') return;
+                        list = JSON.parse(list);
+                    }
+                    var raw = Array.isArray(list) ? list : (list && Array.isArray(list.Items) ? list.Items : null);
+                    if (!raw || !raw.length) return;
+                    var items = [];
+                    var byPlaylistItemId = {};
+                    for (var i = 0; i < raw.length && items.length < 1000; i++) {
+                        var entry = normalizeQueueItem(raw[i]);
+                        if (!entry) continue;
+                        items.push(entry);
+                        if (entry.playlistItemId) byPlaylistItemId[entry.playlistItemId] = entry;
+                        rememberItemDto(raw[i]);
+                    }
+                    if (!items.length) return;
+                    playlistCapture = {
+                        id: m[1],
+                        name: '',
+                        items: items,
+                        byPlaylistItemId: byPlaylistItemId,
+                        at: Date.now()
+                    };
+                    rememberPlaylistName(m[1]);
+                } catch (e) {}
+            }
+
+            // Best-effort playlist name for the "from playlist" badge; failure just
+            // leaves the queue labelled generically.
+            function rememberPlaylistName(playlistId) {
+                try {
+                    var uid = currentUserId();
+                    if (!uid) return;
+                    var url = serverBase() + '/Users/' + encodeURIComponent(uid) + '/Items/' + encodeURIComponent(playlistId);
+                    var token = accessToken();
+                    if (token) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'api_key=' + encodeURIComponent(token);
+                    fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+                        if (playlistCapture && playlistCapture.id === playlistId && d && d.Name) {
+                            playlistCapture.name = String(d.Name);
+                        }
+                    }).catch(function () {});
+                } catch (e) {}
+            }
+
+            rememberPlayQueueRef = rememberPlayQueue;
+            rememberPlaylistItemsRef = rememberPlaylistItems;
+
             var originalFetch = window.fetch;
             if (originalFetch && !originalFetch.__ynotvPatched) {
                 var wrappedFetch = function () {
@@ -3100,6 +3355,7 @@ const INIT_SCRIPT: &str = r##"
                     }
                     recordHlsRequest(url);
                     if (/\/Sessions\/Playing(\/Progress|\/Stopped)?(?:\?|$)/i.test(url)) {
+                        rememberPlayQueue(reqBody);
                         diag('suppressed-web-session-report', { url: url });
                         return Promise.resolve(new Response(null, { status: 204, statusText: 'No Content' }));
                     }
@@ -3112,6 +3368,10 @@ const INIT_SCRIPT: &str = r##"
                                     rememberPlaybackInfo(body, pUrl);
                                 }).catch(function () {});
                             } catch (e) {}
+                        } else if (/\/Playlists\/[^/?#]+\/Items/i.test(url)) {
+                            // Playlist contents: powers the "from playlist" badge
+                            // and gives the queue entries real names.
+                            try { response.clone().json().then(function (b) { rememberPlaylistItems(url, b); }).catch(function () {}); } catch (e) {}
                         } else if (/\/Items\/[^?/]+(?:\?|$)|[?&]Ids=/i.test(url)) {
                             // Item DTO responses can carry the Chapters array
                             // (Fields=Chapters is requested for playable items)
@@ -3168,6 +3428,16 @@ const INIT_SCRIPT: &str = r##"
                                 } catch (e) {}
                             });
                         } catch (e) {}
+                    } else if (/\/Playlists\/[^/?#]+\/Items/i.test(this.__ynotvUrl)) {
+                        try {
+                            var selfPl = this;
+                            var plUrl = this.__ynotvUrl;
+                            this.addEventListener('loadend', function () {
+                                try {
+                                    if (selfPl.responseText) rememberPlaylistItems(plUrl, JSON.parse(selfPl.responseText));
+                                } catch (e) {}
+                            });
+                        } catch (e) {}
                     } else if (/\/Shows\/[^?/]+\/Episodes/i.test(this.__ynotvUrl)) {
                         try {
                             var self3 = this;
@@ -3186,6 +3456,7 @@ const INIT_SCRIPT: &str = r##"
             if (originalSend && !originalSend.__ynotvPatched) {
                 var wrappedSend = function (body) {
                     if (this.__ynotvSuppressed) {
+                        rememberPlayQueue(body);
                         diag('suppressed-web-session-xhr', { url: this.__ynotvUrl });
                         var self = this;
                         setTimeout(function () {
@@ -3364,7 +3635,14 @@ const INIT_SCRIPT: &str = r##"
             },
             seedPlaybackInfoReq: function (req) { lastPlaybackInfoReq = req; },
             seedHlsStream: function (s) { lastHlsStream = s; },
-            resolveCapturedHlsUrl: resolveCapturedHlsUrl
+            resolveCapturedHlsUrl: resolveCapturedHlsUrl,
+            readPlayQueue: readPlayQueue,
+            playlistAsQueue: playlistAsQueue,
+            rememberPlayQueue: function (body) { return rememberPlayQueueRef && rememberPlayQueueRef(body); },
+            rememberPlaylistItems: function (url, body) { return rememberPlaylistItemsRef && rememberPlaylistItemsRef(url, body); },
+            seedPlayQueue: function (c) { playQueueCapture = c; },
+            seedPlaylist: function (c) { playlistCapture = c; },
+            resetQueueCaptures: function () { playQueueCapture = null; playlistCapture = null; }
         };
     }
 

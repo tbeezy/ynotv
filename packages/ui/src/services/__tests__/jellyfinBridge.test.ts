@@ -26,6 +26,12 @@ interface BridgeInternals {
     playbackInfoMeta: (elem: any, capturedSrc: string) => any;
     buildPlayableUrl: (rawUrl: string, elem?: any) => { url: string; position_ticks: number | null };
     resolveCapturedHlsUrl: (url: string) => string;
+    readPlayQueue: (itemId: string | null | undefined) => any;
+    rememberPlayQueue: (body: any) => void;
+    rememberPlaylistItems: (url: string, body: any) => void;
+    seedPlayQueue: (capture: any) => void;
+    seedPlaylist: (capture: any) => void;
+    resetQueueCaptures: () => void;
     findMediaSegment: (url: string) => { type: 'Videos' | 'Audio'; itemId: string } | null;
     extractMediaItemId: (url: string) => string | null;
     getMpvDeviceProfile: (baseProfile?: any) => any;
@@ -568,6 +574,153 @@ describe('jellyfin bridge item isolation', () => {
             expect(canPlay('audio/mp4; codecs="dts"')).toBe('probably');
             expect(canPlay('audio/mp4; codecs="truehd"')).toBe('probably');
             expect(canPlay('audio/unknown-codec')).toBe('');
+        });
+    });
+
+    describe('play queue capture (playlist playback)', () => {
+        const Q_A = '5b12f80a4f3c4a2c9f1e1a2b3c4d5e6f';
+        const Q_B = '6c23f90b5a4d5b3daf2e3b4c5d6e7f70';
+        const Q_C = '7d34a01c6b5e6c4eb03f4c5d6e7f8081';
+        const guid = (hex: string) => `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+
+        /** The /Sessions/Playing body Jellyfin Web sends for a 3-item playlist. */
+        const playingReport = (currentIndex: number) => ({
+            ItemId: guid([Q_A, Q_B, Q_C][currentIndex]),
+            PlaylistItemId: `pl-${currentIndex + 1}`,
+            NowPlayingQueue: [
+                { Id: guid(Q_A), PlaylistItemId: 'pl-1' },
+                { Id: guid(Q_B), PlaylistItemId: 'pl-2' },
+                { Id: guid(Q_C), PlaylistItemId: 'pl-3' },
+            ],
+        });
+
+        it('captures the reported queue and reports the playing item', () => {
+            const b = loadBridge();
+            b.internals.rememberPlayQueue(JSON.stringify(playingReport(1)));
+            const q = b.internals.readPlayQueue(Q_B);
+            expect(q.index).toBe(1);
+            expect(q.items.map((i: any) => i.id)).toEqual([Q_A, Q_B, Q_C]);
+            // No playlist was loaded in this page, so the queue is reported
+            // without a playlist identity (still enough to walk it).
+            expect(q.playlistId).toBeNull();
+            expect(q.playlistName).toBe('');
+        });
+
+        it('accepts an object body as well as a JSON string', () => {
+            const b = loadBridge();
+            b.internals.rememberPlayQueue(playingReport(0));
+            expect(b.internals.readPlayQueue(Q_A).index).toBe(0);
+        });
+
+        it('returns null for a single-item queue or for an item outside it', () => {
+            const b = loadBridge();
+            b.internals.rememberPlayQueue(JSON.stringify({ ItemId: guid(Q_A), NowPlayingQueue: [{ Id: guid(Q_A) }] }));
+            expect(b.internals.readPlayQueue(Q_A)).toBeNull();
+
+            b.internals.rememberPlayQueue(JSON.stringify(playingReport(0)));
+            // An item that is not in the queue: the caller must fall back to
+            // series-episode navigation instead of inventing a queue position.
+            expect(b.internals.readPlayQueue('ffffffffffffffffffffffffffffffff')).toBeNull();
+        });
+
+        it('returns null when the page never reported a queue', () => {
+            const b = loadBridge();
+            expect(b.internals.readPlayQueue(Q_A)).toBeNull();
+        });
+
+        it('labels the queue with the playlist the page loaded', () => {
+            const b = loadBridge();
+            b.internals.rememberPlaylistItems('http://jf.test:8096/Playlists/abc123/Items?userId=u1', {
+                Items: [
+                    { Id: guid(Q_A), Name: 'First Movie', Type: 'Movie', PlaylistItemId: 'pl-1' },
+                    { Id: guid(Q_B), Name: 'Second Episode', Type: 'Episode', SeriesName: 'Some Show', ParentIndexNumber: 2, IndexNumber: 3, PlaylistItemId: 'pl-2' },
+                    { Id: guid(Q_C), Name: 'Third Movie', Type: 'Movie', PlaylistItemId: 'pl-3' },
+                ],
+            });
+            b.internals.rememberPlayQueue(JSON.stringify(playingReport(1)));
+
+            const q = b.internals.readPlayQueue(Q_B);
+            expect(q.playlistId).toBe('abc123');
+            expect(q.index).toBe(1);
+            // Playlist entries carry full DTOs, so the queue list can show real
+            // names instead of "item 2 of 3".
+            expect(q.items[0].name).toBe('First Movie');
+            expect(q.items[1].name).toBe('Second Episode');
+            expect(q.items[1].parentIndexNumber).toBe(2);
+            expect(q.items[2].name).toBe('Third Movie');
+        });
+
+        it('does not claim a playlist when the reported queue belongs to someone else', () => {
+            const b = loadBridge();
+            b.internals.rememberPlaylistItems('http://jf.test:8096/Playlists/abc123/Items', {
+                Items: [
+                    { Id: guid(Q_A), Name: 'Playlist Item', PlaylistItemId: 'pl-1' },
+                    { Id: guid(Q_B), Name: 'Other Playlist Item', PlaylistItemId: 'pl-2' },
+                ],
+            });
+            // A queue the page built itself (synthetic playlistItem ids) that
+            // happens to share items must not be attributed to that playlist.
+            b.internals.rememberPlayQueue(JSON.stringify({
+                ItemId: guid(Q_A),
+                NowPlayingQueue: [
+                    { Id: guid(Q_A), PlaylistItemId: 'playlistItem0' },
+                    { Id: guid(Q_C), PlaylistItemId: 'playlistItem1' },
+                ],
+            }));
+            const q = b.internals.readPlayQueue(Q_A);
+            expect(q.playlistId).toBeNull();
+            expect(q.items.map((i: any) => i.id)).toEqual([Q_A, Q_C]);
+        });
+
+        it('falls back to the playlist the page loaded when no queue report arrived', () => {
+            const b = loadBridge();
+            b.internals.rememberPlaylistItems('http://jf.test:8096/Playlists/pl-1/Items', {
+                Items: [
+                    { Id: guid(Q_A), Name: 'First Movie', Type: 'Movie', PlaylistItemId: 'pl-1' },
+                    { Id: guid(Q_B), Name: 'Second Episode', Type: 'Episode', PlaylistItemId: 'pl-2' },
+                    { Id: guid(Q_C), Name: 'Third Movie', Type: 'Movie', PlaylistItemId: 'pl-3' },
+                ],
+            });
+            // Starting a playlist item is the same as handing the whole playlist
+            // to the player, so the loaded playlist IS the play order even if the
+            // page's own session report has not reached the bridge yet.
+            const q = b.internals.readPlayQueue(Q_B);
+            expect(q.playlistId).toBe('pl-1');
+            expect(q.index).toBe(1);
+            expect(q.items.map((i: any) => i.id)).toEqual([Q_A, Q_B, Q_C]);
+            expect(q.items[1].name).toBe('Second Episode');
+        });
+
+        it('ignores a loaded playlist the playing item is not part of, or a stale one', () => {
+            const b = loadBridge();
+            b.internals.rememberPlaylistItems('http://jf.test:8096/Playlists/pl-1/Items', {
+                Items: [
+                    { Id: guid(Q_A), Name: 'First Movie', PlaylistItemId: 'pl-1' },
+                    { Id: guid(Q_B), Name: 'Second Episode', PlaylistItemId: 'pl-2' },
+                ],
+            });
+            // Q_C is not in that playlist: series-episode navigation must remain
+            // in charge for playback the playlist has nothing to do with.
+            expect(b.internals.readPlayQueue(Q_C)).toBeNull();
+
+            b.internals.seedPlaylist({
+                id: 'pl-2',
+                name: 'Long forgotten',
+                items: [{ id: Q_A, name: 'First Movie', playlistItemId: 'pl-1' }],
+                byPlaylistItemId: {},
+                at: Date.now() - 31 * 60 * 1000,
+            });
+            expect(b.internals.readPlayQueue(Q_A)).toBeNull();
+        });
+
+        it('ignores playlist responses that are not a playlist item list', () => {
+            const b = loadBridge();
+            b.internals.rememberPlaylistItems('http://jf.test:8096/Playlists', { Items: [] });
+            b.internals.rememberPlaylistItems('http://jf.test:8096/Shows/s1/Episodes', {
+                Items: [{ Id: guid(Q_A), Name: 'Episode', PlaylistItemId: 'pl-1' }],
+            });
+            b.internals.rememberPlayQueue(JSON.stringify(playingReport(0)));
+            expect(b.internals.readPlayQueue(Q_A).playlistId).toBeNull();
         });
     });
 

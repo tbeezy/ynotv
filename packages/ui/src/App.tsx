@@ -98,6 +98,7 @@ import { getLocalEpisodeList, localEntryToVodPlayInfo } from './services/local-l
 import { useVodPlaylistStore } from './stores/vodPlaylistStore';
 import { useActivePlaylistStore, isActivePlaylistItem } from './stores/activePlaylistStore';
 import { PlaylistQueueModal } from './components/vod/PlaylistQueueModal';
+import { JellyfinQueueModal } from './components/jellyfin/JellyfinQueueModal';
 import { playlistItemToVodInfo, recordPlaylistItemWatch, snapshotPlaylistProgress } from './utils/playlistPlayback';
 import type { StoredChannel } from './db';
 import { db } from './db';
@@ -150,6 +151,11 @@ import { useUIStore } from './stores/uiStore';
 import { fetchSubtitles } from './services/stremio-addon';
 import { toSubSourceLang, fromSubSourceLang } from './services/subsource';
 import { scrobbler } from './services/scrobbler';
+import {
+  hasJellyfinQueue,
+  adjacentJellyfinQueueItem,
+  jellyfinQueueIndex,
+} from './utils/jellyfinQueue';
 import { SkipIntroButton } from './components/SkipIntroButton';
 import { useSkipIntro } from './hooks/useSkipIntro';
 import { BackButtonOverlay } from './components/BackButtonOverlay';
@@ -1169,6 +1175,9 @@ function App() {
   // Playback source view state to know where to go back when stopped
   const [playbackSourceView, setPlaybackSourceView] = useState<'movies' | 'series' | 'dvr' | 'stremio' | 'nuvio' | 'jellyfin' | null>(null);
   const [showPlaybackDetailsModal, setShowPlaybackDetailsModal] = useState(false);
+  // Overlay listing the Jellyfin play queue currently driving playback (the
+  // playlist the page started playing from).
+  const [jellyfinQueueOpen, setJellyfinQueueOpen] = useState(false);
   const [sourcePickerParams, setSourcePickerParams] = useState<{
     source: 'stremio' | 'nuvio';
     type: string;
@@ -2018,6 +2027,7 @@ function useTmdbPresencePoster(
 
     await handleStopRaw();
     setShowPlaybackDetailsModal(false);
+    setJellyfinQueueOpen(false);
     setActiveStremioMeta(null);
     setActiveStremioEpisode(null);
     // The Jellyfin handoff sets playbackSourceView asynchronously after the
@@ -2133,6 +2143,11 @@ function useTmdbPresencePoster(
             jellyfinEpisodeParentIndexNumber: payload.episodeParentIndex ?? undefined,
             jellyfinEpisodes: payload.episodes,
             jellyfinSubtitlePrefs: payload.subtitlePrefs,
+            jellyfinUserId: payload.userId,
+            jellyfinQueue: payload.queue?.items,
+            jellyfinQueueIndex:
+              payload.queue && payload.queue.index >= 0 ? payload.queue.index : undefined,
+            jellyfinQueueName: payload.queue?.playlistName || undefined,
           },
           () => {
             setPlaybackSourceView('jellyfin');
@@ -2160,7 +2175,7 @@ function useTmdbPresencePoster(
   // Play an adjacent Jellyfin episode in place (prev/next nav) through the
   // same VOD pipeline, rebuilding the direct-play URL from the captured
   // server + token. Position carries the server's resume point for the target.
-  const playJellyfinEpisode = useCallback(
+  const playJellyfinTarget = useCallback(
     async (
       current: import('./types/media').VodPlayInfo,
       target: {
@@ -2169,11 +2184,49 @@ function useTmdbPresencePoster(
         parentIndexNumber?: number | null;
         name?: string;
         positionTicks?: number;
+        /**
+         * Jellyfin queue entries also describe what the target IS, because a
+         * queue jump can leave the current series entirely: `type` is the item
+         * Type ('Episode'/'Movie'/...), the series fields are the target's own
+         * series, and `queueIndex` is its position in the play queue.
+         */
+        type?: string;
+        seriesId?: string;
+        seriesName?: string;
+        queueIndex?: number | null;
       },
     ) => {
       const server = (current.jellyfinServerUrl || '').replace(/\/+$/, '');
       const key = current.jellyfinApiKey || '';
       if (!server || !key) return false;
+      // The target can be a different episode, another series, or a movie, so
+      // everything the play pipeline needs is derived from the TARGET rather
+      // than reused from the item that just finished.
+      const targetType = String(target.type || '').toLowerCase();
+      const isEpisode = targetType
+        ? targetType === 'episode'
+        : target.indexNumber != null || target.parentIndexNumber != null;
+      const currentSeriesId = current.jellyfinSeriesId || current.seriesId || '';
+      const targetSeriesId = target.seriesId || currentSeriesId;
+      const sameSeries =
+        !!targetSeriesId &&
+        !!currentSeriesId &&
+        String(targetSeriesId).replace(/-/g, '') === String(currentSeriesId).replace(/-/g, '');
+      const queueIndex =
+        target.queueIndex != null
+          ? target.queueIndex
+          : jellyfinQueueIndex(current.jellyfinQueue, target.id);
+      const targetName = (target.name || '').trim();
+      const targetSeriesName = ((target.seriesName || '') || current.jellyfinSeriesName || '').trim();
+      const playTitle = isEpisode
+        ? targetSeriesName || current.title || targetName || 'Jellyfin'
+        : targetName || current.title || 'Jellyfin';
+      // A jump to another item needs its own artwork; an adjacent episode keeps
+      // the series poster the page handed off.
+      const targetPoster =
+        server && key
+          ? `${server}/Items/${encodeURIComponent(target.id)}/Images/Primary?maxWidth=400&api_key=${encodeURIComponent(key)}`
+          : current.posterUrl;
       let mediaSourceId = target.id;
       const buildEpisodeUrl = () => `${server}/Videos/${encodeURIComponent(target.id)}/stream?Static=true&mediaSourceId=${encodeURIComponent(mediaSourceId)}&api_key=${encodeURIComponent(key)}${target.positionTicks ? `&startTimeTicks=${target.positionTicks}` : ''}`;
       let url = buildEpisodeUrl();
@@ -2335,60 +2388,73 @@ function useTmdbPresencePoster(
       } catch (e) {
         console.warn('[Jellyfin] Failed to fetch PlaybackInfo for adjacent episode:', e);
       }
-      // Carry the series' metadata IDs (Imdb/Tmdb/year) so intro skip keeps
-      // working across prev/next/autoplay episodes. Prefer what the current
-      // episode already resolved; fetch once per series otherwise.
-      let seriesImdbId = current.imdbId;
-      let seriesTmdbId =
-        typeof current.tmdbId === 'number'
+      // Carry the metadata IDs (Imdb/Tmdb/year) so intro skip and scrobbling
+      // keep working across prev/next/autoplay. They are per series/item, so a
+      // queue jump to a different item must NOT inherit the finished item's ids:
+      // episodes resolve through their own series, a movie through its own id.
+      let seriesImdbId = sameSeries ? current.imdbId : undefined;
+      let seriesTmdbId = sameSeries
+        ? typeof current.tmdbId === 'number'
           ? current.tmdbId
           : current.tmdbId != null
             ? parseInt(String(current.tmdbId).replace(/[^0-9]/g, ''), 10) || undefined
-            : undefined;
-      let seriesYear = current.year != null ? Number(current.year) || undefined : undefined;
+            : undefined
+        : undefined;
+      let seriesYear = sameSeries && current.year != null ? Number(current.year) || undefined : undefined;
       if (!seriesImdbId && !seriesTmdbId) {
-        const seriesId = current.jellyfinSeriesId || current.seriesId;
-        const cached = cachedJellyfinItemIds(server, seriesId);
+        const idLookupId = isEpisode
+          ? target.seriesId || (sameSeries ? current.jellyfinSeriesId || current.seriesId : '') || target.id
+          : target.id;
+        const cached = cachedJellyfinItemIds(server, idLookupId);
         if (cached) {
           seriesImdbId = cached.imdbId;
           seriesTmdbId = cached.tmdbId;
           seriesYear = cached.year;
         } else {
-          // Cold handoff for the adjacent episode: patch the (now active) play
-          // when it resolves so intro skip keeps working across episodes.
-          void fetchJellyfinItemIds(server, key, seriesId).then((ids) => {
-            applyJellyfinResolvedIds(patchVodInfo, target.id, seriesId, ids);
+          // Cold handoff: patch the (now active) play when it resolves so intro
+          // skip keeps working across episodes and playlist jumps.
+          const scopeSeriesId = isEpisode && idLookupId !== target.id ? idLookupId : undefined;
+          void fetchJellyfinItemIds(server, key, idLookupId).then((ids) => {
+            applyJellyfinResolvedIds(patchVodInfo, target.id, scopeSeriesId, ids);
           });
         }
       }
       const ok = await handlePlayVod({
         url,
-        title: current.title || 'Jellyfin',
-        type: 'series',
-        episodeInfo: `${target.parentIndexNumber != null ? `S${target.parentIndexNumber} E${target.indexNumber}` : `E${target.indexNumber}`}${target.name ? ` · ${target.name}` : ''}`,
+        title: playTitle,
+        type: isEpisode ? 'series' : 'movie',
+        episodeInfo: isEpisode
+          ? `${target.parentIndexNumber != null ? `S${target.parentIndexNumber} E${target.indexNumber}` : `E${target.indexNumber}`}${target.name ? ` · ${target.name}` : ''}`
+          : undefined,
         source_id: 'jellyfin',
         mediaId: `jellyfin_${url}`,
         imdbId: seriesImdbId,
         tmdbId: seriesTmdbId,
         year: seriesYear != null ? String(seriesYear) : undefined,
-        seriesId: current.seriesId || current.jellyfinSeriesId,
+        seriesId: isEpisode ? target.seriesId || current.seriesId || current.jellyfinSeriesId : undefined,
         seasonNum: target.parentIndexNumber ?? undefined,
         episodeNum: target.indexNumber ?? undefined,
         jellyfinItemId: target.id,
         jellyfinMediaSourceId: mediaSourceId,
         jellyfinServerUrl: current.jellyfinServerUrl,
         jellyfinApiKey: current.jellyfinApiKey,
-        jellyfinSeriesId: current.jellyfinSeriesId,
-        jellyfinSeriesName: current.jellyfinSeriesName,
+        jellyfinSeriesId: isEpisode ? target.seriesId || current.jellyfinSeriesId : undefined,
+        jellyfinSeriesName: isEpisode ? target.seriesName || current.jellyfinSeriesName : undefined,
         jellyfinEpisodeIndexNumber: target.indexNumber ?? undefined,
         jellyfinEpisodeParentIndexNumber: target.parentIndexNumber ?? undefined,
-        jellyfinEpisodes: current.jellyfinEpisodes,
+        jellyfinEpisodes: isEpisode && sameSeries ? current.jellyfinEpisodes : undefined,
         jellyfinSubtitlePrefs: current.jellyfinSubtitlePrefs,
+        jellyfinUserId: current.jellyfinUserId,
+        // Carry the play queue (and this item's place in it) across the jump so
+        // prev/next keep walking the playlist instead of the series.
+        jellyfinQueue: current.jellyfinQueue,
+        jellyfinQueueIndex: queueIndex >= 0 ? queueIndex : undefined,
+        jellyfinQueueName: current.jellyfinQueueName,
         jellyfinSubtitleStreamId: subtitleStreamId ?? undefined,
         jellyfinSubtitleTracks: subtitleTracks,
         jellyfinAudioTracks: audioTracks,
         jellyfinAudioStreamId: audioStreamId ?? undefined,
-        posterUrl: current.posterUrl,
+        posterUrl: sameSeries ? current.posterUrl : targetPoster,
       });
       if (ok) {
         // The next stream is loading — cancel any pending idle-stop so the
@@ -2410,7 +2476,7 @@ function useTmdbPresencePoster(
   // When a Jellyfin stream ends in mpv (idle), Rust emits playing:false —
   // stop the stream cleanly and let handleStop return to the Jellyfin tab.
   // The stop is deferred briefly so an EOF-driven autoplay of the next episode
-  // can cancel it (playJellyfinEpisode clears the timer once the new stream
+  // can cancel it (playJellyfinTarget clears the timer once the new stream
   // starts); if nothing takes over, the timer fires and we return to the tab.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -4129,9 +4195,32 @@ function useTmdbPresencePoster(
       // Jellyfin series: the episode list rides in vodInfo (same list that
       // powers the prev/next buttons) — play the adjacent episode in place
       // instead of the local-library lookup below. The pending idle-stop
-      // timer (jellyfin:playback-state) is cancelled by playJellyfinEpisode
+      // timer (jellyfin:playback-state) is cancelled by playJellyfinTarget
       // once the new stream actually starts; if playback fails, the timer
       // fires and returns to the Jellyfin tab.
+      // A Jellyfin play queue takes priority over the series episode list: it
+      // is the page's real play order and can leave the series entirely (a
+      // playlist that mixes shows, films and episodes).
+      if (vodAutoPlayNextEpisode && source_id === 'jellyfin' && hasJellyfinQueue(vodInfo?.jellyfinQueue)) {
+        const nextInQueue = adjacentJellyfinQueueItem(
+          vodInfo?.jellyfinQueue,
+          vodInfo?.jellyfinItemId,
+          'next',
+          vodInfo?.jellyfinQueueIndex,
+        );
+        if (nextInQueue && vodInfo) {
+          console.log('[AutoPlay] Jellyfin: playing next queue item', nextInQueue.item.name || nextInQueue.index + 1);
+          if (jellyfinStopTimerRef.current) {
+            window.clearTimeout(jellyfinStopTimerRef.current);
+            jellyfinStopTimerRef.current = null;
+          }
+          void playJellyfinTarget(vodInfo, { ...nextInQueue.item, queueIndex: nextInQueue.index });
+          return;
+        }
+        console.log('[AutoPlay] Jellyfin: reached the end of the captured play queue');
+        return;
+      }
+
       if (vodAutoPlayNextEpisode && source_id === 'jellyfin' && vodInfo?.jellyfinEpisodes?.length && vodInfo.jellyfinItemId) {
         const jfIdx = vodInfo.jellyfinEpisodes.findIndex((ep) => ep.id === vodInfo.jellyfinItemId);
         const jfNext = jfIdx >= 0 ? vodInfo.jellyfinEpisodes[jfIdx + 1] : null;
@@ -4141,7 +4230,7 @@ function useTmdbPresencePoster(
             window.clearTimeout(jellyfinStopTimerRef.current);
             jellyfinStopTimerRef.current = null;
           }
-          void playJellyfinEpisode(vodInfo, jfNext);
+          void playJellyfinTarget(vodInfo, jfNext);
           return;
         }
         console.log('[AutoPlay] Jellyfin: reached end of captured episode list');
@@ -4219,7 +4308,7 @@ function useTmdbPresencePoster(
         })();
       }
     }
-  }, [playing, vodEndFileSignal, vodInfo, duration, position, vodAutoPlayNextEpisode, handlePlayVod, playJellyfinEpisode, userPausedRef]);
+  }, [playing, vodEndFileSignal, vodInfo, duration, position, vodAutoPlayNextEpisode, handlePlayVod, playJellyfinTarget, userPausedRef]);
 
   // ==========================================================================
   // Active playlist queue controls (indicator click + prev/next buttons)
@@ -4464,6 +4553,22 @@ function useTmdbPresencePoster(
   // Handle Channel Navigation (Up/Down) - with Series Episode Support
   // ==========================================================================
   const handleChannelUp = useCallback(async () => {
+    // Jellyfin: while the page's own play queue drives playback (a Jellyfin
+    // playlist can mix series, movies and episodes) prev/next walk THAT queue.
+    // The series episode list further down is only the fallback for playback
+    // that was not started from a queue.
+    if (vodInfo?.source_id === 'jellyfin' && hasJellyfinQueue(vodInfo.jellyfinQueue)) {
+      const prevInQueue = adjacentJellyfinQueueItem(
+        vodInfo.jellyfinQueue,
+        vodInfo.jellyfinItemId,
+        'prev',
+        vodInfo.jellyfinQueueIndex,
+      );
+      if (prevInQueue) {
+        await playJellyfinTarget(vodInfo, { ...prevInQueue.item, queueIndex: prevInQueue.index });
+      }
+      return;
+    }
     // Check if we're watching a series with episode info
     if (vodInfo?.type === 'series' && vodInfo.seriesId && vodInfo.seasonNum && vodInfo.episodeNum) {
       // Jellyfin series: play the adjacent episode in place via the captured
@@ -4475,7 +4580,7 @@ function useTmdbPresencePoster(
           const idx = episodes.findIndex((ep) => ep.id === currentId);
           const target = idx > 0 ? episodes[idx - 1] : null;
           if (target) {
-            await playJellyfinEpisode(vodInfo, target);
+            await playJellyfinTarget(vodInfo, target);
             return;
           }
         }
@@ -4658,9 +4763,24 @@ function useTmdbPresencePoster(
         handlePlayChannel(nextChannel);
       }
     }
-  }, [currentChannels, currentChannel, handlePlayChannel, vodInfo, handlePlayVod, handleStop, setCategoryId, playJellyfinEpisode]);
+  }, [currentChannels, currentChannel, handlePlayChannel, vodInfo, handlePlayVod, handleStop, setCategoryId, playJellyfinTarget]);
 
   const handleChannelDown = useCallback(async () => {
+    // Jellyfin play queue first (see handleChannelUp): next/previous follow the
+    // playlist the page is playing from, boundaries do not fall through to
+    // channel surfing.
+    if (vodInfo?.source_id === 'jellyfin' && hasJellyfinQueue(vodInfo.jellyfinQueue)) {
+      const nextInQueue = adjacentJellyfinQueueItem(
+        vodInfo.jellyfinQueue,
+        vodInfo.jellyfinItemId,
+        'next',
+        vodInfo.jellyfinQueueIndex,
+      );
+      if (nextInQueue) {
+        await playJellyfinTarget(vodInfo, { ...nextInQueue.item, queueIndex: nextInQueue.index });
+      }
+      return;
+    }
     // Check if we're watching a series with episode info
     if (vodInfo?.type === 'series' && vodInfo.seriesId && vodInfo.seasonNum && vodInfo.episodeNum) {
       // Jellyfin series: play the adjacent episode in place via the captured
@@ -4672,7 +4792,7 @@ function useTmdbPresencePoster(
           const idx = episodes.findIndex((ep) => ep.id === currentId);
           const target = idx >= 0 && idx < episodes.length - 1 ? episodes[idx + 1] : null;
           if (target) {
-            await playJellyfinEpisode(vodInfo, target);
+            await playJellyfinTarget(vodInfo, target);
             return;
           }
         }
@@ -4870,7 +4990,7 @@ function useTmdbPresencePoster(
         handlePlayChannel(nextChannel);
       }
     }
-  }, [currentChannels, currentChannel, handlePlayChannel, vodInfo, handlePlayVod, handleStop, setCategoryId, playJellyfinEpisode]);
+  }, [currentChannels, currentChannel, handlePlayChannel, vodInfo, handlePlayVod, handleStop, setCategoryId, playJellyfinTarget]);
 
   // The channel the guide grid should highlight and scroll to. With
   // failoverKeepView, the row the user picked stays visually selected even
@@ -5818,7 +5938,7 @@ function useTmdbPresencePoster(
         onPlayJellyfinEpisode={(target) => {
           setShowPlaybackDetailsModal(false);
           if (vodInfo) {
-            void playJellyfinEpisode(vodInfo, target);
+            void playJellyfinTarget(vodInfo, target);
           }
         }}
         onSelectRecommendation={(item: RecommendationItem) => {
@@ -6597,6 +6717,25 @@ function useTmdbPresencePoster(
         }}
       />
 
+      {/* Jellyfin play-queue overlay (the playlist currently driving playback) */}
+      <JellyfinQueueModal
+        isOpen={jellyfinQueueOpen}
+        onClose={() => setJellyfinQueueOpen(false)}
+        vodInfo={vodInfo}
+        onPlayItem={(index) => {
+          setJellyfinQueueOpen(false);
+          const item = vodInfo?.jellyfinQueue?.[index];
+          if (!vodInfo || !item) return;
+          // Same as autoplay-next: cancel the pending idle-stop so the EOF blip
+          // cannot bounce us back to the Jellyfin tab mid-jump.
+          if (jellyfinStopTimerRef.current) {
+            window.clearTimeout(jellyfinStopTimerRef.current);
+            jellyfinStopTimerRef.current = null;
+          }
+          void playJellyfinTarget(vodInfo, { ...item, queueIndex: index });
+        }}
+      />
+
       {/* Now Playing Bar (hidden in PiP mode) */}
       <NowPlayingBar
         visible={
@@ -6664,6 +6803,7 @@ function useTmdbPresencePoster(
         onChannelUp={handleChannelUp}
         onChannelDown={handleChannelDown}
         onPlaylistQueueClick={() => setPlaylistQueueOpen(true)}
+        onJellyfinQueueClick={() => setJellyfinQueueOpen(true)}
         onPlaylistPreviousItem={handlePlaylistPrevious}
         onPlaylistNextItem={handlePlaylistNext}
         aspectRatio={heroAspectRatio}

@@ -12,6 +12,7 @@ import {
   jellyfinEmbedSetVisible,
 } from '../services/jellyfin';
 import { useSettingsStore } from '../stores/settingsStore';
+import type { JellyfinQueueItem } from '../types/media';
 import { setJellyfinEmbedNavActive } from '../services/spatialNavigation';
 import './JellyfinPage.css';
 
@@ -100,6 +101,19 @@ export interface JellyfinPlayPayload {
     name?: string;
     positionTicks?: number;
   }>;
+  // The web client's own play queue at handoff (a Jellyfin playlist, an album,
+  // or a "play next" queue) in play order, plus the index of the item being
+  // played. Prev/next and auto-play follow this instead of the series episode
+  // list when it is present.
+  queue?: {
+    items: JellyfinQueueItem[];
+    index: number;
+    playlistId?: string | null;
+    playlistName?: string | null;
+  } | null;
+  // Current Jellyfin user id — lets the frontend resolve details for queue
+  // entries the page never opened.
+  userId?: string;
 }
 
 interface JellyfinPageProps {

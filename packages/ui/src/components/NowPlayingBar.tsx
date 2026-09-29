@@ -18,6 +18,7 @@ import { SourcePickerModal } from './SourcePickerModal';
 import type { StremioStream, StremioStreamBadge } from '../types/stremio';
 import type { VisualizerMode } from './AudioVisualizer';
 import { useActivePlaylistStore, isActivePlaylistItem } from '../stores/activePlaylistStore';
+import { hasJellyfinQueue, resolveJellyfinQueuePosition, jellyfinQueueItemLabel } from '../utils/jellyfinQueue';
 import { getLocalEpisodeList } from '../services/local-library/local-library';
 import { TeamChannelOverlay } from './sports/TeamChannelOverlay';
 import { FailoverChannelOverlay } from './FailoverChannelOverlay';
@@ -74,6 +75,8 @@ interface NowPlayingBarProps {
   onChannelUp?: () => void;
   onChannelDown?: () => void;
   onPlaylistQueueClick?: () => void;
+  /** Opens the list of items in the Jellyfin play queue currently playing. */
+  onJellyfinQueueClick?: () => void;
   onPlaylistPreviousItem?: () => void;
   onPlaylistNextItem?: () => void;
   aspectRatio?: AspectRatioMode;
@@ -148,6 +151,7 @@ export function NowPlayingBar({
   onChannelUp,
   onChannelDown,
   onPlaylistQueueClick,
+  onJellyfinQueueClick,
   onPlaylistPreviousItem,
   onPlaylistNextItem,
   aspectRatio = 'fit',
@@ -209,11 +213,35 @@ export function NowPlayingBar({
     isActivePlaylistItem(vodInfo, items[currentIndex]);
   const nextUpItem = isPlaylistActive && currentIndex < items.length - 1 ? items[currentIndex + 1] : null;
 
-  // Prev/next navigation: playlist queue takes over while a playlist item is
-  // playing; otherwise fall back to the existing channel/episode navigation.
-  const showPrevNav = isPlaylistActive ? !!onPlaylistPreviousItem : !!(onChannelUp && (!isVod || vodInfo?.type === 'series'));
-  const showNextNav = isPlaylistActive ? !!onPlaylistNextItem : !!(onChannelDown && (!isVod || vodInfo?.type === 'series'));
-  const isEpisodeNav = !isPlaylistActive && isVod && vodInfo?.type === 'series';
+  // Jellyfin play queue: playback started from a Jellyfin playlist (or album)
+  // follows THAT order, which can mix series, movies and episodes — so the
+  // series episode list must not take over the prev/next buttons.
+  const jellyfinQueue = vodInfo?.source_id === 'jellyfin' ? vodInfo?.jellyfinQueue : null;
+  const jellyfinQueuePos = jellyfinQueue
+    ? resolveJellyfinQueuePosition(jellyfinQueue, vodInfo?.jellyfinItemId, vodInfo?.jellyfinQueueIndex)
+    : null;
+  const isJellyfinQueueActive = !isPlaylistActive && hasJellyfinQueue(jellyfinQueue);
+  const jellyfinQueueNext = isJellyfinQueueActive && jellyfinQueuePos && jellyfinQueue
+    ? jellyfinQueue[jellyfinQueuePos.index + 1] ?? null
+    : null;
+  // Entries the page never opened arrive without a name; the preview is hidden
+  // rather than showing an empty "Next up: ".
+  const jellyfinQueueNextLabel = jellyfinQueueNext ? jellyfinQueueItemLabel(jellyfinQueueNext) : '';
+
+  // Prev/next navigation: the app's own playlist queue wins, then the Jellyfin
+  // play queue, then the existing channel/episode navigation.
+  const isQueueNav = isPlaylistActive || isJellyfinQueueActive;
+  const showPrevNav = isPlaylistActive
+    ? !!onPlaylistPreviousItem
+    : isJellyfinQueueActive
+      ? !!onChannelUp && !!jellyfinQueuePos && jellyfinQueuePos.index > 0
+      : !!(onChannelUp && (!isVod || vodInfo?.type === 'series'));
+  const showNextNav = isPlaylistActive
+    ? !!onPlaylistNextItem
+    : isJellyfinQueueActive
+      ? !!onChannelDown && !!jellyfinQueuePos && jellyfinQueuePos.index < jellyfinQueuePos.total - 1
+      : !!(onChannelDown && (!isVod || vodInfo?.type === 'series'));
+  const isEpisodeNav = !isQueueNav && isVod && vodInfo?.type === 'series';
 
   // Local series episodes live in the local library (not the VOD DB), so the
   // boundaries are resolved here to grey out prev/next at the series start/end.
@@ -233,6 +261,8 @@ export function NowPlayingBar({
     if (isPlaylistActive) {
       onPlaylistPreviousItem?.();
     } else {
+      // App.tsx resolves the Jellyfin queue (and falls back to episode/episode
+      // navigation for anything else).
       onChannelUp?.();
     }
   };
@@ -245,6 +275,39 @@ export function NowPlayingBar({
       onChannelDown?.();
     }
   };
+
+  // Jellyfin play-queue indicator: same badge shape as the app playlist one, so
+  // the player always says where playback is coming from and the item list is
+  // one click away.
+  const jellyfinQueueIndicator = isJellyfinQueueActive && jellyfinQueuePos ? (
+    <div className="npb-playlist-info">
+      <button
+        type="button"
+        className="npb-playlist-badge"
+        onClick={onJellyfinQueueClick}
+        title={`${t('fromPlaylist')}${vodInfo?.jellyfinQueueName ? `: ${vodInfo.jellyfinQueueName}` : ''} · ${jellyfinQueuePos.index + 1}/${jellyfinQueuePos.total}`}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6" />
+          <line x1="8" y1="12" x2="21" y2="12" />
+          <line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" />
+          <line x1="3" y1="12" x2="3.01" y2="12" />
+          <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+        {vodInfo?.jellyfinQueueName || t('fromPlaylist')}
+        <span className="npb-playlist-pos">{jellyfinQueuePos.index + 1}/{jellyfinQueuePos.total}</span>
+        <svg className="npb-playlist-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {jellyfinQueueNextLabel && (
+        <span className="npb-next-up" title={`${t('nextUp')}: ${jellyfinQueueNextLabel}`}>
+          {t('nextUp')}: {jellyfinQueueNextLabel}
+        </span>
+      )}
+    </div>
+  ) : null;
 
   // Shared playlist indicator (playlist name, position, shuffle, next-up preview)
   const playlistIndicator = isPlaylistActive ? (
@@ -733,6 +796,7 @@ export function NowPlayingBar({
           {isClean ? (
             <div className="npb-clean-layout">
             {playlistIndicator}
+            {jellyfinQueueIndicator}
             {/* Top Row: Full-width Seekbar with left & right timestamps and sub-row */}
             <div className="npb-clean-seekbar-row">
               <div className="npb-clean-seekbar-container">
@@ -877,9 +941,9 @@ export function NowPlayingBar({
                     className="npb-clean-sm-btn"
                     onClick={handleNavPrev}
                     disabled={!canControl || (localEpisodeNav !== null && !localEpisodeNav.canPrev)}
-                    title={isPlaylistActive ? t('previousPlaylistItem') : (isEpisodeNav ? t('previousEpisode') : t('previousChannel'))}
+                    title={isQueueNav ? t('previousPlaylistItem') : (isEpisodeNav ? t('previousEpisode') : t('previousChannel'))}
                   >
-                    {isPlaylistActive || isEpisodeNav ? <PrevIcon /> : <ChannelUpIcon />}
+                    {isQueueNav || isEpisodeNav ? <PrevIcon /> : <ChannelUpIcon />}
                   </button>
                 )}
 
@@ -888,9 +952,9 @@ export function NowPlayingBar({
                     className="npb-clean-sm-btn"
                     onClick={handleNavNext}
                     disabled={!canControl || (localEpisodeNav !== null && !localEpisodeNav.canNext)}
-                    title={isPlaylistActive ? t('nextPlaylistItem') : (isEpisodeNav ? t('nextEpisode') : t('nextChannel'))}
+                    title={isQueueNav ? t('nextPlaylistItem') : (isEpisodeNav ? t('nextEpisode') : t('nextChannel'))}
                   >
-                    {isPlaylistActive || isEpisodeNav ? <NextIcon /> : <ChannelDownIcon />}
+                    {isQueueNav || isEpisodeNav ? <NextIcon /> : <ChannelDownIcon />}
                   </button>
                 )}
 
@@ -1196,6 +1260,7 @@ export function NowPlayingBar({
                       )}
 
                       {playlistIndicator}
+                      {jellyfinQueueIndicator}
                     </>
                   ) : isCatchup && catchupInfo ? (
                     <>
@@ -1445,9 +1510,9 @@ export function NowPlayingBar({
                     className="npb-btn npb-channel-up-btn"
                     onClick={handleNavPrev}
                     disabled={!canControl || (localEpisodeNav !== null && !localEpisodeNav.canPrev)}
-                    title={isPlaylistActive ? t('previousPlaylistItem') : (isEpisodeNav ? t('previousEpisode') : t('previousChannelUp'))}
+                    title={isQueueNav ? t('previousPlaylistItem') : (isEpisodeNav ? t('previousEpisode') : t('previousChannelUp'))}
                   >
-                    {isPlaylistActive || isEpisodeNav ? <PrevIcon /> : <ChannelUpIcon />}
+                    {isQueueNav || isEpisodeNav ? <PrevIcon /> : <ChannelUpIcon />}
                   </button>
                 )}
                 {showNextNav && (
@@ -1455,9 +1520,9 @@ export function NowPlayingBar({
                     className="npb-btn npb-channel-down-btn"
                     onClick={handleNavNext}
                     disabled={!canControl || (localEpisodeNav !== null && !localEpisodeNav.canNext)}
-                    title={isPlaylistActive ? t('nextPlaylistItem') : (isEpisodeNav ? t('nextEpisode') : t('nextChannelDown'))}
+                    title={isQueueNav ? t('nextPlaylistItem') : (isEpisodeNav ? t('nextEpisode') : t('nextChannelDown'))}
                   >
-                    {isPlaylistActive || isEpisodeNav ? <NextIcon /> : <ChannelDownIcon />}
+                    {isQueueNav || isEpisodeNav ? <NextIcon /> : <ChannelDownIcon />}
                   </button>
                 )}
                 <button

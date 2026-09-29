@@ -7,6 +7,27 @@
 
 import type { StoredMovie, StoredSeries } from '../db';
 
+/**
+ * One entry of the Jellyfin web client's own play queue (playlist, album, or a
+ * "play next" queue) as captured by the embedded-page bridge. `id` is the
+ * dash-stripped Jellyfin item id, which is what direct-play URLs are built
+ * from; the rest is best-effort display metadata.
+ */
+export interface JellyfinQueueItem {
+  id: string;
+  rawId?: string;
+  playlistItemId?: string;
+  name?: string;
+  /** Jellyfin item Type: 'Episode', 'Movie', 'Audio', ... */
+  type?: string;
+  mediaType?: string;
+  seriesId?: string;
+  seriesName?: string;
+  indexNumber?: number | null;
+  parentIndexNumber?: number | null;
+  runTimeTicks?: number | null;
+}
+
 /** Union type for movie or series items */
 export type MediaItem = StoredMovie | StoredSeries;
 
@@ -117,4 +138,14 @@ export interface VodPlayInfo {
   // Remembered subtitle stream index per Jellyfin item id (captured from the
   // web client), so prev/next episodes start with the user's subtitle.
   jellyfinSubtitlePrefs?: Record<string, number>;
+  // Current Jellyfin user id (from the bridge), used to resolve item details
+  // for queue entries the page never opened.
+  jellyfinUserId?: string;
+  // The web client's own play queue at handoff. When present, the player's
+  // prev/next and auto-play follow THIS order (a playlist can mix series,
+  // movies and episodes) instead of the series' episode list above.
+  jellyfinQueue?: JellyfinQueueItem[];
+  jellyfinQueueIndex?: number;
+  // Name of the playlist the queue came from, when the page loaded it.
+  jellyfinQueueName?: string;
 }
