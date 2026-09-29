@@ -194,7 +194,7 @@ async function executeNuvioRequestOnce<T>(
     'apikey': getEffectiveNuvioKey(),
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'User-Agent': 'NuvioDesktop/0.1.22-alpha',
+    'User-Agent': 'NuvioDesktop/0.1.26-alpha',
   };
 
   if (token) {
