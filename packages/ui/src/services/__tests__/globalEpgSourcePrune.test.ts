@@ -196,15 +196,19 @@ describe('prune wiring (source contracts)', () => {
     return src.slice(at);
   }
 
-  it('prunes the deleted playlist when a source is deleted', () => {
+  it('is the EPG half of the delete flow', () => {
+    // The delete itself goes through `services/sourceRemoval`, which covers the
+    // other places a playlist id lives — this is the link between the two.
     const confirmDelete = after(sourcesTabSrc, 'async function confirmDelete()');
-    const drop = confirmDelete.indexOf('dropDeletedGlobalEpgSourceRefs(new Set([id]))');
     const removed = confirmDelete.indexOf('await window.storage.deleteSource(id)');
+    const cleanup = confirmDelete.indexOf('await forgetDeletedSource(id)');
 
-    expect(drop).toBeGreaterThanOrEqual(0);
     expect(removed).toBeGreaterThanOrEqual(0);
-    // The config is rewritten only once the playlist is actually gone.
-    expect(drop).toBeGreaterThan(removed);
+    // The reference cleanup runs before the playlist row goes (see sourceRemoval).
+    expect(cleanup).toBeLessThan(removed);
+
+    const removalSrc = readFileSync(new URL('../sourceRemoval.ts', import.meta.url), 'utf8');
+    expect(removalSrc).toContain('dropDeletedGlobalEpgSourceRefs(new Set([id]))');
   });
 
   it('prunes against the freshly loaded playlist list when Settings opens', () => {

@@ -24,7 +24,7 @@ import {
 } from '../../stores/uiStore';
 import { useToastStore } from '../../stores/toastStore';
 import { releasePinsForFeed } from '../../services/epg-overrides';
-import { dropDeletedGlobalEpgSourceRefs } from '../../services/globalEpgSourcePrune';
+import { forgetDeletedSource } from '../../services/sourceRemoval';
 import { parseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
 import { CategoryManager } from './CategoryManager';
 import { DataRefreshTab } from './DataRefreshTab';
@@ -998,21 +998,24 @@ export function SourcesTab({
         console.warn('[Sources] Failed to release feed locks for deleted playlist:', e);
       }
 
-      await window.storage.deleteSource(id);
-
-      // A playlist that is gone can no longer fill a Global EPG link's gaps, so
-      // its id is removed from every link's attachment list (and from the
-      // per-source run state that describes it). Otherwise the link keeps the
-      // id and renders it as a UUID pill forever — deleting the EPG source and
-      // re-adding it used to be the only way to get rid of it.
+      // The playlist's own rows are gone (clearSourceData / clearVodData above),
+      // but its id is also written into places keyed by something else: Global
+      // EPG links, the sidebar order preferences, its favourite order, its logo
+      // overrides and the Stalker EPG cache. A stale id there renders as an
+      // unresolvable entry — a UUID pill in the Global EPG card, for instance.
+      // Runs before the playlist itself goes: if this is interrupted, the user
+      // still has the playlist and can delete it again, whereas the reverse
+      // order could leave references nobody can ever match again.
       try {
-        const pruned = dropDeletedGlobalEpgSourceRefs(new Set([id]));
-        if (pruned > 0) {
-          console.log(`[Sources] Removed playlist ${name} from ${pruned} Global EPG source(s)`);
+        const cleaned = await forgetDeletedSource(id);
+        if (cleaned.globalEpgLinks > 0) {
+          console.log(`[Sources] Detached playlist ${name} from ${cleaned.globalEpgLinks} Global EPG source(s)`);
         }
       } catch (e) {
-        console.warn('[Sources] Failed to remove the deleted playlist from Global EPG sources:', e);
+        console.warn('[Sources] Failed to clear references to the deleted playlist:', e);
       }
+
+      await window.storage.deleteSource(id);
 
       // Small delay to ensure all async state updates complete
       await new Promise(resolve => setTimeout(resolve, 100));

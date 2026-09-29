@@ -1115,21 +1115,25 @@ async function saveCacheToDb() {
 
 /**
  * Clears the channel sync cache entries for a specific Stalker source.
- * Called when a full EPG sync/autosync replaces the EPG database.
+ * Called when a full EPG sync/autosync replaces the EPG database, and when the
+ * source is deleted (see `services/sourceRemoval`).
+ *
+ * @returns how many cached channels named that source
  */
-export async function clearChannelSyncCache(sourceId: string) {
-  console.log(`[EPG] Clearing channel sync cache for Stalker source ${sourceId}`);
+export async function clearChannelSyncCache(sourceId: string): Promise<number> {
   await ensureCacheInitialized();
-  let changed = false;
+  let removed = 0;
   for (const key of channelSyncCache.keys()) {
     if (key.startsWith(`${sourceId}_`)) {
       channelSyncCache.delete(key);
-      changed = true;
+      removed += 1;
     }
   }
-  if (changed) {
+  if (removed > 0) {
+    console.log(`[EPG] Cleared ${removed} cached Stalker EPG entries for source ${sourceId}`);
     await saveCacheToDb();
   }
+  return removed;
 }
 
 /**

@@ -1836,23 +1836,89 @@ async function backfillChannelCategories(db: Database): Promise<void> {
   }
 }
 
+/**
+ * Every statement that removes one playlist's footprint from the database.
+ *
+ * The playlist's row in the sources list is only where its footprint starts:
+ * channels, categories, its own guide channel list (offered as match targets in
+ * the EPG editor), cached probe results, and the channel lists a user built on
+ * top of it — custom groups, VOD playlists, failover groups, sports team links —
+ * all name either the playlist or one of its stream ids. Only the tables that
+ * name the source directly can be deleted by `source_id` (`category_folders`
+ * calls that column `playlist_id`); the rest are addressed through `channels`,
+ * so those deletes have to run while the channel rows are still there. That is
+ * what fixes the order below.
+ *
+ * Kept as a pure statement list (separate from the execute loop) so the SQL can
+ * be exercised against a real SQLite in tests.
+ *
+ * Deliberately NOT here: `watchlist`, `vod_history` and `episode_history`. Those
+ * hold the user's own viewing data rather than a reference to the playlist, and
+ * the app preserves the same rows through "Clear All Cached Data" — watchlist
+ * entries additionally expire on their own once their programme has passed.
+ */
+export function buildClearSourceStatements(sourceId: string): { sql: string; args: unknown[] }[] {
+  const bySource = (table: string) => ({
+    sql: `DELETE FROM ${table} WHERE source_id = $1`,
+    args: [sourceId] as unknown[],
+  });
+  const byOwnedChannelStreamId = (table: string) => ({
+    sql: `DELETE FROM ${table} WHERE stream_id IN (SELECT stream_id FROM channels WHERE source_id = $1)`,
+    args: [sourceId] as unknown[],
+  });
+
+  return [
+    // DVR first: recordings reference schedules.
+    {
+      sql: 'DELETE FROM dvr_recordings WHERE schedule_id IN (SELECT id FROM dvr_schedules WHERE source_id = $1)',
+      args: [sourceId],
+    },
+    bySource('dvr_schedules'),
+
+    // Everything that names one of this playlist's channels by stream id, while
+    // those channel rows still exist.
+    byOwnedChannelStreamId('custom_group_channels'),
+    byOwnedChannelStreamId('playlist_individual_channels'),
+    byOwnedChannelStreamId('failover_group_members'),
+    // Channel overrides and their per-program overrides always reset together
+    // (see `resetChannelOverride`), so they go together here too.
+    byOwnedChannelStreamId('epg_channel_overrides'),
+    byOwnedChannelStreamId('epg_program_overrides'),
+    // Team links denormalise the channel name, so the stream id is what really
+    // identifies the channel; `source_id` covers the newer rows (and is the only
+    // field that can match a link whose stream id was never stored).
+    {
+      sql: `DELETE FROM team_channel_links
+             WHERE source_id = $1
+                OR stream_id IN (SELECT stream_id FROM channels WHERE source_id = $1)`,
+      args: [sourceId],
+    },
+    // VOD playlist entries that pick categories from this playlist, and the
+    // category folders created under it (a real source's folders are keyed by
+    // its source id; a custom playlist's use that playlist's id instead).
+    bySource('playlist_category_links'),
+    { sql: 'DELETE FROM category_folders WHERE playlist_id = $1', args: [sourceId] },
+    // The playlist's own guide channels and the probe results cached for them.
+    bySource('epg_channels'),
+    bySource('channelMetadata'),
+
+    // The playlist itself.
+    bySource('channels'),
+    bySource('channel_categories'),
+    bySource('categories'),
+    bySource('sourcesMeta'),
+    bySource('programs'),
+  ];
+}
+
 // Helper to clear all data for a source (before re-sync or on delete)
 export async function clearSourceData(sourceId: string): Promise<void> {
   // Use raw SQL deletes for better performance and fewer events
   const dbInstance = await (db as any).dbPromise;
 
-  // Delete DVR data first (recordings reference schedules, schedules reference source)
-  await dbInstance.execute(
-    'DELETE FROM dvr_recordings WHERE schedule_id IN (SELECT id FROM dvr_schedules WHERE source_id = $1)',
-    [sourceId]
-  );
-  await dbInstance.execute('DELETE FROM dvr_schedules WHERE source_id = $1', [sourceId]);
-
-  await dbInstance.execute('DELETE FROM channels WHERE source_id = $1', [sourceId]);
-  await dbInstance.execute('DELETE FROM channel_categories WHERE source_id = $1', [sourceId]);
-  await dbInstance.execute('DELETE FROM categories WHERE source_id = $1', [sourceId]);
-  await dbInstance.execute('DELETE FROM sourcesMeta WHERE source_id = $1', [sourceId]);
-  await dbInstance.execute('DELETE FROM programs WHERE source_id = $1', [sourceId]);
+  for (const { sql, args } of buildClearSourceStatements(sourceId)) {
+    await dbInstance.execute(sql, args);
+  }
 
   // Fire single batch event for each table
   dbEvents.notify('dvr_recordings', 'delete');
@@ -1861,6 +1927,16 @@ export async function clearSourceData(sourceId: string): Promise<void> {
   dbEvents.notify('categories', 'delete');
   dbEvents.notify('sourcesMeta', 'delete');
   dbEvents.notify('programs', 'delete');
+  dbEvents.notify('epg_channels', 'delete');
+  dbEvents.notify('epg_channel_overrides', 'delete');
+  dbEvents.notify('epg_program_overrides', 'delete');
+  dbEvents.notify('category_folders', 'delete');
+  dbEvents.notify('channelMetadata', 'delete');
+  dbEvents.notify('custom_group_channels', 'delete');
+  dbEvents.notify('playlist_individual_channels', 'delete');
+  dbEvents.notify('failover_group_members', 'delete');
+  dbEvents.notify('team_channel_links', 'delete');
+  dbEvents.notify('playlist_category_links', 'delete');
 }
 
 // Helper to clear VOD data for a source
