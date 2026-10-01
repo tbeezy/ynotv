@@ -1902,6 +1902,8 @@
       "description": "Activez le journal détaillé pour vous aider à diagnostiquer les problèmes de lecture vidéo, les requêtes réseau et les erreurs d'application. Les journaux sont enregistrés dans un fichier que vous pouvez partager lors du signalement de bugs.",
       "enableLogging": "Activer le journal de débogage",
       "enableLoggingHint": "Lorsqu’il est activé, des journaux détaillés de mpv, du rendu et du processus principal sont écrits dans un fichier. Cela peut légèrement affecter les performances.",
+      "addonTraceLabel": "Trace des sous-titres d'extension",
+      "addonTraceHint": "Journalise chaque étape du pipeline de sous-titres d'extension Stremio/Nuvio (récupération, correspondance de langue, téléchargement, file d'attente) dans la console et dans le fichier journal lorsque le journal de débogage est actif. Le panneau Diagnostics des sous-titres enregistre la même trace dans tous les cas.",
       "supportModeLabel": "Mode support",
       "supportModeHint": "Démarre le moteur vidéo avec la journalisation mpv détaillée dès le lancement, afin que la première requête d'une session soit capturée — l'option Diagnostics de l'application ne couvre que le moteur déjà en cours d'exécution et est perdue lors d'un redémarrage. Le mpv.log précédent est conservé sous mpv.1.log au lieu d'être supprimé. Les fichiers journaux contiennent des URL de flux ; ne les partagez qu'avec des personnes de confiance. Prend effet au prochain démarrage de l'application. Le mode support peut aussi être activé en lançant avec YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Paramètres de conservation des journaux",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} doit être configuré avant de pouvoir être installé.",
+    "addonConfigurationHowTo": "Configurez-le dans votre navigateur, copiez ensuite l'URL d'installation et collez-la ici.",
+    "installAnyway": "Installer quand même",
     "account": "Compte",
     "allTypes": "Tous les types",
     "calendar": "Calendrier",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Les fichiers locaux et les enregistrements DVR ne peuvent pas être diffusés sur Chromecast. Seuls les flux distants sont pris en charge."
   },
   "subtitles": {
+    "addonTracksTitle": "Depuis les addons ({{total}})",
+    "addonTracksHint": "Téléchargé à la demande",
+    "addonQueued": "En file d'attente #{{position}}",
+    "addonQueuedUnknown": "En file d'attente",
+    "addonQueueFull": "File d'attente pleine",
+    "addonTranslating": "Traduction en cours… {{eta}}",
+    "addonTracksCapped": "Affichage de {{shown}} sur {{total}}",
+    "addonQueueRecheck": "Vérifier l'état",
+    "addonQueueHint": "Les traductions en file d'attente sont produites sur le serveur de l'extension. Vérifiez l'état sur une ligne en file d'attente pour récupérer le fichier une fois qu'il est prêt.",
     "header": "Sous-titres",
     "diagnosticsTooltip": "Ouvrir le journal de diagnostic des sous-titres (copier/coller pour le support)",
     "diagnostics": "Diagnostic",

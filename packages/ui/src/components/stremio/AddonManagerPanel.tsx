@@ -28,16 +28,23 @@ export function AddonManagerPanel({ onClose }: AddonManagerPanelProps) {
   const [error, setError] = useState('');
   const [installing, setInstalling] = useState<string | boolean>(false);
   const [syncingPositions, setSyncingPositions] = useState(false);
+  const [configRequired, setConfigRequired] = useState<{ url: string; message: string } | null>(null);
 
-  const handleInstall = async (url: string) => {
+  const handleInstall = async (url: string, allowUnconfigured = false) => {
     if (!url.trim()) return;
     setInstalling(url);
     setError('');
+    if (!allowUnconfigured) setConfigRequired(null);
     try {
-      await addAddon(url.trim());
+      await addAddon(url.trim(), { allowUnconfigured });
       if (url === manifestUrl) setManifestUrl('');
+      setConfigRequired(null);
     } catch (e: any) {
-      setError(translateNativeError(e.message) || i18n.t('stremio:failedInstallAddon'));
+      if (e?.code === 'addonConfigurationRequired') {
+        setConfigRequired({ url: url.trim(), message: String(e?.message || '') });
+      } else {
+        setError(translateNativeError(e.message) || i18n.t('stremio:failedInstallAddon'));
+      }
     } finally {
       setInstalling(false);
     }
@@ -99,6 +106,31 @@ export function AddonManagerPanel({ onClose }: AddonManagerPanelProps) {
                 {installing === manifestUrl ? i18n.t('stremio:installing') : i18n.t('stremio:install')}
               </button>
             </div>
+            {configRequired && (
+              <div className="stremio-addon-config-required">
+                <div className="stremio-addon-config-required-msg">{configRequired.message}</div>
+                <div className="stremio-addon-config-required-hint">
+                  {i18n.t('stremio:addonConfigurationHowTo')}
+                </div>
+                <div className="stremio-addon-config-required-actions">
+                  <button
+                    className="stremio-addon-configure-open-btn"
+                    onClick={() => void openAddonConfigureUrl(configRequired.url)}
+                  >
+                    {i18n.t('stremio:configureAddon')}
+                  </button>
+                  <button
+                    className="stremio-addon-install-anyway-btn"
+                    onClick={() => void handleInstall(configRequired.url, true)}
+                    disabled={!!installing}
+                  >
+                    {installing === configRequired.url
+                      ? i18n.t('stremio:installing')
+                      : i18n.t('stremio:installAnyway')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="stremio-addon-list-section">
@@ -138,6 +170,14 @@ export function AddonManagerPanel({ onClose }: AddonManagerPanelProps) {
                         <div className="stremio-addon-item-name">
                           {addon.manifest.name}
                           {addon.isDefault && <span className="stremio-addon-item-badge">{i18n.t('stremio:default')}</span>}
+                          {addon.manifest.behaviorHints?.configurationRequired && (
+                            <span
+                              className="stremio-addon-item-badge warn"
+                              title={i18n.t('stremio:addonConfigurationHowTo')}
+                            >
+                              {i18n.t('stremio:configureAddon')}
+                            </span>
+                          )}
                         </div>
                         <div className="stremio-addon-item-desc" style={{ whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                           {addon.manifest.description}

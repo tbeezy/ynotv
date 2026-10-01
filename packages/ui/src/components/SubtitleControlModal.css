@@ -962,3 +962,114 @@
 .subtitle-track-btn.active .subtitle-track-variant-title {
   color: #93c5fd;
 }
+
+/* ── Add-on subtitle tracks (downloaded on demand) ── */
+.subtitle-addon-tracks {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+}
+
+.subtitle-addon-tracks-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.subtitle-addon-tracks-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #888);
+}
+
+.subtitle-addon-tracks-hint,
+.subtitle-addon-tracks-more {
+  font-size: 0.7rem;
+  color: var(--text-secondary, #888);
+  opacity: 0.8;
+}
+
+.subtitle-addon-tracks-more {
+  padding: 6px 8px;
+}
+
+.subtitle-addon-track-btn.loaded .subtitle-track-variant-title {
+  color: #93c5fd;
+}
+
+.subtitle-addon-queue-badge {
+  flex-shrink: 0;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.subtitle-addon-queue-badge.full {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.14);
+  color: #f87171;
+}
+
+/* A queued row stacks its status underneath: in this narrow column the badge
+   text ("Translating… (~32 seconds)") and a control placed beside it overlap. */
+.subtitle-addon-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.subtitle-addon-queue-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 10px 6px;
+}
+
+/* Degrade to an ellipsis rather than pushing the control out of the row. */
+.subtitle-addon-queue-strip .subtitle-addon-queue-badge {
+  min-width: 0;
+  margin-right: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle-addon-recheck {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 5px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.subtitle-addon-recheck:hover:not(:disabled) {
+  background: rgba(251, 191, 36, 0.22);
+}
+
+.subtitle-addon-recheck:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.subtitle-addon-queue-hint {
+  padding: 0 8px 6px;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--text-secondary, #888);
+  opacity: 0.8;
+}

@@ -1902,6 +1902,8 @@
       "description": "Włącz szczegółowe rejestrowanie, aby pomóc diagnozować problemy z odtwarzaniem wideo, żądaniami sieciowymi i błędami aplikacji. Dzienniki są zapisywane do pliku, który możesz udostępnić podczas zgłaszania błędów.",
       "enableLogging": "Włącz rejestrowanie debugowania",
       "enableLoggingHint": "Po włączeniu szczegółowe dzienniki mpv, renderera i procesu głównego są zapisywane do pliku. Może to nieznacznie wpłynąć na wydajność.",
+      "addonTraceLabel": "Śledzenie napisów dodatków",
+      "addonTraceHint": "Zapisuje każdy krok potoku napisów dodatków Stremio/Nuvio (pobieranie, dopasowanie języka, ściąganie, kolejka) w konsoli oraz w pliku dziennika, gdy włączone jest rejestrowanie debugowania. Panel diagnostyki napisów rejestruje ten sam ślad w każdym przypadku.",
       "supportModeLabel": "Tryb pomocy",
       "supportModeHint": "Uruchamia silnik wideo ze szczegółowym rejestrowaniem mpv już od startu, dzięki czemu pierwsze żądanie sesji jest przechwytywane — przełącznik Diagnostyka w aplikacji obejmuje tylko już działający silnik i przepada przy restarcie. Poprzedni plik mpv.log jest zachowywany jako mpv.1.log zamiast usuwania. Pliki dziennika zawierają adresy URL strumieni, więc udostępniaj je tylko zaufanym osobom. Działa przy następnym uruchomieniu aplikacji. Tryb pomocy można też włączyć, uruchamiając aplikację z YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Ustawienia przechowywania dzienników",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} wymaga konfiguracji, zanim można go zainstalować.",
+    "addonConfigurationHowTo": "Skonfiguruj go w przeglądarce, następnie skopiuj URL instalacji i wklej go tutaj.",
+    "installAnyway": "Zainstaluj mimo to",
     "account": "Konto",
     "allTypes": "Wszystkie typy",
     "calendar": "Kalendarz",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Plików lokalnych i nagrań DVR nie można przesyłać na Chromecast. Obsługiwane są tylko strumienie zdalne."
   },
   "subtitles": {
+    "addonTracksTitle": "Z dodatków ({{total}})",
+    "addonTracksHint": "Pobierane na żądanie",
+    "addonQueued": "W kolejce #{{position}}",
+    "addonQueuedUnknown": "W kolejce",
+    "addonQueueFull": "Kolejka pełna",
+    "addonTranslating": "Tłumaczenie w toku… {{eta}}",
+    "addonTracksCapped": "Pokazywanie {{shown}} z {{total}}",
+    "addonQueueRecheck": "Sprawdź status",
+    "addonQueueHint": "Tłumaczenia w kolejce powstają na serwerze dodatku. Sprawdź status w wierszu oczekującym w kolejce, aby pobrać plik, gdy będzie gotowy.",
     "header": "Napisy",
     "diagnosticsTooltip": "Otwórz dziennik diagnostyczny napisów (kopiuj/wklej dla pomocy)",
     "diagnostics": "Diagnostyka",

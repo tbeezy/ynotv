@@ -1902,6 +1902,8 @@
       "description": "Részletes naplózás engedélyezése a videólejátszással, hálózati kérésekkel és alkalmazáshibákkal kapcsolatos problémák diagnosztizálásához. A naplók egy fájlba íródnak, amelyet hibajelentéskor megoszthat.",
       "enableLogging": "Hibakeresési naplózás engedélyezése",
       "enableLoggingHint": "Ha engedélyezve van, az mpv, a renderelő és a fő folyamat részletes naplói fájlba íródnak. Ez kissé befolyásolhatja a teljesítményt.",
+      "addonTraceLabel": "Add-on felirat nyomkövetés",
+      "addonTraceHint": "Naplózza a Stremio/Nuvio add-on feliratfolyamat minden lépését (lekérés, nyelvi egyeztetés, letöltés, várakozási sor) a konzolra, és hibakeresési naplózás bekapcsolásakor a naplófájlba. A Felirat diagnosztika panel minden esetben ugyanezt a nyomkövetést rögzíti.",
       "supportModeLabel": "Támogatási mód",
       "supportModeHint": "A videómotort már induláskor részletes mpv-naplózással indítja, így a munkamenet első kérése is rögzül — az alkalmazáson belüli Diagnosztika kapcsoló csak a már futó motort fedi le, és újraindításkor elveszik. A korábbi mpv.log fájl törlés helyett mpv.1.log néven megmarad. A naplófájlok stream-URL-eket tartalmaznak, ezért csak megbízható személyekkel ossza meg őket. Az alkalmazás következő indításakor lép életbe. A támogatási mód a YNOTV_SUPPORT_MODE=1 kapcsolóval való indítással is engedélyezhető.",
       "retentionLabel": "Naplómegőrzési beállítások",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "A(z) {{name}} konfigurálást igényel, mielőtt telepíthető.",
+    "addonConfigurationHowTo": "Konfigurálja a böngészőjében, majd másolja a telepítési URL-t és illessze be ide.",
+    "installAnyway": "Telepítés mindenképp",
     "account": "Fiók",
     "allTypes": "Minden típus",
     "calendar": "Naptár",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Helyi fájlok és DVR-felvételek nem vetíthetők Chromecastra. Csak távoli adásfolyamok támogatottak."
   },
   "subtitles": {
+    "addonTracksTitle": "Kiegészítőkből ({{total}})",
+    "addonTracksHint": "Igény szerint letöltve",
+    "addonQueued": "Sorban #{{position}}",
+    "addonQueuedUnknown": "Sorban",
+    "addonQueueFull": "A sor megtelt",
+    "addonTranslating": "Fordítás folyamatban… {{eta}}",
+    "addonTracksCapped": "{{shown}} / {{total}} megjelenítve",
+    "addonQueueRecheck": "Állapot ellenőrzése",
+    "addonQueueHint": "A sorban lévő fordítások az add-on szerverén készülnek. Ellenőrizze az állapotot a sorban lévő soron, hogy letöltse a fájlt, amint elkészül.",
     "header": "Feliratok",
     "diagnosticsTooltip": "Felirat-diagnosztikai napló megnyitása (másolás/beillesztés a támogatáshoz)",
     "diagnostics": "Diagnosztika",

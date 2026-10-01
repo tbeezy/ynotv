@@ -1902,6 +1902,8 @@
       "description": "Enable verbose logging to help diagnose issues with video playback, network requests, and application errors. Logs are written to a file that you can share when reporting bugs.",
       "enableLogging": "Enable debug logging",
       "enableLoggingHint": "When enabled, detailed logs from mpv, the renderer, and main process are written to a file. This may slightly impact performance.",
+      "addonTraceLabel": "Add-on subtitle trace",
+      "addonTraceHint": "Logs each step of the Stremio/Nuvio add-on subtitle pipeline (fetch, language match, download, queue) to the console, and to the log file while debug logging is on. The Subtitle Diagnostics panel records the same trace either way.",
       "supportModeLabel": "Support mode",
       "supportModeHint": "Starts the video engine with verbose mpv logging from launch, so the first request of a session is captured — the in-app Diagnostics toggle only covers the engine that is already running and is lost when it restarts. The previous mpv.log is kept as mpv.1.log instead of being deleted. Log files contain stream URLs, so only share them with people you trust. Takes effect on the next app start. Support mode can also be enabled by launching with YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Log Retention Settings",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} requires configuration before it can be installed.",
+    "addonConfigurationHowTo": "Configure it in your browser, then copy the installation URL and paste it here.",
+    "installAnyway": "Install anyway",
     "account": "Account",
     "allTypes": "All types",
     "calendar": "Calendar",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Local files and DVR recordings cannot be cast to Chromecast. Only remote streams are supported."
   },
   "subtitles": {
+    "addonTracksTitle": "From add-ons ({{total}})",
+    "addonTracksHint": "Downloaded on demand",
+    "addonQueued": "Queued #{{position}}",
+    "addonQueuedUnknown": "Queued",
+    "addonQueueFull": "Queue full",
+    "addonTranslating": "Translating… {{eta}}",
+    "addonTracksCapped": "Showing {{shown}} of {{total}}",
+    "addonQueueRecheck": "Check status",
+    "addonQueueHint": "Queued translations are produced on the add-on's server. Check status on a queued row to fetch the file once it is ready.",
     "header": "Subtitles",
     "diagnosticsTooltip": "Open subtitle diagnostics log (copy/paste for support)",
     "diagnostics": "Diagnostics",

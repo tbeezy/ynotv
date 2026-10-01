@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { InstalledAddon, StremioManifest, StremioCatalogResponse, StremioMeta, StremioStream, StremioSubtitle } from '../types/stremio';
 import i18n, { translateNativeError } from '../i18n';
+import { addonSubError, addonSubLangSummary, addonSubLog, addonSubPreview } from './addonSubtitleLog';
 
 function encodeAddonPathSegment(val: string): string {
   return encodeURIComponent(val).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
@@ -269,16 +270,29 @@ export async function fetchSubtitles(
         url += `/${extraArgs}`;
       }
       url += `.json${parsed.query}`;
+      addonSubLog('fetch', `${addon.manifest.name} → ${url}`);
       const data = await fetchJson(url) as { subtitles: StremioSubtitle[] };
       if (data?.subtitles) {
         const addonSubtitles = data.subtitles.map(sub => ({
           ...sub,
           addonName: addon.manifest.name
         }));
+        addonSubLog(
+          'fetch',
+          `${addon.manifest.name}: ${addonSubtitles.length} entry(ies) — ${addonSubLangSummary(addonSubtitles)}`
+        );
         results.push(...addonSubtitles);
+      } else {
+        addonSubLog(
+          'fetch',
+          `${addon.manifest.name}: response has no subtitles[] — ${addonSubPreview(JSON.stringify(data))}`
+        );
       }
-    } catch {
-      // Ignore errors for individual addon
+    } catch (err) {
+      // Add-ons fail independently, and a subtitle add-on that errors looks
+      // exactly like one that simply offers nothing — the trace is the only
+      // place the reason surfaces.
+      addonSubError('fetch', `${addon.manifest.name} subtitles request failed`, err);
     }
   });
 

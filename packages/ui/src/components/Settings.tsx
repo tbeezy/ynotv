@@ -458,6 +458,7 @@ export function Settings({
 
   // Debug state
   const [debugLoggingEnabled, setDebugLoggingEnabled] = useState(false);
+  const [addonTraceEnabled, setAddonTraceEnabled] = useState(false);
   const [supportModeEnabled, setSupportModeEnabled] = useState(false);
   const [logRetentionDays, setLogRetentionDays] = useState(7);
 
@@ -984,6 +985,7 @@ export function Settings({
         streamingNuvioCatalogsEnabled?: boolean;
         enabledStreamingServices?: string[];
         debugLoggingEnabled?: boolean;
+        addonSubtitleTraceEnabled?: boolean;
         supportModeEnabled?: boolean;
         logRetentionDays?: number;
         channelSortOrder?: 'alphabetical' | 'number' | 'provider';
@@ -1189,6 +1191,7 @@ export function Settings({
 
       // Load debug settings
       setDebugLoggingEnabled(settings.debugLoggingEnabled ?? false);
+      setAddonTraceEnabled(settings.addonSubtitleTraceEnabled ?? false);
       setSupportModeEnabled(settings.supportModeEnabled ?? false);
       setLogRetentionDays(settings.logRetentionDays ?? 7);
 
@@ -2883,6 +2886,8 @@ export function Settings({
           <DebugTab
             debugLoggingEnabled={debugLoggingEnabled}
             onDebugLoggingChange={setDebugLoggingEnabled}
+            addonTraceEnabled={addonTraceEnabled}
+            onAddonTraceChange={setAddonTraceEnabled}
             logRetentionDays={logRetentionDays}
             onLogRetentionChange={(val) => {
               setLogRetentionDays(val);

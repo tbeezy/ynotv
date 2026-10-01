@@ -1902,6 +1902,8 @@
       "description": "Aktivieren Sie die detaillierte Protokollierung, um Probleme mit Videowiedergabe, Netzwerkanfragen und App-Fehlern zu diagnostizieren. Protokolle werden in eine Datei geschrieben, die Sie beim Melden von Fehlern teilen können.",
       "enableLogging": "Debug-Protokollierung aktivieren",
       "enableLoggingHint": "Wenn aktiviert, werden detaillierte Protokolle von mpv, Renderer und Hauptprozess in eine Datei geschrieben. Kann die Leistung leicht beeinträchtigen.",
+      "addonTraceLabel": "Add-on-Untertitel-Trace",
+      "addonTraceHint": "Protokolliert jeden Schritt der Stremio/Nuvio-Untertitel-Pipeline von Add-ons (Abruf, Sprachabgleich, Download, Warteschlange) in die Konsole und – bei aktivierter Debug-Protokollierung – in die Protokolldatei. Das Untertitel-Diagnosefenster zeichnet dieselbe Spur in jedem Fall auf.",
       "supportModeLabel": "Support-Modus",
       "supportModeHint": "Startet die Video-Engine schon beim Start mit ausführlicher mpv-Protokollierung, sodass die erste Anfrage einer Sitzung erfasst wird — der Diagnose-Schalter in der App deckt nur die bereits laufende Engine ab und geht bei einem Neustart verloren. Das vorherige mpv.log wird als mpv.1.log aufbewahrt statt gelöscht. Protokolldateien enthalten Stream-URLs, teile sie daher nur mit Personen, denen du vertraust. Wirkt sich beim nächsten App-Start aus. Der Support-Modus kann auch durch Starten mit YNOTV_SUPPORT_MODE=1 aktiviert werden.",
       "retentionLabel": "Protokoll-Aufbewahrungseinstellungen",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} muss konfiguriert werden, bevor es installiert werden kann.",
+    "addonConfigurationHowTo": "Konfigurieren Sie es in Ihrem Browser, kopieren Sie dann die Installations-URL und fügen Sie sie hier ein.",
+    "installAnyway": "Trotzdem installieren",
     "account": "Konto",
     "allTypes": "Alle Typen",
     "calendar": "Kalender",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Lokale Dateien und DVR-Aufnahmen können nicht an Chromecast übertragen werden. Nur Remote-Streams werden unterstützt."
   },
   "subtitles": {
+    "addonTracksTitle": "Von Addons ({{total}})",
+    "addonTracksHint": "Bei Bedarf heruntergeladen",
+    "addonQueued": "In Warteschlange #{{position}}",
+    "addonQueuedUnknown": "In Warteschlange",
+    "addonQueueFull": "Warteschlange voll",
+    "addonTranslating": "Wird übersetzt… {{eta}}",
+    "addonTracksCapped": "Zeige {{shown}} von {{total}}",
+    "addonQueueRecheck": "Status prüfen",
+    "addonQueueHint": "Übersetzungen in der Warteschlange entstehen auf dem Server des Add-ons. Status prüfen, um die Datei zu laden, sobald sie fertig ist.",
     "header": "Untertitel",
     "diagnosticsTooltip": "Untertitel-Diagnoseprotokoll öffnen (für den Support kopieren/einfügen)",
     "diagnostics": "Diagnose",

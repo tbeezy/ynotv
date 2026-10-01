@@ -2,9 +2,31 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import i18n from '../i18n';
 import type { InstalledAddon } from '../types/stremio';
-import { fetchManifest, clearCatalogCache, cleanAddonUrl, getManifestUrl } from '../services/stremio-addon';
+import { fetchManifest, clearCatalogCache, cleanAddonUrl, getManifestUrl, openAddonConfigureUrl } from '../services/stremio-addon';
 
 const STORAGE_KEY = 'stremio-addons';
+
+/**
+ * Thrown when an add-on's manifest declares `configurationRequired`. Mirrors
+ * stremio-core, which refuses to install these until the user configures them:
+ * an unconfigured add-on can return a far larger (and unfiltered) payload than
+ * the configured one.
+ */
+export class AddonConfigurationRequiredError extends Error {
+  readonly code = 'addonConfigurationRequired';
+  readonly configureUrl: string;
+
+  constructor(message: string, configureUrl: string) {
+    super(message);
+    this.name = 'AddonConfigurationRequiredError';
+    this.configureUrl = configureUrl;
+  }
+}
+
+export interface AddAddonOptions {
+  /** Install even though the manifest asks to be configured first. */
+  allowUnconfigured?: boolean;
+}
 
 const DEFAULT_ADDONS = [
   { url: 'https://v3-cinemeta.strem.io/manifest.json', isDefault: true },
@@ -20,7 +42,7 @@ interface StremioAddonStore {
   initialized: boolean;
   addonsReordered: boolean;
   initializeDefaults: () => Promise<void>;
-  addAddon: (url: string) => Promise<void>;
+  addAddon: (url: string, options?: AddAddonOptions) => Promise<void>;
   removeAddon: (id: string) => void;
   toggleAddon: (id: string) => void;
   reorderAddons: (currentIndex: number, direction: 'up' | 'down') => void;
@@ -94,11 +116,19 @@ export const useStremioAddonStore = create<StremioAddonStore>()(
         }
       },
 
-      addAddon: async (url: string) => {
+      addAddon: async (url: string, options?: AddAddonOptions) => {
         const manifest = await fetchManifest(url);
         const state = get();
         if (state.addons.some(a => a.id === manifest.id)) {
           throw new Error(i18n.t('stremio:addonAlreadyInstalled', { name: manifest.name }));
+        }
+        if (manifest.behaviorHints?.configurationRequired && !options?.allowUnconfigured) {
+          const configureUrl = cleanAddonUrl(url);
+          void openAddonConfigureUrl(configureUrl).catch(() => {});
+          throw new AddonConfigurationRequiredError(
+            i18n.t('stremio:addonRequiresConfiguration', { name: manifest.name }),
+            configureUrl
+          );
         }
         const addon: InstalledAddon = {
           id: manifest.id,

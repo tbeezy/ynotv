@@ -149,7 +149,19 @@ import { useStremioAuthStore } from './stores/stremioAuthStore';
 import { useNuvioAuthStore } from './stores/nuvioAuthStore';
 import { useUIStore } from './stores/uiStore';
 import { fetchSubtitles } from './services/stremio-addon';
+import { downloadAddonSubtitle } from './services/stremio-subs';
+import { addonSubError, addonSubLangSummary, addonSubLog } from './services/addonSubtitleLog';
 import { toSubSourceLang, fromSubSourceLang } from './services/subsource';
+import {
+  addonQueueStatusText,
+  addonTrackLabel,
+  normalizeSubtitleLang,
+  parseQueuePlaceholder,
+  pickBestAddonTrack,
+  selectAddonTracks,
+  type AddonQueueState,
+  type AddonSubtitleTrack,
+} from './utils/stremioSubs';
 import { scrobbler } from './services/scrobbler';
 import {
   hasJellyfinQueue,
@@ -982,6 +994,7 @@ function App() {
   // to the picked channel instead of the playing failover primary.
   const [failoverNavAnchor, setFailoverNavAnchor] = useState<StoredChannel | null>(null);
   const lastPlayedChannelRef = useRef<StoredChannel | null>(null);
+  const clearAddonSubtitleTracksRef = useRef<(() => void) | null>(null);
   useEffect(() => { multiviewLayoutRef.current = multiviewLayout; }, [multiviewLayout]);
 
   // ==========================================================================
@@ -2026,6 +2039,7 @@ function useTmdbPresencePoster(
     }
 
     await handleStopRaw();
+    clearAddonSubtitleTracksRef.current?.();
     setShowPlaybackDetailsModal(false);
     setJellyfinQueueOpen(false);
     setActiveStremioMeta(null);
@@ -3425,6 +3439,132 @@ function useTmdbPresencePoster(
   // ==========================================================================
   const [showSubtitleModal, setShowSubtitleModal] = useState(false);
   const [showAudioModal, setShowAudioModal] = useState(false);
+
+  // ==========================================================================
+  // Stremio/Nuvio add-on subtitle tracks (metadata only until selected)
+  // ==========================================================================
+  const [addonSubtitleTracks, setAddonSubtitleTracks] = useState<AddonSubtitleTrack[]>([]);
+  const [addonSubtitleQueue, setAddonSubtitleQueue] = useState<Record<string, AddonQueueState>>({});
+  const [addonSubtitleLoading, setAddonSubtitleLoading] = useState<string | null>(null);
+  const [addonSubtitleLoaded, setAddonSubtitleLoaded] = useState<Record<string, boolean>>({});
+  // Media id the stored tracks belong to (used in the on-disk filename).
+  const addonSubtitleMetaIdRef = useRef<string>('');
+  // Paths already handed to mpv, so re-checking a queued track replaces its file
+  // instead of adding a second copy of the same track.
+  const addonSubtitlePathsRef = useRef<Record<string, string>>({});
+
+  /**
+   * Download exactly one add-on track and hand it to mpv.
+   *
+   * Also used as the manual "Check status" action: re-running it re-requests the
+   * same URL, which for translation add-ons returns the finished file once the
+   * server-side job completes (repeat requests do not enqueue a new job).
+   */
+  const loadAddonSubtitle = useCallback(async (track: AddonSubtitleTrack, auto = false) => {
+    if (!window.mpv?.addSubtitleFile) {
+      addonSubLog('load', `skipped ${addonTrackLabel(track)} — no mpv subtitle bridge`);
+      return;
+    }
+    setAddonSubtitleLoading(track.trackKey);
+    addonSubLog(
+      'load',
+      `${auto ? 'auto' : 'manual'} load ${addonTrackLabel(track)} [${track.langCode}] from ${track.origin} (${track.trackKey})`
+    );
+    try {
+      const download = await downloadAddonSubtitle(track, addonSubtitleMetaIdRef.current);
+      const queue = parseQueuePlaceholder(download.text);
+
+      if (!queue.queued) {
+        const previousPath = addonSubtitlePathsRef.current[track.trackKey];
+        if (previousPath && window.mpv.removeSubtitleFile) {
+          await window.mpv.removeSubtitleFile(previousPath).catch(() => {});
+          delete addonSubtitlePathsRef.current[track.trackKey];
+        }
+
+        await window.mpv.addSubtitleFile(
+          download.filePath,
+          'select',
+          addonTrackLabel(track),
+          track.langCode
+        ).catch((err: unknown) => {
+          addonSubError('load', `mpv refused ${download.filePath}`, err);
+          console.error('[Stremio] Failed to add add-on subtitle to mpv:', track.url, err);
+        });
+        addonSubtitlePathsRef.current[track.trackKey] = download.filePath;
+        setAddonSubtitleLoaded((prev) => ({ ...prev, [track.trackKey]: true }));
+        addonSubLog('load', `selected ${download.ext} from ${download.relPath}`);
+      }
+
+      setAddonSubtitleQueue((prev) => {
+        const next = { ...prev };
+        if (queue.queued) {
+          next[track.trackKey] = queue;
+        } else {
+          delete next[track.trackKey];
+        }
+        return next;
+      });
+
+      if (queue.queued) {
+        addonSubLog(
+          'load',
+          `queue state: full=${queue.full}, position=${queue.position}, eta=${queue.eta} (auto=${auto})`
+        );
+        console.log('[Stremio] Add-on subtitle is still being translated:', {
+          url: track.url,
+          queueFull: queue.full,
+          position: queue.position,
+          eta: queue.eta,
+          auto,
+        });
+
+        // Worded by the same helper the modal's row badge uses, so the toast
+        // and the badge always report the identical queue state.
+        const statusText = addonQueueStatusText(queue, i18n.getFixedT(null, 'subtitles'));
+        useToastStore.getState().addToast(
+          `${addonTrackLabel(track)}: ${statusText}`,
+          queue.full ? 'error' : 'success'
+        );
+      }
+    } catch (err) {
+      addonSubError('load', `download failed for ${track.url}`, err);
+      console.error('[Stremio] Failed to download add-on subtitle:', track.url, err);
+      useToastStore.getState().addToast(
+        `${addonTrackLabel(track)}: ${i18n.t('subtitles:downloadFailed') || 'Download failed'}`,
+        'error'
+      );
+    } finally {
+      setAddonSubtitleLoading(null);
+    }
+  }, []);
+
+  // Returns the download promise so the subtitle modal can refresh its loaded
+  // track list as soon as the file has been handed to mpv.
+  const handleAddonSubtitleSelect = useCallback((track: AddonSubtitleTrack) => {
+    return loadAddonSubtitle(track);
+  }, [loadAddonSubtitle]);
+
+  const clearAddonSubtitleTracks = useCallback(() => {
+    setAddonSubtitleTracks([]);
+    setAddonSubtitleQueue({});
+    setAddonSubtitleLoaded({});
+    setAddonSubtitleLoading(null);
+    addonSubtitlePathsRef.current = {};
+  }, []);
+
+  useEffect(() => {
+    clearAddonSubtitleTracksRef.current = clearAddonSubtitleTracks;
+  }, [clearAddonSubtitleTracks]);
+
+  // Clear add-on subtitle tracks whenever the active playback is a non-Stremio/non-Nuvio VOD.
+  // This automatically cleans up across all non-Stremio VOD entry points: Jellyfin handoffs,
+  // queue jumps, playlist auto-next, local library episodes, etc.
+  useEffect(() => {
+    if (vodInfo && vodInfo.source_id !== 'stremio' && vodInfo.source_id !== 'nuvio') {
+      clearAddonSubtitleTracks();
+    }
+  }, [vodInfo?.source_id, clearAddonSubtitleTracks]);
+
   // Reactive store read — no IPC round-trip per channel change, and the
   // indicator updates live when a delay is set in the audio modal.
   const channelAudioDelays = useSettingsStore((s) => s.channelAudioDelays);
@@ -3485,6 +3625,9 @@ function useTmdbPresencePoster(
     categoryOverride?: string,
     directPlay?: boolean
   ) => {
+    if (channel.source_id !== 'vod') {
+      clearAddonSubtitleTracks();
+    }
     setPlaybackSourceView(null);
     // Same monotonic guard as handlePlayChannel: the failover-primary lookup
     // is async, so rapid channel picks must not resolve out of order.
@@ -3528,7 +3671,7 @@ function useTmdbPresencePoster(
     } else {
       handlePlayChannel(targetChannel, autoSwitched, true);
     }
-  }, [handlePlayChannel, popoutSwapChannel, handlePlayInExternal, categoryId, setCategoryId]);
+  }, [handlePlayChannel, popoutSwapChannel, handlePlayInExternal, categoryId, setCategoryId, clearAddonSubtitleTracks]);
 
   useEffect(() => {
     handlePlayChannelWrapperRef.current = handlePlayChannelWrapper;
@@ -3604,6 +3747,7 @@ function useTmdbPresencePoster(
 
   const handlePlayVodWrapper = useCallback((info: import('./types/media').VodPlayInfo, onCloseView?: () => void, targetMode?: 'embedded' | 'popout' | 'external') => {
     if (info.source_id !== 'stremio' && info.source_id !== 'nuvio') {
+      clearAddonSubtitleTracks();
       stremioMetaRef.current = null;
       stremioEpisodeVideoRef.current = null;
       stremioMovieRef.current = null;
@@ -3619,7 +3763,7 @@ function useTmdbPresencePoster(
     } else {
       handlePlayVod(info, onCloseView);
     }
-  }, [handlePlayVod, popoutSwapVod, handlePlayVodInExternal]);
+  }, [handlePlayVod, popoutSwapVod, handlePlayVodInExternal, clearAddonSubtitleTracks]);
 
   // ==========================================================================
   // Handle Watchlist Switch (needs access to handlePlayChannel)
@@ -3781,12 +3925,13 @@ function useTmdbPresencePoster(
           console.log('[Stremio] Playing torrent stream:', stream.infoHash);
         }
 
+        clearAddonSubtitleTracks();
         try {
-          let defaultLanguage = useSettingsStore.getState().subtitleSettings.defaultLanguage || 'en';
-
-          if (defaultLanguage === 'off') {
-            console.log('[Stremio] Subtitle default language is off. Skipping external subtitles fetch.');
-          } else {
+          const defaultLanguage = useSettingsStore.getState().subtitleSettings.defaultLanguage || 'en';
+          // Add-on subtitle metadata is always fetched so every language the
+          // add-on offers stays reachable from the subtitle modal; only the
+          // single best match for the default language is downloaded.
+          {
             const addons = useStremioAddonStore.getState().enabledAddons;
             const subtitleId = isSeries && episodeVideo?.id ? episodeVideo.id : meta.id;
             const subtitleExtra: Record<string, string> = {};
@@ -3794,54 +3939,26 @@ function useTmdbPresencePoster(
             if (stream.behaviorHints?.videoSize) subtitleExtra.videoSize = String(stream.behaviorHints.videoSize);
             if (stream.behaviorHints?.filename) subtitleExtra.filename = stream.behaviorHints.filename;
             const subs = await fetchSubtitles(addons, meta.type, subtitleId, Object.keys(subtitleExtra).length > 0 ? subtitleExtra : undefined);
+            addonSubLog('fetch', `${subs.length} subtitle(s) for ${subtitleId} — ${addonSubLangSummary(subs)}`);
             
-            const normalizeLangCode = (code?: string): string => {
-              if (!code) return '';
-              try {
-                return fromSubSourceLang(toSubSourceLang(code));
-              } catch {
-                return code.toLowerCase().slice(0, 2);
-              }
-            };
-            const targetLang = normalizeLangCode(defaultLanguage);
-            const filteredSubs = subs.filter(sub => {
-              if (!sub.lang) return false;
-              return normalizeLangCode(sub.lang) === targetLang;
-            });
+            const tracks = selectAddonTracks(subs);
+            addonSubtitleMetaIdRef.current = meta.id;
+            setAddonSubtitleTracks(tracks);
+            addonSubLog('fetch', `kept ${tracks.length} add-on track(s) — ${addonSubLangSummary(tracks, 'langCode')}`);
 
-            if (filteredSubs.length > 0 && window.mpv?.addSubtitleFile) {
-              const { writeTextFile, mkdir, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-              const { appLocalDataDir, join } = await import('@tauri-apps/api/path');
-              const appDir = await appLocalDataDir();
-
-              await mkdir('subtitles', { baseDir: BaseDirectory.AppLocalData, recursive: true }).catch(() => {});
-
-              for (let i = 0; i < filteredSubs.length; i++) {
-                const sub = filteredSubs[i];
-                try {
-                  const safeUrl = sub.url ? (sub.url.includes('%') ? encodeURI(decodeURI(sub.url)) : encodeURI(sub.url)) : '';
-                  const res = await window.fetchProxy.fetch(safeUrl);
-                  if (res.data?.ok) {
-                    const text = res.data.text;
-                    const isVtt = sub.url.toLowerCase().includes('.vtt') || text.includes('WEBVTT');
-                    const ext = isVtt ? 'vtt' : 'srt';
-                    const sanitizePart = (val?: string) => {
-                      if (!val) return 'unknown';
-                      return val.replace(/__/g, '_').replace(/ /g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-                    };
-                    const cleanAddon = sanitizePart(sub.addonName || 'Addon').slice(0, 30);
-                    const cleanLabel = sanitizePart(sub.label || sub.lang.toUpperCase()).slice(0, 40);
-                    const cleanMetaId = sanitizePart(meta.id).slice(0, 30);
-                    const cleanLang = sanitizePart(sub.lang).slice(0, 10);
-                    const relPath = `subtitles/stremio__${cleanAddon}__${cleanLabel}__${cleanMetaId}__${cleanLang}__${i}.${ext}`;
-                    const filePath = await join(appDir, relPath);
-
-                    await writeTextFile(relPath, text, { baseDir: BaseDirectory.AppLocalData });
-                    window.mpv.addSubtitleFile(filePath, 'cached').catch(() => {});
-                  }
-                } catch (err) {
-                  console.error('[Stremio] Failed to load or save subtitle:', sub.url, err);
-                }
+            if (defaultLanguage === 'off') {
+              addonSubLog('select', 'default language is off — add-on tracks stay available on demand');
+              console.log('[Stremio] Subtitle default language is off — add-on tracks stay available on demand.');
+            } else {
+              const best = pickBestAddonTrack(tracks, normalizeSubtitleLang(defaultLanguage));
+              addonSubLog(
+                'select',
+                `default language ${defaultLanguage} (${normalizeSubtitleLang(defaultLanguage)}) → ${best ? `${best.langCode} via ${best.origin}` : 'no match'}`
+              );
+              if (best) {
+                void loadAddonSubtitle(best, true);
+              } else {
+                console.log('[Stremio] No add-on subtitle matched the default language:', defaultLanguage);
               }
             }
           }
@@ -6951,6 +7068,11 @@ function useTmdbPresencePoster(
           vodSourceId={vodInfo?.source_id}
           vodMediaId={vodInfo?.mediaId}
           jellyfinSubtitleTracks={vodInfo?.jellyfinSubtitleTracks}
+          addonSubtitleTracks={(vodInfo?.source_id === 'stremio' || vodInfo?.source_id === 'nuvio') ? addonSubtitleTracks : undefined}
+          addonSubtitleQueue={addonSubtitleQueue}
+          addonSubtitleLoaded={addonSubtitleLoaded}
+          addonSubtitleLoading={addonSubtitleLoading}
+          onAddonSubtitleSelect={handleAddonSubtitleSelect}
         />
       ) : (
         <TrackSelectionModal

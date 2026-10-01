@@ -1902,6 +1902,8 @@
       "description": "Aktivizo regjistrimin e detajuar për të ndihmuar në diagnostikimin e problemeve me luajtjen e videos, kërkesat e rrjetit dhe gabimet e aplikacionit. Regjistrat ruhen në një skedar që mund ta ndash kur raporton gabime.",
       "enableLogging": "Aktivizo regjistrimin e debug-ut",
       "enableLoggingHint": "Kur aktivizohet, regjistrat e detajuar të mpv-së, renderer-it dhe procesit kryesor ruhen në një skedar. Mund të ndikojë pak në performancën.",
+      "addonTraceLabel": "Gjurmimi i titrave të shtesave",
+      "addonTraceHint": "Regjistron çdo hap të rrjedhës së titrave të shtesave Stremio/Nuvio (marrja, përputhja e gjuhës, shkarkimi, radha) në konsolë dhe në skedarin e regjistrit kur regjistrimi i korrigjimit është i aktivizuar. Paneli i Diagnostikimit të Titrave regjistron të njëjtën gjurmë në çdo rast.",
       "supportModeLabel": "Modaliteti i mbështetjes",
       "supportModeHint": "Nis motorin e videos me regjistrim të detajuar mpv që në nisje, në mënyrë që kërkesa e parë e një sesioni të kapet — çelësi Diagnostika brenda aplikacionit mbulon vetëm motorin që tashmë është duke u ekzekutuar dhe humbet kur riniset. mpv.log i mëparshëm ruhet si mpv.1.log në vend që të fshihet. Skedarët e regjistrit përmbajnë URL transmetimi, prandaj shpërndajini vetëm me persona që i besoni. Hyn në fuqi në nisjen e radhës së aplikacionit. Modaliteti i mbështetjes mund të aktivizohet edhe duke nisur me YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Cilësimet e ruajtjes së regjistrave",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} kërkon konfigurim përpara se të instalohet.",
+    "addonConfigurationHowTo": "Konfigurojeni në shfletuesin tuaj, më pas kopjoni URL-në e instalimit dhe ngjiteni këtu.",
+    "installAnyway": "Instalo gjithsesi",
     "account": "Llogaria",
     "allTypes": "Të gjitha llojet",
     "calendar": "Kalendari",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Skedarët lokalë dhe regjistrimet DVR nuk mund të dërgohen në Chromecast. Mbështeten vetëm transmetimet e largëta."
   },
   "subtitles": {
+    "addonTracksTitle": "Nga shtesat ({{total}})",
+    "addonTracksHint": "Shkarkohet sipas kërkesës",
+    "addonQueued": "Në radhë #{{position}}",
+    "addonQueuedUnknown": "Në radhë",
+    "addonQueueFull": "Radha është e plotë",
+    "addonTranslating": "Duke përkthyer… {{eta}}",
+    "addonTracksCapped": "Duke shfaqur {{shown}} nga {{total}}",
+    "addonQueueRecheck": "Kontrollo statusin",
+    "addonQueueHint": "Përkthimet në radhë krijohen në serverin e shtesës. Kontrollo statusin në rreshtin në radhë për të shkarkuar skedarin sapo të jetë gati.",
     "header": "Titrat",
     "diagnosticsTooltip": "Hap regjistrin diagnostik të titrave (kopjo/ngjit për ndihmë)",
     "diagnostics": "Diagnostika",

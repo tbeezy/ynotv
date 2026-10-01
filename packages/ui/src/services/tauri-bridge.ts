@@ -10,6 +10,7 @@ import { debug as logDebug, info as logInfo, warn as logWarn, error as logError 
 import i18n, { translateNativeError } from '../i18n';
 import { useSettingsStore } from '../stores/settingsStore';
 import { setSubtitleIntent } from '../utils/subtitleIntent';
+import { setAddonSubtitleTraceEnabled } from './addonSubtitleLog';
 
 // Store instance for Tauri
 let store: Store | null = null;
@@ -1279,6 +1280,9 @@ export async function initPolyfills() {
         const store = await getStore();
         const settings: any = await store.get('settings') ?? {};
         debugLoggingEnabled = settings.debugLoggingEnabled ?? false;
+        // Restore the add-on subtitle trace opt-in before the first playback can
+        // run, so the pipeline is diagnosable from launch without a rebuild.
+        setAddonSubtitleTraceEnabled(settings.addonSubtitleTraceEnabled ?? false);
         console.log('[TauriBridge] Debug logging enabled:', debugLoggingEnabled);
     } catch (e) {
         console.warn('[TauriBridge] Failed to read debug logging setting:', e);

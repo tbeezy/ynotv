@@ -1450,6 +1450,15 @@
     }
   },
   "subtitles": {
+    "addonTracksTitle": "Từ tiện ích bổ sung ({{total}})",
+    "addonTracksHint": "Tải xuống theo yêu cầu",
+    "addonQueued": "Trong hàng đợi #{{position}}",
+    "addonQueuedUnknown": "Trong hàng đợi",
+    "addonQueueFull": "Hàng đợi đã đầy",
+    "addonTranslating": "Đang dịch… {{eta}}",
+    "addonTracksCapped": "Hiển thị {{shown}} trên {{total}}",
+    "addonQueueRecheck": "Kiểm tra trạng thái",
+    "addonQueueHint": "Bản dịch trong hàng đợi được tạo trên máy chủ của tiện ích. Kiểm tra trạng thái ở hàng đang chờ để tải tệp khi bản dịch xong.",
     "header": "Phụ Đề",
     "diagnosticsTooltip": "Mở nhật ký chẩn đoán phụ đề (sao chép/dán để hỗ trợ)",
     "diagnostics": "Chẩn Đoán",
@@ -3575,6 +3584,8 @@
       "description": "Bật ghi nhật ký chi tiết để giúp chẩn đoán các sự cố với phát video, yêu cầu mạng và lỗi ứng dụng. Nhật ký được ghi vào một tệp mà bạn có thể chia sẻ khi báo lỗi.",
       "enableLogging": "Bật ghi nhật ký gỡ lỗi",
       "enableLoggingHint": "Khi bật, các nhật ký chi tiết từ mpv, trình kết xuất và quá trình chính được ghi vào một tệp. Điều này có thể ảnh hưởng nhẹ đến hiệu suất.",
+      "addonTraceLabel": "Theo dõi phụ đề tiện ích",
+      "addonTraceHint": "Ghi lại từng bước của luồng phụ đề tiện ích Stremio/Nuvio (tải về, khớp ngôn ngữ, tải xuống, hàng đợi) ra bảng điều khiển và vào tệp nhật ký khi bật ghi nhật ký gỡ lỗi. Bảng Chẩn đoán phụ đề luôn ghi lại cùng dấu vết này.",
       "supportModeLabel": "Chế độ hỗ trợ",
       "supportModeHint": "Khởi động công cụ video với ghi nhật ký mpv chi tiết ngay từ lúc khởi chạy, để yêu cầu đầu tiên của một phiên được ghi lại — nút Chẩn đoán trong ứng dụng chỉ bao phủ công cụ đang chạy và sẽ mất khi khởi động lại. mpv.log trước đó được giữ lại dưới tên mpv.1.log thay vì bị xóa. Tệp nhật ký chứa URL luồng, nên chỉ chia sẻ với người bạn tin tưởng. Có hiệu lực ở lần khởi động ứng dụng tiếp theo. Cũng có thể bật chế độ hỗ trợ bằng cách khởi chạy với YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Cài Đặt Giữ Nhật Ký",
@@ -4287,6 +4298,9 @@
     "gameCount_zero": "({{count}} trận)"
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} cần được cấu hình trước khi có thể cài đặt.",
+    "addonConfigurationHowTo": "Cấu hình nó trong trình duyệt của bạn, sau đó sao chép URL cài đặt và dán vào đây.",
+    "installAnyway": "Vẫn cài đặt",
     "account": "Tài Khoản",
     "allTypes": "Tất cả loại",
     "calendar": "Lịch",

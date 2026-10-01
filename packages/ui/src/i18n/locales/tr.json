@@ -1902,6 +1902,8 @@
       "description": "Video oynatma, ağ istekleri ve uygulama hatalarıyla ilgili sorunları tanılamaya yardımcı olmak için ayrıntılı günlük kaydını etkinleştirin. Günlükler, hata bildirirken paylaşabileceğiniz bir dosyaya yazılır.",
       "enableLogging": "Hata ayıklama günlüğünü etkinleştir",
       "enableLoggingHint": "Etkinleştirildiğinde mpv, oluşturucu ve ana işlemden ayrıntılı günlükler bir dosyaya yazılır. Bu, performansı biraz etkileyebilir.",
+      "addonTraceLabel": "Eklenti altyazı izlemesi",
+      "addonTraceHint": "Stremio/Nuvio eklenti altyazı hattının her adımını (getirme, dil eşleştirme, indirme, kuyruk) konsola ve hata ayıklama günlüğü açıkken günlük dosyasına yazar. Altyazı Tanılama paneli aynı izlemeyi her durumda kaydeder.",
       "supportModeLabel": "Destek modu",
       "supportModeHint": "Video motorunu başlangıçtan itibaren ayrıntılı mpv günlüklemesiyle başlatır, böylece bir oturumun ilk isteği yakalanır — uygulamadaki Tanılama anahtarı yalnızca hâlihazırda çalışan motoru kapsar ve yeniden başlatmada kaybolur. Önceki mpv.log silinmek yerine mpv.1.log olarak saklanır. Günlük dosyaları akış URL'leri içerir, bu yüzden yalnızca güvendiğiniz kişilerle paylaşın. Uygulamanın bir sonraki başlatılışında etkili olur. Destek modu YNOTV_SUPPORT_MODE=1 ile başlatılarak da etkinleştirilebilir.",
       "retentionLabel": "Günlük Saklama Ayarları",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} yüklenmeden önce yapılandırma gerektirir.",
+    "addonConfigurationHowTo": "Tarayıcınızda yapılandırın, ardından kurulum URL'sini kopyalayıp buraya yapıştırın.",
+    "installAnyway": "Yine de yükle",
     "account": "Hesap",
     "allTypes": "Tüm türler",
     "calendar": "Takvim",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Yerel dosyalar ve DVR kayıtları Chromecast'e yayınlanamaz. Yalnızca uzak akışlar desteklenir."
   },
   "subtitles": {
+    "addonTracksTitle": "Eklentilerden ({{total}})",
+    "addonTracksHint": "İsteğe bağlı indirilir",
+    "addonQueued": "Sırada #{{position}}",
+    "addonQueuedUnknown": "Sırada",
+    "addonQueueFull": "Sıra dolu",
+    "addonTranslating": "Çeviriliyor… {{eta}}",
+    "addonTracksCapped": "{{total}} kayıttan {{shown}} tanesi gösteriliyor",
+    "addonQueueRecheck": "Durumu kontrol et",
+    "addonQueueHint": "Sıradaki çeviriler eklentinin sunucusunda oluşturulur. Dosya hazır olduğunda indirmek için sıradaki satırda durumu kontrol edin.",
     "header": "Altyazılar",
     "diagnosticsTooltip": "Altyazı tanılama günlüğünü aç (destek için kopyala/yapıştır)",
     "diagnostics": "Tanılama",

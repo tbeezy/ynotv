@@ -1902,6 +1902,8 @@
       "description": "Activa el registro detallado para ayudar a diagnosticar problemas con la reproducción de vídeo, las solicitudes de red y los errores de la aplicación. Los registros se escriben en un archivo que puedes compartir al informar errores.",
       "enableLogging": "Activar registro de depuración",
       "enableLoggingHint": "Cuando está activado, se escriben registros detallados de mpv, el renderizador y el proceso principal en un archivo. Esto puede afectar ligeramente el rendimiento.",
+      "addonTraceLabel": "Rastreo de subtítulos de complementos",
+      "addonTraceHint": "Registra cada paso del flujo de subtítulos de complementos de Stremio/Nuvio (obtención, coincidencia de idioma, descarga, cola) en la consola y en el archivo de registro mientras el registro de depuración está activo. El panel de Diagnóstico de subtítulos registra el mismo rastro en cualquier caso.",
       "supportModeLabel": "Modo de soporte",
       "supportModeHint": "Inicia el motor de vídeo con registro mpv detallado desde el arranque, para que se capture la primera solicitud de una sesión; el interruptor de Diagnóstico de la app solo cubre el motor que ya está en ejecución y se pierde al reiniciarse. El mpv.log anterior se conserva como mpv.1.log en lugar de borrarse. Los archivos de registro contienen URL de flujos, así que solo compártelos con personas de confianza. Surte efecto en el próximo inicio de la app. El modo de soporte también puede activarse iniciando con YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Ajustes de retención de registros",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} requiere configuración antes de poder instalarse.",
+    "addonConfigurationHowTo": "Configúralo en tu navegador, copia la URL de instalación y pégala aquí.",
+    "installAnyway": "Instalar igualmente",
     "account": "Cuenta",
     "allTypes": "Todos los tipos",
     "calendar": "Calendario",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Los archivos locales y las grabaciones de DVR no se pueden transmitir a Chromecast. Solo se admiten flujos remotos."
   },
   "subtitles": {
+    "addonTracksTitle": "De complementos ({{total}})",
+    "addonTracksHint": "Descargado bajo demanda",
+    "addonQueued": "En cola #{{position}}",
+    "addonQueuedUnknown": "En cola",
+    "addonQueueFull": "Cola llena",
+    "addonTranslating": "Traduciendo… {{eta}}",
+    "addonTracksCapped": "Mostrando {{shown}} de {{total}}",
+    "addonQueueRecheck": "Comprobar estado",
+    "addonQueueHint": "Las traducciones en cola se generan en el servidor del complemento. Comprueba el estado en una fila en cola para descargar el archivo cuando esté listo.",
     "header": "Subtítulos",
     "diagnosticsTooltip": "Abrir registro de diagnóstico de subtítulos (copiar/pegar para soporte)",
     "diagnostics": "Diagnóstico",

@@ -3840,6 +3840,13 @@ html.modern-ui-v3[data-theme="light"] .selector-content::-webkit-scrollbar-thumb
   color: var(--sm-a-variant-title-color, #fff) !important;
 }
 
+/* Add-on rows are never `.active`, so their loaded state is the only marker
+   they get — the generic variant-title rule above would otherwise override the
+   base `.loaded` colour the modal defines. */
+.modern-ui-v3 .subtitle-addon-track-btn.loaded .subtitle-track-variant-title {
+  color: var(--accent-primary, #00d4ff) !important;
+}
+
 /* 8. Subtitle Settings Controls (Delay, Size, Offset) */
 
 .modern-ui-v3 .subtitle-control-item input[type="range"] {
@@ -3976,6 +3983,10 @@ html.modern-ui-v3[data-theme="light"] .track-modal-btn:hover {
 
 html.modern-ui-v3[data-theme="light"] .subtitle-track-variant-title {
   color: var(--sm-a-variant-title-color, #000) !important;
+}
+
+html.modern-ui-v3[data-theme="light"] .subtitle-addon-track-btn.loaded .subtitle-track-variant-title {
+  color: var(--accent-primary, #00d4ff) !important;
 }
 
 html.modern-ui-v3[data-theme="light"] .subtitle-track-btn.active .subtitle-track-variant-title {

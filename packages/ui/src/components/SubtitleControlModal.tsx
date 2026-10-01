@@ -31,6 +31,14 @@ import { cleanTitleForSearch } from '../utils/cleanTitle';
 import { db } from '../db';
 import { fetchVodProviderTmdbId } from '../db/sync';
 import type { VodPlayInfo } from '../types/media';
+import {
+  addonQueueStatusText,
+  addonTrackDetail,
+  addonTrackLabel,
+  type AddonQueueState,
+  type AddonSubtitleTrack,
+} from '../utils/stremioSubs';
+import { addonSubLangSummary, addonSubLog } from '../services/addonSubtitleLog';
 import './SubtitleControlModal.css';
 
 interface Track {
@@ -59,6 +67,13 @@ interface SubtitleControlModalProps {
   vodSourceId?: string;
   vodMediaId?: string;
   jellyfinSubtitleTracks?: JellyfinSubTrack[];
+  /** Metadata for Stremio/Nuvio add-on tracks. Fetched on demand when clicked. */
+  addonSubtitleTracks?: AddonSubtitleTrack[];
+  /** Translation-queue state per track key (dynamic add-ons only). */
+  addonSubtitleQueue?: Record<string, AddonQueueState>;
+  addonSubtitleLoaded?: Record<string, boolean>;
+  addonSubtitleLoading?: string | null;
+  onAddonSubtitleSelect?: (track: AddonSubtitleTrack) => void | Promise<void>;
 }
 
 type ViewState = 'tracks' | 'movies' | 'subtitles' | 'zip-files';
@@ -259,6 +274,11 @@ export function SubtitleControlModal({
   vodSourceId,
   vodMediaId,
   jellyfinSubtitleTracks,
+  addonSubtitleTracks,
+  addonSubtitleQueue,
+  addonSubtitleLoaded,
+  addonSubtitleLoading,
+  onAddonSubtitleSelect,
 }: SubtitleControlModalProps) {
   const { t } = useTranslation('subtitles');
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -360,6 +380,27 @@ export function SubtitleControlModal({
   useEffect(() => {
     autoSearchRef.current = false;
   }, [vodTitle, vodYear, seasonNum]);
+
+  // Runtime trace: which add-on languages mpv has no track for. Those are the
+  // rows only the add-on can serve, and the reason the language column unions
+  // the add-on languages — so a missing language is answerable from this line.
+  useEffect(() => {
+    if (!isOpen || !addonSubtitleTracks?.length) return;
+    const trackLangs = new Set(
+      tracks
+        .filter((t) => t.type === 'sub')
+        .map((t) => getTrackLanguage(t, jellyfinSubtitleTracks))
+        .filter(Boolean)
+    );
+    const addonOnly = Array.from(
+      new Set(addonSubtitleTracks.filter((t) => !trackLangs.has(t.langCode)).map((t) => t.langCode))
+    );
+    addonSubLog(
+      'ui',
+      `modal open: ${addonSubtitleTracks.length} add-on track(s) — ${addonSubLangSummary(addonSubtitleTracks, 'langCode')}; ` +
+        `add-on-only languages=[${addonOnly.join(', ') || 'none'}]`
+    );
+  }, [isOpen, addonSubtitleTracks, tracks, jellyfinSubtitleTracks]);
 
   // Close on Escape key
   useEffect(() => {
@@ -601,6 +642,26 @@ export function SubtitleControlModal({
       console.error('Failed to load subtitle tracks:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Fetch the clicked add-on track, then re-read mpv's track list so the
+   * "Loaded Tracks" column shows the new track without closing the modal.
+   */
+  const handleAddonTrackSelect = async (track: AddonSubtitleTrack) => {
+    if (!onAddonSubtitleSelect) {
+      addonSubLog('click', `ignored ${track.langCode}/${track.trackKey} — no add-on select handler wired`);
+      return;
+    }
+    addonSubLog(
+      'click',
+      `${addonTrackLabel(track)} [${track.langCode}] from ${track.origin}${track.generic ? ' (generic)' : ''} — ${track.url}`
+    );
+    try {
+      await onAddonSubtitleSelect(track);
+    } finally {
+      await loadTracks();
     }
   };
 
@@ -1252,9 +1313,16 @@ export function SubtitleControlModal({
 
   const allSubTracks = tracks.filter(t => t.type === 'sub');
 
-  // Derive available languages from actual subtitle tracks, normalized to canonical 2-letter codes
+  // Languages the user can pick: the ones a track already exists for, plus
+  // every language the add-ons offer. The add-on half matters — a translation
+  // add-on can carry a language the release itself has no track for (Arabic on
+  // an English-only file), and the add-on rows are filtered by this selection,
+  // so without it those tracks could not be reached at all.
   const availableLangs = Array.from(
-    new Set(allSubTracks.map(t => getTrackLanguage(t, jellyfinSubtitleTracks)).filter(Boolean))
+    new Set([
+      ...allSubTracks.map(t => getTrackLanguage(t, jellyfinSubtitleTracks)),
+      ...(addonSubtitleTracks || []).map(t => t.langCode),
+    ].filter(Boolean))
   ).map(code => ({
     code: code,
     label: LANG_LABELS[code] || code.toUpperCase(),
@@ -1289,6 +1357,12 @@ export function SubtitleControlModal({
         }
         return getTrackLanguage(track, jellyfinSubtitleTracks) === normalizeLangCode(searchLang);
       });
+
+  // Add-on tracks that can be fetched on demand, filtered by the same language
+  // selection as the loaded-track list above.
+  const addonTrackList = (addonSubtitleTracks || []).filter(
+    (track) => searchLang === 'off' || track.langCode === normalizeLangCode(searchLang)
+  );
 
   // Filter subtitles by episode if filter is active
   const filteredSubtitles = episodeFilter !== null
@@ -1449,6 +1523,82 @@ export function SubtitleControlModal({
                 {filteredSubTracks.length === 0 && (
                   <div className="subtitle-empty">{t('noSubtitlesLang')}</div>
                 )}
+              </div>
+            )}
+
+            {/* ── Add-on tracks (downloaded on demand) ── */}
+            {addonTrackList.length > 0 && (
+              <div className="subtitle-addon-tracks">
+                <div className="subtitle-addon-tracks-head">
+                  <span className="subtitle-addon-tracks-title">
+                    {t('addonTracksTitle', { total: addonTrackList.length })}
+                  </span>
+                  <span className="subtitle-addon-tracks-hint">{t('addonTracksHint')}</span>
+                </div>
+                {/* A queued track is produced on the add-on's server, so nothing
+                    happens until it is re-requested — say so, rather than
+                    leaving the badge as the only clue. */}
+                {addonSubtitleQueue && addonTrackList.some((track) => addonSubtitleQueue[track.trackKey]) && (
+                  <div className="subtitle-addon-queue-hint">{t('addonQueueHint')}</div>
+                )}
+                <div className="subtitle-track-list">
+                  {addonTrackList.map((track) => {
+                    const queue = addonSubtitleQueue?.[track.trackKey];
+                    const isLoading = addonSubtitleLoading === track.trackKey;
+                    const isLoaded = Boolean(addonSubtitleLoaded?.[track.trackKey]);
+                    const detail = addonTrackDetail(track);
+                    // The name is the language, so the add-on's own file name is
+                    // the only thing that tells two same-language rows apart.
+                    const rowTitle = detail ? `${detail} — ${track.url}` : track.url;
+                    return (
+                      // A queued track only advances when it is re-requested, so
+                      // the status gets a line of its own with a labelled
+                      // control on it — side by side, the badge text and the
+                      // button would overlap in this narrow column.
+                      <div key={track.trackKey} className="subtitle-addon-row">
+                        <button
+                          className={`subtitle-track-btn subtitle-addon-track-btn${isLoaded ? ' loaded' : ''}`}
+                          onClick={() => void handleAddonTrackSelect(track)}
+                          disabled={isLoading || !onAddonSubtitleSelect}
+                          title={rowTitle}
+                        >
+                          <div className="subtitle-track-variant-wrapper">
+                            <div className="subtitle-track-variant-title">{addonTrackLabel(track)}</div>
+                            <div className="subtitle-track-variant-origin">{track.origin}</div>
+                          </div>
+                          <span className="subtitle-track-meta">
+                            {isLoading ? '…' : track.langCode.toUpperCase()}
+                          </span>
+                        </button>
+                        {queue && (
+                          <div className="subtitle-addon-queue-strip">
+                            <span
+                              className={`subtitle-addon-queue-badge${queue.full ? ' full' : ''}`}
+                            >
+                              {addonQueueStatusText(queue, t)}
+                            </span>
+                            <button
+                              className="subtitle-addon-recheck"
+                              onClick={() => void handleAddonTrackSelect(track)}
+                              disabled={isLoading || !onAddonSubtitleSelect}
+                              title={t('addonQueueHint')}
+                            >
+                              {isLoading ? '…' : t('addonQueueRecheck')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {searchLang !== 'off' && (addonTrackList[0]?.totalInLanguage || 0) > addonTrackList.length && (
+                    <div className="subtitle-addon-tracks-more">
+                      {t('addonTracksCapped', {
+                        shown: addonTrackList.length,
+                        total: addonTrackList[0].totalInLanguage,
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

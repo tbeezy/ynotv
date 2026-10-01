@@ -1902,6 +1902,8 @@
       "description": "Schakel uitgebreide logging in om problemen met videoweergave, netwerkverzoeken en app-fouten te diagnosticeren. Logs worden naar een bestand geschreven dat je kunt delen bij het melden van bugs.",
       "enableLogging": "Debuglogging inschakelen",
       "enableLoggingHint": "Wanneer ingeschakeld, worden gedetailleerde logs van mpv, de renderer en het hoofdproces naar een bestand geschreven. Dit kan de prestaties enigszins beïnvloeden.",
+      "addonTraceLabel": "Add-on-ondertiteltrace",
+      "addonTraceHint": "Logt elke stap van de Stremio/Nuvio-pipeline voor ondertitels van add-ons (ophalen, taalovereenkomst, download, wachtrij) naar de console en, zolang foutopsporingsregistratie aanstaat, naar het logbestand. Het paneel Ondertiteldiagnostiek legt dezelfde trace hoe dan ook vast.",
       "supportModeLabel": "Ondersteuningsmodus",
       "supportModeHint": "Start de video-engine met uitgebreide mpv-logboekregistratie vanaf het opstarten, zodat de eerste aanvraag van een sessie wordt vastgelegd — de Diagnostiek-schakelaar in de app dekt alleen de al draaiende engine en gaat verloren bij een herstart. Het vorige mpv.log wordt bewaard als mpv.1.log in plaats van verwijderd. Logbestanden bevatten stream-URL's, deel ze dus alleen met mensen die je vertrouwt. Werkt bij de volgende start van de app. De ondersteuningsmodus kan ook worden ingeschakeld door te starten met YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Logbewaarinstellingen",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} moet worden geconfigureerd voordat het kan worden geïnstalleerd.",
+    "addonConfigurationHowTo": "Configureer het in je browser, kopieer daarna de installatie-URL en plak deze hier.",
+    "installAnyway": "Toch installeren",
     "account": "Account",
     "allTypes": "Alle typen",
     "calendar": "Kalender",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Lokale bestanden en DVR-opnamen kunnen niet naar Chromecast worden gecast. Alleen externe streams worden ondersteund."
   },
   "subtitles": {
+    "addonTracksTitle": "Van addons ({{total}})",
+    "addonTracksHint": "Op aanvraag gedownload",
+    "addonQueued": "In wachtrij #{{position}}",
+    "addonQueuedUnknown": "In wachtrij",
+    "addonQueueFull": "Wachtrij vol",
+    "addonTranslating": "Wordt vertaald… {{eta}}",
+    "addonTracksCapped": "{{shown}} van {{total}} getoond",
+    "addonQueueRecheck": "Status controleren",
+    "addonQueueHint": "Vertalingen in de wachtrij worden op de server van de add-on gemaakt. Controleer de status bij een rij in de wachtrij om het bestand op te halen zodra het klaar is.",
     "header": "Ondertitels",
     "diagnosticsTooltip": "Diagnoselog voor ondertitels openen (kopieer/plak voor ondersteuning)",
     "diagnostics": "Diagnose",

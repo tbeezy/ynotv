@@ -1902,6 +1902,8 @@
       "description": "啟用詳細日誌以幫助診斷影片播放、網路請求和應用程式錯誤問題。日誌寫入檔案，報告錯誤時可共享該檔案。",
       "enableLogging": "啟用調試日誌",
       "enableLoggingHint": "啟用後，來自 mpv、渲染器和主進程的詳細日誌將寫入檔案。這可能會略微影響效能。",
+      "addonTraceLabel": "外掛字幕追蹤",
+      "addonTraceHint": "將 Stremio/Nuvio 外掛字幕流程的每一步（取得、語言比對、下載、佇列）記錄到主控台，並在開啟偵錯記錄時寫入記錄檔。字幕診斷面板在任何情況下都會記錄相同的追蹤資訊。",
       "supportModeLabel": "支援模式",
       "supportModeHint": "在啟動時即讓影片引擎輸出詳細的 mpv 日誌，以擷取工作階段的第一次請求——應用程式內的「診斷」開關僅涵蓋已在執行的引擎，重新啟動後即失效。先前的 mpv.log 會保留為 mpv.1.log，而不是被刪除。日誌檔包含串流網址，請僅與你信任的人分享。下次啟動應用程式時生效。也可透過以 YNOTV_SUPPORT_MODE=1 啟動來啟用支援模式。",
       "retentionLabel": "日誌保留設定",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} 需要先設定才能安裝。",
+    "addonConfigurationHowTo": "在瀏覽器中設定它，然後複製安裝 URL 並貼到此處。",
+    "installAnyway": "仍然安裝",
     "account": "帳戶",
     "allTypes": "所有類型",
     "calendar": "日曆",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "本地檔案和 DVR 錄製無法投射到 Chromecast。僅支援遠程流。"
   },
   "subtitles": {
+    "addonTracksTitle": "來自附加組件（{{total}}）",
+    "addonTracksHint": "隨需下載",
+    "addonQueued": "佇列中 #{{position}}",
+    "addonQueuedUnknown": "佇列中",
+    "addonQueueFull": "佇列已滿",
+    "addonTranslating": "正在翻譯… {{eta}}",
+    "addonTracksCapped": "顯示 {{shown}}/{{total}}",
+    "addonQueueRecheck": "檢查狀態",
+    "addonQueueHint": "排隊的翻譯在附加元件的伺服器上產生。翻譯完成後，在佇列列上檢查狀態以下載檔案。",
     "header": "字幕",
     "diagnosticsTooltip": "打開字幕診斷日誌（複製/粘貼以獲取支援）",
     "diagnostics": "診斷",

@@ -1902,6 +1902,8 @@
       "description": "Omogućite detaljno bilježenje da pomognete u dijagnostici problema sa video reprodukcijom, mrežnim zahtevima i greškama aplikacije. Dnevnici se upisuju u datoteka koji možete podeliti pri prijavi grešaka.",
       "enableLogging": "Omogući dnevnik otklanjanja grešaka",
       "enableLoggingHint": "Kada je uključeno, detaljni dnevnici mpv-a, renderera i glavnog procesa se upisuju u datoteka. Ovo može blago uticati na performanse.",
+      "addonTraceLabel": "Praćenje titlova dodataka",
+      "addonTraceHint": "Bilježi svaki korak Stremio/Nuvio toka titlova dodataka (dohvat, podudaranje jezika, preuzimanje, red čekanja) u konzolu i u datoteku zapisa dok je omogućeno debug bilježenje. Ploča za dijagnostiku titlova bilježi isti trag u svakom slučaju.",
       "supportModeLabel": "Način podrške",
       "supportModeHint": "Pokreće video pogon s detaljnim mpv zapisivanjem od samog pokretanja, pa se prvi zahtjev sesije bilježi — prekidač Dijagnostika u aplikaciji pokriva samo već pokrenuti pogon i gubi se pri ponovnom pokretanju. Prethodni mpv.log čuva se kao mpv.1.log umjesto da se izbriše. Datoteke zapisnika sadrže URL-ove streama, pa ih dijelite samo s osobama od povjerenja. Primjenjuje se pri sljedećem pokretanju aplikacije. Način podrške može se omogućiti i pokretanjem s YNOTV_SUPPORT_MODE=1.",
       "retentionLabel": "Postavke zadržavanja dnevnika",
@@ -4400,6 +4402,9 @@
     }
   },
   "stremio": {
+    "addonRequiresConfiguration": "{{name}} zahtijeva konfiguraciju prije instalacije.",
+    "addonConfigurationHowTo": "Konfigurirajte ga u svom pregledniku, zatim kopirajte URL instalacije i zalijepite ga ovdje.",
+    "installAnyway": "Ipak instaliraj",
     "account": "Nalog",
     "allTypes": "Svi tipovi",
     "calendar": "Kalendar",
@@ -4615,6 +4620,15 @@
     "cannotCastLocalFile": "Lokalni datoteke i DVR snimci se ne mogu slati na Chromecast. Podržani su samo udaljeni strimovi."
   },
   "subtitles": {
+    "addonTracksTitle": "Iz dodataka ({{total}})",
+    "addonTracksHint": "Preuzima se na zahtjev",
+    "addonQueued": "U redu #{{position}}",
+    "addonQueuedUnknown": "U redu",
+    "addonQueueFull": "Red je pun",
+    "addonTranslating": "Prevođenje… {{eta}}",
+    "addonTracksCapped": "Prikazujem {{shown}} od {{total}}",
+    "addonQueueRecheck": "Provjeri status",
+    "addonQueueHint": "Prijevodi u redu čekanja nastaju na poslužitelju dodatka. Provjerite status u redu koji čeka da preuzmete datoteku kad bude gotova.",
     "header": "Titlovi",
     "diagnosticsTooltip": "Otvori dnevnik dijagnostike titlova (kopiraj/nalepi za podršku)",
     "diagnostics": "Dijagnostika",

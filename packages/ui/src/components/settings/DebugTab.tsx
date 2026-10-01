@@ -6,10 +6,13 @@ import {
   getLocalStorageUsage,
   type StorageUsageEntry,
 } from '../../services/safeStorage';
+import { setAddonSubtitleTraceEnabled } from '../../services/addonSubtitleLog';
 
 interface DebugTabProps {
   debugLoggingEnabled: boolean;
   onDebugLoggingChange: (enabled: boolean) => void;
+  addonTraceEnabled: boolean;
+  onAddonTraceChange: (enabled: boolean) => void;
   logRetentionDays: number;
   onLogRetentionChange: (days: number) => void;
   supportModeEnabled: boolean;
@@ -19,6 +22,8 @@ interface DebugTabProps {
 export function DebugTab({
   debugLoggingEnabled,
   onDebugLoggingChange,
+  addonTraceEnabled,
+  onAddonTraceChange,
   logRetentionDays,
   onLogRetentionChange,
   supportModeEnabled,
@@ -50,6 +55,15 @@ export function DebugTab({
     if (window.debug?.setDebugLoggingEnabled) {
       window.debug.setDebugLoggingEnabled(enabled);
     }
+  }
+
+  async function handleAddonTraceChange(enabled: boolean) {
+    // Flip the runtime flag first: the trace has to follow the checkbox even in
+    // environments where the settings store is not reachable.
+    onAddonTraceChange(enabled);
+    setAddonSubtitleTraceEnabled(enabled);
+    if (!window.storage) return;
+    await window.storage.updateSettings({ addonSubtitleTraceEnabled: enabled });
   }
 
   async function handleSupportModeChange(enabled: boolean) {
@@ -86,6 +100,20 @@ export function DebugTab({
           </label>
           <p className="form-hint" style={{ marginTop: '0.5rem' }}>
             {i18n.t('settings:debug.enableLoggingHint')}
+          </p>
+        </div>
+
+        <div className="tmdb-form" style={{ marginTop: '1.5rem' }}>
+          <label className="genre-checkbox" style={{ maxWidth: '480px' }}>
+            <input
+              type="checkbox"
+              checked={addonTraceEnabled}
+              onChange={(e) => handleAddonTraceChange(e.target.checked)}
+            />
+            <span className="genre-name">{i18n.t('settings:debug.addonTraceLabel')}</span>
+          </label>
+          <p className="form-hint" style={{ marginTop: '0.5rem' }}>
+            {i18n.t('settings:debug.addonTraceHint')}
           </p>
         </div>
 

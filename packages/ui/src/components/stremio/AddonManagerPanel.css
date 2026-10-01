@@ -373,3 +373,57 @@
   cursor: not-allowed;
   animation: none;
 }
+
+.stremio-addon-item-badge.warn {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  cursor: help;
+}
+
+.stremio-addon-config-required {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.stremio-addon-config-required-msg {
+  font-size: 0.82rem;
+  color: var(--text-primary, #fff);
+}
+
+.stremio-addon-config-required-hint {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+}
+
+.stremio-addon-config-required-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.stremio-addon-configure-open-btn,
+.stremio-addon-install-anyway-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary, #fff);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.stremio-addon-configure-open-btn:hover,
+.stremio-addon-install-anyway-btn:hover:not(:disabled) {
+  border-color: var(--accent-primary, #00d4ff);
+  color: var(--accent-primary, #00d4ff);
+}
+
+.stremio-addon-install-anyway-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

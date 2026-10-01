@@ -1893,9 +1893,10 @@ async fn get_support_bundle<R: Runtime>(
     );
 
     // Only the settings that change how a stream is requested or recovered.
-    const SETTING_KEYS: [&str; 18] = [
+    const SETTING_KEYS: [&str; 19] = [
         "supportModeEnabled",
         "debugLoggingEnabled",
+        "addonSubtitleTraceEnabled",
         "hardwareAcceleration",
         "mpvParams",
         "mpvQuality",
@@ -6233,9 +6234,9 @@ mod support_bundle_tests {
 
     #[test]
     fn masks_windows_user_profile_paths() {
-        let input = "--script-opts-append=ytdl_hook-ytdl_path=C:\\Users\\tony\\AppData\\Roaming\\yt-dlp.exe\r\n[cache] C:/Users/tony/Videos/mpv.log\r\n--script-opts-append=ytdl_hook-ytdl_path=D:\\\\Users\\\\tony\\\\AppData\\\\Roaming\\\\yt-dlp.exe";
+        let input = "--script-opts-append=ytdl_hook-ytdl_path=C:\\Users\\alice\\AppData\\Roaming\\yt-dlp.exe\r\n[cache] C:/Users/alice/Videos/mpv.log\r\n--script-opts-append=ytdl_hook-ytdl_path=D:\\\\Users\\\\alice\\\\AppData\\\\Roaming\\\\yt-dlp.exe";
         let out = redact_support_text(input);
-        assert!(!out.contains("tony"), "user name leaked: {}", out);
+        assert!(!out.contains("alice"), "user name leaked: {}", out);
         assert!(out.contains("C:\\Users\\***\\AppData"), "windows path lost: {}", out);
         assert!(out.contains("C:/Users/***/Videos"), "forward-slash path lost: {}", out);
         assert!(out.contains("D:\\\\Users\\\\***\\\\AppData"), "escaped windows path lost: {}", out);

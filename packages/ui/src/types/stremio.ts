@@ -100,6 +100,8 @@ export interface StremioSubtitle {
   url: string;
   lang: string;
   label?: string;
+  /** OpenSubtitles-style add-ons name the underlying file (e.g. "Example.Movie.en.srt"). */
+  subtitleFileName?: string;
   addonName?: string;
 }
 
