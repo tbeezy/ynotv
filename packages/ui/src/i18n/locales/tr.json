@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", izleme listesine {{count}} bölüm eklendi"
     },
     "categoryManager": {
+      "serverOrder": "Sunucu sırası",
+      "serverOrderHint": "Sağlayıcının şu anda gönderdiği sırayı geri yükler, içe aktarmadan bu yana değiştiyse",
+      "serverOrderFailed": "Sunucu sırası alınamadı: {{detail}}",
       "manageTitle": "Kategorileri Yönet - {{name}}",
       "categoriesEnabled": "{{total}} kategoriden {{enabled}} tanesi etkin",
       "orderLabel": "({{order}} sıra)",

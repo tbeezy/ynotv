@@ -6,6 +6,8 @@ import { useCategorySortOrder } from '../../stores/uiStore';
 import { isCategorySortCustomized, setCategorySortCustomized } from '../../utils/categorySortOverrides';
 import { logErrorAlways } from '../../utils/logger';
 import { createCategoryFolder, renameCategoryFolder, deleteCategoryFolder, reorderCategoryFolders } from '../../services/playlist-editor';
+import { canFetchProviderCategoryOrder, fetchProviderCategoryOrder } from '../../services/providerCategoryOrder';
+import type { Source } from '@ynotv/core';
 import { ChannelManager } from './ChannelManager';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -335,6 +337,11 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
     const targetPlaylistId = sourceId.startsWith('playlist:') ? sourceId.replace('playlist:', '') : sourceId;
     const [isCustomized, setIsCustomized] = useState(() => isCategorySortCustomized(targetPlaylistId));
     const isUnlockingRef = useRef(false);
+    // The real provider source behind this manager, when there is one. Custom
+    // playlists (and local imports) have no server order to read, so the
+    // "Server Order" action stays hidden for them.
+    const [providerSource, setProviderSource] = useState<Source | null>(null);
+    const [serverOrderLoading, setServerOrderLoading] = useState(false);
 
     const handleUnlockOrder = useCallback(() => {
         isUnlockingRef.current = true;
@@ -773,6 +780,69 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
         setIsDirty(true);
     }, []);
 
+    // Resolve the real source behind this manager so we know whether the
+    // provider's live category order can be fetched.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            if (!window.storage) {
+                setProviderSource(null);
+                return;
+            }
+            try {
+                const result = await window.storage.getSources();
+                if (cancelled) return;
+                const found = (result.data || []).find(s => s.id === targetPlaylistId) || null;
+                setProviderSource(found);
+            } catch {
+                if (!cancelled) setProviderSource(null);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [targetPlaylistId]);
+
+    // Pull the provider's current category order and re-apply it to this list.
+    // Categories the provider no longer lists keep their current relative
+    // position at the end. Like Sort A-Z, this only stages the change; Save
+    // persists it.
+    const handleServerOrder = useCallback(async () => {
+        if (!providerSource) return;
+        setServerOrderLoading(true);
+        try {
+            const orderedIds = await fetchProviderCategoryOrder(providerSource);
+            const rank = new Map(orderedIds.map((id, i) => [id, i]));
+            const rankOf = (cat: ManagedCategory): number => {
+                const providerId = cat.type === 'native' ? cat.id : (cat.link?.category_id as string | undefined);
+                const r = providerId != null ? rank.get(providerId) : undefined;
+                return r ?? Number.MAX_SAFE_INTEGER;
+            };
+            // Skip the next DB-driven re-init so the staged order survives.
+            // (Only needed when this flips `isCustomized`; if it's already set,
+            // no re-init fires and arming the ref would wrongly skip a later one.)
+            if (!isCustomized) isUnlockingRef.current = true;
+            setCategories(cats => {
+                const sorted = cats
+                    .map((cat, i) => ({ cat, i }))
+                    .sort((a, b) => {
+                        const ra = rankOf(a.cat);
+                        const rb = rankOf(b.cat);
+                        if (ra !== rb) return ra - rb;
+                        return a.i - b.i;
+                    })
+                    .map(({ cat }) => cat);
+                return sorted.map((c, idx) => ({ ...c, displayOrder: idx }));
+            });
+            setCategorySortCustomized(targetPlaylistId, true);
+            setIsCustomized(true);
+            setIsDirty(true);
+        } catch (err) {
+            const detail = err instanceof Error ? err.message : String(err);
+            alert(i18n.t('settings:categoryManager.serverOrderFailed', { detail }));
+        } finally {
+            setServerOrderLoading(false);
+        }
+    }, [providerSource, targetPlaylistId, isCustomized]);
+
     // Sort categories alphabetically by name (alias if available, otherwise original name)
     const handleSortABC = useCallback(() => {
         setCategories(cats => {
@@ -956,6 +1026,16 @@ export function CategoryManager({ sourceId, sourceName, onClose, onChange, initi
                     >
                         🔤 {i18n.t('common:sortAZ')}
                     </button>
+                    {canFetchProviderCategoryOrder(providerSource) && (
+                        <button
+                            onClick={handleServerOrder}
+                            disabled={serverOrderLoading}
+                            title={i18n.t('settings:categoryManager.serverOrderHint')}
+                            style={{ opacity: serverOrderLoading ? 0.6 : 1, cursor: serverOrderLoading ? 'wait' : 'pointer' }}
+                        >
+                            {serverOrderLoading ? '⏳' : '🛰'} {i18n.t('settings:categoryManager.serverOrder')}
+                        </button>
+                    )}
                     <div className="divider-vertical"></div>
                     <button
                         onClick={() => setHideUnselected(!hideUnselected)}

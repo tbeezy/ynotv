@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", dodao je {{count}} epizode na listu za gledanje"
     },
     "categoryManager": {
+      "serverOrder": "Redoslijed sa servera",
+      "serverOrderHint": "Vrati redoslijed koji provajder trenutno šalje, ako se promijenio od uvoza",
+      "serverOrderFailed": "Nije moguće dohvatiti redoslijed sa servera: {{detail}}",
       "manageTitle": "Upravljanje kategorijama - {{name}}",
       "categoriesEnabled": "{{enabled}} od {{total}} kategorija omogućeno",
       "orderLabel": "(redoslijed {{order}})",

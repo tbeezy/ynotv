@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", {{count}} episodi aggiunti alla lista di visione"
     },
     "categoryManager": {
+      "serverOrder": "Ordine del server",
+      "serverOrderHint": "Ripristina l'ordine che il provider invia attualmente, se è cambiato dall'importazione",
+      "serverOrderFailed": "Impossibile recuperare l'ordine del server: {{detail}}",
       "manageTitle": "Gestisci categorie - {{name}}",
       "categoriesEnabled": "{{enabled}} di {{total}} categorie attivate",
       "orderLabel": "(ordine {{order}})",

@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", dodano {{count}} odcinki do listy obserwowanych"
     },
     "categoryManager": {
+      "serverOrder": "Kolejność z serwera",
+      "serverOrderHint": "Przywraca kolejność obecnie wysyłaną przez dostawcę, jeśli zmieniła się od importu",
+      "serverOrderFailed": "Nie udało się pobrać kolejności z serwera: {{detail}}",
       "manageTitle": "Zarządzaj kategoriami - {{name}}",
       "categoriesEnabled": "{{enabled}} z {{total}} kategorii włączonych",
       "orderLabel": "(kolejność {{order}})",

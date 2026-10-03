@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": "، {{count}} قسمت به لیست تماشا اضافه شد"
     },
     "categoryManager": {
+      "serverOrder": "ترتیب سرور",
+      "serverOrderHint": "ترتیبی را که ارائه‌دهنده اکنون می‌فرستد بازمی‌گرداند، اگر از زمان ورود تغییر کرده باشد",
+      "serverOrderFailed": "دریافت ترتیب سرور ممکن نشد: {{detail}}",
       "manageTitle": "مدیریت دسته‌ها - {{name}}",
       "categoriesEnabled": "{{enabled}} از {{total}} دسته فعال است",
       "orderLabel": "(ترتیب {{order}})",

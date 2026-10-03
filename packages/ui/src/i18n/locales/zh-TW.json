@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": "，向觀看列表新增了 {{count}} 集"
     },
     "categoryManager": {
+      "serverOrder": "伺服器順序",
+      "serverOrderHint": "還原供應商目前傳送的順序（若自匯入後已變更）",
+      "serverOrderFailed": "無法取得伺服器順序：{{detail}}",
       "manageTitle": "管理分類 - {{name}}",
       "categoriesEnabled": "{{enabled}}/{{total}} 個分類已啟用",
       "orderLabel": "（{{order}} 順序）",

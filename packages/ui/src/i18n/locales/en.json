@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", added {{count}} episodes to watchlist"
     },
     "categoryManager": {
+      "serverOrder": "Server Order",
+      "serverOrderHint": "Restore the order your provider currently sends, if it changed since import",
+      "serverOrderFailed": "Couldn't fetch the server order: {{detail}}",
       "manageTitle": "Manage Categories - {{name}}",
       "categoriesEnabled": "{{enabled}} of {{total}} categories enabled",
       "orderLabel": "({{order}} order)",

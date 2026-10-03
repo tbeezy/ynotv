@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": "，向观看列表添加了 {{count}} 集"
     },
     "categoryManager": {
+      "serverOrder": "服务器顺序",
+      "serverOrderHint": "恢复提供商当前发送的顺序（如果自导入以来已更改）",
+      "serverOrderFailed": "无法获取服务器顺序：{{detail}}",
       "manageTitle": "管理分类 - {{name}}",
       "categoriesEnabled": "{{enabled}}/{{total}} 个分类已启用",
       "orderLabel": "（{{order}} 顺序）",

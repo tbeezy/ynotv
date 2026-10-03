@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", {{count}} episode u shtuan në listën e shikimit"
     },
     "categoryManager": {
+      "serverOrder": "Renditja nga serveri",
+      "serverOrderHint": "Rikthen renditjen që ofruesi dërgon aktualisht, nëse ka ndryshuar që nga importimi",
+      "serverOrderFailed": "Renditja nga serveri nuk u mor: {{detail}}",
       "manageTitle": "Menaxho kategoritë - {{name}}",
       "categoriesEnabled": "{{enabled}} nga {{total}} kategori të aktivizuara",
       "orderLabel": "(rendi {{order}})",

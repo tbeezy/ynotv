@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", добавил {{count}} серии в список просмотра"
     },
     "categoryManager": {
+      "serverOrder": "Порядок с сервера",
+      "serverOrderHint": "Восстанавливает порядок, который провайдер отправляет сейчас, если он изменился после импорта",
+      "serverOrderFailed": "Не удалось получить порядок с сервера: {{detail}}",
       "manageTitle": "Управление категориями — {{name}}",
       "categoriesEnabled": "Включено категорий: {{enabled}} из {{total}}",
       "orderLabel": "(порядок {{order}})",

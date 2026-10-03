@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": "، دیکھنے کی فہرست میں {{count}} ایپیسوڈز شامل ہوئے"
     },
     "categoryManager": {
+      "serverOrder": "سرور ترتیب",
+      "serverOrderHint": "اپنے فراہم کنندہ کا موجودہ بھیجا گیا ترتیب بحال کریں، اگر درآمد کے بعد بدلا ہو",
+      "serverOrderFailed": "سرور ترتیب حاصل نہیں ہو سکی: {{detail}}",
       "manageTitle": "کیٹیگریز منظم کریں - {{name}}",
       "categoriesEnabled": "{{enabled}} از {{total}} کیٹیگریز فعال",
       "orderLabel": "({{order}} ترتیب)",

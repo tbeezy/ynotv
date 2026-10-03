@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", वॉचलिस्ट में {{count}} एपिसोड जोड़े गए"
     },
     "categoryManager": {
+      "serverOrder": "सर्वर क्रम",
+      "serverOrderHint": "प्रदाता वर्तमान में जो क्रम भेजता है उसे पुनर्स्थापित करें, यदि आयात के बाद बदला हो",
+      "serverOrderFailed": "सर्वर क्रम प्राप्त नहीं हो सका: {{detail}}",
       "manageTitle": "श्रेणियाँ प्रबंधित करें - {{name}}",
       "categoriesEnabled": "{{total}} में से {{enabled}} श्रेणियाँ सक्षम",
       "orderLabel": "({{order}} क्रम)",

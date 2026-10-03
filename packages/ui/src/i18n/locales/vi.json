@@ -1878,6 +1878,9 @@
       "addedEpisodes_zero": ", đã thêm {{count}} tập vào danh sách xem"
     },
     "categoryManager": {
+      "serverOrder": "Thứ tự từ máy chủ",
+      "serverOrderHint": "Khôi phục thứ tự mà nhà cung cấp hiện đang gửi, nếu đã thay đổi kể từ khi nhập",
+      "serverOrderFailed": "Không thể lấy thứ tự từ máy chủ: {{detail}}",
       "manageTitle": "Quản Lý Danh Mục - {{name}}",
       "categoriesEnabled": "{{enabled}} trên {{total}} danh mục được bật",
       "orderLabel": "(thứ tự {{order}})",

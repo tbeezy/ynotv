@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", προστέθηκαν {{count}} επεισόδια στη λίστα παρακολούθησης"
     },
     "categoryManager": {
+      "serverOrder": "Σειρά διακομιστή",
+      "serverOrderHint": "Επαναφέρει τη σειρά που στέλνει τώρα ο πάροχος, αν άλλαξε από την εισαγωγή",
+      "serverOrderFailed": "Αδυναμία λήψης σειράς διακομιστή: {{detail}}",
       "manageTitle": "Διαχείριση Κατηγοριών - {{name}}",
       "categoriesEnabled": "{{enabled}} από {{total}} κατηγορίες ενεργοποιημένες",
       "orderLabel": "(σειρά {{order}})",

@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", {{count}} epizód hozzáadva a figyelőlistához"
     },
     "categoryManager": {
+      "serverOrder": "Szerver sorrend",
+      "serverOrderHint": "Visszaállítja a szolgáltató által jelenleg küldött sorrendet, ha az az importálás óta megváltozott",
+      "serverOrderFailed": "A szerver sorrend betöltése nem sikerült: {{detail}}",
       "manageTitle": "Kategóriák kezelése - {{name}}",
       "categoriesEnabled": "{{enabled}} / {{total}} kategória engedélyezve",
       "orderLabel": "({{order}} sorrend)",

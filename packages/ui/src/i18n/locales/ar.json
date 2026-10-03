@@ -2325,6 +2325,9 @@
       "addedEpisodes_two": ", تمت إضافة {{count}} حلقات إلى قائمة المشاهدة"
     },
     "categoryManager": {
+      "serverOrder": "ترتيب الخادم",
+      "serverOrderHint": "استعادة الترتيب الذي يرسله مزوّدك حاليًا، إذا تغيّر منذ الاستيراد",
+      "serverOrderFailed": "تعذّر جلب ترتيب الخادم: {{detail}}",
       "manageTitle": "إدارة الفئات — {{name}}",
       "categoriesEnabled": "{{enabled}} من {{total}} فئة مفعلة",
       "orderLabel": "(ترتيب {{order}})",

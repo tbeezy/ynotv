@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", додао је {{count}} епизоде на листу за гледање"
     },
     "categoryManager": {
+      "serverOrder": "Редослед са сервера",
+      "serverOrderHint": "Враћа редослед који провајдер тренутно шаље, ако се променио од увоза",
+      "serverOrderFailed": "Није могуће преузети редослед са сервера: {{detail}}",
       "manageTitle": "Управљање категоријама - {{name}}",
       "categoriesEnabled": "{{enabled}} од {{total}} категорија омогућено",
       "orderLabel": "(редослед {{order}})",

@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", {{count}} episódios adicionados à lista de acompanhamento"
     },
     "categoryManager": {
+      "serverOrder": "Ordem do servidor",
+      "serverOrderHint": "Restaura a ordem que o provedor envia atualmente, se mudou desde a importação",
+      "serverOrderFailed": "Não foi possível obter a ordem do servidor: {{detail}}",
       "manageTitle": "Gerenciar categorias - {{name}}",
       "categoriesEnabled": "{{enabled}} de {{total}} categorias ativadas",
       "orderLabel": "(ordem {{order}})",

@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", {{count}} afleveringen aan kijklijst toegevoegd"
     },
     "categoryManager": {
+      "serverOrder": "Servervolgorde",
+      "serverOrderHint": "Herstelt de volgorde die de provider nu verstuurt, als die sinds de import is gewijzigd",
+      "serverOrderFailed": "Servervolgorde ophalen mislukt: {{detail}}",
       "manageTitle": "Categorieën beheren - {{name}}",
       "categoriesEnabled": "{{enabled}} van de {{total}} categorieën ingeschakeld",
       "orderLabel": "({{order}} volgorde)",

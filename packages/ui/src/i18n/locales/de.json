@@ -2325,6 +2325,9 @@
       "addedEpisodes_zero": ", {{count}} Folgen zur Merkliste hinzugefügt"
     },
     "categoryManager": {
+      "serverOrder": "Server-Reihenfolge",
+      "serverOrderHint": "Stellt die Reihenfolge wieder her, die der Anbieter aktuell sendet, falls sie sich seit dem Import geändert hat",
+      "serverOrderFailed": "Server-Reihenfolge konnte nicht geladen werden: {{detail}}",
       "manageTitle": "Kategorien verwalten - {{name}}",
       "categoriesEnabled": "{{enabled}} von {{total}} Kategorien aktiviert",
       "orderLabel": "(Reihenfolge {{order}})",
