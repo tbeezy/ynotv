@@ -649,7 +649,7 @@ class YnotvDatabase extends SqliteDatabase {
     // Each version block runs exactly ONCE. To add new columns in the future,
     // increment DB_VERSION and add a new case (do NOT modify existing cases).
     // ─────────────────────────────────────────────────────────────────────────
-    const DB_VERSION = 30;
+    const DB_VERSION = 31;
     const versionResult = await db.select('PRAGMA user_version') as Array<{ user_version: number }>;
     const currentVersion = versionResult[0]?.user_version ?? 0;
 
@@ -1107,6 +1107,30 @@ class YnotvDatabase extends SqliteDatabase {
           try { await db.execute(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); } catch { /* already exists */ }
         };
         await addColumn('epg_channel_overrides', 'logo_locked', 'INTEGER DEFAULT 0');
+      }
+
+      // v31: vod_history could hold the same media more than once. recordVodWatch()
+      // and updateVodWatchProgress() each did a non-atomic SELECT-then-INSERT, and
+      // one playback session has several writers (the VOD click handler and the
+      // playback-start hook both call recordVodWatch), so two of them could both see
+      // "no row" and both INSERT — the same film then showed up twice under Recently
+      // Watched. Collapse the duplicates and assert one row per media; the writers
+      // upsert against that index from now on. Skipped on a fresh database (the table
+      // is created further down) — schema init performs the same repair there.
+      if (currentVersion < 31) {
+        console.log('[DB] v31 migration: Enforcing one vod_history row per media');
+        try {
+          const vodHistoryTable = await db.select(
+            `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'vod_history'`
+          ) as Array<{ name: string }>;
+          if (vodHistoryTable && vodHistoryTable.length > 0) {
+            for (const stmt of buildVodHistoryDedupeStatements()) {
+              await db.execute(stmt.sql);
+            }
+          }
+        } catch (e) {
+          console.error('[DB] v31 migration failed to deduplicate vod_history:', e);
+        }
       }
 
       // Bump the stored version so these migrations never run again
@@ -1636,8 +1660,24 @@ class YnotvDatabase extends SqliteDatabase {
       episode_title TEXT
     )`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_vod_history_watched_at ON vod_history(watched_at DESC)`);
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_vod_history_media ON vod_history(media_id, media_type)`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_vod_history_source ON vod_history(source_id)`);
+    // vod_history holds exactly one row per (media_id, media_type). The writers
+    // (recordVodWatch / updateVodWatchProgress) upsert against this index, so it
+    // has to exist before any of them runs — repaired here as well as in the v31
+    // migration so a fresh database, or a migration that failed, still ends up
+    // with the constraint the writers depend on.
+    try {
+      const hasUniqueMediaIndex = await db.select(
+        `SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_vod_history_unique_media'`
+      ) as Array<{ name: string }>;
+      if (!hasUniqueMediaIndex || hasUniqueMediaIndex.length === 0) {
+        for (const stmt of buildVodHistoryDedupeStatements()) {
+          await db.execute(stmt.sql);
+        }
+      }
+    } catch (e) {
+      console.error('[DB] Failed to enforce one vod_history row per media:', e);
+    }
 
     // Episode Watch History - tracks progress for individual episodes
     await db.execute(`CREATE TABLE IF NOT EXISTS episode_history (
@@ -3203,6 +3243,98 @@ export async function clearExpiredWatchlist(): Promise<void> {
 // ============================================================================
 
 /**
+ * Upsert behind recordVodWatch(). vod_history is keyed by (media_id, media_type),
+ * so callers that record the same media at the same time (the VOD click handler
+ * and the playback-start hook both do) update a single row instead of racing two
+ * INSERTs and leaving the same film twice under Recently Watched. Episode fields
+ * are only written when the caller supplied them, so a later plain record (a
+ * re-watch) does not wipe the season/episode the series row was showing.
+ *
+ * Kept as a pure builder like buildClearSourceStatements, so the SQL can be run
+ * against a real SQLite in tests instead of a mocked adapter.
+ */
+export function buildVodWatchRecordSql(opts: {
+  season?: boolean;
+  episode?: boolean;
+  episodeTitle?: boolean;
+}): string {
+  const updates = [
+    'watched_at = excluded.watched_at',
+    // Keep a poster we already stored when this caller has none: the VOD click
+    // handler passes the stream icon, while the playback-start hook usually
+    // records the same media without one, and the plain column assignment would
+    // wipe it. Mirrors how a known duration survives a 0/absent progress tick.
+    'poster_url = COALESCE(excluded.poster_url, vod_history.poster_url)',
+    'title = excluded.title',
+  ];
+  if (opts.season) updates.push('season_num = excluded.season_num');
+  if (opts.episode) updates.push('episode_num = excluded.episode_num');
+  if (opts.episodeTitle) updates.push('episode_title = excluded.episode_title');
+
+  return `INSERT INTO vod_history (media_id, media_type, source_id, title, watched_at, progress_seconds, total_duration, poster_url, season_num, episode_num, episode_title)
+    VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)
+    ON CONFLICT(media_id, media_type) DO UPDATE SET ${updates.join(', ')}`;
+}
+
+/**
+ * Upsert behind updateVodWatchProgress(). Progress always wins; a 0/absent
+ * duration keeps the duration already stored (callers often know the duration
+ * on only some ticks).
+ */
+export function buildVodWatchProgressSql(): string {
+  return `INSERT INTO vod_history (media_id, media_type, source_id, title, watched_at, progress_seconds, total_duration, poster_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(media_id, media_type) DO UPDATE SET
+      progress_seconds = excluded.progress_seconds,
+      total_duration = COALESCE(NULLIF(excluded.total_duration, 0), vod_history.total_duration),
+      watched_at = excluded.watched_at`;
+}
+
+/**
+ * One-time repair for vod_history: collapses each (media_id, media_type) group to
+ * a single row — keeping the furthest-along, then the newest — without losing a
+ * poster that a duplicate was holding, then asserts the invariant with a unique
+ * index and retires the old non-unique one. Every statement is idempotent, so
+ * re-running this when the index is missing is safe.
+ *
+ * Kept as a pure statement list so the SQL can be exercised against a real
+ * SQLite in tests.
+ */
+export function buildVodHistoryDedupeStatements(): { sql: string }[] {
+  return [
+    // 1. Copy a sibling's poster onto rows that lack one, before dropping it.
+    {
+      sql: `UPDATE vod_history
+   SET poster_url = COALESCE(poster_url, (
+         SELECT sibling.poster_url FROM vod_history AS sibling
+          WHERE sibling.media_id = vod_history.media_id
+            AND sibling.media_type = vod_history.media_type
+            AND sibling.poster_url IS NOT NULL
+          ORDER BY sibling.watched_at DESC
+          LIMIT 1))
+ WHERE poster_url IS NULL`,
+    },
+    // 2. Keep one row per media: the furthest-along, then the newest.
+    {
+      sql: `DELETE FROM vod_history
+ WHERE id NOT IN (
+   SELECT keep.id FROM vod_history AS keep
+    WHERE keep.id = (
+      SELECT winner.id FROM vod_history AS winner
+       WHERE winner.media_id = keep.media_id
+         AND winner.media_type = keep.media_type
+       ORDER BY COALESCE(winner.progress_seconds, 0) DESC,
+                winner.watched_at DESC,
+                winner.id DESC
+       LIMIT 1))`,
+    },
+    // 3. Enforce it, and retire the index it replaces.
+    { sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_vod_history_unique_media ON vod_history(media_id, media_type)` },
+    { sql: `DROP INDEX IF EXISTS idx_vod_history_media` },
+  ];
+}
+
+/**
  * Record that a movie or series was watched (first time or update timestamp)
  * Does NOT update progress - use updateVodWatchProgress for that
  */
@@ -3219,48 +3351,24 @@ export async function recordVodWatch(
   // Trailers are short previews, not watch history — never record them.
   if (sourceId === 'trailer') return;
   try {
-    const watchedAt = Date.now();
+    const sql = buildVodWatchRecordSql({
+      season: seasonNum !== undefined,
+      episode: episodeNum !== undefined,
+      episodeTitle: episodeTitle !== undefined,
+    });
 
-    // Check if there's an existing entry for this media
     const dbInstance = await (db as any).dbPromise;
-    const existing = await dbInstance.select(
-      'SELECT * FROM vod_history WHERE media_id = ? AND media_type = ? LIMIT 1',
-      [mediaId, mediaType]
-    );
-    const existingItem = existing && existing.length > 0 ? existing[0] : null;
-
-    if (existingItem && existingItem.id) {
-      // Update existing entry - update watched_at, title, poster, and episode info if provided
-      const updates: string[] = ['watched_at = ?', 'poster_url = ?', 'title = ?'];
-      const values: (string | number | null)[] = [watchedAt, posterUrl ?? null, title];
-      
-      // Add episode info if provided
-      if (seasonNum !== undefined) {
-        updates.push('season_num = ?');
-        values.push(seasonNum);
-      }
-      if (episodeNum !== undefined) {
-        updates.push('episode_num = ?');
-        values.push(episodeNum);
-      }
-      if (episodeTitle !== undefined) {
-        updates.push('episode_title = ?');
-        values.push(episodeTitle);
-      }
-      
-      values.push(existingItem.id);
-      
-      await dbInstance.execute(
-        `UPDATE vod_history SET ${updates.join(', ')} WHERE id = ?`,
-        values
-      );
-    } else {
-      // Create new entry
-      await dbInstance.execute(
-        `INSERT INTO vod_history (media_id, media_type, source_id, title, watched_at, progress_seconds, total_duration, poster_url, season_num, episode_num, episode_title) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [mediaId, mediaType, sourceId, title, watchedAt, null, null, posterUrl ?? null, seasonNum ?? null, episodeNum ?? null, episodeTitle ?? null]
-      );
-    }
+    await dbInstance.execute(sql, [
+      mediaId,
+      mediaType,
+      sourceId,
+      title,
+      Date.now(),
+      posterUrl ?? null,
+      seasonNum ?? null,
+      episodeNum ?? null,
+      episodeTitle ?? null,
+    ]);
 
     dbEvents.notify('vod_history', 'add');
     console.log('[VOD History] Recorded watch:', title, `(${mediaType})`, seasonNum !== undefined ? `S${seasonNum}E${episodeNum}` : '');
@@ -3339,35 +3447,22 @@ export async function updateVodWatchProgress(
 ): Promise<void> {
   try {
     const dbInstance = await (db as any).dbPromise;
-    
-    // Get existing record to check current duration
-    const existing = await dbInstance.select(
-      'SELECT id, total_duration FROM vod_history WHERE media_id = ? AND media_type = ? LIMIT 1',
-      [mediaId, mediaType]
-    );
-    
-    // Use existing duration if new value is 0/invalid and we have a valid existing duration
-    let effectiveDuration = totalDuration;
-    if ((totalDuration === 0 || totalDuration === undefined || totalDuration === null) && 
-        existing && existing.length > 0 && existing[0].total_duration > 0) {
-      effectiveDuration = existing[0].total_duration;
-      console.log('[VOD History] Preserving existing duration:', effectiveDuration, '(new value was:', totalDuration + ')');
-    }
-    
-    if (existing && existing.length > 0) {
-      await dbInstance.execute(
-        `UPDATE vod_history SET progress_seconds = ?, total_duration = ?, watched_at = ? WHERE media_id = ? AND media_type = ?`,
-        [progressSeconds, effectiveDuration, Date.now(), mediaId, mediaType]
-      );
-      dbEvents.notify('vod_history', 'update');
-    } else {
-      // Entry does not exist yet; insert it so progress is never lost
-      await dbInstance.execute(
-        `INSERT INTO vod_history (media_id, media_type, source_id, title, watched_at, progress_seconds, total_duration, poster_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [mediaId, mediaType, sourceId || 'unknown', title || 'Unknown', Date.now(), progressSeconds, effectiveDuration ?? null, posterUrl ?? null]
-      );
-      dbEvents.notify('vod_history', 'add');
-    }
+
+    // Single atomic upsert: a concurrent writer can no longer slip a duplicate
+    // row in between this statement's read and its write, and the stored
+    // duration survives a tick that reports 0 or no duration at all.
+    await dbInstance.execute(buildVodWatchProgressSql(), [
+      mediaId,
+      mediaType,
+      sourceId || 'unknown',
+      title || 'Unknown',
+      Date.now(),
+      progressSeconds,
+      totalDuration ?? null,
+      posterUrl ?? null,
+    ]);
+
+    dbEvents.notify('vod_history', 'update');
   } catch (error) {
     console.error('[VOD History] Failed to update progress:', error);
     throw error;

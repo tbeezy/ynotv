@@ -1341,7 +1341,26 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
                         episode_num: h.episodeNum,
                         episode_title: h.episodeTitle
                     }));
-                    await db.vodHistory.bulkAdd(history);
+                    // vod_history is unique on (media_id, media_type) now, and a
+                    // backup taken from a build that wrote duplicate rows would
+                    // otherwise fail to restore. Collapse it the same way the v31
+                    // migration does: keep the furthest-along row, carrying over a
+                    // poster the duplicate was holding.
+                    const byMedia = new Map<string, (typeof history)[number]>();
+                    for (const row of history) {
+                        const key = `${row.media_id}\u0000${row.media_type}`;
+                        const existingRow = byMedia.get(key);
+                        if (!existingRow) {
+                            byMedia.set(key, row);
+                            continue;
+                        }
+                        const keepNew = (row.progress_seconds ?? 0) > (existingRow.progress_seconds ?? 0) ||
+                            ((row.progress_seconds ?? 0) === (existingRow.progress_seconds ?? 0) && row.watched_at > existingRow.watched_at);
+                        const keep = keepNew ? row : existingRow;
+                        const dropped = keepNew ? existingRow : row;
+                        byMedia.set(key, { ...keep, poster_url: keep.poster_url ?? dropped.poster_url });
+                    }
+                    await db.vodHistory.bulkAdd(Array.from(byMedia.values()));
                 }
             });
 
