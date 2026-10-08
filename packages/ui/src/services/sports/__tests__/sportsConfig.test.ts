@@ -250,64 +250,6 @@ describe('AFL Sports Configuration', () => {
   });
 });
 
-describe('CFL Sports Configuration', () => {
-  it('has CFL configured in SPORT_CONFIG under football', () => {
-    expect(SPORT_CONFIG['cfl']).toEqual({
-      sport: 'football',
-      league: 'cfl',
-      name: 'CFL',
-      category: 'football',
-    });
-  });
-
-  it('includes CFL in DEFAULT_LIVE_LEAGUES and DEFAULT_UPCOMING_LEAGUES', () => {
-    expect(DEFAULT_LIVE_LEAGUES).toContain('cfl');
-    expect(DEFAULT_UPCOMING_LEAGUES).toContain('cfl');
-  });
-
-  it('registers CFL in sportsSettingsStore ALL_LEAGUES', () => {
-    const cflLeague = ALL_LEAGUES.find((l) => l.id === 'cfl');
-    expect(cflLeague).toBeDefined();
-    expect(cflLeague?.name).toBe('CFL');
-    expect(cflLeague?.sport).toBe('football');
-    expect(cflLeague?.category).toBe('football');
-  });
-
-  it('lists CFL in the Football section of available categories', () => {
-    const football = getAvailableCategories().find((c) => c.id === 'football');
-    expect(football).toBeDefined();
-    expect(football?.leagues).toContain('nfl');
-    expect(football?.leagues).toContain('cfl');
-  });
-
-  it('resolves CFL in getLeaguesBySport', async () => {
-    const leaguesByFootball = await getLeaguesBySport('football');
-    expect(leaguesByFootball.some((l) => l.id === 'cfl')).toBe(true);
-
-    const leaguesByAmerican = await getLeaguesBySport('american football');
-    expect(leaguesByAmerican.some((l) => l.id === 'cfl')).toBe(true);
-
-    const leaguesByCanadian = await getLeaguesBySport('canadian football');
-    expect(leaguesByCanadian.map((l) => l.id)).toEqual(['cfl']);
-
-    const leaguesByAbbrev = await getLeaguesBySport('cfl');
-    expect(leaguesByAbbrev.map((l) => l.id)).toEqual(['cfl']);
-  });
-
-  it('builds valid ESPN endpoints for CFL', () => {
-    const config = SPORT_CONFIG['cfl'];
-    expect(buildScoreboardUrl(config.sport, config.league)).toBe(
-      'https://site.web.api.espn.com/apis/site/v2/sports/football/cfl/scoreboard'
-    );
-    expect(buildTeamsUrl(config.sport, config.league)).toBe(
-      'https://site.web.api.espn.com/apis/site/v2/sports/football/cfl/teams'
-    );
-    expect(buildStandingsUrl(config.sport, config.league)).toBe(
-      'https://site.web.api.espn.com/apis/v2/sports/football/cfl/standings'
-    );
-  });
-});
-
 describe('UEFA Nations League Sports Configuration', () => {
   it('has the UEFA Nations League configured in SPORT_CONFIG under soccer', () => {
     expect(SPORT_CONFIG['soccer-uefa.nations']).toEqual({

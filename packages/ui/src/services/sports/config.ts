@@ -11,7 +11,6 @@ export const ESPN_API_BASE = 'https://site.web.api.espn.com/apis/site/v2/sports'
 export const SPORT_CONFIG: Record<string, SportConfig> = {
   // Football
   'nfl': { sport: 'football', league: 'nfl', name: 'NFL', category: 'football' },
-  'cfl': { sport: 'football', league: 'cfl', name: 'CFL', category: 'football' },
   'college-football': { sport: 'football', league: 'college-football', name: 'NCAAF', category: 'football' },
   
   // Basketball
@@ -81,7 +80,6 @@ export const DEFAULT_LIVE_LEAGUES = [
   'soccer-fifa.wwc',
   'nfl',
   'college-football',
-  'cfl',
   'nba',
   'mens-college-basketball',
   'mlb',
@@ -102,7 +100,6 @@ export const DEFAULT_UPCOMING_LEAGUES = [
   'soccer-fifa.wwc',
   'nfl',
   'college-football',
-  'cfl',
   'nba',
   'mens-college-basketball',
   'mlb',

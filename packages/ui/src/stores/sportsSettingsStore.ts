@@ -10,7 +10,6 @@ export interface LeagueConfig {
 
 export const ALL_LEAGUES: LeagueConfig[] = [
   { id: 'nfl', name: 'NFL', sport: 'football', category: 'football' },
-  { id: 'cfl', name: 'CFL', sport: 'football', category: 'football' },
   { id: 'college-football', name: 'NCAAF', sport: 'football', category: 'football' },
   
   { id: 'nba', name: 'NBA', sport: 'basketball', category: 'basketball' },
