@@ -64,6 +64,7 @@ const LEAGUE_INFO_MAP: Record<string, { sportName: string; leagueName: string }>
   'europa-league': { sportName: 'Soccer', leagueName: 'UEFA Europa League' },
   'conference-league': { sportName: 'Soccer', leagueName: 'UEFA Conference League' },
   'soccer-uefa.europa.conf': { sportName: 'Soccer', leagueName: 'UEFA Conference League' },
+  'soccer-uefa.nations': { sportName: 'Soccer', leagueName: 'UEFA Nations League' },
   'uefa.europa.conf': { sportName: 'Soccer', leagueName: 'UEFA Conference League' },
   mls: { sportName: 'Soccer', leagueName: 'MLS' },
   'world-cup': { sportName: 'Soccer', leagueName: 'FIFA World Cup' },

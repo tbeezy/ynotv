@@ -333,6 +333,7 @@ export async function getLeaguesBySport(sport: string): Promise<SportsLeague[]> 
       'soccer-uefa.champions',
       'soccer-uefa.europa',
       'soccer-uefa.europa.conf',
+      'soccer-uefa.nations',
       'soccer-mex.1',
       'soccer-ned.1',
       'soccer-por.1',

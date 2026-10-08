@@ -308,3 +308,52 @@ describe('CFL Sports Configuration', () => {
   });
 });
 
+describe('UEFA Nations League Sports Configuration', () => {
+  it('has the UEFA Nations League configured in SPORT_CONFIG under soccer', () => {
+    expect(SPORT_CONFIG['soccer-uefa.nations']).toEqual({
+      sport: 'soccer',
+      league: 'uefa.nations',
+      name: 'UEFA Nations League',
+      category: 'soccer',
+    });
+  });
+
+  it('includes the UEFA Nations League in DEFAULT_LIVE_LEAGUES and DEFAULT_UPCOMING_LEAGUES', () => {
+    expect(DEFAULT_LIVE_LEAGUES).toContain('soccer-uefa.nations');
+    expect(DEFAULT_UPCOMING_LEAGUES).toContain('soccer-uefa.nations');
+  });
+
+  it('registers the UEFA Nations League in sportsSettingsStore ALL_LEAGUES', () => {
+    const league = ALL_LEAGUES.find((l) => l.id === 'soccer-uefa.nations');
+    expect(league).toBeDefined();
+    expect(league?.name).toBe('UEFA Nations League');
+    expect(league?.sport).toBe('soccer');
+    expect(league?.category).toBe('soccer');
+  });
+
+  it('lists the UEFA Nations League in the Soccer section of available categories', () => {
+    const soccer = getAvailableCategories().find((c) => c.id === 'soccer');
+    expect(soccer).toBeDefined();
+    expect(soccer?.leagues).toContain('soccer-uefa.champions');
+    expect(soccer?.leagues).toContain('soccer-uefa.nations');
+  });
+
+  it('resolves the UEFA Nations League in getLeaguesBySport', async () => {
+    const leagues = await getLeaguesBySport('soccer');
+    expect(leagues.some((l) => l.id === 'soccer-uefa.nations')).toBe(true);
+  });
+
+  it('builds valid ESPN endpoints for the UEFA Nations League', () => {
+    const config = SPORT_CONFIG['soccer-uefa.nations'];
+    expect(buildScoreboardUrl(config.sport, config.league)).toBe(
+      'https://site.web.api.espn.com/apis/site/v2/sports/soccer/uefa.nations/scoreboard'
+    );
+    expect(buildTeamsUrl(config.sport, config.league)).toBe(
+      'https://site.web.api.espn.com/apis/site/v2/sports/soccer/uefa.nations/teams'
+    );
+    expect(buildStandingsUrl(config.sport, config.league)).toBe(
+      'https://site.web.api.espn.com/apis/v2/sports/soccer/uefa.nations/standings'
+    );
+  });
+});
+
