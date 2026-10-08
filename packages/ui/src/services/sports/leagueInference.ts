@@ -66,6 +66,19 @@ const EXACT_TEAM_LEAGUES: Array<{ leagueId: string; names: string[] }> = [
     ],
   },
   {
+    leagueId: 'cfl',
+    names: [
+      'bc lions', 'calgary stampeders', 'edmonton elks', 'edmonton eskimos',
+      'hamilton tiger-cats',
+      'montreal alouettes', 'ottawa redblacks', 'ottawa red blacks',
+      'saskatchewan roughriders', 'toronto argonauts', 'winnipeg blue bombers',
+      // Unambiguous nicknames. 'lions' is deliberately omitted: BC Lions collide
+      // with the NFL's Detroit Lions and the AFL's Brisbane Lions.
+      'stampeders', 'elks', 'tiger-cats', 'ticats', 'alouettes', 'redblacks',
+      'roughriders', 'argonauts', 'blue bombers',
+    ],
+  },
+  {
     leagueId: 'mlb',
     names: [
       'arizona diamondbacks', 'atlanta braves', 'baltimore orioles', 'boston red sox',

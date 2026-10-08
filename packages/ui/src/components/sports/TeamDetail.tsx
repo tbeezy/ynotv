@@ -43,6 +43,7 @@ interface TeamDetailProps {
 const LEAGUE_INFO_MAP: Record<string, { sportName: string; leagueName: string }> = {
   nfl: { sportName: 'Football', leagueName: 'NFL' },
   cfb: { sportName: 'Football', leagueName: 'NCAA Football' },
+  cfl: { sportName: 'Football', leagueName: 'CFL' },
   mlb: { sportName: 'Baseball', leagueName: 'MLB' },
   nba: { sportName: 'Basketball', leagueName: 'NBA' },
   cbb: { sportName: 'Basketball', leagueName: 'NCAA Basketball' },

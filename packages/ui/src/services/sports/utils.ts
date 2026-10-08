@@ -316,7 +316,7 @@ export async function getLeaguesBySport(sport: string): Promise<SportsLeague[]> 
   const sportLower = sport.toLowerCase();
   
   const mapping: Record<string, string[]> = {
-    'football': ['nfl', 'college-football'],
+    'football': ['nfl', 'college-football', 'cfl'],
     'basketball': ['nba', 'mens-college-basketball', 'wnba'],
     'baseball': ['mlb'],
     'hockey': ['nhl'],
@@ -339,12 +339,14 @@ export async function getLeaguesBySport(sport: string): Promise<SportsLeague[]> 
       'soccer-fifa.world',
       'soccer-fifa.wwc',
     ],
-    'american football': ['nfl', 'college-football'],
+    'american football': ['nfl', 'college-football', 'cfl'],
     'rugby union': ['rugby-180659', 'rugby-164205', 'rugby-267979', 'rugby-242041', 'rugby-270559'],
     'rugby league': ['rugby-league-3'],
     'australian football': ['afl'],
     'aussie rules': ['afl'],
     'afl': ['afl'],
+    'canadian football': ['cfl'],
+    'cfl': ['cfl'],
   };
 
   const keys = mapping[sportLower] || [];

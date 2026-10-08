@@ -61,6 +61,24 @@ describe('League Inference & Cross-League Isolation', () => {
       expect(inferLeagueFromTeamName('Phoenix Suns')).toBe('nba');
     });
 
+    it('correctly infers CFL teams without colliding with the other Lions', () => {
+      expect(inferLeagueFromTeamName('BC Lions')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Calgary Stampeders')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Edmonton Elks')).toBe('cfl');
+      // Historical franchise name (renamed from Eskimos in 2021)
+      expect(inferLeagueFromTeamName('Edmonton Eskimos')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Hamilton Tiger-Cats')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Montreal Alouettes')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Ottawa RedBlacks')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Ottawa Red Blacks')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Saskatchewan Roughriders')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Toronto Argonauts')).toBe('cfl');
+      expect(inferLeagueFromTeamName('Winnipeg Blue Bombers')).toBe('cfl');
+
+      // The ambiguous nickname still fails closed even though a CFL team uses it
+      expect(inferLeagueFromTeamName('Lions')).toBeUndefined();
+    });
+
     it('fails closed and returns undefined for ambiguous generic nicknames without city context', () => {
       expect(inferLeagueFromTeamName('Kings')).toBeUndefined();
       expect(inferLeagueFromTeamName('Wings')).toBeUndefined();
