@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.5.7
+
+### Added
+
+- **Provider connection and account info on screen** - Press `O` during playback (rebindable under `Settings → Shortcuts`, or use the new button next to the stream stats button) for a card with the provider's active and max connections, account status, expiry date, and server host. Xtream and Stalker sources are queried live.
+- **Jellyfin playlists play in their own order** - Starting a Jellyfin playlist now carries the whole queue into the player. Next/previous step through the playlist instead of jumping to the next episode, playback stops at the end of the list, and a `From playlist` badge on the Now Playing bar shows your position and opens the full list.
+- **Subtitles from Stremio/Nuvio add-ons load on demand** - The subtitle dialog shows what your add-ons offer for the language you select and downloads only the track you choose. Supports translation addons that required queueing the file.
+- **Search all Stalker sources at once** - VOD search has an `All Stalker Sources` option that queries every Stalker source together, with results in per-source tabs and a progress indicator while the servers are being searched.
+- **Display the full channel path** - Two optional settings show the full `Source / Category / Channel` path instead of just the category or channel name: one under `Settings → Live TV` for the EPG program details pane, and one in the overlay settings for the channel info overlay. 
+- **Side-by-side sections in 3-column view** - `Display Sections in a Row` under `Settings → Live TV` places the player next to the program window rather than above it, so categories, channels, player, and guide sit side by side - ideal for ultrawide displays.
+- **Lock a channel's custom logo** - The EPG Editor's Channel tab has a `Lock` toggle next to the Logo URL field. While it's on, the logo you set is not replaced when the channel's EPG match changes, its EPG source is switched, or Automatch runs.
+- **`Rescan All` for local folders** - One button scans every configured local movie and series folder for new files at once.
+- **Right-click context menu for local items** - Right-clicking a local movie or episode opens a context menu, and the Review Unmatched step gains a `Fix match selected` action for correcting a specific item's match.
+- **Delete empty failover groups** - `Delete Empty (N)` in the Failover Groups dialog removes the leftover groups that contain no channels
+- **Restore your provider's category order** - `Server Order` in Manage Categories re-fetches the category order directly from your provider and applies it
+- **CFL and UEFA Nations League support** - Both competitions have been added to Sports.
+- **Support mode for diagnosing playback** - Enable `Settings → Debug → Support mode` to start the video engine with detailed logging
+- **Manual connection limit per source for DVR** - Your provider's simultaneous connection limit is detected automatically, but you can now set your own. `Max Simultaneous Connections` under `Settings → Sources` overrides it, overlapping recordings warn when that number is reached, and your value is kept across syncs.
+- **A way out of every recording conflict** - Scheduling a recording that conflicts no longer leaves you stuck. The program and channel menus always offer `Ignore and record`
+
+### Fixed
+
+- **Recording conflicts reported when the connection limit wasn't reached** - Scheduling an overlapping recording was flagged as a conflict even when the source allowed more simultaneous connections
+- **3-column EPG progress bar not updating in real time** - In the 3-column view, the progress bar and currently airing program only refreshed when a row scrolled into view or the app reloaded. They now stay in sync as time advances, rolling over to the next program automatically and refreshing every 10 seconds while the guide is open.
+- **`Extra words to strip` not accepting commas** - In the EPG Editor's Automatch Missing section, typing a comma deleted it immediately, limiting the field to a single word. Multiple comma- or space-separated words can now be entered correctly.
+- **Preview video escaping its box in Guide view** - With the embedded libmpv player, the video could expand to fill the entire window behind the Guide's preview cutout when another app took focus or ynoTV was in the background, leaving only the top-left corner of the stream visible. The video is now kept inside the preview box at all times.
+- **Local playlist file imports losing their source file** - Importing a playlist from a file didn't record the file path, so after a backup restore or cache clear the playlist had nothing to sync from. The file path is now saved and re-read on sync.
+- **Stale playlist references in Global EPG sources** - Deleting a playlist now also removes it from linked Global EPG sources.
+- **Font size sliders couldn't go below 10px** - The channel list, category, source, and EPG program font size sliders now allow values down to 8px.
+- **Duplicate entries in Recently Watched** - The same title could appear more than once when a playback was registered twice within moments. 
+
 ## v2.5.6
 
 ### Added

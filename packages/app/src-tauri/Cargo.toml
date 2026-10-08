@@ -1,6 +1,6 @@
 [package]
 name = "ynotv"
-version = "2.5.6"
+version = "2.5.7"
 description = "A Tauri App"
 authors = ["tbeezy"]
 edition = "2021"
