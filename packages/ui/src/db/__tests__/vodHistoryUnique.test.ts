@@ -296,18 +296,25 @@ suite('vod_history uniqueness', () => {
       db.prepare('SELECT media_id, media_type, COUNT(*) c FROM vod_history GROUP BY 1,2 HAVING c > 1').all()
     ).toHaveLength(0);
 
-    const byId = new Map(rows(db).map(r => [r.media_id, r]));
+    const byId = new Map<string, Row>(rows(db).map(r => [r.media_id as string, r]));
+    /** The surviving row for a media id; a missing one fails with the id named. */
+    const kept = (id: string): Row => {
+      const row = byId.get(id);
+      if (!row) throw new Error(`no vod_history row survived for "${id}"`);
+      return row;
+    };
+
     // Kept the furthest-along row, and kept the poster the dropped one held.
-    expect(byId.get('coyote').progress_seconds).toBe(900);
-    expect(byId.get('coyote').poster_url).toBe('https://cdn/coyote.jpg');
-    expect(byId.get('superbad').progress_seconds).toBe(300);
-    expect(byId.get('superbad').poster_url).toBe('https://cdn/superbad.jpg');
+    expect(kept('coyote').progress_seconds).toBe(900);
+    expect(kept('coyote').poster_url).toBe('https://cdn/coyote.jpg');
+    expect(kept('superbad').progress_seconds).toBe(300);
+    expect(kept('superbad').poster_url).toBe('https://cdn/superbad.jpg');
     // Untouched single row.
-    expect(byId.get('heat').progress_seconds).toBe(120);
+    expect(kept('heat').progress_seconds).toBe(120);
     // Series keeps its episode tracking and gains the dropped row's poster.
-    expect(byId.get('series-x').season_num).toBe(2);
-    expect(byId.get('series-x').episode_num).toBe(5);
-    expect(byId.get('series-x').poster_url).toBe('https://cdn/show.jpg');
+    expect(kept('series-x').season_num).toBe(2);
+    expect(kept('series-x').episode_num).toBe(5);
+    expect(kept('series-x').poster_url).toBe('https://cdn/show.jpg');
   });
 
   it('is idempotent, so the repair can run at startup and in the migration', () => {
