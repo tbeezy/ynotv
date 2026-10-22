@@ -1311,11 +1311,47 @@ async fn init_mpv<R: Runtime>(app: AppHandle<R>, args: Vec<String>) -> Result<()
 }
 
 #[tauri::command]
-async fn mpv_load<R: Runtime>(app: AppHandle<R>, url: String) -> Result<(), String> {
+async fn mpv_load<R: Runtime>(
+    app: AppHandle<R>,
+    url: String,
+    http_header_fields: Option<String>,
+) -> Result<(), String> {
+    // Auth headers (e.g. Dispatcharr X-API-Key) applied AFTER quality profile
+    // so they are not overwritten, and immediately before loadfile.
+    // Empty/None clears stale headers from a prior authenticated proxy play.
+    async fn apply_http_headers<R: Runtime>(
+        app: &AppHandle<R>,
+        engine: PlayerEngine,
+        fields: &Option<String>,
+    ) {
+        let value = fields
+            .as_ref()
+            .map(|s| s.as_str())
+            .filter(|s| !s.is_empty())
+            .unwrap_or("");
+        let json = serde_json::json!(value);
+        match engine {
+            PlayerEngine::LibMpv => {
+                let _ = mpv_core::set_property(app, "http-header-fields".to_string(), json).await;
+            }
+            PlayerEngine::Sidecar => {
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = mpv_windows::set_property(app, "http-header-fields".to_string(), json).await;
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let _ = json;
+                }
+            }
+        }
+    }
+
     #[cfg(target_os = "macos")]
     {
         apply_quality_profile_on_load(&app, PlayerEngine::LibMpv).await;
         let _ = mpv_core::set_property(&app, "audio-delay".to_string(), serde_json::json!(0.0)).await;
+        apply_http_headers(&app, PlayerEngine::LibMpv, &http_header_fields).await;
         mpv_core::load_file(&app, url).await
     }
     #[cfg(target_os = "windows")]
@@ -1325,10 +1361,12 @@ async fn mpv_load<R: Runtime>(app: AppHandle<R>, url: String) -> Result<(), Stri
         if engine == PlayerEngine::LibMpv {
             apply_quality_profile_on_load(&app, PlayerEngine::LibMpv).await;
             let _ = mpv_core::set_property(&app, "audio-delay".to_string(), serde_json::json!(0.0)).await;
+            apply_http_headers(&app, PlayerEngine::LibMpv, &http_header_fields).await;
             mpv_core::load_file(&app, url).await
         } else {
             apply_quality_profile_on_load(&app, PlayerEngine::Sidecar).await;
             let _ = mpv_windows::set_property(&app, "audio-delay".to_string(), serde_json::json!(0.0)).await;
+            apply_http_headers(&app, PlayerEngine::Sidecar, &http_header_fields).await;
             mpv_windows::load_file(&app, url).await
         }
     }
@@ -1336,6 +1374,7 @@ async fn mpv_load<R: Runtime>(app: AppHandle<R>, url: String) -> Result<(), Stri
     {
         apply_quality_profile_on_load(&app, PlayerEngine::LibMpv).await;
         let _ = mpv_set_property(app.clone(), "audio-delay".to_string(), serde_json::json!(0.0)).await;
+        apply_http_headers(&app, PlayerEngine::LibMpv, &http_header_fields).await;
         mpv_core::load_file(&app, url).await
     }
 }

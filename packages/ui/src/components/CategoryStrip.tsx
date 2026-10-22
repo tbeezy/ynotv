@@ -31,6 +31,11 @@ import { setCategorySortCustomized } from '../utils/categorySortOverrides';
 import { buildSidebarRows, computeStickyOverlay, resolveOwnerDragState, ownerOfRow, type SidebarRow, type LinkRow, type FolderHeaderRow, type SpecialRow } from '../utils/sidebarRowModel';
 import { compareSidebarFolder } from '../utils/categorySortRules';
 import {
+  expandDispatcharrProfileSources,
+  expandSidebarOrderForDispatcharrProfiles,
+  resolveRealDispatcharrSourceId,
+} from '../utils/dispatcharrProfiles';
+import {
   DndContext,
   PointerSensor,
   KeyboardSensor,
@@ -1585,10 +1590,12 @@ export const CategoryStrip = memo(function CategoryStrip({ selectedCategoryId, o
     }
   }, [visible, selectedCategoryId]);
 
-  const groupedCategories = useCategoriesBySource();
+  const groupedCategoriesRaw = useCategoriesBySource();
   const categorySortOrder = useCategorySortOrder();
   const includeAllChannelsToPlaylist = useIncludeAllChannelsToPlaylist();
   const [sortOverridesVersion, setSortOverridesVersion] = useState(0);
+  /** Full source configs — needed to expand Dispatcharr multi-profile Live TV headers. */
+  const [sourceConfigs, setSourceConfigs] = useState<Source[]>([]);
 
   const [pinnedCategories, setPinnedCategories] = useState<string[]>(() => {
     try {
@@ -1667,6 +1674,40 @@ export const CategoryStrip = memo(function CategoryStrip({ selectedCategoryId, o
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+
+  // Split Dispatcharr sources with selected channel lists into Source-Profile headers.
+  const { groups: groupedCategories, virtualNames: dispatcharrVirtualNames } = useMemo(
+    () => expandDispatcharrProfileSources(groupedCategoriesRaw, sourceConfigs),
+    [groupedCategoriesRaw, sourceConfigs]
+  );
+
+  // Keep name map in sync with virtual Source-Profile headers.
+  useEffect(() => {
+    if (Object.keys(dispatcharrVirtualNames).length === 0) return;
+    setSources((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, name] of Object.entries(dispatcharrVirtualNames)) {
+        if (next[id] !== name) {
+          next[id] = name;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    setExpandedSources((prev) => {
+      const collapseOnStartup = useSettingsStore.getState().collapseSourceCategoriesOnStartup;
+      let changed = false;
+      const next = { ...prev };
+      for (const virtualId of Object.keys(dispatcharrVirtualNames)) {
+        if (next[virtualId] === undefined) {
+          next[virtualId] = !collapseOnStartup;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [dispatcharrVirtualNames]);
 
   const filteredGroupedCategories = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -2343,11 +2384,12 @@ export const CategoryStrip = memo(function CategoryStrip({ selectedCategoryId, o
   const sidebarSourcesOrder = useMemo(() => {
     if (!sidebarOrderPref?.value) return null;
     try {
-      return JSON.parse(sidebarOrderPref.value) as string[];
+      const parsed = JSON.parse(sidebarOrderPref.value) as string[];
+      return expandSidebarOrderForDispatcharrProfiles(parsed, sourceConfigs) ?? parsed;
     } catch {
       return null;
     }
-  }, [sidebarOrderPref]);
+  }, [sidebarOrderPref, sourceConfigs]);
 
   const categoryChannelCounts = useMemo(() => {
     const catCounts = new Map<string, number>();
@@ -2631,7 +2673,13 @@ export const CategoryStrip = memo(function CategoryStrip({ selectedCategoryId, o
 
   const handleSourceContextMenu = (e: React.MouseEvent, sourceId: string, sourceName: string) => {
     e.preventDefault();
-    setSourceContextMenu({ x: e.clientX, y: e.clientY, sourceId, sourceName });
+    // Virtual Dispatcharr-Profile headers map back to the real source for edit/manage actions.
+    setSourceContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      sourceId: resolveRealDispatcharrSourceId(sourceId),
+      sourceName,
+    });
   };
 
   const handleFavoritesContextMenu = (e: React.MouseEvent) => {
@@ -2753,10 +2801,17 @@ export const CategoryStrip = memo(function CategoryStrip({ selectedCategoryId, o
       if (window.storage) {
         const result = await window.storage.getSources();
         if (result.data) {
+          setSourceConfigs(result.data as Source[]);
           const sourceMap = result.data.reduce((acc: Record<string, string>, s: Source) => {
             acc[s.id] = s.name;
             return acc;
           }, {});
+          // Overlay virtual Dispatcharr-Profile display names for Live TV headers.
+          const expanded = expandDispatcharrProfileSources(
+            (result.data as Source[]).map((s) => ({ sourceId: s.id, categories: [] })),
+            result.data as Source[]
+          );
+          Object.assign(sourceMap, expanded.virtualNames);
           setSources(sourceMap);
 
           const sourcesData = result.data;
@@ -2773,6 +2828,12 @@ export const CategoryStrip = memo(function CategoryStrip({ selectedCategoryId, o
                 next[s.id] = !collapseOnStartup; // false if collapseOnStartup is true
               }
             });
+            // Virtual Dispatcharr profile headers
+            for (const virtualId of Object.keys(expanded.virtualNames)) {
+              if (next[virtualId] === undefined) {
+                next[virtualId] = !collapseOnStartup;
+              }
+            }
             return next;
           });
         }

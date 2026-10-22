@@ -48,7 +48,7 @@ async function pruneLogoCacheFromSettings() {
  * Runs the startup sync check once on mount:
  *   - Reads user settings (shortcuts, theme, font sizes)
  *   - Syncs stale channel/EPG sources in batches
- *   - Syncs stale VOD sources (Xtream & Stalker)
+ *   - Syncs stale VOD sources (Xtream, Stalker & Dispatcharr)
  *   - Periodically checks (every 10 min) if sources need refreshing based on Data Refresh settings
  *
  * Extracted from App.tsx lines ~1015-1157.
@@ -117,8 +117,8 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
                 const vodRefreshHours = settingsResult.data?.vodRefreshHours ?? 24;
 
                 const enabledSources = result.data.filter((s: any) => s.enabled && !s.vod_only);
-                // VOD sources eligible for auto-sync (Xtream & Stalker, not Live-TV-only)
-                const vodSources = result.data.filter((s: any) => (s.type === 'xtream' || s.type === 'stalker') && s.enabled && !s.live_tv_only);
+                // VOD sources eligible for auto-sync (Xtream, Stalker & Dispatcharr, not Live-TV-only)
+                const vodSources = result.data.filter((s: any) => (s.type === 'xtream' || s.type === 'stalker' || s.type === 'dispatcharr') && s.enabled && !s.live_tv_only);
 
                 const hasCustomEpgRefresh = enabledSources.some((s: any) => s.custom_refresh_interval !== undefined && s.custom_refresh_interval !== null && s.custom_refresh_interval > 0);
                 const hasCustomVodRefresh = vodSources.some((s: any) => s.custom_vod_refresh_interval !== undefined && s.custom_vod_refresh_interval !== null && s.custom_vod_refresh_interval > 0);
@@ -171,7 +171,7 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
                     }
                 }
 
-                // ── VOD sync (Xtream & Stalker) ─────────────────────────────────────
+                // ── VOD sync (Xtream, Stalker & Dispatcharr) ─────────────────────────
                 if (vodActive) {
                     if (vodSources.length > 0) {
                         const staleVod: any[] = [];
@@ -281,8 +281,8 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
 
                 // Filter out VOD-only sources from channel sync
                 const enabledSources = result.data.filter((s: any) => s.enabled && !s.vod_only);
-                // VOD sources eligible for auto-sync (Xtream & Stalker, not Live-TV-only)
-                const vodSources = result.data.filter((s: any) => (s.type === 'xtream' || s.type === 'stalker') && s.enabled && !s.live_tv_only);
+                // VOD sources eligible for auto-sync (Xtream, Stalker & Dispatcharr, not Live-TV-only)
+                const vodSources = result.data.filter((s: any) => (s.type === 'xtream' || s.type === 'stalker' || s.type === 'dispatcharr') && s.enabled && !s.live_tv_only);
 
                 const hasCustomEpgRefresh = enabledSources.some((s: any) => s.custom_refresh_interval !== undefined && s.custom_refresh_interval !== null && s.custom_refresh_interval > 0);
                 const hasCustomVodRefresh = vodSources.some((s: any) => s.custom_vod_refresh_interval !== undefined && s.custom_vod_refresh_interval !== null && s.custom_vod_refresh_interval > 0);
@@ -325,7 +325,7 @@ export function useAutoSync(callbacks: AutoSyncSettings = {}) {
                     }
                 }
 
-                // ── VOD sync (Xtream & Stalker) ─────────────────────────────────────
+                // ── VOD sync (Xtream, Stalker & Dispatcharr) ─────────────────────────
                 if (vodActive) {
                     if (vodSources.length > 0) {
                         const staleVod: any[] = [];

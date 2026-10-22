@@ -7,15 +7,18 @@
 // Source Types - How we connect to IPTV providers
 // =============================================================================
 
-export type SourceType = 'xtream' | 'm3u' | 'stalker' | 'epg';
+export type SourceType = 'xtream' | 'm3u' | 'stalker' | 'dispatcharr' | 'epg';
+
+/** How credentials are supplied for a Dispatcharr Direct Connect source. */
+export type DispatcharrCredentialType = 'usernamePassword' | 'apiKey';
 
 export interface Source {
   id: string;
   name: string;
   type: SourceType;
   url: string;
-  username?: string;      // Xtream only
-  password?: string;      // Xtream only
+  username?: string;      // Xtream / Dispatcharr username+password mode
+  password?: string;      // Xtream / Dispatcharr username+password mode
   mac?: string;           // Stalker only
   epg_url?: string;       // Auto-detected or manual override
   auto_load_epg?: boolean; // Auto-fetch EPG from source (default: true for xtream)
@@ -37,12 +40,39 @@ export interface Source {
   custom_refresh_interval?: number; // Custom EPG/channel refresh interval in hours
   custom_vod_refresh_interval?: number; // Custom VOD refresh interval in hours
   max_connections?: number; // Max concurrent connections (manual override or provider limit)
+
+  // Dispatcharr Direct Connect
+  dispatcharr_credential_type?: DispatcharrCredentialType;
+  /** Durable API key from /users/me/ or pasted by the user (apiKey mode). */
+  api_key?: string;
+  /**
+   * Selected Channel Profile ids (empty/absent = all channels when no legacy id).
+   * Same as /output/m3u/{name} for each profile.
+   */
+  dispatcharr_selected_profile_ids?: number[];
+  /** Cached display names for selected profiles (id → name). */
+  dispatcharr_selected_profile_names?: Record<string, string>;
+  /**
+   * Legacy single selected Channel Profile id (null/undefined = all channels).
+   * Prefer `dispatcharr_selected_profile_ids`; kept for backward compatibility.
+   */
+  dispatcharr_selected_profile_id?: number | null;
+  /** Cached display name for the legacy single selected profile (e.g. TELUS). */
+  dispatcharr_selected_profile_name?: string;
+  /** Account-assigned channel_profiles from last /users/me/ (child-safety filter). */
+  dispatcharr_channel_profile_ids?: number[];
 }
 
 export interface XtreamSource extends Source {
   type: 'xtream';
   username: string;
   password: string;
+}
+
+export interface DispatcharrSource extends Source {
+  type: 'dispatcharr';
+  dispatcharr_credential_type?: DispatcharrCredentialType;
+  api_key?: string;
 }
 
 export interface M3uCatchupConfig {
@@ -144,6 +174,8 @@ export interface Movie {
   // External IDs (if provider includes them)
   tmdb_id?: number;
   added?: Date | string;
+  /** Provider-supplied last-modified timestamp (Xtream / similar APIs). */
+  last_modified?: Date | string;
   container_extension?: string;
 }
 

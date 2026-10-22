@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { Source, Channel } from '@ynotv/core';
+import type { Source, Channel, DispatcharrCredentialType } from '@ynotv/core';
 import { syncAllSources, syncAllVod, syncSource, syncVodForSource, markSourceDeleted, syncGlobalEpgLinkStandalone, applyGlobalEpgToSource, cleanupGlobalEpgCache, type SyncResult, type VodSyncResult } from '../../db/sync';
 import { clearSourceData, clearVodData, db, type StoredChannel, type StoredProgram } from '../../db';
 import {
@@ -20,17 +20,24 @@ import {
   useSetVodSyncing,
   useSyncStatusMessage,
   useSetSyncStatusMessage,
+  useSetSyncProgress,
+  useSyncProgress,
   useEpgClockFormat
 } from '../../stores/uiStore';
 import { useToastStore } from '../../stores/toastStore';
 import { releasePinsForFeed } from '../../services/epg-overrides';
 import { forgetDeletedSource } from '../../services/sourceRemoval';
-import { parseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
+import { parseM3U, XtreamClient, StalkerClient, DispatcharrClient } from '@ynotv/local-adapter';
 import { CategoryManager } from './CategoryManager';
 import { DataRefreshTab } from './DataRefreshTab';
 import { StalkerPrefsTab } from './StalkerPrefsTab';
 import './SourcesTab.css';
 import { useSettingsStore } from '../../stores/settingsStore';
+import {
+  formatDispatcharrProfileBadge,
+  getSelectedDispatcharrProfileIds,
+  toLegacyDispatcharrProfileFields,
+} from '../../utils/dispatcharrProfiles';
 import { useSourceVersion } from '../../contexts/SourceVersionContext';
 import type { GlobalEpgLink } from '../../types/app';
 import { decompressEpgDescription } from '../../utils/compression';
@@ -82,7 +89,12 @@ interface SourcesTabProps {
   onEpgSyncConcurrencyChange?: (value: number) => void;
 }
 
-type SourceType = 'm3u' | 'xtream' | 'stalker';
+type SourceType = 'm3u' | 'xtream' | 'stalker' | 'dispatcharr';
+
+interface DispatcharrProfileOption {
+  id: number;
+  name: string;
+}
 
 interface SourceFormData {
   name: string;
@@ -111,6 +123,15 @@ interface SourceFormData {
   xtreamCatchupUsername: string;
   xtreamCatchupPassword: string;
   maxConnections?: number;
+  dispatcharrCredentialType: DispatcharrCredentialType;
+  apiKey: string;
+  /** When true, sync all channels and the dual-list is disabled. */
+  dispatcharrAllChannels: boolean;
+  /** Selected channel list/profile ids (ignored when dispatcharrAllChannels). */
+  dispatcharrSelectedProfileIds: number[];
+  /** Cached id → name for selected profiles. */
+  dispatcharrSelectedProfileNames: Record<string, string>;
+  dispatcharrChannelProfileIds: number[];
 }
 
 const emptyForm: SourceFormData = {
@@ -140,7 +161,20 @@ const emptyForm: SourceFormData = {
   xtreamCatchupUsername: '',
   xtreamCatchupPassword: '',
   maxConnections: undefined,
+  dispatcharrCredentialType: 'usernamePassword',
+  apiKey: '',
+  dispatcharrAllChannels: true,
+  dispatcharrSelectedProfileIds: [],
+  dispatcharrSelectedProfileNames: {},
+  dispatcharrChannelProfileIds: [],
 };
+
+function sourceTypeBadgeLabel(type: Source['type']): string {
+  if (type === 'dispatcharr') {
+    return i18n.t('settings:sources.dispatcharr');
+  }
+  return type.toUpperCase();
+}
 
 // Normalize vendor Expiration Strings to concise MM/DD/YY
 function formatExpiryDate(dateString?: string): string {
@@ -285,6 +319,7 @@ interface SortableSourceItemProps {
   syncingSourceId: string | null;
   vodSyncingSourceId: string | null;
   syncStatusMsg: string | null;
+  syncProgress: { done: number; total: number } | null;
   isDeleting: boolean;
   isExpiryWarning: (dateStr?: string) => boolean;
   formatExpiryDate: (dateStr: string) => string;
@@ -305,6 +340,7 @@ function SortableSourceItem(props: SortableSourceItemProps) {
     syncingSourceId,
     vodSyncingSourceId,
     syncStatusMsg,
+    syncProgress,
     isDeleting,
     isExpiryWarning,
     formatExpiryDate,
@@ -352,7 +388,19 @@ function SortableSourceItem(props: SortableSourceItemProps) {
         <div className="source-header">
           <div className="source-name-type">
             <span className="source-name">{source.name}</span>
-            <span className="source-type" data-source-type={source.type}>{source.type.toUpperCase()}</span>
+            <span className="source-type" data-source-type={source.type}>{sourceTypeBadgeLabel(source.type)}</span>
+            {source.type === 'dispatcharr' && (
+              <span
+                className="source-dispatcharr-profile"
+                title={i18n.t('settings:sources.dispatcharrProfile')}
+                style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
+              >
+                {formatDispatcharrProfileBadge(
+                  source,
+                  i18n.t('settings:sources.dispatcharrAllChannels')
+                )}
+              </span>
+            )}
             <label className="source-toggle" onPointerDown={(e) => e.stopPropagation()}>
               <input
                 type="checkbox"
@@ -416,16 +464,35 @@ function SortableSourceItem(props: SortableSourceItemProps) {
       </div>
 
       <div className="source-actions" onPointerDown={(e) => e.stopPropagation()}>
+        {(syncingSourceId === source.id || vodSyncingSourceId === source.id) && (
+          <div className="source-sync-progress" title={syncStatusMsg || i18n.t('common:syncing')}>
+            <div className="source-sync-progress__msg">
+              {syncStatusMsg || i18n.t('common:syncing')}
+            </div>
+            <div className="source-sync-progress__track">
+              <div
+                className={`source-sync-progress__fill${
+                  syncProgress && syncProgress.total > 0 ? '' : ' source-sync-progress__fill--indeterminate'
+                }`}
+                style={
+                  syncProgress && syncProgress.total > 0
+                    ? { width: `${Math.min(100, Math.round((syncProgress.done / syncProgress.total) * 100))}%` }
+                    : undefined
+                }
+              />
+            </div>
+          </div>
+        )}
         <button
           className="src-btn src-btn--primary"
           onClick={() => handleSourceSync(source.id)}
           disabled={syncingSourceId === source.id || !source.enabled}
           title={i18n.t('settings:sources.syncThisSource')}
         >
-          {syncingSourceId === source.id ? <><SpinnerIcon size={13} /> {syncStatusMsg || i18n.t('common:syncing')}</> : i18n.t('settings:sources.syncChannelsBtn')}
+          {syncingSourceId === source.id ? <><SpinnerIcon size={13} /> {i18n.t('common:syncing')}</> : i18n.t('settings:sources.syncChannelsBtn')}
         </button>
 
-        {(source.type === 'xtream' || source.type === 'stalker') && !source.live_tv_only && (
+        {(source.type === 'xtream' || source.type === 'stalker' || source.type === 'dispatcharr') && !source.live_tv_only && (
           <button
             className="src-btn src-btn--secondary"
             onClick={() => handleSourceVodSync(source.id)}
@@ -718,6 +785,8 @@ export function SourcesTab({
   const setVodSyncing = useSetVodSyncing();
   const syncStatusMsg = useSyncStatusMessage();
   const setSyncStatusMsg = useSetSyncStatusMessage();
+  const setSyncProgress = useSetSyncProgress();
+  const syncProgress = useSyncProgress();
 
   // Per-source sync state
   const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
@@ -744,6 +813,14 @@ export function SourcesTab({
   // Password visibility state
   const [showPassword, setShowPassword] = useState(false);
   const [showBackupPassword, setShowBackupPassword] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  // Dispatcharr channel profiles (loaded after Test Connection or when editing)
+  const [dispatcharrProfiles, setDispatcharrProfiles] = useState<DispatcharrProfileOption[]>([]);
+  const [dispatcharrTestStatus, setDispatcharrTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [dispatcharrTestMessage, setDispatcharrTestMessage] = useState<string | null>(null);
+  const [dispatcharrAvailableHighlight, setDispatcharrAvailableHighlight] = useState<number[]>([]);
+  const [dispatcharrSelectedHighlight, setDispatcharrSelectedHighlight] = useState<number[]>([]);
 
   // Category manager modal state
   const [categoryManagerSource, setCategoryManagerSource] = useState<{ id: string; name: string } | null>(null);
@@ -787,7 +864,7 @@ export function SourcesTab({
   const [syncingEpgId, setSyncingEpgId] = useState<string | null>(null);
   const [syncingAllEpg, setSyncingAllEpg] = useState(false);
 
-  const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
+  const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker' || s.type === 'dispatcharr');
 
   // The playlists the Global EPG form offers (the toggle above). Ordered like
   // the prop it came from, so the form matches the Playlist Sources list.
@@ -920,6 +997,21 @@ export function SourcesTab({
     setFormData((prev) => ({ ...prev, url: '' }));
   }
 
+  function resetDispatcharrUiState() {
+    setDispatcharrProfiles([]);
+    setDispatcharrTestStatus('idle');
+    setDispatcharrTestMessage(null);
+    setDispatcharrAvailableHighlight([]);
+    setDispatcharrSelectedHighlight([]);
+    setShowApiKey(false);
+  }
+
+  /** Clear Validate success when connection details change — save requires a fresh Validate. */
+  function invalidateDispatcharrValidation() {
+    setDispatcharrTestStatus('idle');
+    setDispatcharrTestMessage(null);
+  }
+
   function handleEdit(source: Source) {
     const xtreamCatchup = (source as any).xtream_catchup;
     console.log('[SourcesTab] handleEdit - source.epg_url:', source.epg_url, 'length:', source.epg_url?.length);
@@ -930,7 +1022,7 @@ export function SourcesTab({
       username: source.username || '',
       password: source.password || '',
       mac: source.mac || '',
-      autoLoadEpg: source.auto_load_epg ?? (source.type === 'xtream'),
+      autoLoadEpg: source.auto_load_epg ?? (source.type === 'xtream' || source.type === 'dispatcharr'),
       liveTvOnly: source.live_tv_only ?? false,
       vodOnly: source.vod_only ?? false,
       epgUrl: source.epg_url || '',
@@ -950,11 +1042,76 @@ export function SourcesTab({
       xtreamCatchupUsername: xtreamCatchup?.username || '',
       xtreamCatchupPassword: xtreamCatchup?.password || '',
       maxConnections: source.max_connections,
+      dispatcharrCredentialType: source.dispatcharr_credential_type || 'usernamePassword',
+      apiKey: source.api_key || '',
+      dispatcharrAllChannels: getSelectedDispatcharrProfileIds(source).length === 0,
+      dispatcharrSelectedProfileIds: getSelectedDispatcharrProfileIds(source),
+      dispatcharrSelectedProfileNames: (() => {
+        const ids = getSelectedDispatcharrProfileIds(source);
+        const names: Record<string, string> = {
+          ...(source.dispatcharr_selected_profile_names || {}),
+        };
+        if (
+          source.dispatcharr_selected_profile_id != null &&
+          source.dispatcharr_selected_profile_name &&
+          !names[String(source.dispatcharr_selected_profile_id)]
+        ) {
+          names[String(source.dispatcharr_selected_profile_id)] =
+            source.dispatcharr_selected_profile_name;
+        }
+        // Ensure every selected id has a display name entry
+        for (const id of ids) {
+          if (!names[String(id)]) names[String(id)] = String(id);
+        }
+        return names;
+      })(),
+      dispatcharrChannelProfileIds: source.dispatcharr_channel_profile_ids || [],
     });
     console.log('[SourcesTab] Editing source, existing UA:', source.user_agent);
     setEditingId(source.id);
     setShowAddForm(true);
     setError(null);
+    resetDispatcharrUiState();
+
+    // Prefetch channel profiles when editing an existing Dispatcharr source.
+    // Treat a successful prefetch as Validate so a name-only / settings edit
+    // does not force the user to click Validate again (credentials unchanged).
+    if (source.type === 'dispatcharr' && source.url) {
+      setDispatcharrTestStatus('testing');
+      void (async () => {
+        try {
+          const client = new DispatcharrClient(
+            {
+              baseUrl: source.url,
+              username: source.username,
+              password: source.password,
+              apiKey: source.api_key,
+              credentialType: source.dispatcharr_credential_type || 'usernamePassword',
+              userAgent: source.user_agent,
+            },
+            source.id
+          );
+          await client.bootstrapAuth();
+          const profiles = await client.listChannelProfiles();
+          setDispatcharrProfiles(profiles);
+          const key = client.getApiKey();
+          if (key) {
+            setFormData((prev) => (prev.apiKey ? prev : { ...prev, apiKey: key }));
+          }
+          setDispatcharrTestStatus('success');
+          setDispatcharrTestMessage(
+            i18n.t('settings:sources.dispatcharrTestSuccess', {
+              count: profiles.length,
+              defaultValue: 'Connected. {{count}} channel profile(s) loaded.',
+            })
+          );
+        } catch (err) {
+          console.warn('[SourcesTab] Failed to load Dispatcharr profiles on edit:', err);
+          setDispatcharrTestStatus('idle');
+          setDispatcharrTestMessage(null);
+        }
+      })();
+    }
   }
 
   function handleDeleteClick(id: string, sourceName: string) {
@@ -1057,6 +1214,25 @@ export function SourcesTab({
       setError(i18n.t('settings:sources.errMacRequired'));
       return;
     }
+    if (formData.type === 'dispatcharr') {
+      if (formData.dispatcharrCredentialType === 'usernamePassword') {
+        if (!formData.username.trim() || !formData.password.trim()) {
+          setError(i18n.t('settings:sources.errDispatcharrCreds'));
+          return;
+        }
+      } else if (!formData.apiKey.trim()) {
+        setError(i18n.t('settings:sources.errDispatcharrApiKey'));
+        return;
+      }
+      if (dispatcharrTestStatus !== 'success') {
+        setError(i18n.t('settings:sources.errDispatcharrValidateRequired'));
+        return;
+      }
+      if (!formData.dispatcharrAllChannels && formData.dispatcharrSelectedProfileIds.length === 0) {
+        setError(i18n.t('settings:sources.errDispatcharrSelectList'));
+        return;
+      }
+    }
 
     // Security check for LAN sources
     const urlToCheck = importedM3U ? '' : formData.url.trim();
@@ -1094,6 +1270,9 @@ export function SourcesTab({
           }
         : undefined;
 
+      const saveDispatcharrUserPass =
+        formData.type === 'dispatcharr' && formData.dispatcharrCredentialType === 'usernamePassword';
+
       const source: Source = {
         id: sourceId,
         name: formData.name.trim(),
@@ -1106,8 +1285,8 @@ export function SourcesTab({
             : `imported:${formData.name.trim()}`
           : formData.url.trim(),
         enabled: true,
-        username: formData.type === 'xtream' ? formData.username.trim() : undefined,
-        password: formData.type === 'xtream' ? formData.password.trim() : undefined,
+        username: formData.type === 'xtream' || saveDispatcharrUserPass ? formData.username.trim() : undefined,
+        password: formData.type === 'xtream' || saveDispatcharrUserPass ? formData.password.trim() : undefined,
         mac: formData.type === 'stalker' ? formData.mac.trim() : undefined,
         auto_load_epg: formData.autoLoadEpg,
         live_tv_only: formData.liveTvOnly,
@@ -1126,6 +1305,34 @@ export function SourcesTab({
         disable_short_epg: formData.type === 'stalker' ? formData.disableShortEpg : undefined,
         max_connections: formData.maxConnections,
         ...(xtreamCatchup ? { xtream_catchup: xtreamCatchup } : {}),
+        ...(formData.type === 'dispatcharr'
+          ? (() => {
+              const selectedIds = formData.dispatcharrAllChannels
+                ? []
+                : formData.dispatcharrSelectedProfileIds;
+              const selectedNames = formData.dispatcharrAllChannels
+                ? {}
+                : formData.dispatcharrSelectedProfileNames;
+              const legacy = toLegacyDispatcharrProfileFields(selectedIds, selectedNames);
+              return {
+                dispatcharr_credential_type: formData.dispatcharrCredentialType,
+                // Username/password mode hides the API key field; keep a key obtained
+                // from Validate / prior sync so a name-only edit does not wipe it.
+                api_key:
+                  formData.apiKey.trim() ||
+                  (formData.dispatcharrCredentialType === 'usernamePassword' && editingId
+                    ? sources.find((s) => s.id === editingId)?.api_key?.trim() || undefined
+                    : undefined),
+                dispatcharr_selected_profile_ids: selectedIds,
+                dispatcharr_selected_profile_names:
+                  selectedIds.length > 0 ? selectedNames : undefined,
+                dispatcharr_selected_profile_id: legacy.dispatcharr_selected_profile_id,
+                dispatcharr_selected_profile_name: legacy.dispatcharr_selected_profile_name,
+                // Always persist (including []) so stale account profiles clear on save.
+                dispatcharr_channel_profile_ids: formData.dispatcharrChannelProfileIds,
+              };
+            })()
+          : {}),
       };
 
       console.log('[SourcesTab] Saving source with UA:', source.user_agent);
@@ -1208,6 +1415,7 @@ export function SourcesTab({
       setFormData(emptyForm);
       setEditingId(null);
       setImportedM3U(null);
+      resetDispatcharrUiState();
       onSourcesChange();
       incrementVersion(); // Notify listeners of new source
 
@@ -1559,6 +1767,76 @@ export function SourcesTab({
     setEditingId(null);
     setImportedM3U(null);
     setError(null);
+    resetDispatcharrUiState();
+  }
+
+  async function handleTestDispatcharrConnection() {
+    if (!formData.url.trim()) {
+      setDispatcharrTestStatus('error');
+      setDispatcharrTestMessage(i18n.t('settings:sources.errUrlRequired'));
+      return;
+    }
+    if (formData.dispatcharrCredentialType === 'usernamePassword') {
+      if (!formData.username.trim() || !formData.password.trim()) {
+        setDispatcharrTestStatus('error');
+        setDispatcharrTestMessage(i18n.t('settings:sources.errDispatcharrCreds'));
+        return;
+      }
+    } else if (!formData.apiKey.trim()) {
+      setDispatcharrTestStatus('error');
+      setDispatcharrTestMessage(i18n.t('settings:sources.errDispatcharrApiKey'));
+      return;
+    }
+
+    setDispatcharrTestStatus('testing');
+    setDispatcharrTestMessage(null);
+
+    try {
+      const client = new DispatcharrClient(
+        {
+          baseUrl: formData.url.trim(),
+          username: formData.username.trim() || undefined,
+          password: formData.password.trim() || undefined,
+          apiKey: formData.apiKey.trim() || undefined,
+          credentialType: formData.dispatcharrCredentialType,
+          userAgent: formData.userAgent.trim() || undefined,
+        },
+        editingId || 'test'
+      );
+
+      // testConnection() already runs bootstrapAuth (JWT → durable api_key)
+      const result = await client.testConnection();
+      if (!result.success) {
+        setDispatcharrTestStatus('error');
+        setDispatcharrTestMessage(result.error || i18n.t('settings:sources.dispatcharrTestFailed'));
+        return;
+      }
+
+      const profiles = await client.listChannelProfiles();
+      setDispatcharrProfiles(profiles);
+
+      const apiKey = client.getApiKey();
+      const channelProfileIds = result.user?.channel_profiles ?? [];
+
+      setFormData((prev) => ({
+        ...prev,
+        ...(apiKey ? { apiKey } : {}),
+        // Always set (including []) so a user with no assigned profiles clears stale IDs.
+        dispatcharrChannelProfileIds: channelProfileIds,
+      }));
+
+      setDispatcharrTestStatus('success');
+      setDispatcharrTestMessage(
+        i18n.t('settings:sources.dispatcharrTestSuccess', {
+          count: profiles.length,
+          defaultValue: 'Connected. {{count}} channel profile(s) loaded.',
+        })
+      );
+    } catch (err: any) {
+      console.error('[SourcesTab] Dispatcharr test connection failed:', err);
+      setDispatcharrTestStatus('error');
+      setDispatcharrTestMessage(err?.message || i18n.t('settings:sources.dispatcharrTestFailed'));
+    }
   }
 
   async function handleSync() {
@@ -1566,8 +1844,11 @@ export function SourcesTab({
     setSyncResults(null);
     setSyncError(null);
     setSyncStatusMsg(i18n.t('common:initializing'));
+    setSyncProgress({ done: 0, total: Math.max(1, sources.filter((s) => s.enabled).length) });
     try {
-      const results = await syncAllSources(setSyncStatusMsg, epgSyncConcurrency);
+      const results = await syncAllSources((msg) => {
+        setSyncStatusMsg(msg);
+      }, epgSyncConcurrency);
       setSyncResults(results);
       // Trigger category refresh after sync completes
       incrementVersion();
@@ -1579,6 +1860,7 @@ export function SourcesTab({
     } finally {
       setSyncing(false);
       setSyncStatusMsg(null);
+      setSyncProgress(null);
       // Global EPG links update via the settings store (db/sync writes through
       // setGlobalEpgLinks), so the list re-renders without a manual refresh.
     }
@@ -1588,7 +1870,8 @@ export function SourcesTab({
     setVodSyncing(true);
     setVodSyncResults(null);
     setSyncError(null);
-    // VOD sync progress not yet implemented in UI store/db layer fully like channels
+    setSyncStatusMsg(i18n.t('common:syncingVod'));
+    setSyncProgress({ done: 0, total: Math.max(1, sources.filter((s) => s.enabled && !s.live_tv_only).length) });
     try {
       const results = await syncAllVod();
       setVodSyncResults(results);
@@ -1599,6 +1882,48 @@ export function SourcesTab({
       useToastStore.getState().addToast(msg, 'error');
     } finally {
       setVodSyncing(false);
+      setSyncStatusMsg(null);
+      setSyncProgress(null);
+    }
+  }
+
+  /** Sync live channels for all sources, then VOD for all VOD-capable sources. */
+  async function handleSyncAll() {
+    if (syncing || vodSyncing) return;
+    setSyncError(null);
+    setSyncResults(null);
+    setVodSyncResults(null);
+    try {
+      setSyncing(true);
+      setSyncStatusMsg(i18n.t('settings:sources.syncAllChannelsStep', { defaultValue: 'Sync All — channels…' }));
+      setSyncProgress({ done: 0, total: 2 });
+      const channelResults = await syncAllSources(setSyncStatusMsg, epgSyncConcurrency);
+      setSyncResults(channelResults);
+      incrementVersion();
+
+      if (hasVodSource) {
+        setSyncProgress({ done: 1, total: 2 });
+        setVodSyncing(true);
+        setSyncStatusMsg(i18n.t('settings:sources.syncAllVodStep', { defaultValue: 'Sync All — movies & series…' }));
+        const vodResults = await syncAllVod();
+        setVodSyncResults(vodResults);
+      } else {
+        setSyncProgress({ done: 2, total: 2 });
+      }
+      useToastStore.getState().addToast(
+        i18n.t('settings:sources.syncAllDone', { defaultValue: 'Sync All finished' }),
+        'success'
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : i18n.t('common:channelSyncFailed');
+      console.error('Sync All error:', err);
+      setSyncError(msg);
+      useToastStore.getState().addToast(msg, 'error');
+    } finally {
+      setSyncing(false);
+      setVodSyncing(false);
+      setSyncStatusMsg(null);
+      setSyncProgress(null);
     }
   }
 
@@ -1614,9 +1939,19 @@ export function SourcesTab({
     console.log('[SourcesTab] handleSourceSync - source.epg_url:', source.epg_url, 'length:', source.epg_url?.length);
 
     setSyncingSourceId(sourceId);
+    setSyncing(true);
     setSyncStatusMsg(i18n.t('common:starting'));
+    setSyncProgress({ done: 0, total: 3 });
     try {
-      const result = await syncSource(source, setSyncStatusMsg);
+      const result = await syncSource(source, (msg) => {
+        setSyncStatusMsg(msg);
+        // Heuristic stages so the bar moves during long Dispatcharr pulls
+        const lower = (msg || '').toLowerCase();
+        if (lower.includes('connect') || lower.includes('auth')) setSyncProgress({ done: 0, total: 3 });
+        else if (lower.includes('categor') || lower.includes('group')) setSyncProgress({ done: 1, total: 3 });
+        else if (lower.includes('channel') || lower.includes('fetch')) setSyncProgress({ done: 2, total: 3 });
+        else if (lower.includes('epg') || lower.includes('writ') || lower.includes('sav')) setSyncProgress({ done: 3, total: 3 });
+      });
       // Show success/failure notification
       if (result.success) {
         console.log(`Source ${source.name}: ${result.channelCount} channels synced`);
@@ -1639,23 +1974,76 @@ export function SourcesTab({
         console.error(`Source ${source.name}: global EPG apply failed:`, epgErr);
       }
 
+      // After a successful live sync, also pull VOD for sources that support it
+      // (Dispatcharr / Xtream / Stalker) unless Live TV Only is set.
+      const supportsVod =
+        result.success &&
+        !source.live_tv_only &&
+        (source.type === 'dispatcharr' || source.type === 'xtream' || source.type === 'stalker');
+      if (supportsVod) {
+        try {
+          setSyncStatusMsg(i18n.t('common:syncingVod'));
+          setSyncProgress({ done: 0, total: 100 });
+          const vodResult = await syncVodForSource(source, (msg, progress) => {
+            setSyncStatusMsg(msg);
+            if (progress && progress.total > 0) {
+              setSyncProgress({
+                done: Math.min(progress.done, progress.total),
+                total: progress.total,
+              });
+            }
+          });
+          setSyncProgress({ done: 100, total: 100 });
+          if (vodResult.success) {
+            console.log(
+              `Source ${source.name}: ${vodResult.movieCount} movies, ${vodResult.seriesCount} series synced`
+            );
+          } else if (vodResult.error && vodResult.error !== 'Source is Live TV only') {
+            console.error(`Source ${source.name} VOD sync failed:`, vodResult.error);
+            useToastStore.getState().addToast(
+              i18n.t('settings:sources.vodSyncFailedToast', {
+                name: source.name,
+                error: translateNativeError(vodResult.error) || vodResult.error,
+              }),
+              'error'
+            );
+          }
+        } catch (vodErr) {
+          console.error(`Source ${source.name}: chained VOD sync failed:`, vodErr);
+        }
+      }
+
       onSourcesChange(); // Refresh to show updated counts
       incrementVersion(); // Trigger category refresh
     } catch (err) {
       console.error('Per-source sync error:', err);
     } finally {
       setSyncingSourceId(null);
+      setSyncing(false);
       setSyncStatusMsg(null);
+      setSyncProgress(null);
     }
   }
 
   async function handleSourceVodSync(sourceId: string) {
     const source = sources.find(s => s.id === sourceId);
-    if (!source || (source.type !== 'xtream' && source.type !== 'stalker') || source.live_tv_only) return;
+    if (!source || (source.type !== 'xtream' && source.type !== 'stalker' && source.type !== 'dispatcharr') || source.live_tv_only) return;
 
     setVodSyncingSourceId(sourceId);
+    setVodSyncing(true);
+    setSyncStatusMsg(i18n.t('common:syncingVod'));
+    setSyncProgress({ done: 0, total: 100 });
     try {
-      const result = await syncVodForSource(source);
+      const result = await syncVodForSource(source, (msg, progress) => {
+        setSyncStatusMsg(msg);
+        if (progress && progress.total > 0) {
+          setSyncProgress({
+            done: Math.min(progress.done, progress.total),
+            total: progress.total,
+          });
+        }
+      });
+      setSyncProgress({ done: 100, total: 100 });
       if (result.success) {
         console.log(`Source ${source.name}: ${result.movieCount} movies, ${result.seriesCount} series synced`);
       } else {
@@ -1667,6 +2055,9 @@ export function SourcesTab({
       console.error('Per-source VOD sync error:', err);
     } finally {
       setVodSyncingSourceId(null);
+      setVodSyncing(false);
+      setSyncStatusMsg(null);
+      setSyncProgress(null);
     }
   }
 
@@ -2048,17 +2439,30 @@ export function SourcesTab({
               </div>
               <div className="section-actions">
                 <button
+                  className="sync-btn sync-btn--all"
+                  onClick={handleSyncAll}
+                  disabled={syncing || vodSyncing || sources.length === 0}
+                  title={i18n.t('settings:sources.syncAllHint', {
+                    defaultValue: 'Sync live channels for every source, then movies & series',
+                  })}
+                  style={{ minWidth: '120px' }}
+                >
+                  {syncing || vodSyncing
+                    ? (syncStatusMsg || i18n.t('common:syncing'))
+                    : i18n.t('settings:sources.syncAll')}
+                </button>
+                <button
                   className="sync-btn"
                   onClick={handleSync}
-                  disabled={syncing || sources.length === 0}
+                  disabled={syncing || vodSyncing || sources.length === 0}
                   style={{ minWidth: '140px' }}
                 >
-                  {syncing ? (syncStatusMsg || i18n.t('common:syncing')) : i18n.t('settings:sources.syncChannels')}
+                  {syncing && !vodSyncing ? (syncStatusMsg || i18n.t('common:syncing')) : i18n.t('settings:sources.syncChannels')}
                 </button>
                 <button
                   className="sync-btn"
                   onClick={handleVodSync}
-                  disabled={vodSyncing || !hasVodSource}
+                  disabled={vodSyncing || syncing || !hasVodSource}
                 >
                   {vodSyncing ? i18n.t('common:syncing') : i18n.t('settings:sources.syncMoviesSeries')}
                 </button>
@@ -2108,6 +2512,7 @@ export function SourcesTab({
                       syncingSourceId={syncingSourceId}
                       vodSyncingSourceId={vodSyncingSourceId}
                       syncStatusMsg={syncStatusMsg}
+                      syncProgress={syncProgress}
                       isDeleting={isDeleting}
                       isExpiryWarning={isExpiryWarning}
                       formatExpiryDate={formatExpiryDate}
@@ -2172,12 +2577,19 @@ export function SourcesTab({
                   >
                     {i18n.t('settings:sources.stalkerPortal')}
                   </button>
+                  <button
+                    type="button"
+                    className={formData.type === 'dispatcharr' ? 'active' : ''}
+                    onClick={() => setFormData({ ...formData, type: 'dispatcharr' })}
+                  >
+                    {i18n.t('settings:sources.dispatcharr')}
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* URL field for Xtream/Stalker sources */}
-            {(formData.type === 'xtream' || formData.type === 'stalker') && (
+            {/* URL field for Xtream/Stalker/Dispatcharr sources */}
+            {(formData.type === 'xtream' || formData.type === 'stalker' || formData.type === 'dispatcharr') && (
               <div className="form-group">
                 <label>{i18n.t('settings:sources.hostUrl')}</label>
                 <input
@@ -2197,6 +2609,9 @@ export function SourcesTab({
                       } catch {}
                     }
                     setFormData({ ...formData, url: value });
+                    if (formData.type === 'dispatcharr') {
+                      invalidateDispatcharrValidation();
+                    }
                   }}
                   placeholder="http://provider.com:8080"
                 />
@@ -2412,6 +2827,361 @@ export function SourcesTab({
               </>
             )}
 
+            {formData.type === 'dispatcharr' && (
+              <>
+                <div className="form-group">
+                  <label>{i18n.t('settings:sources.dispatcharrCredentialMode')}</label>
+                  <div className="type-selector">
+                    <button
+                      type="button"
+                      className={formData.dispatcharrCredentialType === 'usernamePassword' ? 'active' : ''}
+                      onClick={() => {
+                        setFormData({ ...formData, dispatcharrCredentialType: 'usernamePassword' });
+                        invalidateDispatcharrValidation();
+                      }}
+                    >
+                      {i18n.t('settings:sources.dispatcharrUsernamePassword')}
+                    </button>
+                    <button
+                      type="button"
+                      className={formData.dispatcharrCredentialType === 'apiKey' ? 'active' : ''}
+                      onClick={() => {
+                        setFormData({ ...formData, dispatcharrCredentialType: 'apiKey' });
+                        invalidateDispatcharrValidation();
+                      }}
+                    >
+                      {i18n.t('settings:sources.dispatcharrApiKey')}
+                    </button>
+                  </div>
+                </div>
+
+                {formData.dispatcharrCredentialType === 'usernamePassword' ? (
+                  <>
+                    <div className="form-group">
+                      <label>{i18n.t('settings:sources.username')}</label>
+                      <input
+                        type="text"
+                        value={formData.username}
+                        onChange={(e) => {
+                          setFormData({ ...formData, username: e.target.value });
+                          invalidateDispatcharrValidation();
+                        }}
+                        placeholder={i18n.t('settings:sources.usernamePlaceholder')}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>{i18n.t('settings:sources.password')}</label>
+                      <div className="password-input-wrapper">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={formData.password}
+                          onChange={(e) => {
+                            setFormData({ ...formData, password: e.target.value });
+                            invalidateDispatcharrValidation();
+                          }}
+                          placeholder={i18n.t('settings:sources.passwordPlaceholder')}
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle-btn"
+                          onClick={() => setShowPassword(!showPassword)}
+                          title={showPassword ? i18n.t('settings:sources.hidePassword') : i18n.t('settings:sources.showPassword')}
+                        >
+                          {showPassword ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                              <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    {!isEncryptionAvailable && (
+                      <div className="inline-warning">
+                        {i18n.t('settings:sources.passwordNoEncryption')}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="form-group">
+                    <label>{i18n.t('settings:sources.dispatcharrApiKey')}</label>
+                    <div className="password-input-wrapper">
+                      <input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={formData.apiKey}
+                        onChange={(e) => {
+                          setFormData({ ...formData, apiKey: e.target.value });
+                          invalidateDispatcharrValidation();
+                        }}
+                        placeholder={i18n.t('settings:sources.dispatcharrApiKeyPlaceholder')}
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle-btn"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        title={showApiKey ? i18n.t('settings:sources.hidePassword') : i18n.t('settings:sources.showPassword')}
+                      >
+                        {showApiKey ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                          </svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    {!isEncryptionAvailable && (
+                      <div className="inline-warning">
+                        {i18n.t('settings:sources.passwordNoEncryption')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <button
+                    type="button"
+                    className={`test-btn ${dispatcharrTestStatus === 'success' ? 'test-success' : dispatcharrTestStatus === 'error' ? 'test-error' : ''}`}
+                    onClick={handleTestDispatcharrConnection}
+                    disabled={dispatcharrTestStatus === 'testing'}
+                  >
+                    {dispatcharrTestStatus === 'testing'
+                      ? i18n.t('settings:sources.dispatcharrValidating')
+                      : i18n.t('settings:sources.dispatcharrValidate')}
+                  </button>
+                  {dispatcharrTestMessage && (
+                    <span
+                      className="hint"
+                      style={{
+                        display: 'block',
+                        marginTop: '8px',
+                        color: dispatcharrTestStatus === 'error'
+                          ? 'var(--error-color, #f87171)'
+                          : dispatcharrTestStatus === 'success'
+                            ? 'var(--success-color, #4ade80)'
+                            : undefined,
+                      }}
+                    >
+                      {dispatcharrTestMessage}
+                    </span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <div className="dispatcharr-profile-heading">
+                    <span className="dispatcharr-profile-heading-label">
+                      {i18n.t('settings:sources.dispatcharrProfile')}
+                    </span>
+                    <label className="dispatcharr-all-channels-toggle">
+                      <input
+                        type="checkbox"
+                        checked={formData.dispatcharrAllChannels}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setFormData({
+                            ...formData,
+                            dispatcharrAllChannels: checked,
+                            ...(checked
+                              ? {
+                                  dispatcharrSelectedProfileIds: [],
+                                  dispatcharrSelectedProfileNames: {},
+                                }
+                              : {}),
+                          });
+                          if (checked) {
+                            setDispatcharrAvailableHighlight([]);
+                            setDispatcharrSelectedHighlight([]);
+                          }
+                        }}
+                      />
+                      <span>{i18n.t('settings:sources.dispatcharrAllChannels')}</span>
+                    </label>
+                  </div>
+                  {(() => {
+                    const allChannels = formData.dispatcharrAllChannels;
+                    const selectedSet = new Set(formData.dispatcharrSelectedProfileIds);
+                    const available = dispatcharrProfiles.filter((p) => !selectedSet.has(p.id));
+                    // Orphan selected ids not yet in loaded profiles
+                    const orphanSelected = formData.dispatcharrSelectedProfileIds
+                      .filter((id) => !dispatcharrProfiles.some((p) => p.id === id))
+                      .map((id) => ({
+                        id,
+                        name: formData.dispatcharrSelectedProfileNames[String(id)] || String(id),
+                      }));
+                    const selected = [
+                      ...formData.dispatcharrSelectedProfileIds
+                        .map((id) => dispatcharrProfiles.find((p) => p.id === id))
+                        .filter((p): p is DispatcharrProfileOption => !!p),
+                      ...orphanSelected,
+                    ];
+
+                    const moveToSelected = (ids: number[]) => {
+                      if (allChannels || ids.length === 0) return;
+                      const nextIds = [...formData.dispatcharrSelectedProfileIds];
+                      const nextNames = { ...formData.dispatcharrSelectedProfileNames };
+                      for (const id of ids) {
+                        if (!nextIds.includes(id)) nextIds.push(id);
+                        const profile =
+                          dispatcharrProfiles.find((p) => p.id === id) ||
+                          orphanSelected.find((p) => p.id === id);
+                        if (profile) nextNames[String(id)] = profile.name;
+                      }
+                      setFormData({
+                        ...formData,
+                        dispatcharrSelectedProfileIds: nextIds,
+                        dispatcharrSelectedProfileNames: nextNames,
+                      });
+                      setDispatcharrAvailableHighlight([]);
+                    };
+
+                    const moveToAvailable = (ids: number[]) => {
+                      if (allChannels || ids.length === 0) return;
+                      const remove = new Set(ids);
+                      const nextIds = formData.dispatcharrSelectedProfileIds.filter(
+                        (id) => !remove.has(id)
+                      );
+                      const nextNames = { ...formData.dispatcharrSelectedProfileNames };
+                      for (const id of ids) delete nextNames[String(id)];
+                      setFormData({
+                        ...formData,
+                        dispatcharrSelectedProfileIds: nextIds,
+                        dispatcharrSelectedProfileNames: nextNames,
+                      });
+                      setDispatcharrSelectedHighlight([]);
+                    };
+
+                    return (
+                      <div
+                        className={`dispatcharr-profile-transfer${allChannels ? ' is-disabled' : ''}`}
+                        aria-disabled={allChannels}
+                      >
+                        <div className="dispatcharr-profile-col">
+                          <div className="dispatcharr-profile-col-header">
+                            {i18n.t('settings:sources.dispatcharrAvailableLists')}
+                          </div>
+                          <ul className="dispatcharr-profile-list" role="listbox" aria-multiselectable>
+                            {available.length === 0 && (
+                              <li className="dispatcharr-profile-empty">
+                                {dispatcharrProfiles.length === 0
+                                  ? i18n.t('settings:sources.dispatcharrProfilesNeedTest')
+                                  : i18n.t('settings:sources.dispatcharrNoAvailableLists')}
+                              </li>
+                            )}
+                            {available.map((profile) => {
+                              const highlighted = dispatcharrAvailableHighlight.includes(profile.id);
+                              return (
+                                <li
+                                  key={profile.id}
+                                  role="option"
+                                  aria-selected={highlighted}
+                                  className={`dispatcharr-profile-item${highlighted ? ' is-selected' : ''}`}
+                                  onClick={() => {
+                                    if (allChannels) return;
+                                    setDispatcharrAvailableHighlight((prev) =>
+                                      prev.includes(profile.id)
+                                        ? prev.filter((id) => id !== profile.id)
+                                        : [...prev, profile.id]
+                                    );
+                                  }}
+                                  onDoubleClick={() => moveToSelected([profile.id])}
+                                >
+                                  {profile.name}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+
+                        <div className="dispatcharr-profile-actions">
+                          <button
+                            type="button"
+                            className="dispatcharr-profile-move-btn"
+                            disabled={allChannels || dispatcharrAvailableHighlight.length === 0}
+                            title={i18n.t('settings:sources.dispatcharrMoveSelected')}
+                            onClick={() => moveToSelected(dispatcharrAvailableHighlight)}
+                          >
+                            &gt;
+                          </button>
+                          <button
+                            type="button"
+                            className="dispatcharr-profile-move-btn"
+                            disabled={allChannels || available.length === 0}
+                            title={i18n.t('settings:sources.dispatcharrMoveAll')}
+                            onClick={() => moveToSelected(available.map((p) => p.id))}
+                          >
+                            &gt;&gt;
+                          </button>
+                          <button
+                            type="button"
+                            className="dispatcharr-profile-move-btn"
+                            disabled={allChannels || dispatcharrSelectedHighlight.length === 0}
+                            title={i18n.t('settings:sources.dispatcharrRemoveSelected')}
+                            onClick={() => moveToAvailable(dispatcharrSelectedHighlight)}
+                          >
+                            &lt;
+                          </button>
+                          <button
+                            type="button"
+                            className="dispatcharr-profile-move-btn"
+                            disabled={allChannels || selected.length === 0}
+                            title={i18n.t('settings:sources.dispatcharrRemoveAll')}
+                            onClick={() => moveToAvailable(selected.map((p) => p.id))}
+                          >
+                            &lt;&lt;
+                          </button>
+                        </div>
+
+                        <div className="dispatcharr-profile-col">
+                          <div className="dispatcharr-profile-col-header">
+                            {i18n.t('settings:sources.dispatcharrSelectedLists')}
+                          </div>
+                          <ul className="dispatcharr-profile-list" role="listbox" aria-multiselectable>
+                            {selected.length === 0 && (
+                              <li className="dispatcharr-profile-empty">
+                                {i18n.t('settings:sources.dispatcharrNoSelectedLists')}
+                              </li>
+                            )}
+                            {selected.map((profile) => {
+                              const highlighted = dispatcharrSelectedHighlight.includes(profile.id);
+                              return (
+                                <li
+                                  key={profile.id}
+                                  role="option"
+                                  aria-selected={highlighted}
+                                  className={`dispatcharr-profile-item${highlighted ? ' is-selected' : ''}`}
+                                  onClick={() => {
+                                    if (allChannels) return;
+                                    setDispatcharrSelectedHighlight((prev) =>
+                                      prev.includes(profile.id)
+                                        ? prev.filter((id) => id !== profile.id)
+                                        : [...prev, profile.id]
+                                    );
+                                  }}
+                                  onDoubleClick={() => moveToAvailable([profile.id])}
+                                >
+                                  {profile.name}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <span className="hint">{i18n.t('settings:sources.dispatcharrProfileHint')}</span>
+                </div>
+              </>
+            )}
+
             {formData.type === 'xtream' && (
               <>
                 <div className="form-group">
@@ -2570,7 +3340,9 @@ export function SourcesTab({
                   ? i18n.t('settings:sources.autoLoadEpgHintXtream')
                   : formData.type === 'stalker'
                     ? i18n.t('settings:sources.autoLoadEpgHintStalker')
-                    : i18n.t('settings:sources.autoLoadEpgHintM3U')}
+                    : formData.type === 'dispatcharr'
+                      ? i18n.t('settings:sources.autoLoadEpgHintDispatcharr')
+                      : i18n.t('settings:sources.autoLoadEpgHintM3U')}
               </span>
             </div>
 
@@ -2890,7 +3662,7 @@ export function SourcesTab({
               <span className="hint">{i18n.t('settings:sources.customRefreshHint')}</span>
             </div>
 
-            {formData.type === 'xtream' && !formData.liveTvOnly && (
+            {(formData.type === 'xtream' || formData.type === 'dispatcharr') && !formData.liveTvOnly && (
               <div className="form-group">
                 <label>{i18n.t('settings:sources.customVodRefresh')}</label>
                 <input
@@ -2945,7 +3717,19 @@ export function SourcesTab({
               <button type="button" className="cancel-btn" onClick={handleCancel} disabled={isSaving}>
                 {i18n.t('common:cancel')}
               </button>
-              <button type="submit" className="save-btn" disabled={isSaving}>
+              <button
+                type="submit"
+                className="save-btn"
+                disabled={
+                  isSaving ||
+                  (formData.type === 'dispatcharr' && dispatcharrTestStatus !== 'success')
+                }
+                title={
+                  formData.type === 'dispatcharr' && dispatcharrTestStatus !== 'success'
+                    ? i18n.t('settings:sources.errDispatcharrValidateRequired')
+                    : undefined
+                }
+              >
                 {isSaving ? i18n.t('common:saving') : (editingId ? i18n.t('common:saveChanges') : i18n.t('settings:sources.addSource'))}
               </button>
             </div>
@@ -3421,7 +4205,7 @@ export function SourcesTab({
                         onChange={() => toggleEpgSourceId(source.id)}
                       />
                       <span>{source.name}</span>
-                      <span className="source-type" data-source-type={source.type} style={{ marginLeft: 'auto' }}>{source.type.toUpperCase()}</span>
+                      <span className="source-type" data-source-type={source.type} style={{ marginLeft: 'auto' }}>{sourceTypeBadgeLabel(source.type)}</span>
                     </label>
                   ))}
                 </div>

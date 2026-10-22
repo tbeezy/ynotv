@@ -26,3 +26,13 @@ export type {
   StalkerSearchOptions,
   StalkerSearchResult,
 } from './stalker-client';
+
+// Dispatcharr Direct Connect Client
+export { DispatcharrClient, mapDispatcharrEpgGridToPrograms } from './dispatcharr-client';
+export type {
+  DispatcharrConfig,
+  DispatcharrChannelProfile,
+  DispatcharrUser,
+  DispatcharrEpgGridProgram,
+  DispatcharrEpgGridOptions,
+} from './dispatcharr-client';

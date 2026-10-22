@@ -13,6 +13,11 @@ import { useSettingsStore } from '../stores/settingsStore';
 import type { Source } from '@ynotv/core';
 import { buildSearchQueryClauses, getSearchVariants } from '../utils/searchNormalization';
 import { parseCategoryIds } from '../utils/channelPath';
+import {
+  dispatcharrProfileCategoryPrefixForSource,
+  expandDispatcharrProfileSources,
+  resolveRealDispatcharrSourceId,
+} from '../utils/dispatcharrProfiles';
 // Hook to get enabled source IDs (for filtering data from disabled sources)
 // Returns null during loading to avoid hiding all data
 export function useEnabledSources(): Set<string> | null {
@@ -58,10 +63,17 @@ export function useSourceNameMap(): Map<string, string> | null {
       if (result.data) {
         const map = new Map<string, string>();
         map.set('local', 'Local');
-        for (const source of result.data) {
-          if (source.enabled !== false) {
-            map.set(source.id, source.name);
-          }
+        const enabled = result.data.filter((s: Source) => s.enabled !== false);
+        for (const source of enabled) {
+          map.set(source.id, source.name);
+        }
+        // Virtual Live TV headers for Dispatcharr multi-profile sources
+        const expanded = expandDispatcharrProfileSources(
+          enabled.map((s: Source) => ({ sourceId: s.id, categories: [] })),
+          enabled
+        );
+        for (const [id, name] of Object.entries(expanded.virtualNames)) {
+          map.set(id, name);
         }
         cachedSourceNameMap = map;
         cachedSourceVersion = version;
@@ -491,11 +503,19 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         orderingIsFixed = true;
       } else if (categoryId && categoryId.startsWith('__favsrc_')) {
         // Per-source favorites: favorites scoped to a single source
-        const sourceId = categoryId.replace('__favsrc_', '');
+        // (virtual Dispatcharr profile headers use `{sourceId}::dp:{profileId}`).
+        const ownerId = categoryId.replace('__favsrc_', '');
+        const realSourceId = resolveRealDispatcharrSourceId(ownerId);
+        const profilePrefix = dispatcharrProfileCategoryPrefixForSource(ownerId);
         results = await db.channels.whereRaw(
           `(is_favorite = 1 OR is_favorite = true) AND source_id = ?`,
-          [sourceId]
+          [realSourceId]
         ).toArray();
+        if (profilePrefix) {
+          results = results.filter((ch) =>
+            parseCategoryIds(ch.category_ids).some((id) => id.startsWith(profilePrefix))
+          );
+        }
         // Apply filter words from each channel's home category before ordering,
         // matching the global Favorites and standard category views.
         results = await applyHomeCategoryFilterWords(results);
@@ -505,7 +525,7 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         if (alwaysSortFavoritesAlphabetically) {
           results.sort((a, b) => (a.alias || a.name).localeCompare(b.alias || b.name));
         } else {
-          const savedOrder = await getFavoriteSourceOrder(sourceId);
+          const savedOrder = await getFavoriteSourceOrder(realSourceId);
           if (savedOrder.length > 0) {
             const byId = new Map(results.map(ch => [ch.stream_id, ch]));
             const ordered: StoredChannel[] = [];
@@ -639,11 +659,19 @@ export function useChannels(categoryId: string | null, sortOrder: 'alphabetical'
         }
       } else if (categoryId && categoryId.startsWith('__allsrc_')) {
         // All Channels for a single source
-        const sourceId = categoryId.replace('__allsrc_', '');
+        // (virtual Dispatcharr profile headers use `{sourceId}::dp:{profileId}`).
+        const ownerId = categoryId.replace('__allsrc_', '');
+        const realSourceId = resolveRealDispatcharrSourceId(ownerId);
+        const profilePrefix = dispatcharrProfileCategoryPrefixForSource(ownerId);
         results = await db.channels.whereRaw(
           `source_id = ? AND (enabled IS NULL OR enabled NOT IN (0, '0', 'false'))`,
-          [sourceId]
+          [realSourceId]
         ).toArray();
+        if (profilePrefix) {
+          results = results.filter((ch) =>
+            parseCategoryIds(ch.category_ids).some((id) => id.startsWith(profilePrefix))
+          );
+        }
       } else if (!categoryId) {
         // All Channels view
         if (enabledSourceIds) {

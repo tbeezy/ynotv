@@ -324,11 +324,6 @@
   letter-spacing: 0.03em;
 }
 
-.section-actions {
-  display: flex;
-  gap: 8px;
-}
-
 .sync-btn {
   background: linear-gradient(135deg, var(--surface-glow, rgba(0, 212, 255, 0.2)), var(--accent-glow, rgba(0, 212, 255, 0.1)));
   color: var(--accent-primary, #00d4ff);

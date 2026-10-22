@@ -65,11 +65,26 @@ class DbEvents {
         // events. Table-scoped subscribers get one event per affected table;
         // the live-query 50ms debounce folds them into a single re-run.
         if (this.gateDepth === 0 && this.gatedTables.size > 0) {
-            const tables = Array.from(this.gatedTables);
-            this.gatedTables.clear();
+            this.flushGatedNotifications();
+        }
+    }
+
+    /**
+     * Deliver coalesced table events while a sync gate may still be open.
+     * Used by progressive VOD sync so the library can show rows mid-import.
+     */
+    flushGatedNotifications() {
+        if (this.gatedTables.size === 0) return;
+        const tables = Array.from(this.gatedTables);
+        this.gatedTables.clear();
+        const savedDepth = this.gateDepth;
+        this.gateDepth = 0;
+        try {
             for (const t of tables) {
                 this.notify(t, 'update');
             }
+        } finally {
+            this.gateDepth = savedDepth;
         }
     }
 

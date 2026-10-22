@@ -12,7 +12,7 @@
  * All 4 callers now call resolvePlayUrl() instead.
  */
 
-import { StalkerClient } from '@ynotv/local-adapter';
+import { StalkerClient, DispatcharrClient } from '@ynotv/local-adapter';
 import { useSettingsStore } from '../stores/settingsStore';
 
 // ---------------------------------------------------------------------------
@@ -22,13 +22,15 @@ import { useSettingsStore } from '../stores/settingsStore';
 /** The shape of a source as returned by window.storage.getSource() */
 interface SourceData {
     id: string;
-    type: 'xtream' | 'm3u' | 'stalker' | 'epg';
+    type: 'xtream' | 'm3u' | 'stalker' | 'dispatcharr' | 'epg';
     url: string;
     username?: string;
     password?: string;
     mac?: string;
     user_agent?: string;
     name?: string;
+    api_key?: string;
+    dispatcharr_credential_type?: 'usernamePassword' | 'apiKey';
 }
 
 /** Extra options for catchup / timeshift URLs */
@@ -57,6 +59,11 @@ export interface ResolvedUrl {
     userAgent?: string;
     /** Source name (for multiview display label) */
     sourceName?: string | null;
+    /**
+     * Extra HTTP headers for MPV (e.g. Dispatcharr X-API-Key on /proxy/ URLs).
+     * Formatted into mpv `http-header-fields` before load.
+     */
+    httpHeaders?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,12 +125,61 @@ export async function resolvePlayUrl(
         if (!userAgent) {
             if (sourceData.type === 'stalker') {
                 userAgent = 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3';
-            } else if (sourceData.type === 'xtream' || sourceData.type === 'm3u') {
+            } else if (
+                sourceData.type === 'xtream' ||
+                sourceData.type === 'm3u' ||
+                sourceData.type === 'dispatcharr'
+            ) {
                 userAgent = 'VLC/3.0.18 LibVLC/3.0.18';
             }
         }
         const sourceName: string | null = sourceData.name ?? null;
         let resolvedUrl = rawUrl;
+
+        // ── Dispatcharr Direct Connect ───────────────────────────────────────────
+        // Proxy URLs (/proxy/...) need auth resolution to a playable session URL.
+        if (sourceData.type === 'dispatcharr') {
+            if (!rawUrl?.trim()) {
+                throw new Error('Dispatcharr stream URL is empty (channel/VOD missing uuid)');
+            }
+            const client = new DispatcharrClient(
+                {
+                    baseUrl: sourceData.url,
+                    username: sourceData.username,
+                    password: sourceData.password,
+                    apiKey: sourceData.api_key,
+                    credentialType: sourceData.dispatcharr_credential_type,
+                    userAgent: sourceData.user_agent,
+                },
+                sourceData.id,
+            );
+            // Skip login round-trip when a durable API key is already stored.
+            if (!sourceData.api_key?.trim()) {
+                await client.bootstrapAuth();
+            }
+            // Live proxy: MPEG-TS first, then HLS fallbacks (see buildLiveUrlAttempts).
+            // VOD: remint catalog-time session id, then resolve redirects.
+            const isLiveProxy = /\/proxy\/(?:ts|hls)\//i.test(rawUrl);
+            const playbackRaw = isLiveProxy
+                ? rawUrl
+                : DispatcharrClient.remintVodSessionUrl(rawUrl);
+            resolvedUrl = isLiveProxy
+                ? await client.resolveLivePlaybackUrl(playbackRaw)
+                : await client.resolvePlaybackUrl(playbackRaw);
+            // When playback stays on the Dispatcharr proxy (no CDN redirect),
+            // MPV must send the same auth headers the resolver used.
+            const httpHeaders = client.needsPlaybackAuthHeaders(resolvedUrl)
+                ? client.getPlaybackHttpHeaders()
+                : undefined;
+            return {
+                url: resolvedUrl,
+                userAgent,
+                sourceName,
+                ...(httpHeaders && Object.keys(httpHeaders).length > 0
+                    ? { httpHeaders }
+                    : {}),
+            };
+        }
 
         // ── Stalker sources ──────────────────────────────────────────────────────
         // Stalker URLs are opaque tokens like "stalker_ch:12345" or "/media/…"

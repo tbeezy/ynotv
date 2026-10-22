@@ -1,6 +1,13 @@
 import { db, clearSourceData, clearVodData, restoreUserCustomizations, type SourceMeta, type StoredProgram, type StoredMovie, type StoredSeries, type StoredEpisode, type VodCategory } from './index';
 import i18n, { translateNativeError } from '../i18n';
-import { fetchAndParseM3U, parseM3U, XtreamClient, StalkerClient } from '@ynotv/local-adapter';
+import {
+  fetchAndParseM3U,
+  parseM3U,
+  XtreamClient,
+  StalkerClient,
+  DispatcharrClient,
+  mapDispatcharrEpgGridToPrograms,
+} from '@ynotv/local-adapter';
 import {
   isLocalPlaylistSource,
   isLegacyLocalImport,
@@ -31,6 +38,7 @@ import {
   GLOBAL_EPG_PIN_PREFIX,
   type ServableFeedIds,
 } from '../utils/epgBackupSanitize';
+import { getSelectedDispatcharrProfileIds } from '../utils/dispatcharrProfiles';
 import { effectiveMatchName, buildAliasMatchNames } from '../utils/epgMatchName';
 
 import { invoke } from '@tauri-apps/api/core';
@@ -1034,6 +1042,185 @@ async function syncEpgForStalker(source: Source, channels: Channel[]): Promise<n
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error(`[EPG] Stalker EPG fetch FAILED: ${errMsg}`);
     debugLog(`Stalker EPG fetch FAILED: ${errMsg}`, 'epg');
+    debugLog('Keeping existing EPG data', 'epg');
+    return 0;
+  }
+}
+
+/**
+ * Sync EPG for a Dispatcharr Direct Connect source via GET /api/epg/grid/.
+ * Maps grid programmes (tvg_id / channel uuid) onto local channel stream_ids.
+ */
+async function syncEpgForDispatcharr(
+  source: Source,
+  channels: Channel[],
+  sharedClient?: DispatcharrClient | null
+): Promise<number> {
+  console.log(`[EPG] Starting Dispatcharr EPG sync for source: ${source.name || source.id}`);
+  console.log(`[EPG] Total channels: ${channels.length}`);
+  debugLog(`Starting EPG sync for Dispatcharr source: ${source.name || source.id}`, 'epg');
+
+  const client =
+    sharedClient ??
+    new DispatcharrClient(
+      {
+        baseUrl: source.url,
+        username: source.username,
+        password: source.password,
+        apiKey: source.api_key,
+        credentialType: source.dispatcharr_credential_type,
+        userAgent: source.user_agent,
+      },
+      source.id
+    );
+
+  try {
+    if (!sharedClient) {
+      await client.bootstrapAuth();
+    }
+
+    // Lookback: Dispatcharr stores catchup_days on channels (mapped to tv_archive_duration).
+    // Cap lookback — unscoped grids are huge; profile-scoped ones stay small.
+    const maxCatchupDays = channels.reduce((max, ch) => {
+      const days = typeof ch.tv_archive_duration === 'number' ? ch.tv_archive_duration : 0;
+      return Math.max(max, days);
+    }, 0);
+    const selectedProfileIds = getSelectedDispatcharrProfileIds(source);
+    const hasProfileScope = selectedProfileIds.length > 0;
+    const prevDays = Math.min(hasProfileScope ? 7 : 2, Math.max(1, maxCatchupDays || 1));
+    const days = 2;
+
+    console.log(
+      `[EPG] Fetching Dispatcharr grid (days=${days}, prev_days=${prevDays}, profiles=${hasProfileScope ? selectedProfileIds.join(',') : 'all'})...`
+    );
+    debugLog(
+      `Fetching Dispatcharr EPG grid (days=${days}, prev_days=${prevDays}, profiles=${hasProfileScope ? selectedProfileIds.join(',') : 'all'})...`,
+      'epg'
+    );
+
+    // One profile → scoped grid; multiple → fetch each and merge; none → unscoped.
+    let gridPrograms: Awaited<ReturnType<DispatcharrClient['getEpgGrid']>> = [];
+    if (!hasProfileScope) {
+      gridPrograms = await client.getEpgGrid({
+        days,
+        prevDays,
+        channelProfileId: null,
+      });
+    } else if (selectedProfileIds.length === 1) {
+      gridPrograms = await client.getEpgGrid({
+        days,
+        prevDays,
+        channelProfileId: selectedProfileIds[0],
+      });
+    } else {
+      const seen = new Set<string>();
+      for (const profileId of selectedProfileIds) {
+        try {
+          const chunk = await client.getEpgGrid({
+            days,
+            prevDays,
+            channelProfileId: profileId,
+          });
+          for (const prog of chunk) {
+            const key =
+              prog.id != null
+                ? `id:${prog.id}`
+                : `${prog.tvg_id || ''}|${prog.start_time || ''}|${prog.end_time || ''}|${prog.title || ''}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            gridPrograms.push(prog);
+          }
+        } catch (err) {
+          console.warn(`[EPG] Dispatcharr grid fetch failed for profile ${profileId}:`, err);
+          debugLog(`Dispatcharr EPG grid failed for profile ${profileId}: ${err}`, 'epg');
+        }
+      }
+    }
+
+    console.log(`[EPG] Received ${gridPrograms.length} programme(s) from Dispatcharr grid`);
+    debugLog(`Received ${gridPrograms.length} programmes from Dispatcharr grid`, 'epg');
+
+    if (gridPrograms.length === 0) {
+      console.warn(`[EPG] No EPG data returned from Dispatcharr - keeping existing data`);
+      debugLog('No EPG data returned from Dispatcharr, keeping existing data', 'epg');
+      return 0;
+    }
+
+    const { pins: feedPinMap } = await loadServableFeedPins();
+    const pinnedElsewhere = new Set<string>();
+    for (const ch of channels) {
+      const pin = feedPinMap.get(ch.stream_id);
+      if (pin && pin !== source.id) {
+        pinnedElsewhere.add(ch.stream_id);
+      }
+    }
+
+    const mapped = mapDispatcharrEpgGridToPrograms(channels, gridPrograms, source.id);
+    const storedPrograms: StoredProgram[] = [];
+    let skippedByPin = 0;
+
+    for (const p of mapped) {
+      if (pinnedElsewhere.has(p.stream_id)) {
+        skippedByPin++;
+        continue;
+      }
+      storedPrograms.push({
+        id: p.id,
+        stream_id: p.stream_id,
+        title: p.title,
+        subtitle: p.subtitle,
+        description: p.description || '',
+        start: p.start,
+        end: p.end,
+        source_id: p.source_id,
+      });
+    }
+
+    console.log(
+      `[EPG] Mapped ${storedPrograms.length} programs from ${gridPrograms.length} grid rows` +
+        `${skippedByPin > 0 ? ` (${skippedByPin} skipped by feed locks)` : ''}`
+    );
+    debugLog(
+      `Mapped ${storedPrograms.length} Dispatcharr programs` +
+        `${skippedByPin > 0 ? `; ${skippedByPin} pinned elsewhere` : ''}`,
+      'epg'
+    );
+
+    if (storedPrograms.length === 0) {
+      console.warn(`[EPG] WARNING: No programs matched local channels! Keeping existing EPG data`);
+      debugLog('WARNING: No Dispatcharr programs matched channels, keeping existing data', 'epg');
+      return 0;
+    }
+
+    debugLog('Storing Dispatcharr EPG data with optimized bulk operation...', 'epg');
+
+    const bulkPrograms = storedPrograms.map((p) => ({
+      id: p.id,
+      stream_id: p.stream_id,
+      title: p.title,
+      subtitle: p.subtitle || '',
+      description: p.description || '',
+      start: p.start instanceof Date ? p.start.toISOString() : p.start,
+      end: p.end instanceof Date ? p.end.toISOString() : p.end,
+      source_id: p.source_id,
+    }));
+
+    const result = await bulkOps.replacePrograms(source.id, bulkPrograms);
+
+    console.log(
+      `[EPG] Dispatcharr EPG sync COMPLETE: ${result.inserted} programs inserted, ${result.deleted} old programs deleted`
+    );
+    debugLog(`Dispatcharr EPG sync complete: ${storedPrograms.length} programs stored`, 'epg');
+
+    if (result.inserted > 0) {
+      dbEvents.notify('programs', 'add');
+    }
+
+    return storedPrograms.length;
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[EPG] Dispatcharr EPG fetch FAILED: ${errMsg}`);
+    debugLog(`Dispatcharr EPG fetch FAILED: ${errMsg}`, 'epg');
     debugLog('Keeping existing EPG data', 'epg');
     return 0;
   }
@@ -2500,6 +2687,8 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
     let channels: Channel[] = [];
     let categories: Category[] = [];
     let epgUrl: string | undefined;
+    /** Authenticated Dispatcharr client from channel sync — reused for EPG grid. */
+    let dispatcharrClient: DispatcharrClient | null = null;
     // Set when a local playlist couldn't be read as a playlist this time (its
     // file is missing and the kept copy carried it, or neither produced
     // channels): the source then keeps its stale stamp so the next cycle retries.
@@ -2848,6 +3037,116 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
 
       // Store expiry date in a variable to use later when updating sourcesMeta
       (source as any)._stalker_expiry = expiryDate;
+    } else if (source.type === 'dispatcharr') {
+      const hasApiKey = Boolean(source.api_key?.trim());
+      const hasUserPass = Boolean(source.username?.trim() && source.password?.trim());
+      if (!hasApiKey && !hasUserPass) {
+        throw new Error('Dispatcharr source requires an API key or username and password');
+      }
+
+      debugLog(`Initializing Dispatcharr client for: ${source.url}`, 'sync');
+      onProgress?.('Connecting to Dispatcharr...');
+      const client = new DispatcharrClient(
+        {
+          baseUrl: source.url,
+          username: source.username,
+          password: source.password,
+          apiKey: source.api_key,
+          credentialType: source.dispatcharr_credential_type,
+          userAgent: source.user_agent,
+        },
+        source.id
+      );
+      client.setProgressHandler(onProgress);
+      dispatcharrClient = client;
+
+      // bootstrapAuth validates credentials (login or API key) — no separate testConnection.
+      const user = await client.bootstrapAuth();
+      const obtainedKey = client.getApiKey();
+      let authDirty = false;
+
+      if (obtainedKey && obtainedKey !== source.api_key) {
+        source.api_key = obtainedKey;
+        authDirty = true;
+      }
+      // Prefer live /users/me/ channel_profiles over stale persisted IDs.
+      if (user?.channel_profiles && Array.isArray(user.channel_profiles)) {
+        const prev = source.dispatcharr_channel_profile_ids || [];
+        const next = user.channel_profiles;
+        const same =
+          prev.length === next.length && prev.every((id, i) => id === next[i]);
+        if (!same) {
+          source.dispatcharr_channel_profile_ids = next;
+          authDirty = true;
+        }
+      } else if ((source.dispatcharr_channel_profile_ids?.length ?? 0) > 0) {
+        // Clear stale account profiles when /me/ returns none.
+        source.dispatcharr_channel_profile_ids = [];
+        authDirty = true;
+      }
+      if (authDirty && window.storage?.saveSource) {
+        try {
+          await window.storage.saveSource({
+            ...source,
+            api_key: source.api_key,
+            dispatcharr_channel_profile_ids: source.dispatcharr_channel_profile_ids ?? [],
+          });
+        } catch (saveErr) {
+          debugLog(`Failed to persist Dispatcharr auth/profile metadata: ${saveErr}`, 'sync');
+        }
+      }
+
+      debugLog('Fetching Dispatcharr channel groups...', 'sync');
+      onProgress?.(i18n.t('common:fetchingCategories'));
+      categories = await client.getChannelGroups();
+      debugLog(`Got ${categories.length} categories`, 'sync');
+
+      debugLog('Fetching Dispatcharr live channels...', 'sync');
+      onProgress?.(i18n.t('common:fetchingChannels'));
+      channels = await client.getLiveChannels();
+      // Live account profiles from /me/ take precedence over any stale stored list.
+      const accountProfileIds =
+        user?.channel_profiles ?? source.dispatcharr_channel_profile_ids ?? [];
+      const selectedProfileIds = getSelectedDispatcharrProfileIds(source);
+      channels = await client.filterChannelsByProfiles(channels, {
+        accountProfileIds,
+        selectedProfileIds,
+      });
+      debugLog(`Got ${channels.length} channels after profile filter`, 'sync');
+
+      if (selectedProfileIds.length > 0) {
+        // Stamp composite dp:{profileId}:{groupId} categories so Live TV can
+        // show one sidebar group per selected list (channels in multiple lists
+        // appear under each).
+        const membershipByProfile = await client.getProfileMembershipMaps(selectedProfileIds);
+        const scoped = client.applyProfileScopedCategories(
+          channels,
+          categories,
+          membershipByProfile
+        );
+        channels = scoped.channels;
+        categories = scoped.categories;
+        debugLog(
+          `Stamped ${categories.length} profile-scoped categories for profiles [${selectedProfileIds.join(',')}]`,
+          'sync'
+        );
+      } else {
+        // Only keep categories referenced by the filtered channel set (AerioTV parity).
+        const usedGroupIds = new Set(channels.flatMap((ch) => ch.category_ids ?? []));
+        const beforeCatCount = categories.length;
+        categories = categories.filter((cat) => usedGroupIds.has(cat.category_id));
+        if (beforeCatCount !== categories.length) {
+          debugLog(
+            `Pruned categories ${beforeCatCount} → ${categories.length} to match profile channels`,
+            'sync'
+          );
+        }
+      }
+
+      // Optional XMLTV override; built-in guide uses /api/epg/grid/ when auto-load is on.
+      if (source.epg_url) {
+        epgUrl = fixDuplicatedUrl(source.epg_url) || source.epg_url;
+      }
     } else {
       throw new Error(i18n.t('common:unsupportedSourceType', { type: source.type }));
     }
@@ -3137,7 +3436,9 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
 
     // Fetch EPG if enabled (skip for VOD-only sources)
     let programCount = 0;
-    const shouldLoadEpg = !source.vod_only && (source.auto_load_epg ?? (source.type === 'xtream'));
+    const shouldLoadEpg =
+      !source.vod_only &&
+      (source.auto_load_epg ?? (source.type === 'xtream' || source.type === 'dispatcharr'));
 
     console.log(`[EPG] EPG sync decision for ${source.name}: vod_only=${source.vod_only}, auto_load_epg=${source.auto_load_epg}, shouldLoadEpg=${shouldLoadEpg}`);
     console.log(`[EPG] Debug - epgUrl (from sourceMeta/M3U): ${epgUrl || 'undefined'}`);
@@ -3162,14 +3463,22 @@ async function _doSyncSourceImpl(source: Source, onProgress?: (msg: string) => v
       programCount = await syncEpgForStalker(source, channels);
       console.timeEnd(timerLabel('sync-epg-insert'));
       debugLog(`Stalker EPG sync complete: ${programCount} programs`, 'epg');
+    } else if (shouldLoadEpg && source.type === 'dispatcharr' && !epgUrl) {
+      // Dispatcharr: built-in /api/epg/grid/ (XMLTV override handled below via epgUrl)
+      debugLog('Syncing EPG for Dispatcharr source via grid API...', 'epg');
+      onProgress?.(i18n.t('common:updatingEpgShort'));
+      console.time(timerLabel('sync-epg-insert'));
+      programCount = await syncEpgForDispatcharr(source, channels, dispatcharrClient);
+      console.timeEnd(timerLabel('sync-epg-insert'));
+      debugLog(`Dispatcharr EPG sync complete: ${programCount} programs`, 'epg');
     } else if (shouldLoadEpg && epgUrl) {
-      // M3U with EPG URL: fetch XMLTV from the EPG URL
-      debugLog('Syncing EPG for M3U source...', 'epg');
+      // M3U / Dispatcharr XMLTV override: fetch XMLTV from the EPG URL
+      debugLog('Syncing EPG from XMLTV URL...', 'epg');
       onProgress?.(i18n.t('common:updatingEpgShort'));
       console.time(timerLabel('sync-epg-insert'));
       programCount = await syncEpgFromUrl(source, epgUrl, channels);
       console.timeEnd(timerLabel('sync-epg-insert'));
-      debugLog(`M3U EPG sync complete: ${programCount} programs`, 'epg');
+      debugLog(`XMLTV EPG sync complete: ${programCount} programs`, 'epg');
     }
 
     // If user provided a manual EPG URL override, use that (skip for VOD-only sources)
@@ -3525,14 +3834,372 @@ export async function getSyncStatus(): Promise<SourceMeta[]> {
 // VOD Sync Functions
 // ===========================================================================
 
-// Sync VOD movies for a single source (Xtream or Stalker)
+export type VodProgressCallback = (
+  msg: string,
+  progress?: { done: number; total: number }
+) => void;
+
+/** Upsert movie pages + flush live-query gate so library UI can show rows mid-sync. */
+async function upsertMoviePageProgressive(
+  sourceId: string,
+  movies: Movie[],
+  existingMap: Map<string, any>,
+  seenIds: Set<string>
+): Promise<number> {
+  const bulkMovies = movies.map((movie) => {
+    const existing = existingMap.get(movie.stream_id);
+    if ((movie as any).rating_5based && !movie.rating) {
+      (movie as any).rating = (movie as any).rating_5based;
+    }
+    const item = {
+      ...movie,
+      tmdb_id: existing?.tmdb_id ?? movie.tmdb_id,
+      imdb_id: existing?.imdb_id,
+      backdrop_path: existing?.backdrop_path,
+      popularity: existing?.popularity,
+      added: movie.added || movie.last_modified || existing?.added,
+    };
+    const sanitized = sanitizeMovie(item, existing);
+    seenIds.add(sanitized.stream_id);
+    return {
+      stream_id: sanitized.stream_id,
+      source_id: sanitized.source_id || sourceId,
+      category_ids: sanitized.category_ids,
+      name: sanitized.name,
+      tmdb_id: sanitized.tmdb_id,
+      imdb_id: sanitized.imdb_id,
+      added: typeof sanitized.added === 'string' ? sanitized.added : sanitized.added?.toISOString?.(),
+      backdrop_path: sanitized.backdrop_path,
+      popularity: sanitized.popularity,
+      match_attempted:
+        typeof sanitized.match_attempted === 'string'
+          ? sanitized.match_attempted
+          : sanitized.match_attempted?.toISOString?.(),
+      container_extension: (sanitized as any).container_extension || 'mp4',
+      rating: (sanitized as any).rating,
+      director: (sanitized as any).director,
+      year:
+        typeof (sanitized as any).year === 'string'
+          ? parseInt((sanitized as any).year, 10) || undefined
+          : (sanitized as any).year,
+      cast: (sanitized as any).cast,
+      plot: (sanitized as any).plot,
+      genre: (sanitized as any).genre,
+      duration_secs: (sanitized as any).duration_secs,
+      duration: (sanitized as any).duration,
+      stream_icon: (sanitized as any).stream_icon,
+      direct_url: (sanitized as any).direct_url,
+      release_date: (sanitized as any).release_date,
+      title: (sanitized as any).title,
+    };
+  });
+  await bulkOps.upsertMovies(bulkMovies);
+  dbEvents.flushGatedNotifications();
+  return bulkMovies.length;
+}
+
+async function upsertSeriesPageProgressive(
+  sourceId: string,
+  seriesPage: Series[],
+  existingMap: Map<string, any>,
+  seenIds: Set<string>
+): Promise<number> {
+  const bulkSeries = seriesPage.map((s) => {
+    const existing = existingMap.get(s.series_id);
+    const item = {
+      ...s,
+      tmdb_id: existing?.tmdb_id ?? s.tmdb_id,
+      imdb_id: existing?.imdb_id,
+      backdrop_path: existing?.backdrop_path,
+      popularity: existing?.popularity,
+      added: s.added || s.last_modified || existing?.added,
+    };
+    const sanitized = sanitizeSeries(item, existing);
+    seenIds.add(sanitized.series_id);
+    return {
+      series_id: sanitized.series_id,
+      source_id: sanitized.source_id || sourceId,
+      category_ids: Array.isArray(sanitized.category_ids)
+        ? JSON.stringify(sanitized.category_ids)
+        : sanitized.category_ids,
+      name: sanitized.name,
+      tmdb_id: sanitized.tmdb_id,
+      imdb_id: sanitized.imdb_id,
+      added: typeof sanitized.added === 'string' ? sanitized.added : sanitized.added?.toISOString?.(),
+      backdrop_path: sanitized.backdrop_path,
+      popularity: sanitized.popularity,
+      match_attempted:
+        typeof sanitized.match_attempted === 'string'
+          ? sanitized.match_attempted
+          : sanitized.match_attempted?.toISOString?.(),
+      _stalker_category: (sanitized as any)._stalker_category,
+      cover: (sanitized as any).cover,
+      plot: (sanitized as any).plot,
+      cast: (sanitized as any).cast,
+      director: (sanitized as any).director,
+      genre: (sanitized as any).genre,
+      release_date: (sanitized as any).releaseDate || (sanitized as any).release_date,
+      rating: (sanitized as any).rating,
+      youtube_trailer: (sanitized as any).youtube_trailer,
+      episode_run_time: (sanitized as any).episode_run_time,
+      title: (sanitized as any).title,
+      last_modified: (sanitized as any).last_modified,
+      year: (sanitized as any).year,
+      stream_type: (sanitized as any).stream_type,
+      stream_icon: (sanitized as any).stream_icon,
+      direct_url: (sanitized as any).direct_url,
+      rating_5based: (sanitized as any).rating_5based,
+      category_id: (sanitized as any).category_id,
+      _stalker_raw_id: (sanitized as any)._stalker_raw_id,
+    };
+  });
+  await bulkOps.upsertSeries(bulkSeries);
+  dbEvents.flushGatedNotifications();
+  return bulkSeries.length;
+}
+
+async function syncDispatcharrMoviesProgressive(
+  source: Source,
+  client: DispatcharrClient,
+  onProgress?: VodProgressCallback,
+  movieCategories?: Category[]
+): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
+  const categories =
+    movieCategories ?? (await client.getVodCategories()).movies;
+
+  const existingCategories = await db.vodCategories
+    .whereRaw('source_id = ? AND type = ?', [source.id, 'movie'])
+    .toArray();
+  const existingCategorySettings = new Map(
+    existingCategories.map((c) => [c.category_id, { enabled: c.enabled, display_order: c.display_order }])
+  );
+  const vodCategories: VodCategory[] = categories.map((cat) => {
+    const settings = existingCategorySettings.get(cat.category_id);
+    return {
+      category_id: cat.category_id,
+      source_id: source.id,
+      name: cat.category_name,
+      type: 'movie' as const,
+      enabled: settings?.enabled ?? true,
+      display_order: settings?.display_order ?? cat.display_order,
+    };
+  });
+
+  // Write categories first so browse filters work while movies stream in.
+  await db.vodCategories.whereRaw('source_id = ? AND type = ?', [source.id, 'movie']).delete();
+  if (vodCategories.length > 0) {
+    await db.vodCategories.bulkPut(vodCategories);
+    dbEvents.flushGatedNotifications();
+  }
+  onProgress?.(i18n.t('common:fetchingCategories') + ` (${vodCategories.length})`);
+
+  const existingMovies = await db.vodMovies
+    .whereRaw(
+      'source_id = ? AND (tmdb_id IS NOT NULL OR imdb_id IS NOT NULL OR backdrop_path IS NOT NULL)',
+      [source.id]
+    )
+    .select(['stream_id', 'tmdb_id', 'imdb_id', 'added', 'backdrop_path', 'popularity', 'match_attempted'])
+    .toArray();
+  const existingMap = new Map(existingMovies.map((m) => [m.stream_id, m]));
+  const seenIds = new Set<string>();
+  let imported = 0;
+
+  const movieNameToId = new Map(
+    categories.map((c) => [(c.category_name || '').trim().toLowerCase(), c.category_id] as const)
+      .filter(([name]) => Boolean(name))
+  );
+
+  // Pass categories so membership is loaded via ?category=name|movie (list
+  // payloads omit category FKs — they live on M3UMovieRelation only).
+  const total = await client.forEachMoviesPage(
+    async (movies, meta) => {
+      await upsertMoviePageProgressive(source.id, movies, existingMap, seenIds);
+      imported = seenIds.size;
+      const totalHint = meta.totalHint ?? Math.max(imported, 1);
+      onProgress?.(
+        `Movies: ${imported.toLocaleString()}${meta.totalHint != null ? ` / ${meta.totalHint.toLocaleString()}` : ''}`,
+        { done: imported, total: totalHint }
+      );
+      // Keep settings chip counts climbing during long imports.
+      if (meta.page % 5 === 0 || (meta.totalHint != null && imported >= meta.totalHint)) {
+        try {
+          await bulkOps.updateSourceMeta({
+            source_id: source.id,
+            vod_movie_count: imported,
+          });
+        } catch {
+          /* non-fatal */
+        }
+      }
+    },
+    movieNameToId,
+    categories
+  );
+
+  if (total === 0) {
+    const existingCount = await db.vodMovies.where('source_id').equals(source.id).count();
+    if (existingCount > 0) {
+      return { count: existingCount, categoryCount: vodCategories.length, skipped: true };
+    }
+  }
+
+  // Stale purge using IDs seen during progressive import
+  if (seenIds.size > 0) {
+    const allExistingIds = await db.vodMovies
+      .where('source_id')
+      .equals(source.id)
+      .select(['stream_id'])
+      .toArray();
+    const toRemove = allExistingIds.filter((m) => !seenIds.has(m.stream_id)).map((m) => m.stream_id);
+    if (toRemove.length > 0) {
+      // Delete in chunks to avoid huge IPC payloads
+      const chunk = 2000;
+      for (let i = 0; i < toRemove.length; i += chunk) {
+        await db.vodMovies.bulkDelete(toRemove.slice(i, i + chunk));
+      }
+      console.log(`[VOD Movies] Removed ${toRemove.length} movies no longer in source`);
+      dbEvents.flushGatedNotifications();
+    }
+  }
+
+  try {
+    await restoreUserCustomizations();
+  } catch (err) {
+    console.error('[Sync] Failed to restore VOD movie customizations:', err);
+  }
+
+  return { count: total, categoryCount: vodCategories.length };
+}
+
+async function syncDispatcharrSeriesProgressive(
+  source: Source,
+  client: DispatcharrClient,
+  onProgress?: VodProgressCallback,
+  seriesCategories?: Category[]
+): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
+  const categories =
+    seriesCategories ?? (await client.getVodCategories()).series;
+
+  const existingSeriesCategories = await db.vodCategories
+    .whereRaw('source_id = ? AND type = ?', [source.id, 'series'])
+    .toArray();
+  const existingSeriesCategorySettings = new Map(
+    existingSeriesCategories.map((c) => [
+      c.category_id,
+      { enabled: c.enabled, display_order: c.display_order },
+    ])
+  );
+  const vodCategories: VodCategory[] = categories.map((cat) => {
+    const settings = existingSeriesCategorySettings.get(cat.category_id);
+    return {
+      category_id: cat.category_id,
+      source_id: source.id,
+      name: cat.category_name,
+      type: 'series' as const,
+      enabled: settings?.enabled ?? true,
+      display_order: settings?.display_order ?? cat.display_order,
+    };
+  });
+
+  await db.vodCategories.whereRaw('source_id = ? AND type = ?', [source.id, 'series']).delete();
+  if (vodCategories.length > 0) {
+    await db.vodCategories.bulkPut(vodCategories);
+    dbEvents.flushGatedNotifications();
+  }
+
+  const existingSeries = await db.vodSeries
+    .whereRaw(
+      'source_id = ? AND (tmdb_id IS NOT NULL OR imdb_id IS NOT NULL OR backdrop_path IS NOT NULL OR _stalker_category IS NOT NULL)',
+      [source.id]
+    )
+    .select([
+      'series_id',
+      'tmdb_id',
+      'imdb_id',
+      'added',
+      'backdrop_path',
+      'popularity',
+      'match_attempted',
+      '_stalker_category',
+    ])
+    .toArray();
+  const existingMap = new Map(existingSeries.map((s) => [s.series_id, s]));
+  const seenIds = new Set<string>();
+
+  const seriesNameToId = new Map(
+    categories.map((c) => [(c.category_name || '').trim().toLowerCase(), c.category_id] as const)
+      .filter(([name]) => Boolean(name))
+  );
+
+  const total = await client.forEachSeriesPage(
+    async (seriesPage, meta) => {
+      await upsertSeriesPageProgressive(source.id, seriesPage, existingMap, seenIds);
+      const imported = seenIds.size;
+      const totalHint = meta.totalHint ?? Math.max(imported, 1);
+      onProgress?.(
+        `Series: ${imported.toLocaleString()}${meta.totalHint != null ? ` / ${meta.totalHint.toLocaleString()}` : ''}`,
+        { done: imported, total: totalHint }
+      );
+      if (meta.page % 5 === 0 || (meta.totalHint != null && imported >= meta.totalHint)) {
+        try {
+          await bulkOps.updateSourceMeta({
+            source_id: source.id,
+            vod_series_count: imported,
+          });
+        } catch {
+          /* non-fatal */
+        }
+      }
+    },
+    seriesNameToId,
+    categories
+  );
+
+  if (total === 0) {
+    const existingCount = await db.vodSeries.where('source_id').equals(source.id).count();
+    if (existingCount > 0) {
+      return { count: existingCount, categoryCount: vodCategories.length, skipped: true };
+    }
+  }
+
+  if (seenIds.size > 0) {
+    const allExistingIds = await db.vodSeries
+      .where('source_id')
+      .equals(source.id)
+      .select(['series_id'])
+      .toArray();
+    const toRemove = allExistingIds.filter((s) => !seenIds.has(s.series_id)).map((s) => s.series_id);
+    if (toRemove.length > 0) {
+      const chunk = 2000;
+      for (let i = 0; i < toRemove.length; i += chunk) {
+        const batch = toRemove.slice(i, i + chunk);
+        await db.vodEpisodes.where('series_id').anyOf(batch).delete();
+        await db.vodSeries.bulkDelete(batch);
+      }
+      console.log(`[VOD Series] Removed ${toRemove.length} series (and their episodes) no longer in source`);
+      dbEvents.flushGatedNotifications();
+    }
+  }
+
+  try {
+    await restoreUserCustomizations();
+  } catch (err) {
+    console.error('[Sync] Failed to restore VOD series customizations:', err);
+  }
+
+  return { count: total, categoryCount: vodCategories.length };
+}
+
+// Sync VOD movies for a single source (Xtream, Stalker, or Dispatcharr)
 // Uses safe update pattern: fetch new data first, only update if successful
 export async function syncVodMovies(
   source: Source,
-  sharedClient?: XtreamClient | StalkerClient
+  sharedClient?: XtreamClient | StalkerClient | DispatcharrClient,
+  onProgress?: VodProgressCallback,
+  prefetchedMovieCategories?: Category[]
 ): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
   source = await resolveSourceUserAgent(source);
-  if (!['xtream', 'stalker'].includes(source.type)) {
+  if (!['xtream', 'stalker', 'dispatcharr'].includes(source.type)) {
     return { count: 0, categoryCount: 0 };
   }
 
@@ -3612,6 +4279,34 @@ export async function syncVodMovies(
       debugLog('[VOD Movies] Stalker source detected - using lazy loading (categories only)', 'vod');
       categories = await client.getVodCategories();
       movies = []; // Empty streams for now, will be loaded on demand via syncStalkerCategory
+    } else if (source.type === 'dispatcharr') {
+      const hasApiKey = Boolean(source.api_key?.trim());
+      const hasUserPass = Boolean(source.username?.trim() && source.password?.trim());
+      // Mark skipped so parent does not stamp vod_last_synced on a no-op.
+      if (!hasApiKey && !hasUserPass) return { count: 0, categoryCount: 0, skipped: true };
+      const client = sharedClient instanceof DispatcharrClient
+        ? sharedClient
+        : new DispatcharrClient(
+            {
+              baseUrl: source.url,
+              username: source.username,
+              password: source.password,
+              apiKey: source.api_key,
+              credentialType: source.dispatcharr_credential_type,
+              userAgent: source.user_agent,
+            },
+            source.id
+          );
+      if (!(sharedClient instanceof DispatcharrClient)) {
+        await client.bootstrapAuth();
+      }
+      // Progressive page-by-page import (60k+ libraries) — returns early.
+      return await syncDispatcharrMoviesProgressive(
+        source,
+        client,
+        onProgress,
+        prefetchedMovieCategories
+      );
     }
   } catch (err) {
     console.warn('[VOD Movies] Fetch failed, keeping existing data:', err);
@@ -3751,14 +4446,16 @@ export async function syncVodMovies(
   return { count: storedMovies.length, categoryCount: vodCategories.length };
 }
 
-// Sync VOD series for a single source (Xtream or Stalker)
+// Sync VOD series for a single source (Xtream, Stalker, or Dispatcharr)
 // Uses safe update pattern: fetch new data first, only update if successful
 export async function syncVodSeries(
   source: Source,
-  sharedClient?: XtreamClient | StalkerClient
+  sharedClient?: XtreamClient | StalkerClient | DispatcharrClient,
+  onProgress?: VodProgressCallback,
+  prefetchedSeriesCategories?: Category[]
 ): Promise<{ count: number; categoryCount: number; skipped?: boolean }> {
   source = await resolveSourceUserAgent(source);
-  if (!['xtream', 'stalker'].includes(source.type)) {
+  if (!['xtream', 'stalker', 'dispatcharr'].includes(source.type)) {
     return { count: 0, categoryCount: 0 };
   }
 
@@ -3839,6 +4536,33 @@ export async function syncVodSeries(
       debugLog('[VOD Series] Stalker source detected - using lazy loading (categories only)', 'vod');
       categories = await client.getSeriesCategories();
       series = []; // Empty streams for now, will be loaded on demand
+    } else if (source.type === 'dispatcharr') {
+      const hasApiKey = Boolean(source.api_key?.trim());
+      const hasUserPass = Boolean(source.username?.trim() && source.password?.trim());
+      if (!hasApiKey && !hasUserPass) return { count: 0, categoryCount: 0, skipped: true };
+      debugLog(`Initializing Dispatcharr client (UA: ${source.user_agent || 'default'})`, 'sync');
+      const client = sharedClient instanceof DispatcharrClient
+        ? sharedClient
+        : new DispatcharrClient(
+            {
+              baseUrl: source.url,
+              username: source.username,
+              password: source.password,
+              apiKey: source.api_key,
+              credentialType: source.dispatcharr_credential_type,
+              userAgent: source.user_agent,
+            },
+            source.id
+          );
+      if (!(sharedClient instanceof DispatcharrClient)) {
+        await client.bootstrapAuth();
+      }
+      return await syncDispatcharrSeriesProgressive(
+        source,
+        client,
+        onProgress,
+        prefetchedSeriesCategories
+      );
     }
   } catch (err) {
     console.warn('[VOD Series] Fetch failed, keeping existing data:', err);
@@ -3990,8 +4714,8 @@ export async function syncVodSeries(
 // Sync episodes for a specific series (on-demand when user views series details)
 export async function syncSeriesEpisodes(source: Source, seriesId: string): Promise<number> {
   source = await resolveSourceUserAgent(source);
-  // Support both Xtream and Stalker
-  if (!['xtream', 'stalker'].includes(source.type)) {
+  // Support Xtream, Stalker, and Dispatcharr
+  if (!['xtream', 'stalker', 'dispatcharr'].includes(source.type)) {
     return 0;
   }
 
@@ -4046,6 +4770,23 @@ export async function syncSeriesEpisodes(source: Source, seriesId: string): Prom
           }];
         }
       }
+    } else if (source.type === 'dispatcharr') {
+      const hasApiKey = Boolean(source.api_key?.trim());
+      const hasUserPass = Boolean(source.username?.trim() && source.password?.trim());
+      if (!hasApiKey && !hasUserPass) return 0;
+      const client = new DispatcharrClient(
+        {
+          baseUrl: source.url,
+          username: source.username,
+          password: source.password,
+          apiKey: source.api_key,
+          credentialType: source.dispatcharr_credential_type,
+          userAgent: source.user_agent,
+        },
+        source.id
+      );
+      await client.bootstrapAuth();
+      seasons = await client.getSeriesInfo(seriesId);
     }
   } catch (err) {
     console.warn(`[Sync episodes] Failed to fetch episodes for ${seriesId}:`, err);
@@ -4239,24 +4980,32 @@ export async function fetchVodProviderTrailerInfo(
 }
 
 // Exported VOD sync wrapper with backup URL failover support
-export async function syncVodForSource(source: Source): Promise<VodSyncResult> {
-  // Same gate as syncSource: bulk VOD writes shouldn't re-run live queries
-  // (movies/series/episodes tables) on every batch, only once at the end.
-  return withSyncGate(() => syncVodForSourceInternal(source));
+export async function syncVodForSource(
+  source: Source,
+  onProgress?: VodProgressCallback
+): Promise<VodSyncResult> {
+  // Gate still coalesces noise, but progressive Dispatcharr sync flushes mid-way
+  // so Movies/Series grids can populate while import continues.
+  return withSyncGate(() => syncVodForSourceInternal(source, onProgress));
 }
 
-async function syncVodForSourceInternal(source: Source): Promise<VodSyncResult> {
+async function syncVodForSourceInternal(
+  source: Source,
+  onProgress?: VodProgressCallback
+): Promise<VodSyncResult> {
   source = await resolveSourceUserAgent(source);
   if (source.live_tv_only) {
+    // Not an error — caller may skip VOD for live-only sources; do not stamp vod_last_synced.
     return {
-      success: true,
+      success: false,
       movieCount: 0,
       seriesCount: 0,
       movieCategoryCount: 0,
       seriesCategoryCount: 0,
+      error: 'Source is Live TV only',
     };
   }
-  const result = await _doSyncVodForSource(source);
+  const result = await _doSyncVodForSource(source, onProgress);
   if (result.success) return result;
 
   // If primary failed and we have backup URLs, try them in order
@@ -4268,7 +5017,7 @@ async function syncVodForSourceInternal(source: Source): Promise<VodSyncResult> 
       debugLog(`VOD primary URL failed. Trying backup URL: ${trimmedUrl}`, 'vod');
 
       const backupSource: Source = { ...source, url: trimmedUrl };
-      const backupResult = await _doSyncVodForSource(backupSource);
+      const backupResult = await _doSyncVodForSource(backupSource, onProgress);
 
       if (backupResult.success) {
         // Swap: working backup becomes primary, old primary moves to backup list
@@ -4298,11 +5047,14 @@ async function syncVodForSourceInternal(source: Source): Promise<VodSyncResult> 
 }
 
 // Internal VOD sync implementation
-async function _doSyncVodForSource(source: Source): Promise<VodSyncResult> {
+async function _doSyncVodForSource(
+  source: Source,
+  onProgress?: VodProgressCallback
+): Promise<VodSyncResult> {
   try {
     // For Stalker sources, create a shared client to avoid token conflicts
     // from parallel handshakes invalidating each other's tokens
-    let sharedClient: XtreamClient | StalkerClient | undefined;
+    let sharedClient: XtreamClient | StalkerClient | DispatcharrClient | undefined;
     if (source.type === 'stalker' && source.mac) {
       sharedClient = new StalkerClient(
         { baseUrl: source.url, mac: source.mac, userAgent: source.user_agent },
@@ -4311,12 +5063,72 @@ async function _doSyncVodForSource(source: Source): Promise<VodSyncResult> {
       // Do initial handshake once before parallel operations
       await (sharedClient as StalkerClient).ensureToken();
       console.log('[VOD Sync] Created shared StalkerClient for token reuse');
+    } else if (source.type === 'dispatcharr') {
+      sharedClient = new DispatcharrClient(
+        {
+          baseUrl: source.url,
+          username: source.username,
+          password: source.password,
+          apiKey: source.api_key,
+          credentialType: source.dispatcharr_credential_type,
+          userAgent: source.user_agent,
+        },
+        source.id
+      );
+      await (sharedClient as DispatcharrClient).bootstrapAuth();
+      const obtainedKey = (sharedClient as DispatcharrClient).getApiKey();
+      if (obtainedKey && obtainedKey !== source.api_key && window.storage?.saveSource) {
+        source.api_key = obtainedKey;
+        try {
+          await window.storage.saveSource({ ...source, api_key: obtainedKey });
+        } catch (saveErr) {
+          debugLog(`Failed to persist Dispatcharr api_key after VOD bootstrap: ${saveErr}`, 'vod');
+        }
+      }
+      (sharedClient as DispatcharrClient).setProgressHandler((msg) => onProgress?.(msg));
+      console.log('[VOD Sync] Created shared DispatcharrClient for auth reuse');
     }
 
-    const [moviesResult, seriesResult] = await Promise.all([
-      syncVodMovies(source, sharedClient),
-      syncVodSeries(source, sharedClient),
-    ]);
+    let moviesResult: { count: number; categoryCount: number; skipped?: boolean };
+    let seriesResult: { count: number; categoryCount: number; skipped?: boolean };
+
+    if (source.type === 'dispatcharr' && sharedClient instanceof DispatcharrClient) {
+      // Sequential movies → series: clearer progress + less SQLite lock contention
+      // on 60k+ catalogs. Prefetch categories once for both sides.
+      onProgress?.(i18n.t('common:fetchingCategories'));
+      const vodCats = await sharedClient.getVodCategories();
+      onProgress?.(i18n.t('common:syncingVod') + ' — movies');
+      moviesResult = await syncVodMovies(source, sharedClient, onProgress, vodCats.movies);
+      onProgress?.(i18n.t('common:syncingVod') + ' — series');
+      seriesResult = await syncVodSeries(source, sharedClient, onProgress, vodCats.series);
+    } else {
+      const [m, s] = await Promise.all([
+        syncVodMovies(source, sharedClient, onProgress),
+        syncVodSeries(source, sharedClient, onProgress),
+      ]);
+      moviesResult = m;
+      seriesResult = s;
+    }
+
+    // Do not stamp vod_last_synced when a fetch was skipped (keeps isVodStale true
+    // so the next auto/manual sync retries instead of waiting 24h on empty data).
+    if (moviesResult.skipped || seriesResult.skipped) {
+      const reason = [
+        moviesResult.skipped ? 'movies fetch skipped' : null,
+        seriesResult.skipped ? 'series fetch skipped' : null,
+      ]
+        .filter(Boolean)
+        .join('; ');
+      debugLog(`VOD sync incomplete (${reason}); not updating vod_last_synced`, 'vod');
+      return {
+        success: false,
+        movieCount: moviesResult.count,
+        seriesCount: seriesResult.count,
+        movieCategoryCount: moviesResult.categoryCount,
+        seriesCategoryCount: seriesResult.categoryCount,
+        error: `VOD sync incomplete: ${reason}`,
+      };
+    }
 
     await bulkOps.updateSourceMeta({
       source_id: source.id,
@@ -4362,9 +5174,9 @@ export async function syncAllVod(): Promise<Map<string, VodSyncResult>> {
     return results;
   }
 
-  // Get enabled VOD sources (Xtream or Stalker) that are not LiveTV-only
+  // Get enabled VOD sources (Xtream, Stalker, or Dispatcharr) that are not LiveTV-only
   const vodSources = sourcesResult.data.filter(
-    s => s.enabled && (s.type === 'xtream' || s.type === 'stalker') && !s.live_tv_only
+    s => s.enabled && (s.type === 'xtream' || s.type === 'stalker' || s.type === 'dispatcharr') && !s.live_tv_only
   );
 
   // Sync VOD with concurrency limit of 5

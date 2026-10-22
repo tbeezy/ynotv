@@ -365,7 +365,7 @@ export const Bridge = {
         }
     },
 
-    async loadVideo(url: string, userAgent?: string) {
+    async loadVideo(url: string, userAgent?: string, httpHeaders?: Record<string, string>) {
         if (REDIRECT_CONTROLS_TO_CAST && isCasting) {
             const isLocal = url.startsWith('file://') || (!url.startsWith('http://') && !url.startsWith('https://'));
             if (isLocal) {
@@ -448,7 +448,26 @@ export const Bridge = {
         }
         try {
             activeSubtitleTrackId = null;
-            await invoke('mpv_load', { url });
+            // Pass auth headers into mpv_load so Rust applies them AFTER the
+            // picture-quality profile and immediately before loadfile.
+            // Always pass the field (including "") so Rust clears stale auth
+            // headers from a prior Dispatcharr/proxy play when this load has none.
+            let httpHeaderFields = '';
+            if (httpHeaders && Object.keys(httpHeaders).length > 0) {
+                httpHeaderFields = Object.entries(httpHeaders)
+                    .filter(([k, v]) => Boolean(k) && v != null && String(v).length > 0)
+                    .map(([k, v]) => {
+                        const name = String(k).replace(/[\r\n]+/g, '');
+                        const value = String(v).replace(/[\r\n]+/g, '');
+                        return name && value.length > 0 ? `${name}: ${value}` : '';
+                    })
+                    .filter(Boolean)
+                    .join('\r\n');
+            }
+            await invoke('mpv_load', {
+                url,
+                httpHeaderFields,
+            });
             return { success: true };
         } catch (e: any) {
             return { success: false, error: typeof e === 'string' ? e : translateNativeError(e.message) || i18n.t('player:unknownError') };

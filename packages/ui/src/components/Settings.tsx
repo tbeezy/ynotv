@@ -1477,8 +1477,8 @@ export function Settings({
     );
   }
 
-  // Check if any VOD source exists (Xtream or Stalker) for showing tabs
-  const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker');
+  // Check if any VOD source exists (Xtream, Stalker, or Dispatcharr) for showing tabs
+  const hasVodSource = sources.some(s => s.type === 'xtream' || s.type === 'stalker' || s.type === 'dispatcharr');
 
   const handleSocks5ProxyEnabledChange = (enabled: boolean) => {
     setSocks5ProxyEnabled(enabled);

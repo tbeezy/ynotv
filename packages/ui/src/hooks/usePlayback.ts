@@ -221,11 +221,41 @@ function mpvObject(value: any): Record<string, any> | null {
  * resolves and plays those correctly; transient 403s are handled by
  * yt-dlp/mpv internally and the trailer retry in maybeRetryTrailerStream.
  */
+/** Format headers for mpv `http-header-fields` (Name: value pairs joined by CRLF). */
+function formatMpvHttpHeaderFields(headers: Record<string, string>): string {
+  return Object.entries(headers)
+    .filter(([k, v]) => Boolean(k) && v != null && String(v).length > 0)
+    // Strip CR/LF so a malicious/corrupt value cannot inject extra header lines.
+    .map(([k, v]) => {
+      const name = String(k).replace(/[\r\n]+/g, '');
+      const value = String(v).replace(/[\r\n]+/g, '');
+      return name && value.length > 0 ? `${name}: ${value}` : '';
+    })
+    .filter(Boolean)
+    .join('\r\n');
+}
+
+async function applyPlaybackHttpHeaders(httpHeaders?: Record<string, string>): Promise<void> {
+  try {
+    if (httpHeaders && Object.keys(httpHeaders).length > 0) {
+      const fields = formatMpvHttpHeaderFields(httpHeaders);
+      logInfo('[Playback] Setting http-header-fields for authenticated proxy');
+      await Bridge.setProperty('http-header-fields', fields);
+    } else {
+      // Clear so a prior Dispatcharr play does not leak auth onto the next URL.
+      await Bridge.setProperty('http-header-fields', '');
+    }
+  } catch (e) {
+    logWarn('Failed to set http-header-fields:', e);
+  }
+}
+
 async function tryLoadWithFallbacks(
   primaryUrl: string,
   isLive: boolean,
   userAgent?: string,
-  onError?: (msg: string) => void
+  onError?: (msg: string) => void,
+  httpHeaders?: Record<string, string>
 ): Promise<{ success: boolean; url: string; error?: string }> {
   logInfo('[Playback] Setting User-Agent:', userAgent || '(using default)');
 
@@ -237,8 +267,10 @@ async function tryLoadWithFallbacks(
     }
   }
 
+  await applyPlaybackHttpHeaders(httpHeaders);
+
   logInfo('[Playback] Loading URL:', primaryUrl);
-  const result = await Bridge.loadVideo(primaryUrl, userAgent);
+  const result = await Bridge.loadVideo(primaryUrl, userAgent, httpHeaders);
 
   if (result.success) {
     logInfo('[Playback] Successfully loaded:', primaryUrl);
@@ -255,7 +287,7 @@ async function tryLoadWithFallbacks(
 
   for (const fallbackUrl of fallbacks) {
     logInfo('[Playback] Trying fallback:', fallbackUrl);
-    const fallbackResult = await Bridge.loadVideo(fallbackUrl, userAgent);
+    const fallbackResult = await Bridge.loadVideo(fallbackUrl, userAgent, httpHeaders);
     if (fallbackResult.success) {
       logInfo('[Playback] Fallback succeeded:', fallbackUrl);
       return { success: true, url: fallbackUrl };
@@ -1080,7 +1112,8 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         resolved.url,
         true,
         resolved.userAgent,
-        (msg) => setError(msg)
+        (msg) => setError(msg),
+        resolved.httpHeaders
       );
 
       if (!result.success) {
@@ -1524,7 +1557,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
           // Keep the original stream URL if it cannot be augmented.
         }
       }
-      const result = await tryLoadWithFallbacks(playbackUrl, false, resolved.userAgent);
+      const result = await tryLoadWithFallbacks(playbackUrl, false, resolved.userAgent, undefined, resolved.httpHeaders);
       if (!result.success) {
         logWarn('[Trailer] Retry failed to load:', result.error);
         return false;
@@ -2624,7 +2657,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     if (isLocal) {
       setIgnoreHttpErrors(true);
     }
-    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent);
+    const result = await tryLoadWithFallbacks(resolved.url, false, resolved.userAgent, undefined, resolved.httpHeaders);
       if (!result.success) {
       if (isLocal) setIgnoreHttpErrors(false);
       setError(translateNativeError(result.error) || i18n.t('player:failedToLoadCatchupStream'));
@@ -2728,7 +2761,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
         // Keep the original stream URL if it cannot be augmented.
       }
     }
-    const result = await tryLoadWithFallbacks(jellyfinPlayUrl, false, resolved.userAgent);
+    const result = await tryLoadWithFallbacks(jellyfinPlayUrl, false, resolved.userAgent, undefined, resolved.httpHeaders);
       if (!result.success) {
       setIgnoreHttpErrors(false);
       setError(translateNativeError(result.error) || i18n.t('player:failedToLoadStream'));
