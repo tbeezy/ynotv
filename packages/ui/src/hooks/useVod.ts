@@ -8,6 +8,7 @@ import type { Source } from '@ynotv/core';
 import { useEnabledSources } from './useChannels';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useToastStore } from '../stores/toastStore';
+import { useVodHiddenItemsStore } from '../stores/vodHiddenItemsStore';
 import { getTmdbImageUrl, TMDB_POSTER_SIZES } from '../services/tmdb';
 import { getSearchVariants, matchesSearch } from '../utils/searchNormalization';
 import {
@@ -548,6 +549,8 @@ export function useWindowedMovies(
   // never shows the empty state — it shows a spinner instead.
   const [loading, setLoading] = useState(true);
   const enabledSourceIds = useEnabledSources();
+  // Reload the list whenever the user hides/unhides a title.
+  const hiddenVersion = useVodHiddenItemsStore((s) => s.version);
   
   // Create a stable key for enabled sources to prevent unnecessary re-renders
   const enabledSourceKey = useMemo(
@@ -671,6 +674,9 @@ export function useWindowedMovies(
           }
         }
 
+        // Exclude titles the user chose to hide (see vodHiddenItemsStore).
+        finalWhere += ` AND m.stream_id NOT IN (SELECT media_id FROM vod_hidden_items WHERE media_type = 'movie')`;
+
         // Load all items (no LIMIT)
         // Use LEFT JOIN json_each so movies with empty/null category_ids are not excluded
         const orderColumn = sortBy === 'added' ? 'added' : sortBy === 'popularity' ? 'popularity' : 'name';
@@ -722,7 +728,7 @@ export function useWindowedMovies(
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, reloadToken, shouldRefresh, enabledSourceKey]);
+  }, [categoryId, search, sortBy, reloadToken, shouldRefresh, enabledSourceKey, hiddenVersion]);
 
   const reset = useCallback(() => {
     setAllItems([]);
@@ -757,6 +763,8 @@ export function useWindowedSeries(
   // never shows the empty state — it shows a spinner instead.
   const [loading, setLoading] = useState(true);
   const enabledSourceIds = useEnabledSources();
+  // Reload the list whenever the user hides/unhides a title.
+  const hiddenVersion = useVodHiddenItemsStore((s) => s.version);
   
   // Create a stable key for enabled sources to prevent unnecessary re-renders
   const enabledSourceKey = useMemo(
@@ -860,6 +868,9 @@ export function useWindowedSeries(
           }
         }
 
+        // Exclude titles the user chose to hide (see vodHiddenItemsStore).
+        whereClause += ` AND s.series_id NOT IN (SELECT media_id FROM vod_hidden_items WHERE media_type = 'series')`;
+
         // Load all items (no LIMIT)
         const orderColumn = sortBy === 'added' ? 'added' : sortBy === 'popularity' ? 'popularity' : 'name';
         const orderDir = sortBy === 'added' ? 'DESC' : 'ASC';
@@ -919,7 +930,7 @@ export function useWindowedSeries(
     };
 
     loadAll();
-  }, [categoryId, search, sortBy, shouldRefreshSeries, enabledSourceKey]);
+  }, [categoryId, search, sortBy, shouldRefreshSeries, enabledSourceKey, hiddenVersion]);
 
   const reset = useCallback(() => {
     setAllItems([]);

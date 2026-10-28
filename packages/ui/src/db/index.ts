@@ -151,6 +151,19 @@ export interface VodMetadataOverride {
   updated_at: number;
 }
 
+// Movies/series the user chose to hide from browse and search. Lives in its own
+// table that sync never writes, so a hidden title stays hidden after provider
+// refreshes — same pattern as VodMetadataOverride. Keyed by
+// `${media_type}:${media_id}`. `title` is stored only so the "Hidden titles"
+// list can show a readable name even if the provider later drops the item.
+export interface VodHiddenItem {
+  hidden_key: string;          // `${media_type}:${media_id}`
+  media_id: string;            // stream_id (movie) / series_id (series)
+  media_type: 'movie' | 'series';
+  title?: string | null;
+  hidden_at: number;
+}
+
 // User preferences (last selected category, etc.)
 export interface UserPrefs {
   key: string;
@@ -478,6 +491,7 @@ class YnotvDatabase extends SqliteDatabase {
   vodEpisodes: SqliteTable<StoredEpisode, string>;
   vodCategories: SqliteTable<VodCategory, string>;
   vodMetadataOverrides: SqliteTable<VodMetadataOverride, string>;
+  vodHiddenItems: SqliteTable<VodHiddenItem, string>;
   channelMetadata: SqliteTable<ChannelMetadata, string>;
   dvrSchedules: SqliteTable<DvrSchedule, number>;
   dvrRecordings: SqliteTable<DvrRecording, number>;
@@ -519,6 +533,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.vodEpisodes = new SqliteTable('vodEpisodes', 'id', this.dbPromise);
     this.vodCategories = new SqliteTable('vodCategories', 'category_id', this.dbPromise);
     this.vodMetadataOverrides = new SqliteTable('vod_metadata_overrides', 'override_key', this.dbPromise);
+    this.vodHiddenItems = new SqliteTable('vod_hidden_items', 'hidden_key', this.dbPromise);
     this.channelMetadata = new SqliteTable('channelMetadata', 'stream_id', this.dbPromise);
     this.dvrSchedules = new SqliteTable('dvr_schedules', 'id', this.dbPromise);
     this.dvrRecordings = new SqliteTable('dvr_recordings', 'id', this.dbPromise);
@@ -563,6 +578,7 @@ class YnotvDatabase extends SqliteDatabase {
     this.vodEpisodes.updateDbPromise(this.dbPromise);
     this.vodCategories.updateDbPromise(this.dbPromise);
     this.vodMetadataOverrides.updateDbPromise(this.dbPromise);
+    this.vodHiddenItems.updateDbPromise(this.dbPromise);
     this.channelMetadata.updateDbPromise(this.dbPromise);
     this.dvrSchedules.updateDbPromise(this.dbPromise);
     this.dvrRecordings.updateDbPromise(this.dbPromise);
@@ -1204,6 +1220,16 @@ class YnotvDatabase extends SqliteDatabase {
         plot TEXT,
         tmdb_id INTEGER,
         updated_at INTEGER NOT NULL
+      )`);
+
+    // Hidden VOD titles — movies/series the user hid from browse and search.
+    // Never touched by sync (see VodHiddenItem).
+    await db.execute(`CREATE TABLE IF NOT EXISTS vod_hidden_items (
+        hidden_key TEXT PRIMARY KEY,
+        media_id TEXT NOT NULL,
+        media_type TEXT NOT NULL,
+        title TEXT,
+        hidden_at INTEGER NOT NULL
       )`);
 
     // Team channel links — maps a sports team to a provider channel so games

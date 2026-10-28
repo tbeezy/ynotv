@@ -81,6 +81,15 @@ export interface ExportData {
         tmdbId?: number | null;
         updatedAt: number;
     }>;
+    // Movies/series the user hid from browse and search (separate table that
+    // sync never writes, so it must be backed up/restored too).
+    vodHiddenItems?: Array<{
+        hiddenKey: string;
+        mediaId: string;
+        mediaType: 'movie' | 'series';
+        title?: string | null;
+        hiddenAt: number;
+    }>;
     customGroups: Array<{
         groupId: string;
         name: string;
@@ -369,6 +378,15 @@ async function buildExportData(): Promise<ExportData> {
             plot: o.plot,
             tmdbId: o.tmdb_id,
             updatedAt: o.updated_at
+        }));
+
+        // 5b. Get hidden VOD titles
+        const vodHiddenItems = (await db.vodHiddenItems.toArray()).map(h => ({
+            hiddenKey: h.hidden_key,
+            mediaId: h.media_id,
+            mediaType: h.media_type,
+            title: h.title,
+            hiddenAt: h.hidden_at
         }));
 
         // 6. Get Custom Groups with their channels
@@ -685,6 +703,7 @@ async function buildExportData(): Promise<ExportData> {
             channelPreferences,
             vodCategoryPreferences,
             vodMetadataOverrides,
+            vodHiddenItems,
             customGroups,
             watchlist,
             epgChannelOverrides,
@@ -1026,6 +1045,7 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
                     { name: 'sourcesMeta', table: db.sourcesMeta },
                     { name: 'dvrSettings', table: db.dvrSettings },
                     { name: 'vodMetadataOverrides', table: db.vodMetadataOverrides },
+                    { name: 'vodHiddenItems', table: db.vodHiddenItems },
                     { name: 'teamChannelLinks', table: db.teamChannelLinks },
                     { name: 'vodHistory', table: db.vodHistory },
                     { name: 'episodeHistory', table: db.episodeHistory },
@@ -1322,6 +1342,19 @@ export async function importAllData(): Promise<{ success: boolean; error?: strin
                         updated_at: o.updatedAt
                     }));
                     await db.vodMetadataOverrides.bulkAdd(overrides);
+                }
+            });
+
+            await restoreStep('Hidden VOD Titles', async () => {
+                if (data.vodHiddenItems && data.vodHiddenItems.length > 0) {
+                    const hiddenItems = data.vodHiddenItems.map(h => ({
+                        hidden_key: h.hiddenKey,
+                        media_id: h.mediaId,
+                        media_type: h.mediaType,
+                        title: h.title ?? null,
+                        hidden_at: h.hiddenAt
+                    }));
+                    await db.vodHiddenItems.bulkAdd(hiddenItems);
                 }
             });
 

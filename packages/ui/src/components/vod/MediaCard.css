@@ -250,6 +250,49 @@
   height: 14px;
 }
 
+/* Hide button — sits just left of the favorite button, hover/focus only */
+.media-card__hide-btn {
+  position: absolute;
+  top: 6px;
+  right: 40px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  z-index: 20;
+  padding: 0;
+  backdrop-filter: blur(4px);
+}
+
+/* No favorite button on this card — use the corner instead */
+.media-card__hide-btn--solo {
+  right: 6px;
+}
+
+.media-card:hover .media-card__hide-btn,
+.media-card:focus-visible .media-card__hide-btn,
+.media-card__hide-btn:focus-visible {
+  opacity: 1;
+}
+
+.media-card__hide-btn:hover {
+  transform: scale(1.15);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.media-card__hide-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* Info section - compact and polished */
 .media-card__info {
   height: 32px;

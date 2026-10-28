@@ -22,6 +22,8 @@ import { MovieDetail } from './vod/MovieDetail';
 import { SeriesDetail } from './vod/SeriesDetail';
 import { SourceContextMenu } from './SourceContextMenu';
 import { ManageVodCategories } from './vod/ManageVodCategories';
+import { HiddenTitlesModal } from './vod/HiddenTitlesModal';
+import { useVodHiddenItemsStore } from '../stores/vodHiddenItemsStore';
 import { useVodCategories, useRecentlyWatchedMovies, useRecentlyWatchedSeries } from '../hooks/useVod';
 import { StreamingPlatformsRow } from './vod/StreamingPlatformsRow';
 import { StreamingServiceView } from './stremio/StreamingServiceView';
@@ -189,6 +191,7 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
   // Context Menu & Management State (local, not persisted)
   const [contextMenu, setContextMenu] = useState<{ sourceId: string; sourceName: string; x: number; y: number } | null>(null);
   const [manageCategoriesSource, setManageCategoriesSource] = useState<{ id: string; name: string } | null>(null);
+  const [showHiddenTitles, setShowHiddenTitles] = useState(false);
 
   // Streaming platform state
   const [selectedService, setSelectedService] = useState<string | null>(null);
@@ -616,6 +619,7 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
   // edited titles/posters instead of briefly flashing the provider values.
   useEffect(() => {
     void useVodMetadataOverridesStore.getState().hydrate();
+    void useVodHiddenItemsStore.getState().hydrate();
   }, []);
 
   const handleItemClick = useCallback((item: MediaItem) => {
@@ -1298,7 +1302,13 @@ export function VodPage({ type, onPlay, onClose, vodPlayerMode, onSelectVodPlaye
           onManageVodCategories={(id, name) => {
             setManageCategoriesSource({ id, name });
           }}
+          onManageHiddenTitles={() => setShowHiddenTitles(true)}
         />
+      )}
+
+      {/* Hidden titles (movies/series the user hid) */}
+      {showHiddenTitles && (
+        <HiddenTitlesModal onClose={() => setShowHiddenTitles(false)} />
       )}
 
       {/* Manage VOD Categories Modal */}

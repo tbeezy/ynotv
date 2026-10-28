@@ -22,6 +22,7 @@ import {
   useVodLastWatchedMap,
 } from '../../hooks/useVod';
 import { useVodFavoritesStore } from '../../stores/vodFavoritesStore';
+import { useVodHiddenItemsStore } from '../../stores/vodHiddenItemsStore';
 import { useSourceNameMap } from '../../hooks/useChannels';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useTranslation } from 'react-i18next';
@@ -299,6 +300,17 @@ export function VodBrowse({
           style={cardStyle}
           isFavorited={isFav}
           sourceName={sourceName}
+          // Local-library titles have their own Remove action, so only provider titles can be hidden.
+          onHide={item.source_id === 'local' ? undefined : (clickedItem) => {
+            const hideId = type === 'movies'
+              ? (clickedItem as StoredMovie).stream_id
+              : (clickedItem as StoredSeries).series_id;
+            void useVodHiddenItemsStore.getState().hide(
+              hideId,
+              type === 'movies' ? 'movie' : 'series',
+              clickedItem.title || clickedItem.name
+            );
+          }}
           onToggleFavorite={(clickedItem) => {
             const clickedId = type === 'movies'
               ? (clickedItem as StoredMovie).stream_id

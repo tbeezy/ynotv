@@ -28,6 +28,8 @@ export interface MediaCardProps {
   // Favorite toggle on poster
   isFavorited?: boolean;
   onToggleFavorite?: (item: StoredMovie | StoredSeries) => void;
+  // Hide this title from browse/search (shows an eye-off button on hover)
+  onHide?: (item: StoredMovie | StoredSeries) => void;
   // Optional style for dynamic sizing (e.g., marquee animation)
   style?: React.CSSProperties;
   sourceName?: string;
@@ -41,7 +43,7 @@ export interface MediaCardProps {
   index?: number;
 }
 
-export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove, size = 'medium', progressPercent, isRecentlyWatched, seasonNum, episodeNum, episodeTitle, isFavorited, onToggleFavorite, style, sourceName, categoryLabels, onPlayDirect, index }: MediaCardProps) {
+export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove, size = 'medium', progressPercent, isRecentlyWatched, seasonNum, episodeNum, episodeTitle, isFavorited, onToggleFavorite, onHide, style, sourceName, categoryLabels, onPlayDirect, index }: MediaCardProps) {
   useTranslation();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -124,6 +126,13 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
     e.preventDefault();
     onToggleFavorite?.(effItem);
   }, [effItem, onToggleFavorite]);
+
+  const handleHide = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    e.preventDefault();
+    // Pass the RAW item so the caller reads the provider id/title
+    onHide?.(item);
+  }, [item, onHide]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -221,6 +230,21 @@ export const MediaCard = memo(function MediaCard({ item, type, onClick, onRemove
           </button>
         )}
         
+        {/* Hide button on poster (sits just left of the favorite button) */}
+        {onHide && (
+          <button
+            className={`media-card__hide-btn${onToggleFavorite ? '' : ' media-card__hide-btn--solo'}`}
+            onClick={handleHide}
+            aria-label={i18n.t('vod:hideTitle')}
+            title={i18n.t('vod:hideTitle')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          </button>
+        )}
+
         {/* Progress bar */}
         {progressPercent !== undefined && progressPercent > 0 && progressPercent < 100 && (
           <div className="media-card__progress-container">

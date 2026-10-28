@@ -11,6 +11,7 @@ interface SourceContextMenuProps {
     onClose: () => void;
     onManageCategories?: (sourceId: string, sourceName: string) => void;
     onManageVodCategories?: (sourceId: string, sourceName: string) => void;
+    onManageHiddenTitles?: () => void;
     onEditSource?: (sourceId: string) => void;
     onEditEpg?: (sourceId: string, sourceName: string) => void;
     onCreateCategoryFolder?: (sourceId: string, sourceName: string) => void;
@@ -23,6 +24,7 @@ export function SourceContextMenu({
     onClose,
     onManageCategories,
     onManageVodCategories,
+    onManageHiddenTitles,
     onEditSource,
     onEditEpg,
     onCreateCategoryFolder,
@@ -109,6 +111,11 @@ export function SourceContextMenu({
             {onManageVodCategories && (
                 <div className="context-menu-item" onClick={() => { onManageVodCategories(sourceId, sourceName); onClose(); }}>
                     {i18n.t('contextMenu.manageVodCategories')}
+                </div>
+            )}
+            {onManageHiddenTitles && (
+                <div className="context-menu-item" onClick={() => { onManageHiddenTitles(); onClose(); }}>
+                    {i18n.t('contextMenu.manageHiddenTitles')}
                 </div>
             )}
             {onEditSource && (
