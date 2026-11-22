@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Buscar…",
     "search": "Buscar",
     "languagesTitle": "Idiomas de Legendas",
+    "makeDefault": "Definir como padrão",
     "loadedTitle": "Legendas Carregadas",
     "loadFileTooltip": "Carregar arquivo de legenda externo do disco",
     "loadFile": "Carregar Arquivo",

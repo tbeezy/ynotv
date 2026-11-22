@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Поиск…",
     "search": "Поиск",
     "languagesTitle": "Языки субтитров",
+    "makeDefault": "Сделать по умолчанию",
     "loadedTitle": "Загруженные субтитры",
     "loadFileTooltip": "Загрузить внешний файл субтитров с диска",
     "loadFile": "Загрузить файл",

@@ -6,6 +6,7 @@ import { loginOpenSubtitles, logoutOpenSubtitles, OpenSubtitlesUser } from '../.
 import { Bridge } from '../../services/tauri-bridge';
 import { useToastStore } from '../../stores/toastStore';
 import { DEFAULT_SUBTITLE_SETTINGS } from '../../stores/settingsStore';
+import { PLAYBACK_LANGUAGE_OPTIONS } from '../../utils/playbackLanguageOptions';
 import './PlaybackTab.css'; // Reuse existing tab styles
 
 export type SubtitlesSubTabId = 'subtitles' | 'audio';
@@ -49,36 +50,6 @@ const MAX_VOLUME_OPTIONS = [
   { value: 100, labelKey: 'settings:subtitles.maxVolume100' },
   { value: 150, labelKey: 'settings:subtitles.maxVolume150' },
   { value: 200, labelKey: 'settings:subtitles.maxVolume200' },
-];
-
-const LANGUAGE_OPTIONS = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'fr', label: 'French' },
-  { code: 'de', label: 'German' },
-  { code: 'it', label: 'Italian' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'ru', label: 'Russian' },
-  { code: 'ar', label: 'Arabic' },
-  { code: 'hi', label: 'Hindi' },
-  { code: 'zh', label: 'Chinese' },
-  { code: 'ja', label: 'Japanese' },
-  { code: 'ko', label: 'Korean' },
-  { code: 'nl', label: 'Dutch' },
-  { code: 'pl', label: 'Polish' },
-  { code: 'tr', label: 'Turkish' },
-  { code: 'sv', label: 'Swedish' },
-  { code: 'da', label: 'Danish' },
-  { code: 'no', label: 'Norwegian' },
-  { code: 'fi', label: 'Finnish' },
-  { code: 'cs', label: 'Czech' },
-  { code: 'el', label: 'Greek' },
-  { code: 'hu', label: 'Hungarian' },
-  { code: 'he', label: 'Hebrew' },
-  { code: 'id', label: 'Indonesian' },
-  { code: 'ms', label: 'Malay' },
-  { code: 'th', label: 'Thai' },
-  { code: 'vi', label: 'Vietnamese' },
 ];
 
 interface SubtitlesTabProps {
@@ -498,7 +469,7 @@ export function SubtitlesTab({ initialSubTab, settings, onSettingsChange }: Subt
                   onChange={(e) => update({ defaultLanguage: e.target.value })}
                 >
                   <option value="off">{i18n.t('common:off')}</option>
-                  {LANGUAGE_OPTIONS.map((lang) => (
+                  {PLAYBACK_LANGUAGE_OPTIONS.map((lang) => (
                     <option key={lang.code} value={lang.code}>
                       {lang.label}
                     </option>
@@ -863,7 +834,7 @@ export function SubtitlesTab({ initialSubTab, settings, onSettingsChange }: Subt
                   onChange={(e) => update({ defaultAudioLanguage: e.target.value })}
                 >
                   <option value="default">{i18n.t('common:default')}</option>
-                  {LANGUAGE_OPTIONS.map((lang) => (
+                  {PLAYBACK_LANGUAGE_OPTIONS.map((lang) => (
                     <option key={lang.code} value={lang.code}>
                       {lang.label}
                     </option>

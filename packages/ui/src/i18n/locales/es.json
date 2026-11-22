@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Buscar…",
     "search": "Buscar",
     "languagesTitle": "Idiomas de subtítulos",
+    "makeDefault": "Establecer como predeterminado",
     "loadedTitle": "Subtítulos cargados",
     "loadFileTooltip": "Cargar archivo de subtítulos externo desde el disco duro",
     "loadFile": "Cargar archivo",

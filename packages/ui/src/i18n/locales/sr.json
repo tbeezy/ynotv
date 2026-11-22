@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Претражи…",
     "search": "Претражи",
     "languagesTitle": "Језици титлова",
+    "makeDefault": "Постави као подразумевано",
     "loadedTitle": "Учитани титлови",
     "loadFileTooltip": "Учитај спољни фајл титлова са диска",
     "loadFile": "Учитај фајл",

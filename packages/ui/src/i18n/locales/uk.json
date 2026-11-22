@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Пошук…",
     "search": "Пошук",
     "languagesTitle": "Мови субтитрів",
+    "makeDefault": "Зробити типовим",
     "loadedTitle": "Завантажені субтитри",
     "loadFileTooltip": "Завантажити зовнішній файл субтитрів з диска",
     "loadFile": "Завантажити файл",

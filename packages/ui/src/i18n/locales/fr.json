@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Rechercher…",
     "search": "Rechercher",
     "languagesTitle": "Langues des sous-titres",
+    "makeDefault": "Définir par défaut",
     "loadedTitle": "Sous-titres chargés",
     "loadFileTooltip": "Charger un fichier de sous-titres externe depuis le disque",
     "loadFile": "Charger un fichier",

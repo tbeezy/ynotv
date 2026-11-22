@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "搜索…",
     "search": "搜索",
     "languagesTitle": "字幕语言",
+    "makeDefault": "设为默认",
     "loadedTitle": "已加载的字幕",
     "loadFileTooltip": "从硬盘加载外部字幕文件",
     "loadFile": "加载文件",

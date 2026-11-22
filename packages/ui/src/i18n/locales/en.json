@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Search…",
     "search": "Search",
     "languagesTitle": "Subtitles Languages",
+    "makeDefault": "Make Default",
     "loadedTitle": "Loaded Subtitles",
     "loadFileTooltip": "Load external subtitle file from hard drive",
     "loadFile": "Load File",
