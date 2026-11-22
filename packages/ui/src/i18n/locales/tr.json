@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Ara…",
     "search": "Ara",
     "languagesTitle": "Altyazı Dilleri",
+    "makeDefault": "Varsayılan yap",
     "loadedTitle": "Yüklenen Altyazılar",
     "loadFileTooltip": "Sabit diskten harici altyazı dosyası yükle",
     "loadFile": "Dosya Yükle",

@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Szukaj…",
     "search": "Szukaj",
     "languagesTitle": "Języki napisów",
+    "makeDefault": "Ustaw jako domyślne",
     "loadedTitle": "Załadowane napisy",
     "loadFileTooltip": "Załaduj zewnętrzny plik napisów z dysku",
     "loadFile": "Załaduj plik",

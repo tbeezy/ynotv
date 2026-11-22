@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "搜尋…",
     "search": "搜尋",
     "languagesTitle": "字幕語言",
+    "makeDefault": "設為預設",
     "loadedTitle": "已載入的字幕",
     "loadFileTooltip": "從硬碟載入外部字幕檔案",
     "loadFile": "載入檔案",

@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Suchen…",
     "search": "Suchen",
     "languagesTitle": "Untertitelsprachen",
+    "makeDefault": "Als Standard festlegen",
     "loadedTitle": "Geladene Untertitel",
     "loadFileTooltip": "Externe Untertiteldatei von der Festplatte laden",
     "loadFile": "Datei laden",

@@ -39,6 +39,7 @@ import {
   type AddonSubtitleTrack,
 } from '../utils/stremioSubs';
 import { addonSubLangSummary, addonSubLog } from '../services/addonSubtitleLog';
+import { PLAYBACK_LANGUAGE_OPTIONS } from '../utils/playbackLanguageOptions';
 import './SubtitleControlModal.css';
 
 interface Track {
@@ -281,6 +282,8 @@ export function SubtitleControlModal({
   onAddonSubtitleSelect,
 }: SubtitleControlModalProps) {
   const { t } = useTranslation('subtitles');
+  const defaultLanguage = useSettingsStore((state) => state.subtitleSettings.defaultLanguage) || 'en';
+  const setSubtitleSettings = useSettingsStore((state) => state.setSubtitleSettings);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -683,6 +686,7 @@ export function SubtitleControlModal({
     try {
       await Bridge.setSubtitleTrack(0, { userInitiated: true });
       setSelectedId(0);
+      setSearchLang('off');
       await debugLogSubState('after disable');
     } catch (e) {
       console.error('Failed to disable subtitles:', e);
@@ -1333,7 +1337,9 @@ export function SubtitleControlModal({
 
   // Determine active track language based on selectedId
   const activeTrack = allSubTracks.find(t => t.id === selectedId);
-  const selectedTrackLang = selectedId === 0 ? 'off' : (activeTrack ? getTrackLanguage(activeTrack, jellyfinSubtitleTracks) : 'off');
+  const selectedTrackLang = selectedId === 0 ? 'off' : (activeTrack ? getTrackLanguage(activeTrack, jellyfinSubtitleTracks) : '');
+  const canMakeDefault = !loading && selectedTrackLang !== defaultLanguage
+    && (selectedTrackLang === 'off' || PLAYBACK_LANGUAGE_OPTIONS.some(({ code }) => code === selectedTrackLang));
 
   // Filter subtitle tracks for Column 2 based on selected language.
   // When subtitles are "off" list every loaded track. App-downloaded external
@@ -1428,10 +1434,7 @@ export function SubtitleControlModal({
             <div className="subtitle-lang-list">
               <button
                 className={`subtitle-lang-btn ${searchLang === 'off' ? 'active' : ''}`}
-                onClick={() => {
-                  handleDisable();
-                  setSearchLang('off');
-                }}
+                onClick={handleDisable}
               >
                 OFF
                 {selectedTrackLang === 'off' && <span className="subtitle-active-dot"></span>}
@@ -1446,6 +1449,14 @@ export function SubtitleControlModal({
                   {selectedTrackLang === lang.code && <span className="subtitle-active-dot"></span>}
                 </button>
               ))}
+              <button
+                type="button"
+                className="subtitle-header-search-btn"
+                disabled={!canMakeDefault}
+                onClick={() => setSubtitleSettings({ defaultLanguage: selectedTrackLang })}
+              >
+                {t('makeDefault')}
+              </button>
             </div>
           </div>
 

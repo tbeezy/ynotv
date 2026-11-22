@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Zoeken…",
     "search": "Zoeken",
     "languagesTitle": "Ondertiteltalen",
+    "makeDefault": "Instellen als standaard",
     "loadedTitle": "Geladen ondertitels",
     "loadFileTooltip": "Extern ondertitelbestand vanaf de harde schijf laden",
     "loadFile": "Bestand laden",

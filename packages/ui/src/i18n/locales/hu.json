@@ -4638,6 +4638,7 @@
     "searchPlaceholder": "Keresés…",
     "search": "Keresés",
     "languagesTitle": "Feliratok nyelvei",
+    "makeDefault": "Beállítás alapértelmezettként",
     "loadedTitle": "Betöltött feliratok",
     "loadFileTooltip": "Külső feliratfájl betöltése a merevlemezről",
     "loadFile": "Fájl betöltése",
