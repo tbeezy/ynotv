@@ -976,8 +976,6 @@ export function NowPlayingBar({
                   </button>
                 )}
 
-                {episodeAutoplayToggle}
-
                 <button
                   className="npb-clean-play-btn"
                   onClick={onTogglePlay}
@@ -1008,6 +1006,7 @@ export function NowPlayingBar({
                     <StopIcon />
                   </button>
                 )}
+                {episodeAutoplayToggle}
               </div>
 
               {/* Right Group: Toggle Stats, Aspect Ratio, Speed, Audio, Subtitles, Source Picker, PiP, Fullscreen */}
@@ -1545,7 +1544,6 @@ export function NowPlayingBar({
                     {isQueueNav || isEpisodeNav ? <NextIcon /> : <ChannelDownIcon />}
                   </button>
                 )}
-                {episodeAutoplayToggle}
                 <button
                   className="npb-btn"
                   onClick={onTogglePlay}
@@ -1572,6 +1570,7 @@ export function NowPlayingBar({
                 >
                   <StopIcon />
                 </button>
+                {episodeAutoplayToggle}
               </div>
 
               {/* Extra Controls (Subtitle, Audio, Stats, Record) */}
