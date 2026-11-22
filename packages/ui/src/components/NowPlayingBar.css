@@ -464,6 +464,27 @@
   cursor: not-allowed;
 }
 
+.npb-episode-autoplay-track {
+  display: flex;
+  align-items: center;
+  width: 23px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.npb-episode-autoplay-track > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+.npb-episode-autoplay-btn[aria-pressed="true"] .npb-episode-autoplay-track {
+  justify-content: flex-end;
+  background: var(--accent-primary, #3b82f6);
+}
+
 .npb-btn.has-badge,
 .npb-clean-btn.has-badge {
   position: relative;
