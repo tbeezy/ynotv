@@ -1940,7 +1940,7 @@ function useTmdbPresencePoster(
   const jellyfinOpenDetailsTargetRef = useRef<string | null>(null);
 
   // Wrap handleStop to restore the source page if stopped from a media context.
-  const handleStop = useCallback(async (returnView?: 'movies' | 'series' | 'dvr' | 'stremio' | 'nuvio' | 'jellyfin') => {
+  const handleStop = useCallback(async (returnView?: 'movies' | 'series' | 'dvr' | 'stremio' | 'nuvio' | 'jellyfin', completedDuration?: number) => {
     // Prop wired via onBack/onStop/onClick hands React the click event as the
     // first argument. Only a known view name may be a destination: a stray
     // event used to become the activeView (`active-view-[object MouseEvent]`),
@@ -2038,7 +2038,7 @@ function useTmdbPresencePoster(
       await jellyfinEmbedNotifyPlaybackEnded(ticks, detailsTarget ?? undefined).catch(() => {});
     }
 
-    await handleStopRaw();
+    await handleStopRaw(completedDuration);
     clearAddonSubtitleTracksRef.current?.();
     setShowPlaybackDetailsModal(false);
     setJellyfinQueueOpen(false);
@@ -2065,6 +2065,20 @@ function useTmdbPresencePoster(
       setPlaybackSourceView(null);
     }
   }, [vodInfo, handleStopRaw, setActiveView, playbackSourceView, jellyfinEnabled]);
+
+  const returnToVodSeries = useCallback(async (info: import('./types/media').VodPlayInfo, completedDuration?: number) => {
+    const series = info.seriesId ? await db.vodSeries.get(info.seriesId) : undefined;
+    await handleStop(undefined, completedDuration);
+    const store = useUIStore.getState();
+    if (series) {
+      store.setSeriesSelectedItem(series);
+      if (info.seasonNum) store.setSeriesSelectedSeason(info.seasonNum);
+    } else if (info.title) {
+      store.setSeriesSearchQuery(info.title);
+      store.setSeriesSelectedItem(null);
+    }
+    setActiveView('series');
+  }, [handleStop, setActiveView]);
 
   // Jellyfin handoff: play the captured direct-stream URL through the app's
   // normal VOD pipeline (same as any movie) so the frontend's own player takes
@@ -4143,6 +4157,10 @@ function useTmdbPresencePoster(
   // ==========================================================================
   // VOD Series Auto-Play Next Episode
   // ==========================================================================
+  const canOverrideEpisodeAutoplay = vodInfo?.type === 'series'
+    && !!vodInfo.seriesId && vodInfo.seasonNum !== undefined && vodInfo.episodeNum !== undefined
+    && !['jellyfin', 'local', 'stremio', 'nuvio', 'trailer'].includes(vodInfo.source_id ?? '');
+  const episodeAutoplay = vodInfo?.autoPlayNextEpisodeOverride ?? vodAutoPlayNextEpisode;
   // Dedup: the playing->paused transition and the mpv end-file event can both
   // fire for the same EOF within milliseconds, which would double-run auto-play.
   const lastAutoAdvanceRef = useRef<{ key: string; ts: number } | null>(null);
@@ -4353,7 +4371,12 @@ function useTmdbPresencePoster(
         console.log('[AutoPlay] Jellyfin: reached end of captured episode list');
       }
 
-      if (vodAutoPlayNextEpisode && seriesId && seasonNum !== undefined && episodeNum !== undefined && title) {
+      if (canOverrideEpisodeAutoplay && !episodeAutoplay) {
+        void returnToVodSeries(vodInfo, endDur).catch((err) => console.error('[AutoPlay] Error returning to series:', err));
+        return;
+      }
+
+      if (episodeAutoplay && seriesId && seasonNum !== undefined && episodeNum !== undefined && title) {
         console.log('[AutoPlay] VOD Series ended naturally, triggering auto-play next episode');
         
         (async () => {
@@ -4411,6 +4434,7 @@ function useTmdbPresencePoster(
                 seasonNum: nextEpisode.season_num,
                 episodeNum: nextEpisode.episode_num,
                 episodeId: nextEpisode.id,
+                autoPlayNextEpisodeOverride: vodInfo.autoPlayNextEpisodeOverride,
                 backdropUrl,
                 logoUrl,
                 tmdbId,
@@ -4425,7 +4449,7 @@ function useTmdbPresencePoster(
         })();
       }
     }
-  }, [playing, vodEndFileSignal, vodInfo, duration, position, vodAutoPlayNextEpisode, handlePlayVod, playJellyfinTarget, userPausedRef]);
+  }, [playing, vodEndFileSignal, vodInfo, duration, position, vodAutoPlayNextEpisode, episodeAutoplay, canOverrideEpisodeAutoplay, handlePlayVod, playJellyfinTarget, returnToVodSeries, userPausedRef]);
 
   // ==========================================================================
   // Active playlist queue controls (indicator click + prev/next buttons)
@@ -6008,21 +6032,10 @@ function useTmdbPresencePoster(
           }
           // VOD series/movies: stop playback, then open the app's full detail
           // page for the item that was playing (not just the browse home).
-          const store = useUIStore.getState();
           if (vodInfo?.type === 'series' && vodInfo?.seriesId) {
-            const series = await db.vodSeries.get(vodInfo.seriesId);
-            await handleStop();
-            if (series) {
-              store.setSeriesSelectedItem(series);
-              // Open on the season being watched.
-              if (vodInfo.seasonNum) store.setSeriesSelectedSeason(vodInfo.seasonNum);
-            } else if (vodInfo.title) {
-              // Series row missing (e.g. cache cleared): fall back to a search.
-              store.setSeriesSearchQuery(vodInfo.title);
-              store.setSeriesSelectedItem(null);
-            }
-            setActiveView('series');
+            await returnToVodSeries(vodInfo);
           } else if (vodInfo?.type === 'movie' && vodInfo?.mediaId) {
+            const store = useUIStore.getState();
             const movie = await db.vodMovies.get(vodInfo.mediaId);
             await handleStop();
             if (movie) {
@@ -6873,6 +6886,11 @@ function useTmdbPresencePoster(
         duration={duration}
         isVod={currentChannel?.stream_id === 'vod' || currentChannel?.stream_id?.startsWith('recording_')}
         vodInfo={vodInfo}
+        episodeAutoplay={canOverrideEpisodeAutoplay ? episodeAutoplay : undefined}
+        onToggleEpisodeAutoplay={() => patchVodInfo(
+          { autoPlayNextEpisodeOverride: !episodeAutoplay },
+          (current) => current.mediaId === vodInfo?.mediaId && current.url === vodInfo?.url,
+        )}
         isCatchup={isCatchup}
         catchupInfo={catchupInfo}
         channelInfoOverlayEnabled={channelInfoOverlayEnabled}

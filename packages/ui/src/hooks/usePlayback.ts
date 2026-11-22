@@ -391,7 +391,7 @@ export interface PlaybackState {
    */
   patchVodInfo: (patch: Partial<VodPlayInfo>, matches?: (current: VodPlayInfo) => boolean) => void;
   handlePlayRecording: (recording: import('../db').DvrRecording, onCloseView?: () => void) => Promise<void>;
-  handleStop: () => Promise<void>;
+  handleStop: (completedDuration?: number) => Promise<void>;
   handleSeek: (seconds: number) => Promise<void>;
   handleTogglePlay: () => Promise<void>;
   handleVolumeChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
@@ -3071,17 +3071,19 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
     }
   }, [clearPendingSeeks, suppressStatusUpdates]);
 
-  const handleStop = useCallback(async () => {
+  const handleStop = useCallback(async (completedDuration?: number) => {
+    const stopPosition = completedDuration ?? position;
+    const stopDuration = completedDuration ?? duration;
     // Save progress before stopping if playing VOD and initial seek is not pending
     if (isInitialSeekPendingRef.current) {
       console.log('[Playback] Initial seek was still pending on stop, skipping progress save');
-    } else if (vodInfo && position > 0 && duration > 0 && vodInfo.source_id !== 'trailer' && vodInfo.source_id !== 'jellyfin' && !isYouTubeUrl(vodInfo.url)) {
+    } else if (vodInfo && stopPosition > 0 && stopDuration > 0 && vodInfo.source_id !== 'trailer' && vodInfo.source_id !== 'jellyfin' && !isYouTubeUrl(vodInfo.url)) {
       if (vodInfo.type === 'recording') {
-        console.log('[Playback] Saving progress for recording on stop:', position, '/', duration);
+        console.log('[Playback] Saving progress for recording on stop:', stopPosition, '/', stopDuration);
         if (vodInfo.recordingId) {
-          await updateDvrRecordingProgress(vodInfo.recordingId, Math.floor(position), Math.floor(duration));
+          await updateDvrRecordingProgress(vodInfo.recordingId, Math.floor(stopPosition), Math.floor(stopDuration));
         } else {
-          useDownloadStore.getState().saveDownloadProgress(vodInfo.url, Math.floor(position), Math.floor(duration));
+          useDownloadStore.getState().saveDownloadProgress(vodInfo.url, Math.floor(stopPosition), Math.floor(stopDuration));
         }
       } else {
         const mediaId = vodInfo.mediaId || (vodInfo.source_id && vodInfo.url
@@ -3089,7 +3091,7 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
           : null);
         
         if (mediaId) {
-          console.log('[Playback] Saving progress on stop:', position, '/', duration);
+          console.log('[Playback] Saving progress on stop:', stopPosition, '/', stopDuration);
           
           // For series episodes, extract series_id and save both levels
           if (vodInfo.type === 'series' && mediaId.includes('_ep_')) {
@@ -3103,8 +3105,8 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
               await updateVodWatchProgress(
                 seriesId,  // Use series_id, not episode-specific mediaId
                 'series',
-                Math.floor(position),
-                Math.floor(duration),
+                Math.floor(stopPosition),
+                Math.floor(stopDuration),
                 vodInfo.source_id || '',
                 vodInfo.title || '',
                 vodInfo.posterUrl
@@ -3113,8 +3115,8 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
               // Save episode-level progress (for episode resume)
               console.log('[Playback] Saving episode-level progress:', episodeId, seriesId);
               console.log('[Playback] Episode save values:', {
-                position: Math.floor(position),
-                duration: Math.floor(duration),
+                stopPosition: Math.floor(stopPosition),
+                stopDuration: Math.floor(stopDuration),
                 sourceId: vodInfo.source_id
               });
               await recordEpisodeWatch(
@@ -3124,8 +3126,8 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
                 vodInfo.seasonNum ?? 0,
                 vodInfo.episodeNum ?? 0,
                 vodInfo.episodeInfo || '',
-                Math.floor(position),
-                Math.floor(duration)
+                Math.floor(stopPosition),
+                Math.floor(stopDuration)
               );
             }
           } else {
@@ -3133,8 +3135,8 @@ export function usePlayback(options: UsePlaybackOptions): PlaybackState {
             await updateVodWatchProgress(
               mediaId,
               vodInfo.type as 'movie' | 'series',
-              Math.floor(position),
-              Math.floor(duration),
+              Math.floor(stopPosition),
+              Math.floor(stopDuration),
               vodInfo.source_id || '',
               vodInfo.title || '',
               vodInfo.posterUrl

@@ -35,6 +35,8 @@ interface NowPlayingBarProps {
   duration: number;
   isVod?: boolean;
   vodInfo?: VodPlayInfo | null;
+  episodeAutoplay?: boolean;
+  onToggleEpisodeAutoplay?: () => void;
   isCatchup?: boolean;
   catchupInfo?: {
     channelId: string;
@@ -123,6 +125,8 @@ export function NowPlayingBar({
   duration,
   isVod,
   vodInfo,
+  episodeAutoplay,
+  onToggleEpisodeAutoplay,
   isCatchup,
   catchupInfo,
   channelInfoOverlayEnabled,
@@ -175,6 +179,7 @@ export function NowPlayingBar({
   onPlayChannel,
 }: NowPlayingBarProps) {
   const { t } = useTranslation('player');
+  const { t: tSettings } = useTranslation('settings');
   const showVolumePercentSetting = useSettingsStore((s) => s.showVolumePercent);
   const showFailoverMediaBarWidget = useSettingsStore((s) => s.showFailoverMediaBarWidget);
   const maxVolume = useSettingsStore((s) => s.subtitleSettings?.audioMaxVolume || 100);
@@ -408,6 +413,19 @@ export function NowPlayingBar({
   }, [showAspectMenu, showVisualizerMenu]);
 
   const isClean = playerControlDesign === 'clean';
+  const episodeAutoplayToggle = isEpisodeNav && episodeAutoplay !== undefined && onToggleEpisodeAutoplay && (
+    <button
+      type="button"
+      className={`${isClean ? 'npb-clean-sm-btn' : 'npb-btn'} npb-episode-autoplay-btn`}
+      onClick={onToggleEpisodeAutoplay}
+      aria-pressed={episodeAutoplay}
+      aria-label={tSettings('playback.autoPlayNext')}
+      title={tSettings('playback.autoPlayNext')}
+      disabled={!canControl}
+    >
+      <span className="npb-episode-autoplay-track" aria-hidden="true"><span /></span>
+    </button>
+  );
   // When channel info overlay is enabled or clean design is active, hide channel details from the bar for live TV
   const hideChannelInfo = isClean || (channelInfoOverlayEnabled && !isVod && !isCatchup);
 
@@ -988,6 +1006,7 @@ export function NowPlayingBar({
                     <StopIcon />
                   </button>
                 )}
+                {episodeAutoplayToggle}
               </div>
 
               {/* Right Group: Toggle Stats, Aspect Ratio, Speed, Audio, Subtitles, Source Picker, PiP, Fullscreen */}
@@ -1551,6 +1570,7 @@ export function NowPlayingBar({
                 >
                   <StopIcon />
                 </button>
+                {episodeAutoplayToggle}
               </div>
 
               {/* Extra Controls (Subtitle, Audio, Stats, Record) */}
