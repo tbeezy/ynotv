@@ -1433,6 +1433,14 @@ export function SubtitleControlModal({
             <div className="subtitle-col-title">{t('languagesTitle')}</div>
             <div className="subtitle-lang-list">
               <button
+                type="button"
+                className="subtitle-header-search-btn subtitle-make-default-btn"
+                disabled={!canMakeDefault}
+                onClick={() => setSubtitleSettings({ defaultLanguage: selectedTrackLang })}
+              >
+                {t('makeDefault')}
+              </button>
+              <button
                 className={`subtitle-lang-btn ${searchLang === 'off' ? 'active' : ''}`}
                 onClick={handleDisable}
               >
@@ -1449,14 +1457,6 @@ export function SubtitleControlModal({
                   {selectedTrackLang === lang.code && <span className="subtitle-active-dot"></span>}
                 </button>
               ))}
-              <button
-                type="button"
-                className="subtitle-header-search-btn"
-                disabled={!canMakeDefault}
-                onClick={() => setSubtitleSettings({ defaultLanguage: selectedTrackLang })}
-              >
-                {t('makeDefault')}
-              </button>
             </div>
           </div>
 

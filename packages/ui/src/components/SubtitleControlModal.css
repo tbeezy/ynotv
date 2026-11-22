@@ -406,6 +406,11 @@
   gap: 1px;
 }
 
+.subtitle-make-default-btn {
+  margin: 4px 0 8px;
+  white-space: normal;
+}
+
 .subtitle-lang-btn {
   background: transparent;
   border: none;
